@@ -60,7 +60,7 @@ V1 uses the current simple execution approach:
 - Fill a market action from the current visible historical price.
 - Apply the configured trading fee.
 - Apply the same quantity, leverage, margin, and rounding calculations as production.
-- Record expected price, fill price, quantity, fee, request time, fill time, and status.
+- Update the position with the same calculations used by production.
 
 Advanced fill and latency models are deferred. Slippage may be a simple setting.
 
@@ -79,8 +79,9 @@ needed by the Precision Checker:
 
 - Start and end time
 - Effective configuration and initial state
-- Trade history with entry, averaging, and exit executions
-- Final balance, open positions, fees, and PnL
+- Trade history for the existing backtest dashboard
+- `endPositions` containing the final JSON for open and closed positions
+- Final balance, fees, and PnL
 - Whether open positions were kept or force-closed
 
 # G. V1 tests

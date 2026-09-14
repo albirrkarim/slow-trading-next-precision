@@ -4,26 +4,17 @@ TC: `BOTH:PRECISION_MEASUREMENT`
 
 # A. Goal
 
-Answer: **How closely does production execution match the backtest?**
+Answer: **How closely does the final production position match backtest?**
 
-V1 compares production trade history with a backtest for the same period,
-configuration, and starting state.
+V1 measures result precision only by comparing final position JSON from the
+same period, strategy, configuration, and starting state.
 
 # B. Create a production test case
 
-The Production Dashboard provides:
-
-- **Start Production Test Case**
-- **End Production Test Case**
-
-Start records the current configuration and state. Every entry, averaging, and
-exit is recorded until End is pressed. These controls must not change trading
-or close positions.
-
-```text
-Start: 15 Sep 2026
-End:   20 Sep 2026
-```
+The Production Dashboard provides **Start Production Test Case** and **End
+Production Test Case**. Start saves the configuration and initial state. End
+saves the final form of positions created, changed, or closed during capture.
+The controls must not change trading or close positions.
 
 The times are actual capture times; capture cannot recover earlier activity.
 
@@ -43,47 +34,47 @@ interface ProdTestCase {
   endTime: number;
   config: { runtime: RuntimeConfig; trading: TradingConfig };
   initialState: RuntimeState;
-  tradeHistory: TradeHistory[];
+  endPositions: Position[];
 }
 ```
 
-`initialState` contains starting balances, positions, orders, and strategy
-state. Each trade records entry/average/exit kind, side, expected and fill
-price, quantity, fee, request and fill time, status, and closed PnL.
-
-Raw exchange requests and responses stay outside this JSON.
-
 TC: `PROD:PRODUCTION_TEST_CASE`
 
-# D. Compare with backtest
+# D. Candidate pairing
 
-Run or select a backtest with the same period, configuration, initial state, and
-strategy. Its historical dataset must cover the period, and open positions must
-remain open at the comparison end.
+Pair a production position with a backtest position when these values match:
 
-For each production and backtest execution, compare:
+- Account
+- Symbol and direction
+- Entry `vPoint.id`
+- Role or pair identity when required by Hedge or Streak
 
-- Entry, averaging, or exit existence
-- Side, order type, price, quantity, and fee
-- Request and fill time
-- Status, resulting position, and PnL
+Each position may belong to only one pair. Report unpaired positions separately.
 
-Report matching, different, production-only, and backtest-only trades; show the
-first different trade and the average/largest price, fee, timing, and PnL gaps.
-Always display actual values so an overall result cannot hide a missing trade.
+# E. Result comparison
 
-TC: `BOTH:PRODUCTION_BACKTEST_TRADE_COMPARISON`
+Compare each pair's final position objects field by field. Ignore object key
+order but preserve array order. Exclude only fields explicitly marked as
+environment-only, including `executionMode`.
 
-# E. Page `/precision-checker`
+```text
+result precision = equal comparable leaf fields / all comparable leaf fields × 100
+```
 
-The page selects a production test case and compatible backtest, validates
-their time/configuration/initial state, runs the comparison, and displays the
-summary plus individual trade differences.
+Comparable fields are the union of leaf paths in both objects; a missing field
+is different. Show every difference with both values. For numbers, also show
+the absolute and percentage difference. Do not score unpaired positions.
+
+TC: `BOTH:PRODUCTION_BACKTEST_POSITION_COMPARISON`
+
+# F. Page `/precision-checker`
+
+The page selects a production test case and compatible backtest, validates their
+period, configuration, and initial state, then shows candidate pairs, each result
+precision score, field differences, and unpaired positions.
 
 TC: `BTEST:PRECISION_CHECKER_PAGE`
 
-# F. Deferred
+# G. Not in V1
 
-V1 measures execution and result precision. Input, decision, and order-intent
-precision require additional evidence and are deferred without changing this
-start, end, backtest, and comparison workflow.
+Input, decision, order-intent, and execution precision are not measured.

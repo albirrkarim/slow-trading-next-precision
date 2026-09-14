@@ -48,7 +48,7 @@ test, script, and component is not required to achieve precision.
 - `runtime`: shared production/backtest orchestration, stages, state, and storage.
 - `strategies`: only Multi, Hedge, and Streak decision differences.
 - `backtest`: historical dataset loading and simulated execution; no copied trading logic.
-- `precision`: production test-case capture and trade-history comparison.
+- `precision`: production test-case capture and final-position comparison.
 - `components`: shared pages; only open-position presentation varies by strategy.
 
 TC: `BOTH:MODULE_BOUNDARIES`

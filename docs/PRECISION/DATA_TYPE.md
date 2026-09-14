@@ -18,49 +18,21 @@ type RuntimeMode = "live" | "sandbox" | "backtest";
 type StrategyId = "multi" | "hedge" | "streak";
 type PositionDirection = "LONG" | "SHORT";
 type PositionRole = "MAIN" | "COUNTER";
-type ExecutionKind = "ENTRY" | "AVERAGE" | "EXIT";
 ```
 
-# C. Execution record
-
-Every entry, averaging, and exit stores enough data for the first checker:
-
-```ts
-interface TradeExecution {
-  id: string;
-  kind: ExecutionKind;
-  side: "BUY" | "SELL";
-  orderType: string;
-  expectedPrice: number;
-  fillPrice: number;
-  requestedQuantity: number;
-  filledQuantity: number;
-  feeUSDT: number;
-  requestT: number;
-  acknowledgementT?: number;
-  fillT: number;
-  status: string;
-}
-```
-
-Calculate slippage and latency per execution, not once for the whole position.
-
-TC: `BOTH:TRADE_EXECUTION_EVIDENCE`
-
-# D. Shared position
+# C. Shared position
 
 Use the existing `Position` as the migration base. It identifies the account,
-strategy, market, executions, PnL, fees, and strategy-specific data:
+strategy, market, PnL, fees, and strategy-specific data:
 
 ```ts
 interface PositionV1 {
-  id: string;
   account: string;
   strategy: StrategyId;
   symbol: string;
   direction: PositionDirection;
   role?: PositionRole;
-  executions: TradeExecution[];
+  opened: { t: number; vPoint: { id: string; lvl: number }; price: number };
   pnl: PositionPnl;
   strategyData: MultiData | HedgeData | StreakData;
 }
@@ -74,7 +46,7 @@ Do not put account-specific used-vPoint state on shared market objects.
 
 TC: `BOTH:SHARED_POSITION_TYPE`
 
-# E. Runtime and comparison data
+# D. Runtime and comparison data
 
 `RuntimeState` keeps balances, positions, orders, and strategy state per account.
 Live, sandbox, and backtest storage remain separate.
@@ -86,14 +58,15 @@ interface ProdTestCase {
   endTime: number;
   config: { runtime: RuntimeConfig; trading: TradingConfig };
   initialState: RuntimeState;
-  tradeHistory: TradeExecution[];
+  endPositions: PositionV1[];
 }
 ```
 
-Backtest results should extend the current `BacktestReturnDynamic` instead of
-introducing a completely unrelated result shape.
+Backtest results expose the same `endPositions` shape. The candidate key is
+account, symbol, direction, entry `vPoint.id`, and role or pair identity when
+required. `executionMode` is excluded from result comparison.
 
-# F. Migration
+# E. Migration
 
 Readers accept current position and history JSON during migration. Add a schema
 number only when a persisted shape changes. Event envelopes, manifests, checksums,

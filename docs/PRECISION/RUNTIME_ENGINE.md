@@ -76,13 +76,11 @@ storage isolated and process accounts in deterministic order.
 
 TC: `BOTH:PLUGIN_STRATEGY`
 
-# F. Execution evidence and safety
+# F. Result capture and safety
 
-Every trade records expected price, fill price, quantity, fee, request time,
-fill time, and status for the Precision Checker.
-
-Backtest and sandbox cannot submit real orders or write live state. Live order
-submission keeps the existing idempotency and recovery behavior.
+Production and backtest must expose the same final position shape for result
+comparison. Backtest and sandbox cannot submit real orders or write live state.
+Live order submission keeps the existing idempotency and recovery behavior.
 
 # G. V1 tests
 

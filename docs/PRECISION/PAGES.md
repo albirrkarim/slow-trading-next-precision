@@ -4,7 +4,7 @@
 | --- | --- |
 | `/` | Production and sandbox dashboard |
 | `/backtest` | Configure, run, and inspect backtests |
-| `/precision-checker` | Compare production and backtest trades |
+| `/precision-checker` | Compare final production and backtest positions |
 
 Pages use grouped server APIs. Trading, execution, storage, and comparison logic
 must not be implemented in React components.
@@ -69,8 +69,9 @@ TC: `BTEST:BACKTEST_DASHBOARD_PAGE`
 # C. Precision Checker `/precision-checker`
 
 The page selects a production test case and backtest, checks compatibility,
-and shows matching, different, missing, and extra trades plus the first
-difference. See `docs/PRECISION/PRECISION_CHECKER.md`.
+and pairs final positions by entry `vPoint.id`. It shows each position's result
+precision, field differences, and unpaired positions. See
+`docs/PRECISION/PRECISION_CHECKER.md`.
 
 TC: `BTEST:PRECISION_CHECKER_PAGE`
 

@@ -46,35 +46,34 @@ See `docs/PRECISION/RUNTIME_ENGINE.md` for details.
 
 # D. Meaning of Precision
 
-Precision measures how closely a backtest reproduces the recorded production
-result for the same period, strategy, configuration, and starting state.
+V1 measures **result precision only**: how closely the final production position
+JSON matches the final backtest position JSON for the same trade.
 
-The backtest uses simulated exchange execution, so its execution and financial
-results are not expected to be identical to production. Every difference must
-be measurable and explainable.
+A production position and backtest position become a comparison candidate when
+they have the same account, symbol, direction, and entry `vPoint.id`. Hedge and
+Streak must also use their role or pair identity when needed to avoid ambiguity.
 
-Precision must be measured separately for each aspect:
+Both positions must come from runs with the same period, strategy,
+configuration, and starting state. Open positions must remain open at the end
+of the backtest so both JSON results describe the same moment.
 
-- **Input precision:** Whether both runs received equivalent normalized market
-  events in the same order and at the same logical time.
-- **Decision precision:** Whether the strategy produced the same decisions.
-- **Order-intent precision:** Whether both runs requested the same action, side,
-  order type, quantity, and intended price.
-- **Execution precision:** Differences in fill price, filled quantity, fees,
-  slippage, latency, partial fills, rejections, and cancellations.
-- **Result precision:** Differences in position state, balance, and PnL.
+The Precision Checker compares the final position objects field by field after
+excluding explicitly documented environment-only fields such as
+`executionMode`. Object key order does not matter; array order does.
 
-Decision and order-intent precision must match exactly when the inputs are
-identical. Execution and result precision may differ because live trading is
-affected by network latency, liquidity, slippage, exchange behavior, and market
-movement.
+For each candidate pair:
 
-The Precision Checker must report a separate score for each aspect, identify the
-first event where the runs diverged, and provide an overall precision score. The
-overall score must not hide an important decision or execution difference.
+- Equal comparable fields count as precise.
+- Different fields show both values.
+- Numeric differences also show their absolute and percentage gaps.
+- A position's result precision is the percentage of comparable leaf fields
+  that are equal.
 
-See `docs/PRECISION/PRECISION_CHECKER.md` for measurement formulas, tolerances,
-recording requirements, and comparison reports.
+Production-only and backtest-only positions are reported separately and are not
+silently treated as matches. Input, decision, order-intent, and execution
+precision are not part of V1.
+
+See `docs/PRECISION/PRECISION_CHECKER.md` for the comparison workflow.
 
 # E. System Architecture
 
@@ -100,16 +99,10 @@ Define the detailed data types in `docs/PRECISION/DATA_TYPE.md`.
 
 - Define a shared position structure that supports all three strategies while
   allowing each strategy to store its own strategy-specific state.
-- Every entry, averaging, partial fill, and exit execution must preserve enough
-  pricing and timing evidence for `docs/PRECISION/PRECISION_CHECKER.md`.
-- Execution evidence must include the expected price, actual average fill price,
-  quantity, fees, request time, acknowledgement time, and fill time. This allows
-  the system to measure slippage and exchange execution latency.
-- A position may contain multiple execution records; slippage must not be stored
-  as only one value for the whole position.
-- Keep complete raw exchange requests and responses in a separate execution
-  audit or production test-case log instead of storing them directly in the
-  position JSON.
+- Preserve the existing position fields needed by each strategy.
+- Ensure every position exposes a stable entry `vPoint.id` so production and
+  backtest results can be paired.
+- Define which environment-only fields are excluded from result comparison.
 
 ## 3. Planning the runtime engine
 
@@ -124,9 +117,9 @@ The Precision Trading System is complete when:
 - Backtest, sandbox, and live modes execute through the same core runtime path.
 - A recorded production test case can be compared with a backtest for the same
   period, strategy, configuration, and starting state.
-- Identical inputs produce identical strategy decisions and order intentions.
-- The Precision Checker can measure and report how closely a backtest matches
-  the corresponding production record.
+- The Precision Checker pairs positions by their entry `vPoint.id` and reports
+  field-level differences in their final position JSON.
+- The Precision Checker calculates result precision for every candidate pair.
 - API calls, execution duration, errors, retries, and rate-limit usage are measurable.
 
 # H. References
