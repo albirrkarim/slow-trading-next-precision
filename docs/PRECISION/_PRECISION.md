@@ -42,17 +42,39 @@ See `docs/PRECISION/RUNTIME_ENGINE.md` for details.
 
 # C. Non - Goals
 
-- We are not reinventing new trading strategy
+- We are not reinventing new trading strategies
 
 # D. Meaning of Precision
 
-What “precision” means and how it will be measured?
+Precision measures how closely a backtest reproduces the recorded production
+result for the same period, strategy, configuration, and starting state.
 
-it mean it will as close as posible between backtest and the production.
+The backtest uses simulated exchange execution, so its execution and financial
+results are not expected to be identical to production. Every difference must
+be measurable and explainable.
 
-it can be proved by number.
+Precision must be measured separately for each aspect:
 
-see the detail in `docs/PRECISION/PRECISION_CHECKER.md`
+- **Input precision:** Whether both runs received equivalent normalized market
+  events in the same order and at the same logical time.
+- **Decision precision:** Whether the strategy produced the same decisions.
+- **Order-intent precision:** Whether both runs requested the same action, side,
+  order type, quantity, and intended price.
+- **Execution precision:** Differences in fill price, filled quantity, fees,
+  slippage, latency, partial fills, rejections, and cancellations.
+- **Result precision:** Differences in position state, balance, and PnL.
+
+Decision and order-intent precision must match exactly when the inputs are
+identical. Execution and result precision may differ because live trading is
+affected by network latency, liquidity, slippage, exchange behavior, and market
+movement.
+
+The Precision Checker must report a separate score for each aspect, identify the
+first event where the runs diverged, and provide an overall precision score. The
+overall score must not hide an important decision or execution difference.
+
+See `docs/PRECISION/PRECISION_CHECKER.md` for measurement formulas, tolerances,
+recording requirements, and comparison reports.
 
 # E. System Architecture
 
@@ -63,7 +85,7 @@ I want it can flexible can accomodate:
 - one shared runtime engine `docs/PRECISION/RUNTIME_ENGINE.md`
 - data types that can support our goals
 
-# F. Migrations Plan
+# F. Migration Plan
 
 ## 1. Folder structure
 
@@ -88,11 +110,23 @@ Write the detail in `docs/PRECISION/DATA_TYPE.md`
   audit or production test-case log instead of storing them directly in the
   position JSON.
 
-## 3. Planing runtime engine
+## 3. Planing the runtime engine
 
 `docs/PRECISION/RUNTIME_ENGINE.md` considering `docs/PRECISION/BACKTEST.md`
 
-# G. References
+# G. Definition of Done
+
+The Precision Trading System is complete when:
+
+- The Multi, Hedge, and Streak strategies use the shared runtime engine.
+- Backtest, sandbox, and live modes execute through the same core runtime path.
+- A recorded production test case can be compared with a backtest for the same
+  period, strategy, configuration, and starting state.
+- Identical inputs produce identical strategy decisions and order intentions.
+- The Precision Checker can score "how precise the backtest and the actual record from production"
+- API calls, execution duration, errors, retries, and rate-limit usage are measurable.
+
+# H. References
 
 ## 3 instances
 
