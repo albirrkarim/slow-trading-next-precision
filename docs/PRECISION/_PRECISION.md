@@ -16,47 +16,15 @@ Also the architechture is not Enterprise.
 
 # B. Goals
 
-One shared runtime engine that shared between production and backtest.
+One shared runtime engine that shared between production and backtest. Production and backtest must not contain separate trading logic. They use the same runtime and strategy code. Only their adapters are different.
 
-The core principal:
+see `docs/PRECISION/RUNTIME_ENGINE.md`
 
-### It can be feeded with backtest dataset.
-
-TC: `PROD:PLUGIN_BACKTEST`
-
-the High-Level Overview of the backtest will be in `BACKTEST.md`
-
-### It can be feeded with real data.
-
-the engine can be plug with function to get / interact with real data from exchange.
-
-TC: `PROD:PLUGIN_EXCHANGE`
-
-### It can be use for many strategy.
-
-currently we have 3 instance
-
-```
-/Users/susanto/Documents/OpenSource/trading/slow-trading-next-streak
-/Users/susanto/Documents/OpenSource/trading/slow-trading-next-hedge
-/Users/susanto/Documents/OpenSource/trading/slow-trading-next-multi
-```
-
-with the flexible runtime engine it can be just plug in with diferent strategy.
-
-TC: `BOTH:PLUGIN_STRATEGY`
-
-### It can be monitored.
-
-Since the engine is have function as their params.
-
-We can see the engine is calling some function many times. to see if it will causing api rate limit or not.
-
-## C. Non - Goals
+# C. Non - Goals
 
 - We are not reinventing new trading strategy
 
-## D. Meaning of Precision
+# D. Meaning of Precision
 
 What “precision” means and how it will be measured?
 
@@ -66,24 +34,16 @@ it can be proved by number.
 
 see the detail in `docs/PRECISION/PRECISION_CHECKER.md`
 
-## E. System Architecture
+# E. System Architecture
 
-## E.1 Easy change adapter
+I want it can flexible can accomodate:
 
-I think of the runtime engine can be passed with some function or pack function maybe like
+- my 3 instance strategies. with some switch
+- have good folder structure `docs/PRECISION/_PRECISION.md`
+- one shared runtime engine `docs/PRECISION/RUNTIME_ENGINE.md`
+- data types that can support our goals
 
-```
-marketAdapter = {
-    func1
-    func2
-}
-```
-
-we can switch the marketAdapter pack with the backtestMarketAdapter and productionMarketAdapter. the marketAdapter will be have same types.
-
-TC: `BOTH:MARKET_ADAPTER`
-
-# F. Migrations Steps
+# F. Migrations Plan
 
 ## 1. Folder structure
 
@@ -93,4 +53,12 @@ Plan good folder structure in `docs/PRECISION/FOLDER.md`
 
 ## 2. Plan position data types
 
-we have three instance with diferent strategy. think of what position json that can accomodate all of it.
+Write the detail in `docs/PRECISION/DATA_TYPE.md`
+
+- we have three instance with diferent strategy. think of what position json that can accomodate all of it.
+- it can contain foot print needed for the `docs/PRECISION/PRECISION_CHECKER.md`
+  for example we need to measure how fast the binance api execute order, so we need the time start and end right.
+
+## 3. Planing runtime engine
+
+`docs/PRECISION/RUNTIME_ENGINE.md` considering `docs/PRECISION/BACKTEST.md`
