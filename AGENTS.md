@@ -226,6 +226,9 @@ export type * from "./types";
 
 ## Documentation Rules
 
+- Keep every file under `docs/PRECISION` at or below 100 lines, except
+  `_PRECISION.md`, which is the backbone and has no hard line limit. Prefer
+  concise requirements and references to existing instances over duplicated detail.
 - Keep `docs/PRECISION/_PRECISION.md` concise and high level. Put implementation
   details in the relevant detailed document.
 - Use `must` for required behavior, `should` for a recommended default, and
