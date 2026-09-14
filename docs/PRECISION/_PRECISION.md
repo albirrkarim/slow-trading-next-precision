@@ -50,16 +50,16 @@ V1 measures **result precision only**: how closely the final production position
 JSON matches the final backtest position JSON for the same trade.
 
 A production position and backtest position become a comparison candidate when
-they have the same account, symbol, direction, and entry `vPoint.id`. Hedge and
-Streak must also use their role or pair identity when needed to avoid ambiguity.
+they have the same account, symbol, direction, entry `vPoint.id`, and normalized
+role. A missing legacy role is normalized to `MAIN`.
 
 Both positions must come from runs with the same period, strategy,
 configuration, and starting state. Open positions must remain open at the end
 of the backtest so both JSON results describe the same moment.
 
 The Precision Checker compares the final position objects field by field after
-excluding explicitly documented environment-only fields such as
-`executionMode`. Object key order does not matter; array order does.
+excluding only `executionMode`. Object key order does not matter; array order
+does.
 
 For each candidate pair:
 
@@ -68,6 +68,7 @@ For each candidate pair:
 - Numeric differences also show their absolute and percentage gaps.
 - A position's result precision is the percentage of comparable leaf fields
   that are equal.
+- Overall result precision uses all comparable leaves across candidate pairs.
 
 Production-only and backtest-only positions are reported separately and are not
 silently treated as matches. Input, decision, order-intent, and execution

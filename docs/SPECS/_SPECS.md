@@ -10,4 +10,5 @@ calculation and its test so future changes can find the behavior and its proof.
 - `BOTH:` identifies behavior shared by production and backtest flows and must
   be tested in both.
 
-This project has no backtest flow, so its current TCs use `PROD:`.
+The copied application starts with production-only TCs. Add `BTEST:` and `BOTH:`
+as the shared backtest runtime is implemented.

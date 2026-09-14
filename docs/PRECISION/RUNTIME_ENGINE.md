@@ -1,97 +1,95 @@
 # Shared Runtime Engine — V1
 
-V1 extracts the common trading path from the existing instances. It does not
-introduce a new event framework or rewrite the strategies.
-
-Reference the Multi instance's `src/lib/slowTrading` and `src/lib/trading`.
+Extract the common path from Multi's `src/lib/slowTrading` and `src/lib/trading`.
+Do not create an event framework or redesign strategy rules.
 
 # A. Goal
 
-Production, sandbox, and backtest call the same runtime functions for decision,
-entry, averaging, exit, execution accounting, and state updates.
+Live, sandbox, and backtest call the same functions for decisions, entry,
+averaging, exit, accounting, and position updates.
 
 TC: `BOTH:SHARED_RUNTIME_ENGINE`
 
-# B. Runtime inputs
-
-The runtime receives explicit dependencies:
+# B. Dependencies
 
 ```ts
 interface RuntimeInput {
   mode: "live" | "sandbox" | "backtest";
-  now: () => number;
+  clock: RuntimeClock;
   market: MarketSource;
-  execute: ExecutionSource;
+  execution: ExecutionSource;
   storage: RuntimeStorage;
   strategy: StrategyPlugin;
   config: RuntimeConfig;
 }
+
+interface RuntimeClock { now(): number }
+interface MarketSource { snapshot(input: MarketRequest): Promise<MarketSnapshot> }
+interface ExecutionSource { execute(action: TradingAction): Promise<ExecutionResult> }
+interface RuntimeStorage { load(scope: StorageScope): Promise<RuntimeState>; commit(scope: StorageScope, state: RuntimeState): Promise<void> }
+interface StrategyPlugin { id: StrategyId; decide(input: StrategyInput): Promise<StrategyDecision> }
 ```
 
-- Live uses current time, live market data, and the exchange library.
-- Sandbox uses current time and live market data with simulated execution.
-- Backtest uses historical time, historical data, and simulated execution.
+- `clock` supplies the logical Unix-millisecond time.
+- `market` returns only data visible at that time and fails when data is missing.
+- `execution` submits live orders or performs deterministic simulated fills.
+- `storage` loads and atomically saves state isolated by mode and account.
+- `strategy` returns decisions and never accesses exchange or storage directly.
 
-# C. Existing production stages
+Implement these contracts as grouped APIs and reuse current types where possible.
 
-| Stage | Default cadence | Responsibility |
+# C. Stages and ordering
+
+| Order | Stage | Default cadence |
 | --- | --- | --- |
-| Risk Sentinel | 1 minute | Emergency protection and forced exits |
-| Speedup | 1 minute | Monitor promoted open positions |
-| Standard Monitoring | 5 minutes | Monitor other open positions |
-| Management | 5 minutes | Non-trading management work |
-| Capture Entry | 5 minutes | Find entries for symbols without positions |
+| 1 | Risk Sentinel | 1 minute |
+| 2 | Speedup | 1 minute |
+| 3 | Standard Monitoring | 5 minutes |
+| 4 | Management | 5 minutes |
+| 5 | Capture Entry | 5 minutes |
 
-Keep existing eligibility rules. Backtest calls the same stages at historical
-times without real waiting.
+At each logical one-minute close, a stage is due when the UTC epoch-minute is
+divisible by its interval. Run due stages in table order, accounts by configured
+order, and symbols alphabetically. A mode processes one cycle at a time;
+duplicate stage/time requests are ignored. A missed production cycle is logged
+and skipped, not silently replayed.
+
+Backtest uses the same stage eligibility and ordering without real waiting.
 
 TC: `BOTH:RUNTIME_SCHEDULING`
 
-# D. Shared trading flow
+# D. Trading flow
 
 For each eligible account and symbol:
 
-1. Load the current config and account state.
-2. Load market data visible at the current runtime time.
+1. Load configuration and account state.
+2. Load the market snapshot for logical time.
 3. Ask the selected strategy for a decision.
-4. Evaluate exit before averaging.
-5. Evaluate averaging only if the position remains open.
-6. Evaluate entry only when no position blocks it.
-7. Send the action to live or simulated execution.
-8. Apply the result using shared trading calculations.
-9. Save account state and trade history.
+4. Apply risk or forced exit, then normal exit.
+5. Average only if the position remains open.
+6. Enter only if no position blocks entry.
+7. Execute through the selected adapter.
+8. Apply shared quantity, fee, PnL, and position calculations.
+9. Save state before processing the next action for that position.
 
-Exit must always have priority over averaging.
+A position closed in this cycle cannot be processed again.
 
 TC: `BOTH:RUNTIME_EXECUTION_CYCLE`
 
 # E. Strategies and accounts
 
-Multi, Hedge, and Streak implement the same small strategy contract. A strategy
-owns its configuration, state, required market data, and decisions. It must not
-call the exchange or storage directly.
-
-Share public market data as today. Keep balances, positions, execution, and
-storage isolated and process accounts in deterministic order.
+Multi, Hedge, and Streak use one strategy contract with their own configuration,
+state, market requirements, and decisions. Public market snapshots may be shared;
+balances, positions, execution, and storage remain account-specific.
 
 TC: `BOTH:PLUGIN_STRATEGY`
 
-# F. Result capture and safety
+# F. Safety and tests
 
-Production and backtest must expose the same final position shape for result
-comparison. Backtest and sandbox cannot submit real orders or write live state.
-Live order submission keeps the existing idempotency and recovery behavior.
+- Backtest and sandbox cannot submit real orders or write live state.
+- Live order submission preserves existing idempotency and recovery behavior.
+- All modes expose the canonical final position shape.
+- Tests cover stage order, cadence, account/symbol order, exit priority, mode
+  isolation, missing market data, and repeated backtest results.
 
-# G. V1 tests
-
-- The three modes call the same trading functions.
-- Backtest and production use the same strategy configuration.
-- Exit runs before averaging.
-- One-minute and five-minute stages run at the expected historical times.
-- Accounts do not share private state.
-- Backtest and sandbox cannot reach live execution or storage.
-
-# H. Deferred
-
-A generic event envelope, complete adapter hierarchy, generalized workflow
-engine, and new persistence architecture are not required for V1.
+Generic event envelopes and a new persistence architecture are not part of V1.

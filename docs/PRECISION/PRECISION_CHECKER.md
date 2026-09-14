@@ -4,19 +4,20 @@ TC: `BOTH:PRECISION_MEASUREMENT`
 
 # A. Goal
 
-Answer: **How closely does the final production position match backtest?**
+Measure result precision by comparing final production and backtest position
+JSON for equivalent runs. No other precision type is measured in V1.
 
-V1 measures result precision only by comparing final position JSON from the
-same period, strategy, configuration, and starting state.
-
-# B. Create a production test case
+# B. Production capture
 
 The Production Dashboard provides **Start Production Test Case** and **End
-Production Test Case**. Start saves the configuration and initial state. End
-saves the final form of positions created, changed, or closed during capture.
-The controls must not change trading or close positions.
+Production Test Case**. Under the runtime storage lock, Start atomically saves
+the strategy, mode, configuration, initial state, and start time; End atomically
+saves the final form of every position present at Start or created before End,
+including positions closed during capture. It does not close positions.
 
-The times are actual capture times; capture cannot recover earlier activity.
+Only one capture may be active per mode. A configuration change or process
+restart invalidates it; V1 does not resume or combine captures. End reports the
+reason and does not produce a usable test case when capture is invalid.
 
 TC: `PROD:PRODUCTION_TEST_CASE_CAPTURE_CONTROLS`
 
@@ -27,54 +28,48 @@ prod-test-case/live-<start>-<end>.json
 prod-test-case/sandbox-<start>-<end>.json
 ```
 
-```ts
-interface ProdTestCase {
-  mode: "live" | "sandbox";
-  startTime: number;
-  endTime: number;
-  config: { runtime: RuntimeConfig; trading: TradingConfig };
-  initialState: RuntimeState;
-  endPositions: Position[];
-}
-```
+Use `ProdTestCaseV1` from `DATA_TYPE.md`. Write compact JSON atomically. Capture
+times are actual times and cannot recover earlier activity.
 
 TC: `PROD:PRODUCTION_TEST_CASE`
 
-# D. Candidate pairing
+# D. Compatibility and pairing
 
-Pair a production position with a backtest position when these values match:
+The checker requires equal strategy, start/end time, effective configuration,
+and initial state. Otherwise it refuses scoring and lists mismatched fields.
 
-- Account
-- Symbol and direction
-- Entry `vPoint.id`
-- Role or pair identity when required by Hedge or Streak
+Pair positions with the canonical key from `DATA_TYPE.md`. Normalize legacy
+missing role to `MAIN`. A key must be unique in each result; duplicate keys are
+ambiguous, excluded from scoring, and reported. Unpaired positions are reported
+and excluded from scoring.
 
-Each position may belong to only one pair. Report unpaired positions separately.
+# E. JSON comparison
 
-# E. Result comparison
+Recursively compare the union of leaf paths in both positions:
 
-Compare each pair's final position objects field by field. Ignore object key
-order but preserve array order. Exclude only fields explicitly marked as
-environment-only, including `executionMode`.
+- Object key order does not matter; array order does.
+- Missing, `null`, and present values are different states.
+- Strings and booleans require exact equality.
+- JSON numbers require exact equality in V1.
+- Exclude only `executionMode`; every other persisted position field is compared.
+
+Show both values for every difference. For unequal numbers, show absolute and
+percentage difference. Percentage difference is unavailable when production is
+zero; if both values are zero, they are equal.
 
 ```text
-result precision = equal comparable leaf fields / all comparable leaf fields × 100
+pair precision = equal leaf fields / all leaf fields × 100
+overall precision = equal leaves across pairs / all leaves across pairs × 100
 ```
 
-Comparable fields are the union of leaf paths in both objects; a missing field
-is different. Show every difference with both values. For numbers, also show
-the absolute and percentage difference. Do not score unpaired positions.
+When no candidate pair exists, overall precision is unavailable.
 
 TC: `BOTH:PRODUCTION_BACKTEST_POSITION_COMPARISON`
 
 # F. Page `/precision-checker`
 
-The page selects a production test case and compatible backtest, validates their
-period, configuration, and initial state, then shows candidate pairs, each result
-precision score, field differences, and unpaired positions.
+Select a production test case and backtest result, validate them, and show the
+overall score, each pair score and differences, ambiguous keys, and unpaired
+positions.
 
 TC: `BTEST:PRECISION_CHECKER_PAGE`
-
-# G. Not in V1
-
-Input, decision, order-intent, and execution precision are not measured.

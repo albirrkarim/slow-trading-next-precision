@@ -36,13 +36,13 @@ that repository.
   behavior, precision guarantees, or migration direction.
 - Read the relevant detailed specification before changing its area:
   - `docs/PRECISION/RUNTIME_ENGINE.md` for runtime lifecycle, scheduling,
-    adapters, event ordering, and execution flow.
-  - `docs/PRECISION/DATA_TYPE.md` for canonical types, persisted shapes,
-    evidence, identifiers, timestamps, and compatibility.
+    adapter responsibilities, ordering, and execution flow.
+  - `docs/PRECISION/DATA_TYPE.md` for canonical positions, persisted test cases,
+    identifiers, timestamps, and compatibility.
   - `docs/PRECISION/BACKTEST.md` for historical data, simulated time,
     simulated execution, visibility, and end-of-run behavior.
-  - `docs/PRECISION/PRECISION_CHECKER.md` for comparison evidence, alignment,
-    tolerances, and scoring.
+  - `docs/PRECISION/PRECISION_CHECKER.md` for final-position pairing,
+    normalization, and result scoring.
   - `docs/PRECISION/FOLDER.md` for module ownership and folder boundaries.
   - `docs/PRECISION/PAGES.md` for dashboard responsibilities and routes.
 - Read relevant TypeScript JSDoc and type comments in the existing projects
@@ -79,35 +79,23 @@ that repository.
   declarations, and strategy-specific state.
 - Adding a future strategy must not require copying or rewriting the runtime.
 
-### Precision and evidence
+### Result precision
 
-- Equivalent normalized inputs, logical time, initial state, configuration, and
-  execution results must produce identical decisions and order intentions.
-- Production and backtest execution results may differ, but the difference must
-  be measurable and explainable.
-- Preserve the evidence required to identify the first divergence. Do not store
-  only a final PnL or final position summary.
-- Every entry, averaging, partial fill, and exit must retain expected price,
-  actual fill price, quantity, fees, request time, acknowledgement time, and
-  fill time when available.
-- Complete raw exchange requests and responses belong in a separate audit or
-  production test-case log, not directly in position JSON.
-- A production test case is compared with a backtest for the same period,
-  strategy, configuration, and equivalent starting state. Backtest execution
-  remains simulated; it does not use recorded production exchange responses as
-  its execution source.
+- V1 measures only the final position result defined by the Precision backbone.
+- Do not add input, decision, order-intent, or execution evidence solely for the
+  V1 Precision Checker.
+- Compare production and backtest only when period, strategy, configuration,
+  and starting state are equivalent.
+- Pair positions using the canonical key in `PRECISION_CHECKER.md`; report
+  ambiguous or unpaired positions instead of guessing.
 
-### Time and event ordering
+### Time and ordering
 
 - Runtime behavior must use the injected logical clock. Business logic must not
   call `Date.now()` directly.
-- All runtime events require stable identifiers, logical time, and deterministic
-  same-time ordering.
-- Ordering must not depend on promise completion, object-key order, filesystem
-  traversal, or unseeded randomness.
-- At minimum, prioritize risk and forced exits before normal exits, normal exits
-  before averaging, and averaging before new entries when work is due at the
-  same logical time.
+- Use the stage, account, symbol, and action ordering defined in
+  `RUNTIME_ENGINE.md`. Ordering must not depend on promise completion, object-key
+  order, filesystem traversal, or unseeded randomness.
 - A position closed in the current unit of work cannot be averaged or closed
   again.
 
@@ -144,8 +132,8 @@ that repository.
 - Keep market evidence immutable. Account-specific usage such as consumed
   volatility points belongs in account strategy state, not on shared market
   objects.
-- Every persisted root must have an explicit schema version and runtime
-  identity.
+- Every new persisted file format must have a schema version plus its strategy
+  and runtime mode. Existing position files remain readable through migration.
 - Preserve backward compatibility through explicit readers or migrations. Do
   not reinterpret an old field silently.
 - All timestamps are Unix milliseconds in UTC.

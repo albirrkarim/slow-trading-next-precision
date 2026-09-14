@@ -1,10 +1,7 @@
 # Backtest — V1
 
-V1 stays close to the existing volatility backtest but calls the shared runtime
-and trading functions instead of keeping separate entry, averaging, and exit logic.
-
-Reference the Multi instance's `src/lib/dynamic/backtest-volatility` and
-`src/lib/devBacktest/volatility-dataset` directories.
+Stay close to Multi's `src/lib/dynamic/backtest-volatility` and volatility
+dataset tooling, but call the shared runtime and trading functions.
 
 # A. Dataset
 
@@ -24,71 +21,66 @@ interface BacktestDataset {
 }
 ```
 
-Each record contains candles after its vPoint until the next vPoint; the final
-record continues until `endTime`. Include BTC data when the strategy uses it.
-Boundaries must prevent missing or duplicated candles. Chunking is deferred.
+Records are chronological. Each contains one vPoint and the one-minute candles
+and five-minute candles after it until the next vPoint; the final record
+continues through `endTime`. Include BTC candles when the strategy uses BTC
+context. Reject gaps, duplicate candle times, reversed ranges, or missing data.
 
 TC: `BTEST:BACKTEST_DATASET`
 
-# B. Time and candle visibility
+# B. Logical time and visibility
 
-Backtest moves through the historical one-minute candles without real waiting.
-At each historical time, it triggers the same production stage that would be due.
+Start from `initialState` at `startTime`. Process candles whose close time is
+greater than `startTime` and less than or equal to `endTime`, in ascending order.
+One logical runtime tick occurs at each one-minute candle close.
 
-A candle is visible only when production could have seen it. At 10:03, the
-backtest cannot use the final values of the 10:00–10:05 candle.
+At time `t`, expose only one-minute and five-minute candles with `closeT <= t`.
+Use `klines1mAfter` and `klines5mAfter` as independent source data. Do not create
+or replace five-minute candles by aggregating the one-minute candles.
 
-The backtest must continue running one-minute and five-minute stages between
-vPoints. It must not run only when a vPoint exists.
+A vPoint becomes visible only at its recorded confirmation time. Missing data
+fails the run; backtest never fetches replacements or searches forward.
 
 TC: `BOTH:BACKTEST_CANDLE_VISIBILITY`
 
-# C. Shared runtime flow
+# C. Shared runtime
 
-The backtest supplies historical time, market data, simulated execution, and
-isolated storage to the shared runtime.
+Every tick invokes the due production stages using the cadence and ordering in
+`RUNTIME_ENGINE.md`. Stages continue between vPoints.
 
-Decision, entry, averaging, exit, fee, PnL, and position calculations must be
-the same functions used by production. Exit runs before averaging.
+Decision, entry, averaging, exit, quantity, fee, PnL, and position calculations
+are the same functions used by production.
 
 TC: `BOTH:SHARED_RUNTIME_ENGINE`
 
 # D. Simulated execution
 
-V1 uses the current simple execution approach:
+V1 fills an accepted market action at the close of the latest visible completed
+one-minute candle. Fill time is the current logical time. Apply production
+quantity precision, rounding, leverage, margin, and the configured fee.
 
-- Fill a market action from the current visible historical price.
-- Apply the configured trading fee.
-- Apply the same quantity, leverage, margin, and rounding calculations as production.
-- Update the position with the same calculations used by production.
+V1 has no random latency, partial fills, rejection model, or order-book model.
+Optional configured slippage adjusts the fill price deterministically.
 
-Advanced fill and latency models are deferred. Slippage may be a simple setting.
+# E. End state and result
 
-# E. Initial and final state
+Do not force-close positions for Precision Checker runs. `endPositions` contains
+the final form of every position present at start or created before `endTime`,
+including positions closed during the run.
 
-A backtest starts with explicit balance, positions, orders, strategy state,
-configuration, and a random seed when needed.
+Extend the current result rather than replacing it:
 
-For production comparison, open positions remain open at `endTime`. A forced
-final sale is allowed for tuning reports only when clearly selected and labeled.
+- `schema: 1`, `strategy`, and `mode: "backtest"`
+- Start/end time, effective configuration, and initial state
+- Existing trade history for the backtest dashboard
+- Canonical `endPositions`, final balance, fees, and PnL
+- Whether a non-checker run explicitly force-closed open positions
 
-# F. Result
+# F. Tests
 
-Keep the current `BacktestReturnDynamic` result as the base. Add only the fields
-needed by the Precision Checker:
-
-- Start and end time
-- Effective configuration and initial state
-- Trade history for the existing backtest dashboard
-- `endPositions` containing the final JSON for open and closed positions
-- Final balance, fees, and PnL
-- Whether open positions were kept or force-closed
-
-# G. V1 tests
-
-- No future one-minute or five-minute candle is visible.
-- Historical stages use the production cadence.
-- Backtest and production call the same trading functions.
-- Exit runs before averaging.
+- No future one-minute or five-minute value is visible.
+- Dataset boundaries contain no missing or duplicate candles in either interval.
+- Runtime cadence and ordering match production.
+- Fill price and time follow the rule above.
 - Repeating the same run produces the same result.
-- Backtest cannot submit a real order or write live storage.
+- Backtest cannot submit a real order or write live or sandbox storage.
