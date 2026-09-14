@@ -4,15 +4,21 @@ see what `TC` mean in `docs/SPECS/_SPECS.md`
 
 # A. Problem
 
-this is not precision result between backtest and the production runtime
+The current implementation in
+`/Users/susanto/Documents/OpenSource/trading/slow-trading-next-multi` does not
+produce sufficiently consistent results between backtest and production.
 
-`/Users/susanto/Documents/OpenSource/trading/slow-trading-next-multi`
+The two environments do not follow the same runtime path. The backtest consumes
+historical volatility-rail data, while production consumes live market data,
+runs on separate schedules, and processes positions through Speedup and Standard
+Monitoring stages. Production also uses a combination of 1-minute and 5-minute
+klines. These differences in data, timing, and execution flow can cause the same
+strategy and configuration to produce different decisions and trading results.
 
-because the backtest using volatility rails data and the production runtime is also feeded with klines 1 minute and 5 minute and theres speed up stage and standard monitoring stage.
-
-that make the different.
-
-Also the architechture is not Enterprise.
+The current architecture also couples strategy, runtime, market data, and
+execution behavior too closely. This makes the system difficult to reuse across
+strategies, test consistently, monitor, and compare precisely between backtest
+and production.
 
 # B. Goals
 
