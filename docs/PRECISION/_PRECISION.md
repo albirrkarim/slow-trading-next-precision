@@ -1,10 +1,12 @@
 # Precision Trading System
 
-# A. Before
+see what `TC` mean in `docs/SPECS/_SPECS.md`
+
+# A. Problem
 
 this is not precision result between backtest and the production runtime
 
-/Users/susanto/Documents/OpenSource/trading/slow-trading-next-multi
+`/Users/susanto/Documents/OpenSource/trading/slow-trading-next-multi`
 
 because the backtest using volatility rails data and the production runtime is also feeded with klines 1 minute and 5 minute and theres speed up stage and standard monitoring stage.
 
@@ -12,11 +14,11 @@ that make the different.
 
 Also the architechture is not Enterprise.
 
-# B. What i need
+# B. Goals
 
 One shared runtime engine that shared between production and backtest.
 
-## B.1 The core principal:
+The core principal:
 
 ### It can be feeded with backtest dataset.
 
@@ -50,7 +52,23 @@ Since the engine is have function as their params.
 
 We can see the engine is calling some function many times. to see if it will causing api rate limit or not.
 
-## B.2 The first thinking
+## C. Non - Goals
+
+- We are not reinventing new trading strategy
+
+## D. Meaning of Precision
+
+What “precision” means and how it will be measured?
+
+it mean it will as close as posible between backtest and the production.
+
+it can be proved by number.
+
+see the detail in `docs/PRECISION/PRECISION_CHECKER.md`
+
+## E. System Architecture
+
+## E.1 Easy change adapter
 
 I think of the runtime engine can be passed with some function or pack function maybe like
 
@@ -65,41 +83,14 @@ we can switch the marketAdapter pack with the backtestMarketAdapter and producti
 
 TC: `BOTH:MARKET_ADAPTER`
 
-## C. Benefit
+# F. Migrations Steps
 
-- It can be used for finding the actual best configuration
+## 1. Folder structure
 
-## D. FAQ
+The current 3 instance folder structure is messy.
 
-- What “precision” means and how it will be measured.
+Plan good folder structure in `docs/PRECISION/FOLDER.md`
 
-TC: `BOTH:PRECISION_MEASUREMENT`
+## 2. Plan position data types
 
-for example first we run runtime production.
-
-we need button to start it "Start produce production test case" and "End produce production test case"
-
-example i hit start from date 15 Sep 2026 to 20 Sep 2026
-
-we got the trade history json right.
-
-it will produce production test case like.
-
-`prod-test-case/live-start-end.json`
-`prod-test-case/sandbox-start-end.json`
-`prod-test-case/[PRODUCTION MODE]-start-end.json`
-
-```
-startTime:
-endTime:
-config:{
-    runtime,
-    trading,
-    etc..
-} // all the config
-tradeHistory:[]
-```
-
-then we need precision checker page `/precision-checker`
-
-the job of the page will be "is the production execution is precise with the backtest?"
+we have three instance with diferent strategy. think of what position json that can accomodate all of it.
