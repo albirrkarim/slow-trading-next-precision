@@ -22,9 +22,23 @@ and production.
 
 # B. Goals
 
-One shared runtime engine that shared between production and backtest. Production and backtest must not contain separate trading logic. They use the same runtime and strategy code. Only their adapters are different.
+Build a trading-system foundation that is scalable, precise, and flexible.
 
-see `docs/PRECISION/RUNTIME_ENGINE.md`
+- **Scalable:** The runtime must use memory efficiently and coordinate external
+  API calls carefully as the number of accounts, symbols, and strategies grows.
+- **Precise:** Backtest and production must produce reproducible and closely
+  comparable results. The exact precision guarantees and measurements are
+  defined in Section D.
+- **Flexible:** The system must support the existing strategies and allow future
+  strategies to be added without duplicating or rewriting the runtime engine.
+
+The core of this foundation is one shared runtime engine for both production and
+backtest. They must execute the same trading logic through the same runtime and
+strategy implementations. Differences between environments must be limited to
+replaceable adapters, such as market data, time, exchange execution, storage,
+and monitoring.
+
+See `docs/PRECISION/RUNTIME_ENGINE.md` for details.
 
 # C. Non - Goals
 
@@ -45,7 +59,7 @@ see the detail in `docs/PRECISION/PRECISION_CHECKER.md`
 I want it can flexible can accomodate:
 
 - my 3 instance strategies. with some switch
-- have good folder structure `docs/PRECISION/_PRECISION.md`
+- have good folder structure `docs/PRECISION/FOLDER.md`
 - one shared runtime engine `docs/PRECISION/RUNTIME_ENGINE.md`
 - data types that can support our goals
 
@@ -61,10 +75,29 @@ Plan good folder structure in `docs/PRECISION/FOLDER.md`
 
 Write the detail in `docs/PRECISION/DATA_TYPE.md`
 
-- we have three instance with diferent strategy. think of what position json that can accomodate all of it.
-- it can contain foot print needed for the `docs/PRECISION/PRECISION_CHECKER.md`
-  for example we need to measure how fast the binance api execute order, so we need the time start and end right.
+- Define a shared position structure that supports all three strategies while
+  allowing each strategy to store its own strategy-specific state.
+- Every entry, averaging, partial fill, and exit execution must preserve enough
+  pricing and timing evidence for `docs/PRECISION/PRECISION_CHECKER.md`.
+- Execution evidence must include the expected price, actual average fill price,
+  quantity, fees, request time, acknowledgement time, and fill time. This allows
+  the system to measure slippage and exchange execution latency.
+- A position may contain multiple execution records; slippage must not be stored
+  as only one value for the whole position.
+- Keep complete raw exchange requests and responses in a separate execution
+  audit or production test-case log instead of storing them directly in the
+  position JSON.
 
 ## 3. Planing runtime engine
 
 `docs/PRECISION/RUNTIME_ENGINE.md` considering `docs/PRECISION/BACKTEST.md`
+
+# G. References
+
+## 3 instances
+
+```
+/Users/susanto/Documents/OpenSource/trading/slow-trading-next-streak
+/Users/susanto/Documents/OpenSource/trading/slow-trading-next-multi
+/Users/susanto/Documents/OpenSource/trading/slow-trading-next-hedge
+```
