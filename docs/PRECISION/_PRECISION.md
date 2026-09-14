@@ -1,6 +1,6 @@
 # Precision Trading System
 
-see what `TC` mean in `docs/SPECS/_SPECS.md`
+See `docs/SPECS/_SPECS.md` for the meaning of `TC`.
 
 # A. Problem
 
@@ -40,9 +40,9 @@ and monitoring.
 
 See `docs/PRECISION/RUNTIME_ENGINE.md` for details.
 
-# C. Non - Goals
+# C. Non-Goals
 
-- We are not reinventing new trading strategies
+- This project does not introduce or redesign trading strategies.
 
 # D. Meaning of Precision
 
@@ -78,24 +78,25 @@ recording requirements, and comparison reports.
 
 # E. System Architecture
 
-I want it can flexible can accomodate:
+The architecture must be flexible enough to accommodate:
 
-- my 3 instance strategies. with some switch
-- have good folder structure `docs/PRECISION/FOLDER.md`
-- one shared runtime engine `docs/PRECISION/RUNTIME_ENGINE.md`
-- data types that can support our goals
+- The three existing strategies, selected through explicit configuration
+- A clean folder structure, defined in `docs/PRECISION/FOLDER.md`
+- One shared runtime engine, defined in `docs/PRECISION/RUNTIME_ENGINE.md`
+- Data types that support the system's goals
 
 # F. Migration Plan
 
 ## 1. Folder structure
 
-The current 3 instance folder structure is messy.
+The folder structures of the three existing implementations are inconsistent
+and difficult to maintain.
 
-Plan good folder structure in `docs/PRECISION/FOLDER.md`
+Define the new folder structure in `docs/PRECISION/FOLDER.md`.
 
 ## 2. Plan position data types
 
-Write the detail in `docs/PRECISION/DATA_TYPE.md`
+Define the detailed data types in `docs/PRECISION/DATA_TYPE.md`.
 
 - Define a shared position structure that supports all three strategies while
   allowing each strategy to store its own strategy-specific state.
@@ -110,9 +111,10 @@ Write the detail in `docs/PRECISION/DATA_TYPE.md`
   audit or production test-case log instead of storing them directly in the
   position JSON.
 
-## 3. Planing the runtime engine
+## 3. Planning the runtime engine
 
-`docs/PRECISION/RUNTIME_ENGINE.md` considering `docs/PRECISION/BACKTEST.md`
+Design the runtime engine in `docs/PRECISION/RUNTIME_ENGINE.md` alongside the
+backtest requirements in `docs/PRECISION/BACKTEST.md`.
 
 # G. Definition of Done
 
@@ -123,12 +125,13 @@ The Precision Trading System is complete when:
 - A recorded production test case can be compared with a backtest for the same
   period, strategy, configuration, and starting state.
 - Identical inputs produce identical strategy decisions and order intentions.
-- The Precision Checker can score "how precise the backtest and the actual record from production"
+- The Precision Checker can measure and report how closely a backtest matches
+  the corresponding production record.
 - API calls, execution duration, errors, retries, and rate-limit usage are measurable.
 
 # H. References
 
-## 3 instances
+## Existing strategy implementations
 
 ```
 /Users/susanto/Documents/OpenSource/trading/slow-trading-next-streak
