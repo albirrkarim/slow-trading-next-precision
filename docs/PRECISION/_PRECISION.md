@@ -1,5 +1,7 @@
 # Precision Trading System
 
+This document is written by HUMAN, This act like the backbone docs of the system
+
 See `docs/SPECS/_SPECS.md` for the meaning of `TC`.
 
 # A. Problem
@@ -29,7 +31,7 @@ Build a trading-system foundation that is scalable, precise, and flexible.
 - **Precise:** Backtest and production must produce reproducible and closely
   comparable results. The exact precision guarantees and measurements are
   defined in Section D.
-- **Flexible:** The system must support the existing strategies and allow future
+- **Flexible:** The system must support the existing strategies from the 3 instance and allow future
   strategies to be added without duplicating or rewriting the runtime engine.
 
 The core of this foundation is one shared runtime engine for both production and
@@ -123,7 +125,22 @@ The Precision Trading System is complete when:
 - The Precision Checker calculates result precision for every candidate pair.
 - API calls, execution duration, errors, retries, and rate-limit usage are measurable.
 
-# H. References
+Important details:
+
+Backtest
+
+- it should simulate when the vpoints are forming using klines data
+- the averaging execution is not exactly on the vpoint time because real condition of production vpoint have retrace about 1% first, so looking time and price on the klines
+
+# H. Resolving
+
+The other document except `_PRECISION.md` of this project is just raw and unchecked by human.
+
+so its not a solid instruction.
+
+For example the data type / dataset form, it might be adjusted later depend on the requirement of this backbone document.
+
+# I. References
 
 ## Existing strategy implementations
 
