@@ -3,7 +3,7 @@ import type { DynamicTradeMemory } from "@/lib/dynamic";
 import {
   getReservedRemainingUsdt,
   releaseRemainingWatchReserve,
-} from "@/lib/slowTrading/watch-reserve";
+} from "@/lib/runtime/watch-reserve";
 import { tradeLog } from "@/lib/trading";
 import tradingPosition from "@/lib/trading/position";
 import { TRADE_MESSAGE } from "@/lib/trading/message";

@@ -1,5 +1,5 @@
 import { TradingMode } from "@/lib/exchange";
-import { tryToExit } from "@/lib/dynamic/backtest-volatility/exit";
+import { tryToExit } from "@/lib/backtest/exit";
 import { countGrowthOvertime } from "@/lib/dynamic/utils/assets";
 import { aggregatePositions } from "@/lib/evaluate/analysis/volatility";
 import type { DynamicTradeMemory } from "@/lib/dynamic";

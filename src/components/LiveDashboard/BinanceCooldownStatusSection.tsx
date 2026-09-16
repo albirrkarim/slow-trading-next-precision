@@ -14,7 +14,7 @@ import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import type {
   SlowTradingDashboardState,
   SlowTradingBinanceHealthSnapshot,
-} from "@/lib/slowTrading";
+} from "@/lib/runtime";
 
 const JAKARTA_TIME_ZONE = "Asia/Jakarta";
 

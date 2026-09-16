@@ -1,15 +1,15 @@
-import { fitBacktestEntryMargin, tryOpenBacktestEntry } from "@/lib/dynamic/backtest-volatility/trading";
+import { fitBacktestEntryMargin, tryOpenBacktestEntry } from "@/lib/backtest/trading";
 import type { BacktestConfigDynamic } from "@/lib/dynamic/type-backtest";
 import type { DynamicTradeMemory } from "@/lib/dynamic";
 import { TradingMode } from "@/lib/exchange";
 import { runWithExchangeAccount } from "@/lib/exchange/account-context";
 import { getManualEntrySignal } from "@/components/api/production/utils";
-import slowTrading from "@/lib/slowTrading";
+import slowTrading from "@/lib/runtime";
 import { resolveEntryLeverage } from "@/lib/trading/execute/entry-leverage";
 import entryFunding from "@/lib/trading/execute/entry-funding";
 import type { EntryRecommendation } from "@/lib/brain/algorithms/type-execute";
 import type { TradingModelMemory } from "@/lib/trading/models";
-import type { SlowTradingModeState } from "@/lib/slowTrading";
+import type { SlowTradingModeState } from "@/lib/runtime";
 import { createTestPosition } from "../fixtures/position";
 
 function createBacktestConfig(

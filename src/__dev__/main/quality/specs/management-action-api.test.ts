@@ -19,7 +19,7 @@ const mocks = vi.hoisted(() => ({
   update: vi.fn(async () => undefined),
 }));
 
-vi.mock("@/lib/slowTrading", () => ({
+vi.mock("@/lib/runtime", () => ({
   default: {
     notifications: {
       managementAction: {

@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import slowTrading, {
   SLOW_TRADING_MCP_PERMISSIONS,
   type SlowTradingMcpPermission,
-} from "@/lib/slowTrading";
+} from "@/lib/runtime";
 import { tradeLog } from "@/lib/trading/helper/log";
 
 function normalizePermissions(value: unknown): SlowTradingMcpPermission[] {

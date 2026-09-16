@@ -3,7 +3,7 @@
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import {
   type SlowTradingDashboardState
-} from "@/lib/slowTrading/client";
+} from "@/lib/runtime/client";
 import { Box, Paper, Typography } from "@mui/material";
 import { useMemo } from "react";
 import { calculateSlowWorkerCapacity } from "./worker-capacity";

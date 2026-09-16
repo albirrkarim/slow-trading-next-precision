@@ -7,7 +7,7 @@ import { SnackbarProvider } from "notistack";
 import { describe, expect, it, vi } from "vitest";
 
 import SlowTradingReporting from "@/components/LiveDashboard/Reporting";
-import type { SlowTradingDashboardState } from "@/lib/slowTrading";
+import type { SlowTradingDashboardState } from "@/lib/runtime";
 import { createTestPosition } from "../fixtures/position";
 
 vi.mock("@/components/LiveDashboard/Reporting/ChartsSection", () => ({

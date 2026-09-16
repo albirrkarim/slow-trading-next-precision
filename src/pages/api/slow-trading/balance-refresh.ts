@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import slowTrading from "@/lib/slowTrading";
+import slowTrading from "@/lib/runtime";
 import binanceRequestCoordinator from "@/lib/exchange/platform/binance/request-coordinator";
 import { tradeLog } from "@/lib/trading/helper/log";
 

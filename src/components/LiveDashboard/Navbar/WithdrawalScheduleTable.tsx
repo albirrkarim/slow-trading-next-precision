@@ -13,8 +13,8 @@ import {
   Typography,
 } from "@mui/material";
 
-import type { SlowTradingWithdrawalSchedule } from "@/lib/slowTrading";
-import slowTradingWithdrawalSchedule from "@/lib/slowTrading/withdrawal-schedule";
+import type { SlowTradingWithdrawalSchedule } from "@/lib/runtime";
+import slowTradingWithdrawalSchedule from "@/lib/runtime/withdrawal-schedule";
 
 import {
   WithdrawalScheduleDeleteDialog,

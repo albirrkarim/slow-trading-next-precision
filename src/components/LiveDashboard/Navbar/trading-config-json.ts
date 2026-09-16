@@ -1,4 +1,4 @@
-import type { SlowTradingAccountTradingConfig } from "@/lib/slowTrading";
+import type { SlowTradingAccountTradingConfig } from "@/lib/runtime";
 
 const BOOLEAN_KEYS = [
   "averagingRescueProjectionGuardEnabled",

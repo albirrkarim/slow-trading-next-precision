@@ -1,5 +1,5 @@
 import moment from "moment";
-import { type TradeHistory } from "../../dynamic/backtest-volatility/type";
+import { type TradeHistory } from "../../backtest/type";
 import { tradeLog } from "@/lib/trading/helper/log";
 
 interface DayTrade {

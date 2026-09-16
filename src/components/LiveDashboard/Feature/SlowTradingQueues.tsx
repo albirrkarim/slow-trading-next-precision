@@ -27,9 +27,9 @@ import type {
   SlowTradingQueues,
   SlowTradingSafeHavenQueueItem,
   SlowTradingWithdrawalQueueItem,
-} from "@/lib/slowTrading";
-import slowTradingWithdrawalSchedule from "@/lib/slowTrading/withdrawal-schedule";
-import slowTradingSafeHavenSchedule from "@/lib/slowTrading/safe-haven-schedule";
+} from "@/lib/runtime";
+import slowTradingWithdrawalSchedule from "@/lib/runtime/withdrawal-schedule";
+import slowTradingSafeHavenSchedule from "@/lib/runtime/safe-haven-schedule";
 
 import {
   SlowTradingErrorLogs,

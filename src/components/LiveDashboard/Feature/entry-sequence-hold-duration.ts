@@ -1,4 +1,4 @@
-import type { SlowEntrySequenceInterval } from "@/lib/slowTrading/client";
+import type { SlowEntrySequenceInterval } from "@/lib/runtime/client";
 
 const MINUTE_MS = 60 * 1000;
 const HOUR_MS = 60 * MINUTE_MS;

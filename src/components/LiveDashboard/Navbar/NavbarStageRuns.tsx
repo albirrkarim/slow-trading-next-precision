@@ -17,12 +17,12 @@ import {
 } from "@mui/material";
 import moment from "moment-timezone";
 
-import slowTradingStages from "@/lib/slowTrading/stages";
+import slowTradingStages from "@/lib/runtime/stages";
 import type {
   SlowTradingDashboardState,
   SlowTradingStage,
   SlowTradingStageRunStats,
-} from "@/lib/slowTrading/types";
+} from "@/lib/runtime/types";
 
 const STAGE_LABELS: Record<SlowTradingStage, string> = {
   "risk-sentinel": "Risk Sentinel",

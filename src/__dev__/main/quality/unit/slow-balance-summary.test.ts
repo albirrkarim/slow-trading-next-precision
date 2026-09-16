@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import slowTrading from "@/lib/slowTrading";
-import type { SlowTradingDashboardState } from "@/lib/slowTrading";
+import slowTrading from "@/lib/runtime";
+import type { SlowTradingDashboardState } from "@/lib/runtime";
 
 // PROD:MCP_BALANCE
 

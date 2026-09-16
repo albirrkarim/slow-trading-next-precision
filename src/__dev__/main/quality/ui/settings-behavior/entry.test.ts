@@ -1,6 +1,6 @@
 import type { EntryRecommendation } from "@/lib/brain";
 import { TradingMode } from "@/lib/exchange";
-import slowTradingWatchReserve from "@/lib/slowTrading/watch-reserve";
+import slowTradingWatchReserve from "@/lib/runtime/watch-reserve";
 import { resolveEntryLeverage } from "@/lib/trading/execute/entry-leverage";
 
 function entrySignal(overrides: Partial<EntryRecommendation> = {}) {

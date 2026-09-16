@@ -16,7 +16,7 @@ import ButtonDialog from "@/components/ui/ButtonDialog";
 import type {
   SlowTradingManualQueueCreateInput,
   SlowTradingWithdrawalSchedule,
-} from "@/lib/slowTrading";
+} from "@/lib/runtime";
 
 interface QueueCreateDialogProps {
   disabled?: boolean;

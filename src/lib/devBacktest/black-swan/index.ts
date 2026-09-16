@@ -7,7 +7,7 @@ import {
 } from "@/lib/dynamic";
 import type { UnifiedKline } from "@/lib/exchange/types";
 import { resolvePersistentStorageRoot } from "@/lib/persistent-storage-root";
-import slowQuickBacktest from "@/lib/slowTrading/quick-backtest";
+import slowQuickBacktest from "@/lib/runtime/quick-backtest";
 import blackSwan from "@/lib/trading/black-swan";
 import fs from "fs-extra";
 import path from "path";

@@ -5,7 +5,7 @@ import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 import { Alert, Box, Button, Stack, TextField, Typography } from "@mui/material";
 
-import type { SlowTradingAccountTradingConfig } from "@/lib/slowTrading";
+import type { SlowTradingAccountTradingConfig } from "@/lib/runtime";
 import tradingConfigJson from "./trading-config-json";
 
 interface TradingConfigJsonEditorProps {

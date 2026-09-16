@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import slowTrading, {
   type SlowTradingStorageUpdateInput,
-} from "@/lib/slowTrading";
+} from "@/lib/runtime";
 import { tradeLog } from "@/lib/trading/helper/log";
 import instanceIp from "@/lib/runtime/instance-ip";
 

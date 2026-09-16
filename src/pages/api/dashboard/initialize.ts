@@ -18,7 +18,7 @@ import {
 } from "@/lib/exchange/market-cap";
 import type { ExchangeType } from "@/lib/exchange/types";
 import { resolveMarketTypeForTradingMode } from "@/lib/exchange/utils";
-import slowTrading from "@/lib/slowTrading";
+import slowTrading from "@/lib/runtime";
 import { tradeLog } from "@/lib/trading";
 import fs from "fs-extra";
 import type { NextApiRequest, NextApiResponse } from "next";

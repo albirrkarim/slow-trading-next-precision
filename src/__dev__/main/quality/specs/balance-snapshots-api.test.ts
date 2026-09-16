@@ -16,7 +16,7 @@ const mocks = vi.hoisted(() => ({
   readCombined: vi.fn(async () => []),
 }));
 
-vi.mock("@/lib/slowTrading", () => ({
+vi.mock("@/lib/runtime", () => ({
   default: {
     storage: {
       balanceSnapshots: {

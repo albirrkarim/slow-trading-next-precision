@@ -26,7 +26,7 @@ describe("slow specs storage", () => {
 
   it("uses the slow storage folder as the source-of-truth root", async () => {
     const { FILES } = await import("@/components/storage");
-    const slowTradingStorage = (await import("@/lib/slowTrading")).default
+    const slowTradingStorage = (await import("@/lib/runtime")).default
       .storage;
 
     const storage = slowTradingStorage.data.createDefault();
@@ -71,7 +71,7 @@ describe("slow specs storage", () => {
 
   it("stores account balances independently and aggregates selected accounts", async () => {
     const { FILES } = await import("@/components/storage");
-    const slowTradingStorage = (await import("@/lib/slowTrading")).default
+    const slowTradingStorage = (await import("@/lib/runtime")).default
       .storage;
 
     await fs.outputJSON(FILES.slow.prod.balanceSnapshots, [
@@ -149,7 +149,7 @@ describe("slow specs storage", () => {
 
   it("uses the shared balance file only before account snapshots exist", async () => {
     const { FILES } = await import("@/components/storage");
-    const slowTradingStorage = (await import("@/lib/slowTrading")).default
+    const slowTradingStorage = (await import("@/lib/runtime")).default
       .storage;
     const legacy = [
       {
@@ -171,7 +171,7 @@ describe("slow specs storage", () => {
 
   it("loads an existing account file without rewriting it", async () => {
     const { FILES } = await import("@/components/storage");
-    const slowTradingStorage = (await import("@/lib/slowTrading")).default
+    const slowTradingStorage = (await import("@/lib/runtime")).default
       .storage;
     const accounts = slowTradingStorage.data.createDefault().runtime
       .exchangeAccounts;
@@ -191,7 +191,7 @@ describe("slow specs storage", () => {
 
   it("persists shared and account trading config with single owners", async () => {
     const { FILES } = await import("@/components/storage");
-    const slowTradingStorage = (await import("@/lib/slowTrading")).default
+    const slowTradingStorage = (await import("@/lib/runtime")).default
       .storage;
     const storage = slowTradingStorage.data.createDefault();
     storage.config.maxLeverage = 7;
@@ -230,7 +230,7 @@ describe("slow specs storage", () => {
 
   it("enables the daily PnL notification when migrating a pre-feature config", async () => {
     const { FILES } = await import("@/components/storage");
-    const slowTradingStorage = (await import("@/lib/slowTrading")).default
+    const slowTradingStorage = (await import("@/lib/runtime")).default
       .storage;
     await slowTradingStorage.data.save(
       slowTradingStorage.data.createDefault(),
@@ -262,7 +262,7 @@ describe("slow specs storage", () => {
 
   it("keeps the previous JSON intact when an atomic replacement fails", async () => {
     const slowTradingJsonFile = (
-      await import("@/lib/slowTrading/storage/json-file")
+      await import("@/lib/runtime/storage/json-file")
     ).default;
     const filePath = path.join(tmpRoot!, "slow/atomic.json");
 
@@ -281,7 +281,7 @@ describe("slow specs storage", () => {
   });
 
   it("normalizes all persisted production stage intervals", async () => {
-    const slowTradingStorage = (await import("@/lib/slowTrading")).default
+    const slowTradingStorage = (await import("@/lib/runtime")).default
       .storage;
 
     await slowTradingStorage.data.update({
@@ -313,7 +313,7 @@ describe("slow specs storage", () => {
   });
 
   it("normalizes the persisted PnL history bucket in minutes", async () => {
-    const slowTradingStorage = (await import("@/lib/slowTrading")).default
+    const slowTradingStorage = (await import("@/lib/runtime")).default
       .storage;
 
     await slowTradingStorage.data.update({
@@ -336,7 +336,7 @@ describe("slow specs storage", () => {
   });
 
   it("normalizes the daily PnL entry stop and preserves a disabled notification type", async () => {
-    const slowTradingStorage = (await import("@/lib/slowTrading")).default
+    const slowTradingStorage = (await import("@/lib/runtime")).default
       .storage;
 
     await slowTradingStorage.data.update({
@@ -368,7 +368,7 @@ describe("slow specs storage", () => {
   });
 
   it("normalizes the persisted maximum-open-position guard", async () => {
-    const slowTradingStorage = (await import("@/lib/slowTrading")).default
+    const slowTradingStorage = (await import("@/lib/runtime")).default
       .storage;
 
     await slowTradingStorage.data.update({
@@ -393,7 +393,7 @@ describe("slow specs storage", () => {
   });
 
   it("normalizes the persisted minimum market-cap removal threshold", async () => {
-    const slowTradingStorage = (await import("@/lib/slowTrading")).default
+    const slowTradingStorage = (await import("@/lib/runtime")).default
       .storage;
 
     await slowTradingStorage.data.update({
@@ -416,7 +416,7 @@ describe("slow specs storage", () => {
   });
 
   it("defaults and normalizes the stored-vPoint percent removal threshold", async () => {
-    const slowTradingStorage = (await import("@/lib/slowTrading")).default
+    const slowTradingStorage = (await import("@/lib/runtime")).default
       .storage;
 
     expect(
@@ -442,7 +442,7 @@ describe("slow specs storage", () => {
   });
 
   it("keeps closed history out of default runtime loads unless requested", async () => {
-    const slowTradingStorage = (await import("@/lib/slowTrading")).default
+    const slowTradingStorage = (await import("@/lib/runtime")).default
       .storage;
 
     const storage = slowTradingStorage.data.createDefault();
@@ -485,7 +485,7 @@ describe("slow specs storage", () => {
   });
 
   it("loads persisted history independently from configured symbols", async () => {
-    const slowTradingStorage = (await import("@/lib/slowTrading")).default
+    const slowTradingStorage = (await import("@/lib/runtime")).default
       .storage;
 
     const storage = slowTradingStorage.data.createDefault();
@@ -549,7 +549,7 @@ describe("slow specs storage", () => {
 
   it("updates and clears notes in only the matching persisted history position", async () => {
     const { FILES } = await import("@/components/storage");
-    const slowTradingStorage = (await import("@/lib/slowTrading")).default
+    const slowTradingStorage = (await import("@/lib/runtime")).default
       .storage;
     const storage = slowTradingStorage.data.createDefault();
     storage.config.symbols = ["SUI"];
@@ -608,7 +608,7 @@ describe("slow specs storage", () => {
   });
 
   it("loads only the active mode for runtime paths and preserves inactive mode on save", async () => {
-    const slowTradingStorage = (await import("@/lib/slowTrading")).default
+    const slowTradingStorage = (await import("@/lib/runtime")).default
       .storage;
 
     const storage = slowTradingStorage.data.createDefault();
@@ -661,7 +661,7 @@ describe("slow specs storage", () => {
   });
 
   it("resets sandbox using the requested initial balance override", async () => {
-    const slowTradingStorage = (await import("@/lib/slowTrading")).default
+    const slowTradingStorage = (await import("@/lib/runtime")).default
       .storage;
 
     const storage = slowTradingStorage.data.createDefault();
@@ -777,7 +777,7 @@ describe("slow specs storage", () => {
     const localRoot = await fs.mkdtemp(path.join(os.tmpdir(), "slow-spec-local-"));
 
     try {
-      const slowTrading = (await import("@/lib/slowTrading")).default;
+      const slowTrading = (await import("@/lib/runtime")).default;
 
       await fs.outputJSON(path.join(onlineRoot, "slow/config.json"), {
         source: "online",
@@ -817,7 +817,7 @@ describe("slow specs storage", () => {
   });
 
   it("shows manual coin metadata sync only for APP_NAME localhost on localhost", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const isAllowed =
       slowTrading.debugSync.isLocalCoinMetadataManualSyncAllowed;
 

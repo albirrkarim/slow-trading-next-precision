@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { computeDayPreview } from "@/components/LiveDashboard/Navbar/helpers";
-import slowTradingDailyPnlLimit from "@/lib/slowTrading/daily-pnl-limit";
+import slowTradingDailyPnlLimit from "@/lib/runtime/daily-pnl-limit";
 
 function closedTrade(params: {
   closedAt: number;

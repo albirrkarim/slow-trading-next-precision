@@ -1,6 +1,6 @@
 "use client";
 
-import type { SlowEntrySequenceInterval } from "@/lib/slowTrading/client";
+import type { SlowEntrySequenceInterval } from "@/lib/runtime/client";
 import { Box, Typography, useTheme } from "@mui/material";
 import { useMemo } from "react";
 import {

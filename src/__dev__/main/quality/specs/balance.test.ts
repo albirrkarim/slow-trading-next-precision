@@ -1,5 +1,5 @@
 import { TradingMode } from "@/lib/exchange";
-import slowTrading, { type SlowTradingStorageData } from "@/lib/slowTrading";
+import slowTrading, { type SlowTradingStorageData } from "@/lib/runtime";
 
 const storageApi = slowTrading.storage;
 import {

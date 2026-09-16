@@ -25,7 +25,7 @@ describe("slow specs logs", () => {
   });
 
   it("persists error, management, safe-haven, and withdrawal records", async () => {
-    const storage = (await import("@/lib/slowTrading")).default.storage;
+    const storage = (await import("@/lib/runtime")).default.storage;
     const error = await storage.logs.appendError({
       source: "runner",
       error: "execution failed",
@@ -84,7 +84,7 @@ describe("slow specs logs", () => {
       getExchange: () => ({ getBalance }),
     }));
 
-    const storageApi = (await import("@/lib/slowTrading")).default.storage;
+    const storageApi = (await import("@/lib/runtime")).default.storage;
     const storage = storageApi.data.createDefault();
     storage.config.exchangeType = "binance";
     storage.runtime.sandboxEnabled = false;
@@ -116,7 +116,7 @@ describe("slow specs logs", () => {
       getExchange: () => ({ getBalance }),
     }));
 
-    const storageApi = (await import("@/lib/slowTrading")).default.storage;
+    const storageApi = (await import("@/lib/runtime")).default.storage;
     const storage = storageApi.data.createDefault();
     storage.runtime.sandboxEnabled = false;
     storage.modes.live.dynamicTradeMemory.quoteAsset = 153.44;
@@ -153,7 +153,7 @@ describe("slow specs logs", () => {
       getExchange: () => ({ getBalance }),
     }));
 
-    const storageApi = (await import("@/lib/slowTrading")).default.storage;
+    const storageApi = (await import("@/lib/runtime")).default.storage;
     const storage = storageApi.data.createDefault();
     storage.config.exchangeType = "binance";
     storage.runtime.sandboxEnabled = false;
@@ -169,7 +169,7 @@ describe("slow specs logs", () => {
   });
 
   it("persists Binance cooldown incidents and restores the request gate", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const coordinator = (
       await import("@/lib/exchange/platform/binance/request-coordinator")
     ).default;
@@ -249,7 +249,7 @@ describe("slow specs logs", () => {
   });
 
   it("deletes records from every persistent log without removing others", async () => {
-    const storage = (await import("@/lib/slowTrading")).default.storage;
+    const storage = (await import("@/lib/runtime")).default.storage;
     const first = await storage.logs.appendError({
       source: "test",
       error: "first",
@@ -311,7 +311,7 @@ describe("slow specs logs", () => {
   });
 
   it("clears every record from only the selected log", async () => {
-    const storage = (await import("@/lib/slowTrading")).default.storage;
+    const storage = (await import("@/lib/runtime")).default.storage;
     await storage.logs.appendError({ source: "test", error: "keep" });
     await storage.logs.appendWithdrawal({
       account: "test-account",
@@ -339,7 +339,7 @@ describe("slow specs logs", () => {
   });
 
   it("updates error statuses without changing other records", async () => {
-    const storage = (await import("@/lib/slowTrading")).default.storage;
+    const storage = (await import("@/lib/runtime")).default.storage;
     const first = await storage.logs.appendError({
       source: "test",
       error: "first",
@@ -369,7 +369,7 @@ describe("slow specs logs", () => {
   });
 
   it("does not partially update error statuses when an id is missing", async () => {
-    const storage = (await import("@/lib/slowTrading")).default.storage;
+    const storage = (await import("@/lib/runtime")).default.storage;
     const error = await storage.logs.appendError({
       source: "test",
       error: "keep new",

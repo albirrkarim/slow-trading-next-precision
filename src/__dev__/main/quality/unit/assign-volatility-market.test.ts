@@ -25,7 +25,7 @@ vi.mock("fs-extra", () => ({
   },
 }));
 
-vi.mock("@/lib/slowTrading/storage/json-file", () => ({
+vi.mock("@/lib/runtime/storage/json-file", () => ({
   default: {
     update: {
       atomic: mocks.updateAtomic,
@@ -33,7 +33,7 @@ vi.mock("@/lib/slowTrading/storage/json-file", () => ({
   },
 }));
 
-import slowTradingPublicMarketCache from "@/lib/slowTrading/public-market-cache";
+import slowTradingPublicMarketCache from "@/lib/runtime/public-market-cache";
 
 describe("production volatility market", () => {
   beforeEach(() => {

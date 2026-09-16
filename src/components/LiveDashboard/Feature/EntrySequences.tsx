@@ -5,7 +5,7 @@ import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import type { VolatilityPoint } from "@/lib/dynamic";
 import slowTradingClient, {
     type SlowEntrySequenceCount,
-} from "@/lib/slowTrading/client";
+} from "@/lib/runtime/client";
 import { Box, Chip, Paper, Typography } from "@mui/material";
 import { useMemo } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";

@@ -2,7 +2,7 @@ import fs from "fs-extra";
 import os from "os";
 import path from "path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { SlowTradingBalanceSummary } from "@/lib/slowTrading";
+import type { SlowTradingBalanceSummary } from "@/lib/runtime";
 import { createTestPosition } from "../fixtures/position";
 
 let tmpRoot: string | null = null;
@@ -21,7 +21,7 @@ describe("SLOW multi-account specs", () => {
   });
 
   it("creates immutable unique slugs and never reuses a retired slug", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const defaults = slowTrading.storage.data.createDefault();
     const template = defaults.runtime.exchangeAccounts[0];
     const first = {
@@ -55,7 +55,7 @@ describe("SLOW multi-account specs", () => {
   });
 
   it("defaults and persists per-account entry guards", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const defaults = slowTrading.storage.data.createDefault();
     const template = defaults.runtime.exchangeAccounts[0];
 
@@ -85,7 +85,7 @@ describe("SLOW multi-account specs", () => {
   });
 
   it("keeps live and sandbox memory isolated by account slug", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const defaults = slowTrading.storage.data.createDefault();
     const template = defaults.runtime.exchangeAccounts[0];
     await slowTrading.storage.data.save(defaults);
@@ -128,7 +128,7 @@ describe("SLOW multi-account specs", () => {
     const context = await import("@/lib/exchange/account-context");
     const [productionSource, backtestSource] = await Promise.all([
       fs.readFile("src/lib/trading/execute/execute-entry.ts", "utf8"),
-      fs.readFile("src/lib/dynamic/backtest-volatility/trading.ts", "utf8"),
+      fs.readFile("src/lib/backtest/trading.ts", "utf8"),
     ]);
 
     await context.runWithExchangeAccount("account-blue", async () => {
@@ -141,7 +141,7 @@ describe("SLOW multi-account specs", () => {
   });
 
   it("deduplicates and hydrates shared history by account owner", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const defaults = slowTrading.storage.data.createDefault();
     const template = defaults.runtime.exchangeAccounts[0];
     await slowTrading.storage.data.save(defaults);
@@ -188,7 +188,7 @@ describe("SLOW multi-account specs", () => {
   });
 
   it("retains each account's balance summary in the combined dashboard", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const defaults = slowTrading.storage.data.createDefault();
     const template = defaults.runtime.exchangeAccounts[0];
     await slowTrading.storage.data.save(defaults);
@@ -238,7 +238,7 @@ describe("SLOW multi-account specs", () => {
   });
 
   it("keeps the newest run for each stage in the combined dashboard", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const defaults = slowTrading.storage.data.createDefault();
     const template = defaults.runtime.exchangeAccounts[0];
     await slowTrading.storage.data.save(defaults);
@@ -318,7 +318,7 @@ describe("SLOW multi-account specs", () => {
   });
 
   it("aggregates every enabled account in the MCP balance and excludes disabled accounts", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const defaults = slowTrading.storage.data.createDefault();
     const template = defaults.runtime.exchangeAccounts[0];
     await slowTrading.storage.data.save(defaults);
@@ -398,7 +398,7 @@ describe("SLOW multi-account specs", () => {
   });
 
   it("aggregates MCP history and finance data across enabled accounts", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const defaults = slowTrading.storage.data.createDefault();
     const template = defaults.runtime.exchangeAccounts[0];
     await slowTrading.storage.data.save(defaults);
@@ -551,14 +551,14 @@ describe("SLOW multi-account specs", () => {
       mcpHistory,
       standardBacktest,
     ] = await Promise.all([
-      fs.readFile("src/lib/slowTrading/cycle/accounts.ts", "utf8"),
-      fs.readFile("src/lib/slowTrading/cycle/daily-pnl.ts", "utf8"),
+      fs.readFile("src/lib/runtime/cycle/accounts.ts", "utf8"),
+      fs.readFile("src/lib/runtime/cycle/daily-pnl.ts", "utf8"),
       fs.readFile("src/pages/api/slow-trading/exchange-accounts.ts", "utf8"),
-      fs.readFile("src/lib/slowTrading/quick-backtest.ts", "utf8"),
-      fs.readFile("src/lib/slowTrading/withdrawal.ts", "utf8"),
-      fs.readFile("src/lib/slowTrading/storage/dashboard.ts", "utf8"),
-      fs.readFile("src/lib/slowTrading/storage/history-files.ts", "utf8"),
-      fs.readFile("src/lib/slowTrading/mcp/history.ts", "utf8"),
+      fs.readFile("src/lib/runtime/quick-backtest.ts", "utf8"),
+      fs.readFile("src/lib/runtime/withdrawal.ts", "utf8"),
+      fs.readFile("src/lib/runtime/storage/dashboard.ts", "utf8"),
+      fs.readFile("src/lib/runtime/storage/history-files.ts", "utf8"),
+      fs.readFile("src/lib/runtime/mcp/history.ts", "utf8"),
       fs.readFile("src/lib/devBacktest/api/dynamicTradeBacktest.ts", "utf8"),
     ]);
 

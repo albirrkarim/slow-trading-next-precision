@@ -8,7 +8,7 @@ import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import { EXCHANGE_COLOR_MAP } from "@/components/LiveDashboard/Shared/constants";
 import { NetProfitPercentHistorySparkline } from "@/components/LiveDashboard/Shared/NetProfitPercentHistorySparkline";
 import type { DynamicTradeConfig, VolatilityPoint } from "@/lib/dynamic";
-import type { SlowTradingHistoryPosition } from "@/lib/slowTrading";
+import type { SlowTradingHistoryPosition } from "@/lib/runtime";
 import moment from "moment-timezone";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import ShowChartIcon from "@mui/icons-material/ShowChart";

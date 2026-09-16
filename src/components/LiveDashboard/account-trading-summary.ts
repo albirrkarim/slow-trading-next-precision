@@ -1,6 +1,6 @@
 import { DEFAULT_DYNAMIC_TRADE_CONFIG_PRODUCTION } from "@/lib/dynamic/constants";
-import slowTradingAccountConfig from "@/lib/slowTrading/account-config";
-import type { SlowTradingAccountTradingConfig } from "@/lib/slowTrading/types";
+import slowTradingAccountConfig from "@/lib/runtime/account-config";
+import type { SlowTradingAccountTradingConfig } from "@/lib/runtime/types";
 
 type SummaryRecord = Record<string, unknown>;
 

@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import slowTrading from "@/lib/slowTrading";
+import slowTrading from "@/lib/runtime";
 import type {
   SlowTradingErrorLogEntry,
   SlowTradingErrorStatus,
@@ -9,7 +9,7 @@ import type {
   SlowTradingManagementLogEntry,
   SlowTradingSafeHavenLogEntry,
   SlowTradingWithdrawalLogEntry,
-} from "@/lib/slowTrading";
+} from "@/lib/runtime";
 import { tradeLog } from "@/lib/trading/helper/log";
 
 type SlowTradingLogResponse =

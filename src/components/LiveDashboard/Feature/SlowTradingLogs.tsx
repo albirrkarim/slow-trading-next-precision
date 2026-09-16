@@ -41,7 +41,7 @@ import type {
   SlowTradingManagementLogEntry,
   SlowTradingSafeHavenLogEntry,
   SlowTradingWithdrawalLogEntry,
-} from "@/lib/slowTrading";
+} from "@/lib/runtime";
 
 type LogEntryByKind = {
   management: SlowTradingManagementLogEntry;

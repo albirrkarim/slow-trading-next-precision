@@ -14,7 +14,7 @@ import { useEffect, useState } from "react";
 
 import { endpoints } from "@/components/endpoints";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
-import type { SlowTradingDashboardState } from "@/lib/slowTrading";
+import type { SlowTradingDashboardState } from "@/lib/runtime";
 import blackSwanModel, {
   type BlackSwanReason,
   type BlackSwanStatus,

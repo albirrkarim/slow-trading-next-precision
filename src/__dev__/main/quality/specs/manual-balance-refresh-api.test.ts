@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   })),
 }));
 
-vi.mock("@/lib/slowTrading", () => ({
+vi.mock("@/lib/runtime", () => ({
   default: {
     balance: {
       live: {

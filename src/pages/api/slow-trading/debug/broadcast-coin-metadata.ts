@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { coinMetadataSync } from "@/lib/devBacktest/coins/tag-sync";
 import coinTags from "@/lib/devBacktest/coins/tags";
-import slowTrading from "@/lib/slowTrading";
+import slowTrading from "@/lib/runtime";
 import { tradeLog } from "@/lib/trading/helper/log";
 
 export default async function handler(

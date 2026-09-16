@@ -10,7 +10,7 @@ import makeLeaderboard from "@/lib/evaluate/analysis/leaderboard";
 import { tradeLog } from "@/lib/trading";
 import dotenv from "dotenv";
 import fs from "fs-extra";
-import { runBacktestVolatilityDynamic } from "@/lib/dynamic/backtest-volatility";
+import { runBacktestVolatilityDynamic } from "@/lib/backtest";
 
 dotenv.config({ quiet: true });
 

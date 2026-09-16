@@ -4,8 +4,8 @@ import slowTrading, {
   type SlowTradingManualQueueCreateInput,
   type SlowTradingQueueItem,
   type SlowTradingQueues,
-} from "@/lib/slowTrading";
-import type { SlowTradingQueueKind } from "@/lib/slowTrading/queue";
+} from "@/lib/runtime";
+import type { SlowTradingQueueKind } from "@/lib/runtime/queue";
 import { tradeLog } from "@/lib/trading/helper/log";
 
 type SlowTradingQueueResponse =

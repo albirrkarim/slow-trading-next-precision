@@ -1,6 +1,6 @@
 import { Box, Chip, Tooltip, Typography } from "@mui/material";
 
-import type { SlowTradingMcpPermission } from "@/lib/slowTrading/types";
+import type { SlowTradingMcpPermission } from "@/lib/runtime/types";
 
 export interface McpToolCatalogItem {
   description: string;

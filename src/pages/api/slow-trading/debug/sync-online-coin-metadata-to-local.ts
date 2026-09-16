@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import type { CoinTagState } from "@/lib/devBacktest/coins/tag-types";
 import coinTags from "@/lib/devBacktest/coins/tags";
-import slowTrading from "@/lib/slowTrading";
+import slowTrading from "@/lib/runtime";
 import { tradeLog } from "@/lib/trading/helper/log";
 
 const DEFAULT_ONLINE_BASE_URL = "https://fast.reinventwp.com";

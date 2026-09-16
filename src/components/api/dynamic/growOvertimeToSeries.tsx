@@ -1,4 +1,4 @@
-import { type GrowthOvertimeDetail } from "@/lib/dynamic/backtest-volatility/type";
+import { type GrowthOvertimeDetail } from "@/lib/backtest/type";
 import type { SeriesMinimal } from "./api-dynamic-type";
 
 export function growOvertimeToSeries(

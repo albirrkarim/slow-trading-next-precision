@@ -1,6 +1,6 @@
 import { FILES } from "@/components/storage";
-import slowTradingJsonFile from "@/lib/slowTrading/storage/json-file";
-import type { SlowTradingErrorLogEntry } from "@/lib/slowTrading";
+import slowTradingJsonFile from "@/lib/runtime/storage/json-file";
+import type { SlowTradingErrorLogEntry } from "@/lib/runtime";
 import fs from "fs-extra";
 import type { NextApiRequest, NextApiResponse } from "next";
 

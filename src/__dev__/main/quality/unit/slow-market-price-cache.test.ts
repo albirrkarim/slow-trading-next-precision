@@ -1,5 +1,5 @@
-import slowTradingMarket from "@/lib/slowTrading/market";
-import slowTradingPublicMarketCache from "@/lib/slowTrading/public-market-cache";
+import slowTradingMarket from "@/lib/runtime/market";
+import slowTradingPublicMarketCache from "@/lib/runtime/public-market-cache";
 import type { IExchange } from "@/lib/exchange";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

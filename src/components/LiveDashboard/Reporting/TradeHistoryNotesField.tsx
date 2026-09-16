@@ -4,7 +4,7 @@ import { endpoints } from "@/components/endpoints";
 import type {
   SlowTradingDashboardState,
   SlowTradingMode,
-} from "@/lib/slowTrading";
+} from "@/lib/runtime";
 import { TextField } from "@mui/material";
 import axios from "axios";
 import { useEffect, useState } from "react";

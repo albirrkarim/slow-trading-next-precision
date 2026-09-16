@@ -23,7 +23,7 @@ import type {
 } from "@/components/LiveDashboard/Navbar/types";
 import type { VolatilityPoint } from "@/lib/dynamic";
 import { TradingMode } from "@/lib/exchange";
-import type { SlowTradingDashboardState } from "@/lib/slowTrading";
+import type { SlowTradingDashboardState } from "@/lib/runtime";
 import { createTestPosition } from "../fixtures/position";
 
 const configDraft = {

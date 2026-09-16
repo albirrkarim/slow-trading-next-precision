@@ -13,7 +13,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import type { SlowTradingDashboardState } from "@/lib/slowTrading";
+import type { SlowTradingDashboardState } from "@/lib/runtime";
 
 import ReadMoreDialogButton from "../Navbar/ReadMoreDialogButton";
 import ExitThresholdChart from "../Navbar/ExitThresholdChart";

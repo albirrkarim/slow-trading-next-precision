@@ -12,7 +12,7 @@ import {
   type NotificationChannel,
   type NotificationDashboard,
 } from "./config";
-import { appendSlowTradingErrorLog } from "@/lib/slowTrading/storage/logs";
+import { appendSlowTradingErrorLog } from "@/lib/runtime/storage/logs";
 import { tradeLog } from "@/lib/trading/helper/log";
 
 dotenv.config();

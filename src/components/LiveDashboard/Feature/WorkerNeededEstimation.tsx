@@ -8,7 +8,7 @@ import MultiLineTimelined from "@/components/ui/Chart/MultiLineTimelined";
 import slowTradingClient, {
   type SlowSystemCapacityEstimate,
   type SlowWorkerNeededEstimate,
-} from "@/lib/slowTrading/client";
+} from "@/lib/runtime/client";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import type { DynamicTradeConfig, VolatilityPoint } from "@/lib/dynamic";
 import entrySequenceCandidates from "./entry-sequence-candidates";

@@ -5,7 +5,7 @@ import type { VolatilityPoint } from "@/lib/dynamic";
 import type { UnifiedFundingRate } from "@/lib/exchange";
 import slowTradingClient, {
   type SlowEntrySequenceCount,
-} from "@/lib/slowTrading/client";
+} from "@/lib/runtime/client";
 import ClearIcon from "@mui/icons-material/Clear";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import SearchIcon from "@mui/icons-material/Search";

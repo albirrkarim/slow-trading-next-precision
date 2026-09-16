@@ -26,7 +26,7 @@ import { endpoints } from "@/components/endpoints";
 import ButtonDialog from "@/components/ui/ButtonDialog";
 import IconButtonTooltip from "@/components/ui/IconButtonTooltip";
 import type { ExchangeAccountType } from "@/lib/exchange/account-context";
-import type { SlowTradingAccount } from "@/lib/slowTrading";
+import type { SlowTradingAccount } from "@/lib/runtime";
 import type { ConfigDraft, ConfigDraftSetter } from "./types";
 import SettingsInfoField from "./SettingsInfoField";
 import { tradeLog } from "@/lib/trading/helper/log";

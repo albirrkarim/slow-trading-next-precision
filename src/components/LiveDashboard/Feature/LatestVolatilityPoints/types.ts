@@ -1,6 +1,6 @@
 import type { VolatilityPoint } from "@/lib/dynamic";
 import type { UnifiedFundingRate } from "@/lib/exchange";
-import type { SlowTradingDashboardState } from "@/lib/slowTrading";
+import type { SlowTradingDashboardState } from "@/lib/runtime";
 import type { ReactNode } from "react";
 
 export interface LatestVolatilityPointsProps {

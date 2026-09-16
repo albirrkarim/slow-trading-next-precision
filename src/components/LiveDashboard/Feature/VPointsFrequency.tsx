@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import VPointPctDistribution from "@/components/ui/VPointPctDistribution";
 import type { VolatilityPoint } from "@/lib/dynamic";
-import slowTradingClient from "@/lib/slowTrading/client";
+import slowTradingClient from "@/lib/runtime/client";
 
 export interface VPointLevelFrequency {
   count: number;

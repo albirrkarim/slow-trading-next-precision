@@ -19,7 +19,7 @@ vi.mock("@/lib/trading/helper/log", () => ({
   },
 }));
 
-vi.mock("@/lib/slowTrading/storage", () => ({
+vi.mock("@/lib/runtime/storage", () => ({
   default: {
     logs: {
       appendError: mocks.appendError,
@@ -27,7 +27,7 @@ vi.mock("@/lib/slowTrading/storage", () => ({
   },
 }));
 
-import slowTradingNotifications from "@/lib/slowTrading/notifications";
+import slowTradingNotifications from "@/lib/runtime/notifications";
 import { BinanceCooldownError } from "@/lib/exchange/platform/binance/request-coordinator";
 
 describe("Binance cooldown notification", () => {

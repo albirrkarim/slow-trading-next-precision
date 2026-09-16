@@ -29,7 +29,7 @@ import type { UnifiedFundingRate } from "@/lib/exchange";
 import type {
   SlowTradingBinanceHealthSnapshot,
   SlowTradingDashboardState,
-} from "@/lib/slowTrading";
+} from "@/lib/runtime";
 import { tradeLog } from "@/lib/trading/helper/log";
 
 import { delayExecution, queueExecution } from "../client/utils";

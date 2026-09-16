@@ -12,7 +12,7 @@ import type {
   TradingModelConfig,
   TradingModelMemory,
 } from "@/lib/trading/models";
-import slowTradingWatchReserve from "@/lib/slowTrading/watch-reserve";
+import slowTradingWatchReserve from "@/lib/runtime/watch-reserve";
 import { MINIMAL_USDT_TO_TRADE } from "../constants";
 import { tradeLog } from "../helper/log";
 import { notif } from "../helper/notification";

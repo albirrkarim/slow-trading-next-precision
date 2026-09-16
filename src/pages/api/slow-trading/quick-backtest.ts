@@ -1,5 +1,5 @@
 // PROD:QUICK_BACKTEST_DEMAND_ONLY
-import slowQuickBacktest from "@/lib/slowTrading/quick-backtest";
+import slowQuickBacktest from "@/lib/runtime/quick-backtest";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export default async function handler(

@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import slowTrading from "@/lib/slowTrading";
+import slowTrading from "@/lib/runtime";
 import blackSwan from "@/lib/trading/black-swan";
 
 export default async function handler(

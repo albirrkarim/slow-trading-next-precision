@@ -10,8 +10,8 @@ import { FILES } from "@/components/storage";
 import type { ExchangeType, TradingMode } from "@/lib/exchange";
 import { resolveMarketTypeForTradingMode } from "@/lib/exchange/utils";
 import { TRADE_MESSAGE } from "@/lib/trading/message";
-import slowTradingJsonFile from "@/lib/slowTrading/storage/json-file";
-import slowTradingPublicMarketCache from "@/lib/slowTrading/public-market-cache";
+import slowTradingJsonFile from "@/lib/runtime/storage/json-file";
+import slowTradingPublicMarketCache from "@/lib/runtime/public-market-cache";
 
 function cloneJson<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;

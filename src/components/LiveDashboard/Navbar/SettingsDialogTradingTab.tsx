@@ -11,7 +11,7 @@ import {
   ToggleButtonGroup,
 } from "@mui/material";
 import adaptiveAveraging from "@/lib/trading/adaptive-averaging";
-import type { SlowTradingAccountTradingConfig } from "@/lib/slowTrading";
+import type { SlowTradingAccountTradingConfig } from "@/lib/runtime";
 
 import ExitStrategyReference from "./ExitStrategyReference";
 import SettingsCheckbox from "./SettingsCheckbox";

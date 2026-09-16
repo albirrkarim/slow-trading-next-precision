@@ -32,7 +32,7 @@ describe("manual live balance refresh", () => {
       getExchange: () => ({ getBalance }),
     }));
 
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const storage = slowTrading.storage.data.createDefault();
     storage.runtime.sandboxEnabled = false;
     storage.modes.live.dynamicTradeMemory.quoteAsset = 100;
@@ -69,7 +69,7 @@ describe("manual live balance refresh", () => {
       getExchange: () => ({ getBalance }),
     }));
 
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const storage = slowTrading.storage.data.createDefault();
     storage.runtime.sandboxEnabled = true;
     await slowTrading.storage.data.save(storage);

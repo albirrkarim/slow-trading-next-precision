@@ -64,7 +64,7 @@ describe("dashboard initialization market", () => {
   it("uses the compact volatility dataset throughout dynamic backtests", async () => {
     const sources = await Promise.all(
       [
-        "src/lib/dynamic/backtest-volatility/index.ts",
+        "src/lib/backtest/index.ts",
         "src/lib/devBacktest/api/dynamicTradeBacktest.ts",
       ].map((filePath) => fs.readFile(filePath, "utf8")),
     );

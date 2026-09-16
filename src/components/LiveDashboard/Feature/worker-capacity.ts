@@ -1,8 +1,8 @@
 import slowTradingClient, {
   type SlowTradingDashboardState,
-} from "@/lib/slowTrading/client";
+} from "@/lib/runtime/client";
 
-export type { SlowWorkerCapacity } from "@/lib/slowTrading/worker-capacity";
+export type { SlowWorkerCapacity } from "@/lib/runtime/worker-capacity";
 
 /** Calculates equal-sized additional entry workers using live entry constraints. */
 export function calculateSlowWorkerCapacity(

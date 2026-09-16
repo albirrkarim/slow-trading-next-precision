@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import slowTradingMcp from "@/lib/slowTrading/mcp";
-import slowTradingMcpMonitoring from "@/lib/slowTrading/mcp/monitoring";
-import slowTradingStorage from "@/lib/slowTrading/storage";
+import slowTradingMcp from "@/lib/runtime/mcp";
+import slowTradingMcpMonitoring from "@/lib/runtime/mcp/monitoring";
+import slowTradingStorage from "@/lib/runtime/storage";
 
 describe("SLOW MCP monitoring snapshot", () => {
   afterEach(() => vi.restoreAllMocks());

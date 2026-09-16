@@ -6,7 +6,7 @@ import {
 } from "@/lib/dynamic";
 import { DEFAULT_EXCHANGE } from "@/lib/exchange/constants";
 import { resolveMarketTypeForTradingMode } from "@/lib/exchange/utils";
-import slowTrading from "@/lib/slowTrading";
+import slowTrading from "@/lib/runtime";
 import { tradeLog } from "@/lib/trading";
 import fs from "fs-extra";
 import md5 from "md5";

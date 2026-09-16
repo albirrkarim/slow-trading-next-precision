@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import slowTrading from "@/lib/slowTrading";
-import { normalizeExchangeAccountSlug } from "@/lib/slowTrading/storage/account";
+import slowTrading from "@/lib/runtime";
+import { normalizeExchangeAccountSlug } from "@/lib/runtime/storage/account";
 import { tradeLog } from "@/lib/trading/helper/log";
 
 export default async function handler(

@@ -1,4 +1,4 @@
-import slowTrading from "@/lib/slowTrading";
+import slowTrading from "@/lib/runtime";
 import { createTestPosition } from "../fixtures/position";
 
 const {

@@ -1,5 +1,5 @@
 import type { Marker } from "@/components/LiveDashboard/converter";
-import type { SlowTradingHistoryPosition } from "@/lib/slowTrading";
+import type { SlowTradingHistoryPosition } from "@/lib/runtime";
 import { blue, orange, purple } from "@mui/material/colors";
 import type { UTCTimestamp } from "lightweight-charts";
 

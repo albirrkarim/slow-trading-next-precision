@@ -62,7 +62,7 @@ describe("slow specs notification", () => {
   });
 
   it("marks monitoring and operational-error notification paths", async () => {
-    await expectSourceContains("src/lib/slowTrading/notifications.ts", [
+    await expectSourceContains("src/lib/runtime/notifications.ts", [
       // PROD:NOTIF_HIGH_VOLATILITY
       'key: "NOTIF_HIGH_VOLATILITY"',
       // PROD:NOTIF_STALE_POSITION
@@ -80,16 +80,16 @@ describe("slow specs notification", () => {
       // PROD:NOTIF_BINANCE_COOLDOWN
       'key: "NOTIF_BINANCE_COOLDOWN"',
     ]);
-    await expectSourceContains("src/lib/slowTrading/cycle/coordinator.ts", [
+    await expectSourceContains("src/lib/runtime/cycle/coordinator.ts", [
       "dailyPerformance.notify",
     ]);
-    await expectSourceContains("src/lib/slowTrading/cycle/finalize.ts", [
+    await expectSourceContains("src/lib/runtime/cycle/finalize.ts", [
       // PROD:BOUNDED_POST_CYCLE_ASYNC_WORK
       "PROD:BOUNDED_POST_CYCLE_ASYNC_WORK",
       "await slowTradingNotifications.openPositions",
       "await slowTradingStorage.balanceSnapshots.upsert",
     ]);
-    await expectSourceContains("src/lib/slowTrading/cycle/entry.ts", [
+    await expectSourceContains("src/lib/runtime/cycle/entry.ts", [
       // PROD:BOUNDED_POST_CYCLE_ASYNC_WORK
       "PROD:BOUNDED_POST_CYCLE_ASYNC_WORK",
       "await slowTradingNotifications.highVolatility",
@@ -123,7 +123,7 @@ describe("slow specs notification", () => {
   });
 
   it("keeps BTC helper high-volatility notification state between cycles", async () => {
-    const slowTradingStorage = (await import("@/lib/slowTrading")).default
+    const slowTradingStorage = (await import("@/lib/runtime")).default
       .storage;
 
     const storage = slowTradingStorage.data.createDefault();
@@ -144,7 +144,7 @@ describe("slow specs notification", () => {
   });
 
   it("reports the previous completed UTC day once per enabled channel", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const trading = (await import("@/lib/trading")).default;
     const storage = slowTrading.storage.data.createDefault();
     storage.modes.live.tradeSettings[0]!.model_memory.positionsSell = [
@@ -221,7 +221,7 @@ describe("slow specs notification", () => {
   });
 
   it("aggregates daily performance across every selected account", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const trading = (await import("@/lib/trading")).default;
     const alphaState = slowTrading.storage.data.createDefault().modes.live;
     const betaState = slowTrading.storage.data.createDefault().modes.live;
@@ -321,7 +321,7 @@ describe("slow specs notification", () => {
   });
 
   it("notifies once per daily PnL stop breach and resets after recovery", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const trading = (await import("@/lib/trading")).default;
     const storage = slowTrading.storage.data.createDefault();
     const modeState = storage.modes.sandbox;

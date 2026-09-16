@@ -1,7 +1,7 @@
 import ButtonDialog from "@/components/ui/ButtonDialog";
 import type { VolatilityPoint } from "@/lib/dynamic";
 import { TradingMode } from "@/lib/exchange/types";
-import type { SlowTradingDashboardState } from "@/lib/slowTrading";
+import type { SlowTradingDashboardState } from "@/lib/runtime";
 import {
   Alert,
   Box,

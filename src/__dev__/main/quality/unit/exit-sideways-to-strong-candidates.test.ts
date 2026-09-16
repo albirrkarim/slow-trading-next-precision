@@ -1,5 +1,5 @@
 import type { EntryRecommendation } from "@/lib/brain";
-import slowTradingSidewaysExit from "@/lib/slowTrading/exit-sideways";
+import slowTradingSidewaysExit from "@/lib/runtime/exit-sideways";
 import { TradingMode } from "@/lib/exchange";
 import type { Position } from "@/lib/trading/models";
 import { createTestPosition } from "../fixtures/position";

@@ -1,5 +1,5 @@
 import type { VolatilityPoint } from "@/lib/dynamic";
-import slowTrading from "@/lib/slowTrading";
+import slowTrading from "@/lib/runtime";
 import {
   buildDashboardVolatilityCacheWindow,
   filterDashboardEntrySignalResponse,

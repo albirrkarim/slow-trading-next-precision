@@ -1,9 +1,9 @@
-import slowTrading from "@/lib/slowTrading";
+import slowTrading from "@/lib/runtime";
 import type { UnifiedTicker } from "@/lib/exchange/types";
 import fs from "fs-extra";
 import path from "node:path";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
-import slowTradingPublicMarketCache from "@/lib/slowTrading/public-market-cache";
+import slowTradingPublicMarketCache from "@/lib/runtime/public-market-cache";
 
 const mocks = vi.hoisted(() => ({
   getTickers: vi.fn(),

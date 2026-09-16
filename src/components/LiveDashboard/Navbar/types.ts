@@ -7,7 +7,7 @@ import type { DashboardNotificationConfig } from "@/lib/notification/config";
 import type {
   SlowTradingAccount,
   SlowTradingDashboardState,
-} from "@/lib/slowTrading";
+} from "@/lib/runtime";
 import type { TradingModelConfig } from "@/lib/trading/models";
 import type { BlackSwanConfig } from "@/lib/trading/black-swan";
 

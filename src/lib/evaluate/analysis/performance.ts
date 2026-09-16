@@ -1,5 +1,5 @@
 import { tradeLog } from "@/lib/trading/helper/log";
-import type { TradeHistory } from "../../dynamic/backtest-volatility/type";
+import type { TradeHistory } from "../../backtest/type";
 
 /**
  * Summary statistics representing the performance of a trading strategy over a backtest period.

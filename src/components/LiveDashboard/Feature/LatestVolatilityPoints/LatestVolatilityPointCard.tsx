@@ -4,7 +4,7 @@ import { DEFAULT_COLORS } from "@/components/client/constants";
 import CoinMetadataEditor from "@/components/dev/Coins/CoinMetadataEditor";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import type { VolatilityPoint } from "@/lib/dynamic";
-import type { SlowTradingDashboardState } from "@/lib/slowTrading";
+import type { SlowTradingDashboardState } from "@/lib/runtime";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { Box, IconButton, Tooltip, Typography } from "@mui/material";
 import { green, red } from "@mui/material/colors";

@@ -14,7 +14,7 @@ import type {
 } from "@/lib/dynamic";
 import { TradingMode } from "@/lib/exchange";
 import { getCurrentExchangeAccountSlug } from "@/lib/exchange/account-context";
-import slowTradingWatchReserve from "@/lib/slowTrading/watch-reserve";
+import slowTradingWatchReserve from "@/lib/runtime/watch-reserve";
 import { MINIMAL_USDT_TO_TRADE } from "@/lib/trading/constants";
 import averagingMessage from "@/lib/trading/execute/averaging-message";
 import { resolveEntryLeverage } from "@/lib/trading/execute/entry-leverage";

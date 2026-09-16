@@ -36,7 +36,7 @@ import type {
   SlowTradingAccount,
   SlowTradingDashboardState,
   SlowTradingMode,
-} from "@/lib/slowTrading";
+} from "@/lib/runtime";
 import RangedValueText, {
   type RangedValueColorRange,
 } from "./RangedValueText";

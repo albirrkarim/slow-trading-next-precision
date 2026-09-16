@@ -1,6 +1,6 @@
 "use client";
 
-import type { SlowTradingDashboardState } from "@/lib/slowTrading";
+import type { SlowTradingDashboardState } from "@/lib/runtime";
 import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
 import {
   Box,

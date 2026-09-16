@@ -8,7 +8,7 @@ import {
 import type { EntryRecommendation } from "@/lib/brain/algorithms/type-execute";
 import type { VolatilityPoint } from "@/lib/dynamic";
 import { TradingMode } from "@/lib/exchange";
-import slowTrading, { type SlowTradingDashboardState } from "@/lib/slowTrading";
+import slowTrading, { type SlowTradingDashboardState } from "@/lib/runtime";
 import { describe, expect, it } from "vitest";
 import { createTestPosition } from "../fixtures/position";
 

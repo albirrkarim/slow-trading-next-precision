@@ -13,7 +13,7 @@ import type {
 } from "@/components/LiveDashboard/Navbar/types";
 import { VOLATILITY_THRESHOLD } from "@/lib/brain/constants";
 import { TradingMode } from "@/lib/exchange";
-import type { SlowTradingAccount } from "@/lib/slowTrading";
+import type { SlowTradingAccount } from "@/lib/runtime";
 
 const configDraft = {
   adaptiveAveraging: {

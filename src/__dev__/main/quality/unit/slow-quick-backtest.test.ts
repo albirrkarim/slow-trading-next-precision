@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import slowQuickBacktest from "@/lib/slowTrading/quick-backtest";
-import { runBacktestVolatilityDynamic } from "@/lib/dynamic/backtest-volatility";
+import slowQuickBacktest from "@/lib/runtime/quick-backtest";
+import { runBacktestVolatilityDynamic } from "@/lib/backtest";
 import { TradingMode } from "@/lib/exchange";
 import { createTestPosition } from "../fixtures/position";
 

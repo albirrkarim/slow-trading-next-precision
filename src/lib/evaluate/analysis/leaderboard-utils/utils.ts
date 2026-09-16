@@ -1,5 +1,5 @@
 import moment from "moment-timezone";
-import type { GrowthOvertimeDetail } from "../../../dynamic/backtest-volatility/type";
+import type { GrowthOvertimeDetail } from "../../../backtest/type";
 import { MINIMAL_USDT_TO_TRADE } from "@/lib/trading/constants";
 import type { TimeInfo } from "./type-dynamic-report";
 import { tradeLog } from "@/lib/trading/helper/log";

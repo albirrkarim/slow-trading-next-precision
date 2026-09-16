@@ -1,5 +1,5 @@
 import { TradingMode } from "@/lib/exchange";
-import slowTradingWatchReserve from "@/lib/slowTrading/watch-reserve";
+import slowTradingWatchReserve from "@/lib/runtime/watch-reserve";
 import type { Position } from "@/lib/trading/models";
 
 function createPosition(): Position {

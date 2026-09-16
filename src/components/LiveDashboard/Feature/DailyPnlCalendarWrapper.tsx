@@ -11,7 +11,7 @@ import type {
   SlowTradingDashboardAccountSummary,
   SlowTradingHistoryPosition,
   SlowTradingMode,
-} from "@/lib/slowTrading";
+} from "@/lib/runtime";
 
 export interface DailyPnlCalendarWrapperProps {
   accountSummaries: SlowTradingDashboardAccountSummary[];

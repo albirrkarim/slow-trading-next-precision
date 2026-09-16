@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import slowTradingMcp from "@/lib/slowTrading/mcp";
-import { SLOW_TRADING_MCP_PERMISSIONS } from "@/lib/slowTrading/types";
+import slowTradingMcp from "@/lib/runtime/mcp";
+import { SLOW_TRADING_MCP_PERMISSIONS } from "@/lib/runtime/types";
 
 // PROD:MCP_SYNC_TOKEN_SUPER_USER
 

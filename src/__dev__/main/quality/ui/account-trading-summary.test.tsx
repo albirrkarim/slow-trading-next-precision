@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import SystemAccountSummary from "@/components/LiveDashboard/SystemAccountSummary";
 import { getCustomAccountTradingConfig } from "@/components/LiveDashboard/account-trading-summary";
 import { DEFAULT_DYNAMIC_TRADE_CONFIG_PRODUCTION } from "@/lib/dynamic/constants";
-import slowTradingAccountConfig from "@/lib/slowTrading/account-config";
+import slowTradingAccountConfig from "@/lib/runtime/account-config";
 
 function makeTradingConfig() {
   return slowTradingAccountConfig.trading.fromEffectiveConfig(

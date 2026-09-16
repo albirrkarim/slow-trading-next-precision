@@ -21,7 +21,7 @@ import { DEFAULT_LOG_CATEGORIES, tradeLog } from "@/lib/trading";
 import fs from "fs-extra";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { DEFAULT_EXCHANGE } from "@/lib/exchange/constants";
-import slowTrading from "@/lib/slowTrading";
+import slowTrading from "@/lib/runtime";
 import { resolveMarketTypeForTradingMode } from "@/lib/exchange/utils";
 
 export default async function handler(

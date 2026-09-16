@@ -96,7 +96,7 @@ async function saveStorage(params: {
   runnerEnabled?: boolean;
   blackSwanStatus?: "WATCH" | "CRISIS" | "RECOVERY";
 }) {
-  const slowTrading = (await import("@/lib/slowTrading")).default;
+  const slowTrading = (await import("@/lib/runtime")).default;
   const { TradingMode } = await import("@/lib/exchange");
   const storage = slowTrading.storage.data.createDefault();
 

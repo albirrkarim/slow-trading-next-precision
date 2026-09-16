@@ -18,7 +18,7 @@ import { windowsMs } from "@/lib/dynamic/constants-time";
 import type { ExchangeType } from "@/lib/exchange";
 import { DEFAULT_EXCHANGE } from "@/lib/exchange/constants";
 import { type Kline } from "@/lib/exchange/platform/tokocrypto";
-import slowTrading from "@/lib/slowTrading";
+import slowTrading from "@/lib/runtime";
 import moment from "moment-timezone";
 import type { NextApiRequest, NextApiResponse } from "next";
 

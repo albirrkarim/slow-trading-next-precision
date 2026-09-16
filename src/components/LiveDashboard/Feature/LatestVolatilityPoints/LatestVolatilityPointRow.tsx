@@ -9,7 +9,7 @@ import type { UnifiedFundingRate } from "@/lib/exchange";
 import type {
   SlowEntrySequenceCount,
   SlowTradingDashboardState,
-} from "@/lib/slowTrading";
+} from "@/lib/runtime";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";

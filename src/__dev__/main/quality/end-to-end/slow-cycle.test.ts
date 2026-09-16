@@ -259,7 +259,7 @@ describe("slow end-to-end cycle", () => {
   });
 
   it("runs a persisted sandbox cycle and exposes the result through dashboard state", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const slowTradingStorage = slowTrading.storage;
     const { TradingMode } = await import("@/lib/exchange");
 
@@ -327,7 +327,7 @@ describe("slow end-to-end cycle", () => {
   });
 
   it("prepares shared market inputs once and executes both accounts", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const slowTradingStorage = slowTrading.storage;
     const { TradingMode } = await import("@/lib/exchange");
     const storage = slowTradingStorage.data.createDefault();
@@ -394,7 +394,7 @@ describe("slow end-to-end cycle", () => {
   });
 
   it("classifies a persisted averaged position with shared volatility", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const slowTradingStorage = slowTrading.storage;
     const { createTestPosition } = await import("../fixtures/position");
     const storage = slowTradingStorage.data.createDefault();
@@ -459,7 +459,7 @@ describe("slow end-to-end cycle", () => {
   });
 
   it("classifies a persisted position after its target vPoint", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const slowTradingStorage = slowTrading.storage;
     const { createTestPosition } = await import("../fixtures/position");
     const storage = slowTradingStorage.data.createDefault();
@@ -514,7 +514,7 @@ describe("slow end-to-end cycle", () => {
   });
 
   it("does no market or private exchange I/O for empty monitoring", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const slowTradingStorage = slowTrading.storage;
     const storage = slowTradingStorage.data.createDefault();
     const template = storage.runtime.exchangeAccounts[0];
@@ -540,7 +540,7 @@ describe("slow end-to-end cycle", () => {
   });
 
   it("removes a sandbox coin at the configured absolute level", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const slowTradingStorage = slowTrading.storage;
     const { FILES } = await import("@/components/storage");
     const { TradingMode } = await import("@/lib/exchange");
@@ -576,7 +576,7 @@ describe("slow end-to-end cycle", () => {
   });
 
   it("removes a coin when any stored vpoint meets the pct threshold", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const slowTradingStorage = slowTrading.storage;
     const { FILES } = await import("@/components/storage");
 
@@ -614,7 +614,7 @@ describe("slow end-to-end cycle", () => {
   });
 
   it("auto-removes an open-position coin while retaining its position", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const slowTradingStorage = slowTrading.storage;
     const { TradingMode } = await import("@/lib/exchange");
 
@@ -660,7 +660,7 @@ describe("slow end-to-end cycle", () => {
   });
 
   it("blocks and removes a sandbox coin below the management minimum price", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const slowTradingStorage = slowTrading.storage;
     const { TradingMode } = await import("@/lib/exchange");
 
@@ -713,7 +713,7 @@ describe("slow end-to-end cycle", () => {
   });
 
   it("removes a sandbox coin below the minimum market cap", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const slowTradingStorage = slowTrading.storage;
     const { TradingMode } = await import("@/lib/exchange");
 
@@ -761,7 +761,7 @@ describe("slow end-to-end cycle", () => {
   });
 
   it("removes a below-minimum coin from the live Symbols config", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const slowTradingStorage = slowTrading.storage;
     const { TradingMode } = await import("@/lib/exchange");
 
@@ -811,7 +811,7 @@ describe("slow end-to-end cycle", () => {
   });
 
   it("runs an 80-symbol persisted sandbox cycle through dashboard state", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const slowTradingStorage = slowTrading.storage;
     const { TradingMode } = await import("@/lib/exchange");
 

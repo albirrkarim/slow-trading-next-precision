@@ -1,4 +1,4 @@
-import type { SlowQuickBacktestResult } from "@/lib/slowTrading";
+import type { SlowQuickBacktestResult } from "@/lib/runtime";
 
 export interface QuickBacktestTradeCountRow {
   [key: string]: number | string;

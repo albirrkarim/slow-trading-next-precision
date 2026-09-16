@@ -3,7 +3,7 @@ import { type DynamicTradeMemory } from "@/lib/dynamic";
 export { updatePriceNorm } from "@/lib/dynamic/utils/priceNorm";
 export type { DynamicTradeMemorySimple } from "@/lib/dynamic/utils/priceNorm";
 
-import { type GrowthOvertimeDetail } from "@/lib/dynamic/backtest-volatility/type";
+import { type GrowthOvertimeDetail } from "@/lib/backtest/type";
 import { MINIMAL_USDT_TO_TRADE } from "@/lib/trading/constants";
 
 interface GetInvestmentAmountProps {

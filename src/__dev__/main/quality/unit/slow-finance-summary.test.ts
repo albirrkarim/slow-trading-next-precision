@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import slowTrading from "@/lib/slowTrading";
+import slowTrading from "@/lib/runtime";
 
 // PROD:MCP_FINANCE_SUMMARY
 

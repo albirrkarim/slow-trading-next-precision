@@ -2,7 +2,7 @@ import type {
   DynamicTradeMemory,
   TradeHistoryDynamic,
 } from "@/lib/dynamic/backtest/type";
-import type { GrowthOvertimeDetail } from "@/lib/dynamic/backtest-volatility/type";
+import type { GrowthOvertimeDetail } from "@/lib/backtest/type";
 import type { Kline } from "@/lib/exchange/platform/tokocrypto";
 import type { TradingReturn } from "@/lib/trading";
 import type {

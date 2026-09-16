@@ -4,7 +4,7 @@ import fs from "fs-extra";
 
 import { FILES } from "@/components/storage";
 import { notif } from "@/lib/notification";
-import slowTradingJsonFile from "@/lib/slowTrading/storage/json-file";
+import slowTradingJsonFile from "@/lib/runtime/storage/json-file";
 import { tradeLog } from "@/lib/trading/helper/log";
 
 const IPIFY_URL = "https://api.ipify.org";

@@ -1,4 +1,4 @@
-import { type GrowthOvertimeDetail } from "@/lib/dynamic/backtest-volatility/type";
+import { type GrowthOvertimeDetail } from "@/lib/backtest/type";
 import { tradeLog } from "@/lib/trading/helper/log";
 import { type TradingModelMemory } from "@/lib/trading/models";
 import type { DataBacktestPurpose } from "@lib/brain/algorithms/type-execute";
@@ -24,8 +24,8 @@ import { generateInitialPriceNorm } from "./utils";
 import { deepCopy } from "@/components/client/utils";
 import { decisionEngineV14 } from "@/lib/brain/algorithms/v4/decisions/v14/decision";
 import { PRICE_NORM_DATA_MS } from "@/lib/brain/constants";
-import slowTradingSidewaysExit from "@/lib/slowTrading/exit-sideways";
-import { generateAveragingRecommendations } from "@/lib/slowTrading/watch-reserve";
+import slowTradingSidewaysExit from "@/lib/runtime/exit-sideways";
+import { generateAveragingRecommendations } from "@/lib/runtime/watch-reserve";
 import { resolveMarketTypeForTradingMode } from "@/lib/exchange/utils";
 import { windowsMs } from "../constants-time";
 import { tryToExit } from "./exit";

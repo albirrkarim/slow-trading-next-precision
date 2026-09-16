@@ -1,7 +1,7 @@
 import { TradingMode, type ExchangeType } from "@/lib/exchange";
 import slowTradingWatchReserve, {
   type WatchReserveState,
-} from "@/lib/slowTrading/watch-reserve";
+} from "@/lib/runtime/watch-reserve";
 import type { Position } from "@/lib/trading/models";
 import {
   MINIMAL_USDT_TO_TRADE,

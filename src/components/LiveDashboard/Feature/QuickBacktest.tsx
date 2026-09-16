@@ -24,9 +24,9 @@ import type { VolatilityPoint } from "@/lib/dynamic";
 import type {
   SlowQuickBacktestResult,
   SlowTradingDashboardState,
-} from "@/lib/slowTrading";
+} from "@/lib/runtime";
 import { tradeLog } from "@/lib/trading/helper/log";
-import slowTradingAccountConfig from "@/lib/slowTrading/account-config";
+import slowTradingAccountConfig from "@/lib/runtime/account-config";
 import { DEFAULT_COLORS } from "@/components/client/constants";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import DurationSharePieChart from "@/components/ui/Chart/DurationSharePieChart";

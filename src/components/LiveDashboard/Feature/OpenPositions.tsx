@@ -1,7 +1,7 @@
 "use client";
 
 import type { DynamicTradeConfig, VolatilityPoint } from "@/lib/dynamic";
-import type { SlowTradingHistoryPosition, SlowTradingMode } from "@/lib/slowTrading";
+import type { SlowTradingHistoryPosition, SlowTradingMode } from "@/lib/runtime";
 
 import ArrowDownwardRoundedIcon from "@mui/icons-material/ArrowDownwardRounded";
 import ArrowUpwardRoundedIcon from "@mui/icons-material/ArrowUpwardRounded";

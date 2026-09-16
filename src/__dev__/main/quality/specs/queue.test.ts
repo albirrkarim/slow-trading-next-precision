@@ -24,7 +24,7 @@ describe("slow specs persistent queues", () => {
   });
 
   it("persists one scheduled Safe Haven item and waits until the next month after cancellation", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const storage = slowTrading.storage.data.createDefault();
     storage.runtime.runnerEnabled = true;
     storage.runtime.sandboxEnabled = false;
@@ -79,7 +79,7 @@ describe("slow specs persistent queues", () => {
   });
 
   it("creates an overdue Safe Haven schedule on the next active runner pass", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const storage = slowTrading.storage.data.createDefault();
     storage.runtime.runnerEnabled = true;
     storage.runtime.safeHaven = {
@@ -110,7 +110,7 @@ describe("slow specs persistent queues", () => {
   });
 
   it("creates multiple Safe Haven queue items in one month and uses 0-100 percentages", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const storage = slowTrading.storage.data.createDefault();
     storage.runtime.runnerEnabled = true;
     storage.runtime.safeHaven = {
@@ -151,7 +151,7 @@ describe("slow specs persistent queues", () => {
 
   it("migrates legacy Safe Haven fractions into 0-100 schedule percentages", async () => {
     const { normalizeSafeHavenConfig } =
-      await import("@/lib/slowTrading/storage/safe-haven-config");
+      await import("@/lib/runtime/storage/safe-haven-config");
 
     const safeHaven = normalizeSafeHavenConfig(undefined, {
       safePercentPerMonth: 0.1,
@@ -168,7 +168,7 @@ describe("slow specs persistent queues", () => {
   });
 
   it("partially completes sandbox Safe Haven work and deletes it after collection", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const storage = slowTrading.storage.data.createDefault();
     storage.runtime.runnerEnabled = true;
     storage.runtime.sandboxEnabled = true;
@@ -216,7 +216,7 @@ describe("slow specs persistent queues", () => {
   });
 
   it("keeps independent live and sandbox Safe Haven queues", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const storage = slowTrading.storage.data.createDefault();
     storage.runtime.runnerEnabled = true;
     storage.runtime.sandboxEnabled = false;
@@ -255,7 +255,7 @@ describe("slow specs persistent queues", () => {
   });
 
   it("keeps an underfunded withdrawal pending without repeated logs or duplicate queues", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const storage = slowTrading.storage.data.createDefault();
     storage.runtime.runnerEnabled = true;
     storage.runtime.sandboxEnabled = false;
@@ -315,7 +315,7 @@ describe("slow specs persistent queues", () => {
   });
 
   it("clamps withdrawal day 31 to the final day of short UTC months", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const storage = slowTrading.storage.data.createDefault();
     storage.runtime.runnerEnabled = true;
     storage.runtime.sandboxEnabled = false;
@@ -358,7 +358,7 @@ describe("slow specs persistent queues", () => {
   });
 
   it("creates an overdue monthly withdrawal on the next active runner pass", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const storage = slowTrading.storage.data.createDefault();
     storage.runtime.runnerEnabled = true;
     storage.runtime.sandboxEnabled = false;
@@ -392,7 +392,7 @@ describe("slow specs persistent queues", () => {
 
   it("migrates legacy withdrawal intervals into monthly calendar days", async () => {
     const { normalizeWithdrawalConfig } =
-      await import("@/lib/slowTrading/storage/withdrawal-config");
+      await import("@/lib/runtime/storage/withdrawal-config");
     const withdrawal = normalizeWithdrawalConfig({
       autoEnabled: true,
       schedules: [
@@ -413,7 +413,7 @@ describe("slow specs persistent queues", () => {
   });
 
   it("manually creates a Safe Haven queue and marks the current month handled", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const storage = slowTrading.storage.data.createDefault();
     await slowTrading.storage.data.save(storage);
 
@@ -451,7 +451,7 @@ describe("slow specs persistent queues", () => {
   });
 
   it("manually creates a withdrawal queue from an existing schedule", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const storage = slowTrading.storage.data.createDefault();
     storage.runtime.withdrawal = {
       autoEnabled: false,

@@ -1,4 +1,4 @@
-import slowTrading from "@/lib/slowTrading";
+import slowTrading from "@/lib/runtime";
 
 describe("slow specs withdrawal", () => {
   it("caps manual withdrawals at 2 USDT", () => {

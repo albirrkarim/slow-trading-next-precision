@@ -10,7 +10,7 @@ export async function register() {
   // PROD:RUNTIME_MEMORY_MONITOR
   const [{ getSlowTradingRunner }, { default: resourceMonitor }] =
     await Promise.all([
-      import("@/lib/slowTrading/singleton"),
+      import("@/lib/runtime/singleton"),
       import("@/lib/runtime/resource-monitor"),
     ]);
   await getSlowTradingRunner();

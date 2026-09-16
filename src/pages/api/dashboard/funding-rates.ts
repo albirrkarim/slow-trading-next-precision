@@ -1,7 +1,7 @@
 import { DEFAULT_EXCHANGE } from "@/lib/exchange/constants";
 import exchangeFundingRate from "@/lib/exchange/funding-rate";
 import type { ExchangeType } from "@/lib/exchange/types";
-import slowTrading from "@/lib/slowTrading";
+import slowTrading from "@/lib/runtime";
 import { tradeLog } from "@/lib/trading";
 import type { NextApiRequest, NextApiResponse } from "next";
 

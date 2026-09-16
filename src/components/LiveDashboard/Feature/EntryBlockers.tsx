@@ -7,7 +7,7 @@ import type {
   SlowTradingEntryDiagnostic,
   SlowTradingEntryDiagnosticsSnapshot,
   SlowTradingSharedEntryGuardDiagnostic,
-} from "@/lib/slowTrading/client";
+} from "@/lib/runtime/client";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";

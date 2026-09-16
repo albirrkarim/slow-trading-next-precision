@@ -25,7 +25,7 @@ import { useSnackbar } from "notistack";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { endpoints } from "@/components/endpoints";
-import type { SlowTradingMcpPermission } from "@/lib/slowTrading/types";
+import type { SlowTradingMcpPermission } from "@/lib/runtime/types";
 
 import SettingsDialogSection from "./SettingsDialogSection";
 import SettingsDialogMcpToolPreview, {

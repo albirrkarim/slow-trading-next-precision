@@ -1,5 +1,5 @@
 import { VOLATILITY_THRESHOLD } from "@/lib/brain/constants";
-import slowTrading from "@/lib/slowTrading";
+import slowTrading from "@/lib/runtime";
 import { describe, expect, it } from "vitest";
 
 describe("slow dashboard global config", () => {

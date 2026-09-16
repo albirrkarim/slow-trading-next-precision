@@ -3,7 +3,7 @@ import type {
   TradeHistoryVolatility,
   VolatilityPoint,
 } from "../../lib/dynamic";
-import type { TradeHistorySimple } from "../../lib/dynamic/backtest-volatility/type";
+import type { TradeHistorySimple } from "../../lib/backtest/type";
 import type { Position } from "../../lib/trading/models";
 import { DEFAULT_COLORS } from "@/components/client/constants";
 import { green, red } from "@mui/material/colors";

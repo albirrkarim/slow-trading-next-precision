@@ -1,4 +1,4 @@
-import slowTrading, { type SlowTradingModeState } from "@/lib/slowTrading";
+import slowTrading, { type SlowTradingModeState } from "@/lib/runtime";
 import { sellPosition } from "@/lib/trading/models/utils";
 import fs from "fs-extra";
 import { createTestPosition } from "../fixtures/position";
@@ -48,7 +48,7 @@ describe("slow specs runtime", () => {
   });
 
   it("runs the five configurable production stage schedulers", async () => {
-    const runnerSource = await fs.readFile("src/lib/slowTrading/runner.ts", "utf8");
+    const runnerSource = await fs.readFile("src/lib/runtime/runner.ts", "utf8");
 
     // PROD:SPEEDUP_STAGE
     // PROD:STANDARD_MONITORING_STAGE
@@ -405,15 +405,15 @@ describe("slow specs runtime", () => {
 
     // PROD:RUNNER_BOOTSTRAP_ON_SERVER_START
     expect(source).toContain("PROD:RUNNER_BOOTSTRAP_ON_SERVER_START");
-    expect(source).toContain("@/lib/slowTrading/singleton");
+    expect(source).toContain("@/lib/runtime/singleton");
     expect(source).toContain("getSlowTradingRunner()");
-    expect(source).not.toContain('import("@/lib/slowTrading")');
+    expect(source).not.toContain('import("@/lib/runtime")');
   });
 
   it("keeps Quick Backtest out of the shared production runtime facade", async () => {
     const [facade, quickBacktest, route] = await Promise.all([
-      fs.readFile("src/lib/slowTrading/index.ts", "utf8"),
-      fs.readFile("src/lib/slowTrading/quick-backtest.ts", "utf8"),
+      fs.readFile("src/lib/runtime/index.ts", "utf8"),
+      fs.readFile("src/lib/runtime/quick-backtest.ts", "utf8"),
       fs.readFile("src/pages/api/slow-trading/quick-backtest.ts", "utf8"),
     ]);
 
@@ -422,15 +422,15 @@ describe("slow specs runtime", () => {
       'import slowQuickBacktest from "./quick-backtest"',
     );
     expect(route).toContain("PROD:QUICK_BACKTEST_DEMAND_ONLY");
-    expect(route).toContain("@/lib/slowTrading/quick-backtest");
+    expect(route).toContain("@/lib/runtime/quick-backtest");
     expect(quickBacktest).toContain("PROD:QUICK_BACKTEST_DEMAND_ONLY");
     expect(quickBacktest).toContain(
-      'await import(\n    "../dynamic/backtest-volatility"',
+      'await import(\n    "../backtest"',
     );
   });
 
   it("reuses the dev runner singleton unless the implementation changes", async () => {
-    const source = await fs.readFile("src/lib/slowTrading/singleton.ts", "utf8");
+    const source = await fs.readFile("src/lib/runtime/singleton.ts", "utf8");
     const devBranch = source.slice(
       source.indexOf('process.env.NODE_ENV !== "production"'),
       source.indexOf("} else {", source.indexOf('process.env.NODE_ENV !== "production"')),

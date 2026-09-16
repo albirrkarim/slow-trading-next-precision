@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import slowTrading from "@/lib/slowTrading";
+import slowTrading from "@/lib/runtime";
 
 function parseOptionalBoolean(value: unknown): boolean | undefined {
   if (value === undefined || value === null || value === "") {

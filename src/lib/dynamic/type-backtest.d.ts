@@ -2,7 +2,7 @@ import type {
     TradeHistoryDetail,
     TradeHistorySimple,
     TradePositionHistory,
-} from "@/lib/dynamic/backtest-volatility/type";
+} from "@/lib/backtest/type";
 import { type IntervalKlines } from "@/lib/exchange/platform/tokocrypto";
 import type { TradingMode } from "@/lib/exchange/types";
 import type { DynamicTradeAlgorithm } from "../brain/algorithms";

@@ -4,7 +4,7 @@ import type { Marker } from "@/components/LiveDashboard/converter";
 import TradeChartBase from "@/components/LiveDashboard/Shared/TradeChartBase";
 import ButtonDialog from "@/components/ui/ButtonDialog";
 import type { GetIncomePerMonthReturn } from "@/lib/evaluate";
-import type { TradeHistory } from "@/lib/dynamic/backtest-volatility/type";
+import type { TradeHistory } from "@/lib/backtest/type";
 import type { Position } from "@/lib/trading/models";
 import {
     AccordionDetails,

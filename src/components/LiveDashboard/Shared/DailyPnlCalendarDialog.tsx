@@ -16,7 +16,7 @@ import {
   Typography,
 } from "@mui/material";
 import type { Position } from "@/lib/trading/models";
-import slowTradingDailyPerformance from "@/lib/slowTrading/daily-performance";
+import slowTradingDailyPerformance from "@/lib/runtime/daily-performance";
 import { type ReactNode, useMemo, useState } from "react";
 
 export type DailyPnlCalendarTrade = {

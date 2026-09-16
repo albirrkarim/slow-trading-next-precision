@@ -1,7 +1,7 @@
 import type { EntryRecommendation } from "@/lib/brain";
-import { resolveBacktestExitDecision } from "@/lib/dynamic/backtest-volatility/exit-policy";
+import { resolveBacktestExitDecision } from "@/lib/backtest/exit-policy";
 import { TradingMode } from "@/lib/exchange";
-import { decideSidewaysExitForStrongCandidates } from "@/lib/slowTrading/exit-sideways/decision";
+import { decideSidewaysExitForStrongCandidates } from "@/lib/runtime/exit-sideways/decision";
 import { dynamicExit } from "@/lib/trading/execute/models/exit";
 import { TRADE_MESSAGE } from "@/lib/trading/message";
 import type { Position, TradingModelMemory } from "@/lib/trading/models";

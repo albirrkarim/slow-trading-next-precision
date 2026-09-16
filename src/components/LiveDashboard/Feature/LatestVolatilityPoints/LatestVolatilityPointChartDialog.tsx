@@ -4,7 +4,7 @@ import TradeChartBase from "@/components/LiveDashboard/Shared/TradeChartBase";
 import ButtonDialog from "@/components/ui/ButtonDialog";
 import type { VolatilityPoint } from "@/lib/dynamic";
 import { TradingMode } from "@/lib/exchange/types";
-import type { SlowTradingDashboardState } from "@/lib/slowTrading";
+import type { SlowTradingDashboardState } from "@/lib/runtime";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
 import { Box, IconButton, Typography } from "@mui/material";
 import moment from "moment-timezone";

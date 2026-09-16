@@ -19,8 +19,8 @@ import type {
   DashboardState,
 } from "@/components/LiveDashboard/Navbar/types";
 import { DEFAULT_DYNAMIC_TRADE_CONFIG_PRODUCTION } from "@/lib/dynamic";
-import slowTradingAccountConfig from "@/lib/slowTrading/account-config";
-import type { SlowTradingAccount } from "@/lib/slowTrading";
+import slowTradingAccountConfig from "@/lib/runtime/account-config";
+import type { SlowTradingAccount } from "@/lib/runtime";
 import blackSwan from "@/lib/trading/black-swan";
 import { createTestPosition } from "../fixtures/position";
 

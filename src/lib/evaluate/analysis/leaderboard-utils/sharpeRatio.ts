@@ -1,5 +1,5 @@
 import moment from "moment-timezone";
-import { type GrowthOvertimeDetail } from "../../../dynamic/backtest-volatility/type";
+import { type GrowthOvertimeDetail } from "../../../backtest/type";
 
 /**
  * Calculate Sharpe Ratio for the trading strategy

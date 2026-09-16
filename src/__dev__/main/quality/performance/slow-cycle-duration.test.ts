@@ -1,5 +1,5 @@
 import type { EntryRecommendation } from "@/lib/brain";
-import type { SlowTradingCyclePerformanceEntry } from "@/lib/slowTrading/performance";
+import type { SlowTradingCyclePerformanceEntry } from "@/lib/runtime/performance";
 import fs from "fs-extra";
 import os from "os";
 import path from "path";
@@ -176,7 +176,7 @@ describe("slow cycle performance", () => {
   });
 
   it("records cycle section durations so the slowest leaf step is visible", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const slowTradingStorage = slowTrading.storage;
     const { TradingMode } = await import("@/lib/exchange");
     const entries: SlowTradingCyclePerformanceEntry[] = [];

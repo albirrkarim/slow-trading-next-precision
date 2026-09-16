@@ -9,7 +9,7 @@ import { describe, expect, it, vi } from "vitest";
 import QuickBacktestTradeHistory, {
   filterQuickBacktestTradeHistory,
 } from "@/components/LiveDashboard/Feature/QuickBacktestTradeHistory";
-import type { SlowQuickBacktestResult } from "@/lib/slowTrading";
+import type { SlowQuickBacktestResult } from "@/lib/runtime";
 
 vi.mock("@/components/LiveDashboard/Reporting/TradesTableSection", () => ({
   TradesTableSection: ({

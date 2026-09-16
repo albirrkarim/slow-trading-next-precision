@@ -25,8 +25,8 @@ import { timeMsToReadable } from "@/lib/datasets/utils";
 import type { BacktestReturnDynamic, VolatilityPoint } from "@/lib/dynamic";
 import { isDevBacktestEnabled } from "@/lib/env/devBacktest";
 import { runWithExchangeAccount } from "@/lib/exchange/account-context";
-import slowTradingAccountConfig from "@/lib/slowTrading/account-config";
-import slowTradingStorage from "@/lib/slowTrading/storage";
+import slowTradingAccountConfig from "@/lib/runtime/account-config";
+import slowTradingStorage from "@/lib/runtime/storage";
 import { tradeLog } from "@/lib/trading";
 import fs from "fs-extra";
 import md5 from "md5";
@@ -95,7 +95,7 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
       import("@/lib/brain/algorithms"),
       import("@/lib/brain/algorithms/v4/decisions"),
       import("@/lib/brain/algorithms/v4/decisions/v12/feature/utils"),
-      import("@/lib/dynamic/backtest-volatility"),
+      import("@/lib/backtest"),
       import("@/lib/dynamic/utils/history"),
       import("@/lib/dynamic/utils/nn/data/features/constants"),
       import("@/lib/dynamic/utils/report"),

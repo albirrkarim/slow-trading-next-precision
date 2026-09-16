@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import slowTradingTradeHistoryPagination, {
   type TradeHistoryPagePosition,
-} from "@/lib/slowTrading/mcp/history-pagination";
+} from "@/lib/runtime/mcp/history-pagination";
 
 function trade(id: string, openedAt: number): TradeHistoryPagePosition {
   return { account: "main", closed: { t: openedAt + 10 }, direction: "LONG", opened: { t: openedAt, vPoint: { id } }, symbol: "BTC" };

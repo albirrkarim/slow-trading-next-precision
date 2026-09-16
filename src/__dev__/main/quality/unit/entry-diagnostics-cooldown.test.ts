@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({
   loadStorage: vi.fn(),
 }));
 
-vi.mock("@/lib/slowTrading", () => ({
+vi.mock("@/lib/runtime", () => ({
   default: {
     signals: {
       diagnostics: {

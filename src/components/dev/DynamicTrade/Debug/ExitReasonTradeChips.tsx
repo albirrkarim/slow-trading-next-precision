@@ -6,7 +6,7 @@ import {
     MonthlyTradeChartDialog,
 } from "@/components/dev/Evaluation/MonthlyProfitReport";
 import type { GetIncomePerMonthReturn } from "@/lib/evaluate";
-import type { TradeHistory } from "@/lib/dynamic/backtest-volatility/type";
+import type { TradeHistory } from "@/lib/backtest/type";
 import {
     Box,
     Chip,

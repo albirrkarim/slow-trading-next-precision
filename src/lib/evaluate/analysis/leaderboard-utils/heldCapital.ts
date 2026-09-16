@@ -1,4 +1,4 @@
-import type { GrowthOvertimeDetail } from "../../../dynamic/backtest-volatility/type";
+import type { GrowthOvertimeDetail } from "../../../backtest/type";
 
 /**
  * Result metrics for held capital & turnover for a series.

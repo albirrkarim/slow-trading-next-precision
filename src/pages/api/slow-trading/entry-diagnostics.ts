@@ -2,7 +2,7 @@ import slowTrading, {
   type SlowTradingAccountEntryDiagnostics,
   type SlowTradingEntryDiagnosticsSnapshot,
   type SlowTradingSharedEntryGuardDiagnostic,
-} from "@/lib/slowTrading";
+} from "@/lib/runtime";
 import { tradeLog } from "@/lib/trading/helper/log";
 import binanceRequestCoordinator, {
   BinanceCooldownError,

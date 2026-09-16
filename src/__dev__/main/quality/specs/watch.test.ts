@@ -3,11 +3,11 @@ import type {
   EntryRecommendation,
 } from "@/lib/brain/algorithms/type-execute";
 import { VOLATILITY_THRESHOLD } from "@/lib/brain/constants";
-import { tryExecuteBacktestAveraging } from "@/lib/dynamic/backtest-volatility/trading";
+import { tryExecuteBacktestAveraging } from "@/lib/backtest/trading";
 import { TradingMode } from "@/lib/exchange";
 import { runWithExchangeAccount } from "@/lib/exchange/account-context";
 import type { VolatilityPoint } from "@/lib/dynamic";
-import slowTrading from "@/lib/slowTrading";
+import slowTrading from "@/lib/runtime";
 import { executeAveraging } from "@/lib/trading/execute/execute-averaging";
 import adaptiveAveraging from "@/lib/trading/adaptive-averaging";
 import type {

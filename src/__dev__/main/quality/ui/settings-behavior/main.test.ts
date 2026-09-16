@@ -1,4 +1,4 @@
-import slowTradingAutoRemoveSymbols from "@/lib/slowTrading/auto-remove-symbols";
+import slowTradingAutoRemoveSymbols from "@/lib/runtime/auto-remove-symbols";
 import fs from "fs-extra";
 import os from "os";
 import path from "path";
@@ -181,7 +181,7 @@ describe("settings behavior: main trading config", () => {
   });
 
   it("keeps an open position managed when its coin is removed from trade config", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const storage = slowTrading.storage.data.createDefault();
 
     storage.config.symbols = ["SUI", "AAVE"];

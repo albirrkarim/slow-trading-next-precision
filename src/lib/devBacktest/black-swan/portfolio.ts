@@ -2,7 +2,7 @@ import type { DynamicTradeConfig, VolatilityPoint } from "@/lib/dynamic";
 import {
   resolveBacktestExitDecision,
   type BacktestExitDecision,
-} from "@/lib/dynamic/backtest-volatility/exit-policy";
+} from "@/lib/backtest/exit-policy";
 import type { UnifiedKline } from "@/lib/exchange/types";
 import blackSwan, { type BlackSwanConfig } from "@/lib/trading/black-swan";
 import { TRADE_MESSAGE } from "@/lib/trading/message";
@@ -10,7 +10,7 @@ import type {
   Position,
   PositionCloseReason,
 } from "@/lib/trading/models";
-import { BACKTEST_ONE_SIDE_FEE_RATIO } from "@/lib/dynamic/backtest-volatility/constants";
+import { BACKTEST_ONE_SIDE_FEE_RATIO } from "@/lib/backtest/constants";
 import {
   buildSlowWatchReserveState,
   getNextWatchStep,
@@ -18,8 +18,8 @@ import {
   isActionableAveragingVolatilityLevel,
   markReservedWatchStepUsed,
   resolveAveragingRescueProjection,
-} from "@/lib/slowTrading/watch-reserve";
-import slowTradingStages from "@/lib/slowTrading/stages";
+} from "@/lib/runtime/watch-reserve";
+import slowTradingStages from "@/lib/runtime/stages";
 import type {
   BlackSwanBacktestResult,
   BlackSwanSavingsBacktestPoint,

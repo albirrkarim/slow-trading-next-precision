@@ -3,7 +3,7 @@ import type { AdaptiveAveragingConfig } from "@/lib/dynamic";
 import type { TradingMode } from "@/lib/exchange/types";
 import slowTradingClient, {
   type SlowTradingDashboardState,
-} from "@/lib/slowTrading/client";
+} from "@/lib/runtime/client";
 import { resolveEntryLeverage } from "@/lib/trading/execute/entry-leverage";
 import type { TradingModelConfig } from "@/lib/trading/models";
 import postAverageStopLoss from "@/lib/trading/post-average-stop-loss";

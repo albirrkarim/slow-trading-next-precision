@@ -9,7 +9,7 @@ import type { ExchangeType } from "@/lib/exchange";
 import type {
   SlowQuickBacktestResult,
   SlowTradingAccount,
-} from "@/lib/slowTrading";
+} from "@/lib/runtime";
 
 const COMBINED_ACCOUNT_VALUE = "";
 

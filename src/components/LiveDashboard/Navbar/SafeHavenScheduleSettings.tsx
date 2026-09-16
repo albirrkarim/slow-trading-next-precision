@@ -16,7 +16,7 @@ import {
 import { useState } from "react";
 
 import ButtonDialog from "@/components/ui/ButtonDialog";
-import slowTradingSafeHavenSchedule from "@/lib/slowTrading/safe-haven-schedule";
+import slowTradingSafeHavenSchedule from "@/lib/runtime/safe-haven-schedule";
 
 import SettingsInfoField from "./SettingsInfoField";
 import type {

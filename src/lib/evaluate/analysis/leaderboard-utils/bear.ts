@@ -1,6 +1,6 @@
 import { timeMsToReadable } from "@/lib/datasets/utils";
 import { type Kline } from "@/lib/exchange/platform/tokocrypto";
-import type { GrowthOvertimeDetail } from "../../../dynamic/backtest-volatility/type";
+import type { GrowthOvertimeDetail } from "../../../backtest/type";
 
 export interface BearRange {
   start: number; // timestamp (ms)

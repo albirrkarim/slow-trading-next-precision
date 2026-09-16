@@ -1,7 +1,7 @@
 import { type BacktestReturnDynamic } from "@/lib/dynamic";
 import { type GetIncomePerMonthReturn } from "../stability";
 
-import { type GrowthOvertimeDetail } from "../../../dynamic/backtest-volatility/type";
+import { type GrowthOvertimeDetail } from "../../../backtest/type";
 import type { ValueRange } from "./type-dynamic-report";
 
 export function computeMonthlyGain(

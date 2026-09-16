@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import slowTrading, { type SlowTradingMode } from "@/lib/slowTrading";
+import slowTrading, { type SlowTradingMode } from "@/lib/runtime";
 import { tradeLog } from "@/lib/trading/helper/log";
 
 function parseMode(value: unknown): SlowTradingMode | null {

@@ -1,5 +1,5 @@
 import type { VolatilityPoint } from "@/lib/dynamic";
-import type { SlowTradingModeState } from "@/lib/slowTrading/types";
+import type { SlowTradingModeState } from "@/lib/runtime/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestPosition } from "../fixtures/position";
 
@@ -98,7 +98,7 @@ describe("slow trading notifications", () => {
     const {
       buildSlowTradingManagementActions,
       notifySlowTradingManagementActions,
-    } = await import("@/lib/slowTrading/notifications");
+    } = await import("@/lib/runtime/notifications");
     const notification = createDefaultDashboardNotificationConfig("SLOW");
     notification.email.enabled = true;
     notification.telegram.types.find(
@@ -148,7 +148,7 @@ describe("slow trading notifications", () => {
       "@/lib/notification/config"
     );
     const { notifyHighVolatilityLevels } = await import(
-      "@/lib/slowTrading/notifications"
+      "@/lib/runtime/notifications"
     );
     const modeState = {} as SlowTradingModeState;
     const notification = createDefaultDashboardNotificationConfig("SLOW");
@@ -228,7 +228,7 @@ describe("slow trading notifications", () => {
     const {
       notifyStalePositions,
       STALE_POSITION_THRESHOLD_MS,
-    } = await import("@/lib/slowTrading/notifications");
+    } = await import("@/lib/runtime/notifications");
     const targetTime = Date.UTC(2026, 6, 4, 2);
     const volatilityPoints = [
       {
@@ -329,7 +329,7 @@ describe("slow trading notifications", () => {
     const {
       LONG_OPEN_POSITION_THRESHOLD_MS,
       notifyLongOpenPositions,
-    } = await import("@/lib/slowTrading/notifications");
+    } = await import("@/lib/runtime/notifications");
     const entryTime = Date.UTC(2026, 6, 4, 2);
     const notification = createDefaultDashboardNotificationConfig("SLOW");
     notification.email.enabled = true;
@@ -385,7 +385,7 @@ describe("slow trading notifications", () => {
       notifyHighVolatilityLevels,
       notifyStalePositions,
       STALE_POSITION_THRESHOLD_MS,
-    } = await import("@/lib/slowTrading/notifications");
+    } = await import("@/lib/runtime/notifications");
     const notification = createDefaultDashboardNotificationConfig("SLOW");
     notification.email.enabled = true;
 

@@ -1,7 +1,7 @@
 import {
   calculateBacktestFeeAdjustedNetProfitUSDT,
   resolveBacktestExitDecision,
-} from "@/lib/dynamic/backtest-volatility/exit-policy";
+} from "@/lib/backtest/exit-policy";
 import { TradingMode } from "@/lib/exchange";
 import { dynamicExit } from "@/lib/trading/execute/models/exit";
 import { TRADE_MESSAGE } from "@/lib/trading/message";

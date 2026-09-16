@@ -22,10 +22,10 @@ import type {
   DayPreviewSummary,
   OpenPositionSummary,
 } from "./types";
-import slowTradingClient from "@/lib/slowTrading/client";
-import slowTradingAccountConfig from "@/lib/slowTrading/account-config";
-import slowTradingDailyPnlLimit from "@/lib/slowTrading/daily-pnl-limit";
-import type { SlowTradingAccount } from "@/lib/slowTrading";
+import slowTradingClient from "@/lib/runtime/client";
+import slowTradingAccountConfig from "@/lib/runtime/account-config";
+import slowTradingDailyPnlLimit from "@/lib/runtime/daily-pnl-limit";
+import type { SlowTradingAccount } from "@/lib/runtime";
 
 function computeLockedPositionValue(
   position: NonNullable<DashboardState>["openPositions"][number],

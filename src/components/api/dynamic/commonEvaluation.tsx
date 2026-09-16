@@ -8,7 +8,7 @@ import {
     type TradingPerformance,
 } from "@/lib/evaluate";
 import { type Aggregated, aggregatePositions } from "@/lib/evaluate/analysis/volatility";
-import { type TradeHistory } from "@/lib/dynamic/backtest-volatility/type";
+import { type TradeHistory } from "@/lib/backtest/type";
 import { type Position } from "@/lib/trading/models";
 
 export interface CommonEvaluation {

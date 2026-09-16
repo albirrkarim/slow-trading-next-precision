@@ -47,7 +47,7 @@ describe("SLOW multi-account Black Swan evidence", () => {
   });
 
   it("captures BTC once and fans the evidence out to account state", async () => {
-    const slowTrading = (await import("@/lib/slowTrading")).default;
+    const slowTrading = (await import("@/lib/runtime")).default;
     const storage = slowTrading.storage.data.createDefault();
     const template = storage.runtime.exchangeAccounts[0];
     storage.config.blackSwan!.enabled = true;

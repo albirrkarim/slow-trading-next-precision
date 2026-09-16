@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   reset: vi.fn(async () => ({ current: null, logs: [] })),
 }));
 
-vi.mock("@/lib/slowTrading", () => ({
+vi.mock("@/lib/runtime", () => ({
   default: {
     binanceHealth: { reset: mocks.reset },
     storage: { logs: { appendError: mocks.appendError } },
