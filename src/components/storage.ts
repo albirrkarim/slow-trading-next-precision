@@ -61,6 +61,16 @@ const SLOW_FILES = {
     balanceSnapshots: `${SLOW_TRADING_DIR}/sandbox/balance_snapshots.json`,
     historyRoot: `${SLOW_TRADING_DIR}/sandbox/history`,
   },
+  precision: {
+    testCaseRoot: `${SLOW_TRADING_DIR}/prod-test-case`,
+    backtestResultRoot: `${SLOW_TRADING_DIR}/backtest-result`,
+    activeCapture: (mode: "live" | "sandbox") =>
+      `${SLOW_TRADING_DIR}/prod-test-case/active-${mode}.json`,
+    testCase: (mode: "live" | "sandbox", startTime: number, endTime: number) =>
+      `${SLOW_TRADING_DIR}/prod-test-case/${mode}-${startTime}-${endTime}.json`,
+    backtestResult: (name: string) =>
+      `${SLOW_TRADING_DIR}/backtest-result/${name}`,
+  },
 
   getCachePrefix: (prefix: string) =>
     `./storage/cache/${prefix}/${moment().format("DD_MMM_YYYY_HH")}_`,

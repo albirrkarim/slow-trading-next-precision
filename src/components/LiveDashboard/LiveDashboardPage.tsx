@@ -40,6 +40,7 @@ import TypographyTooltip from "../ui/TypographyTooltip";
 import LatestVolatilityPoints from "./Feature/LatestVolatilityPoints";
 import OpenPositions from "./Feature/OpenPositions";
 import PriceNormFeature from "./Feature/PriceNorm";
+import ProductionTestCase from "./Feature/ProductionTestCase";
 import QuickBacktest from "./Feature/QuickBacktest";
 import SlowTradingQueuesPanel from "./Feature/SlowTradingQueues";
 import VPointsFrequency from "./Feature/VPointsFrequency";
@@ -1053,6 +1054,9 @@ export default function DynamicTradeHistoryPage({
         )}
 
         <Box sx={{ my: 4 }}>
+          {dashboardState && (
+            <ProductionTestCase mode={dashboardState.activeMode} />
+          )}
           <SlowTradingQueuesPanel dashboardState={dashboardState} />
         </Box>
 
