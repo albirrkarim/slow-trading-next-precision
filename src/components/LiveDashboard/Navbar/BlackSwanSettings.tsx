@@ -1,11 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import {
   Alert,
   Box,
-  Button,
   Chip,
   type ChipProps,
   FormControlLabel,
@@ -15,7 +13,6 @@ import {
   Switch,
   Typography,
 } from "@mui/material";
-import Link from "next/link";
 import blackSwanModel, {
   type BlackSwanConfig,
   type BlackSwanStatus,
@@ -176,17 +173,6 @@ export default function BlackSwanSettings({
                     />
                   </Stack>
                 </Box>
-
-                <Button
-                  component={Link}
-                  endIcon={<OpenInNewIcon />}
-                  href="/dev/black-swan"
-                  rel="noreferrer"
-                  target="_blank"
-                  variant="outlined"
-                >
-                  Open candle backtest
-                </Button>
               </Box>
 
               <Alert severity={config.enabled ? "success" : "warning"}>

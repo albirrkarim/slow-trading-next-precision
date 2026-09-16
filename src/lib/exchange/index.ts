@@ -85,11 +85,6 @@ export function getExchange(
   return exchange;
 }
 
-/**
- * Default exchange instance (uses configured default)
- */
-export const exchange = getExchange();
-
 // Re-export types and interfaces
 export type {
   ExchangeType,
