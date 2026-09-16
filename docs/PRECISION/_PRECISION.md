@@ -119,11 +119,32 @@ Define the detailed data types in `docs/PRECISION/DATA_TYPE.md`.
 Design the runtime engine in `docs/PRECISION/RUNTIME_ENGINE.md` alongside the
 backtest requirements in `docs/PRECISION/BACKTEST.md`.
 
-# G. Definition of Done
+# G. Resolving
 
-The Precision Trading System is complete when:
+The other document except `_PRECISION.md` of this project is just raw and unchecked by human.
 
-- The Multi, Hedge, and Streak strategies use the shared runtime engine.
+so its not a solid instruction.
+
+For example the data type / dataset form, it might be adjusted later depend on the requirement of this backbone document.
+
+# H. Milestone
+
+Considering the time & cost of making this, and how the accurate between user want and the actual implementation, we must break it down into milestone.
+
+## Version 1 (Base & Foundation of Precision)
+
+- making Precision Trading System but only considering the instance
+
+/Users/susanto/Documents/OpenSource/trading/slow-trading-next-multi
+
+- Make sure the precision checker page is good.
+
+- Backtest dataset is good
+
+- The dashboard is exactly like the
+
+/Users/susanto/Documents/OpenSource/trading/slow-trading-next-multi
+
 - Backtest, sandbox, and live modes execute through the same core runtime path.
 - A recorded production test case can be compared with a backtest for the same
   period, strategy, configuration, and starting state.
@@ -139,13 +160,15 @@ Backtest
 - it should simulate when the vpoints are forming using klines data
 - the averaging execution is not exactly on the vpoint time because real condition of production vpoint have retrace about 1% first, so looking time and price on the klines
 
-# H. Resolving
+## Version 2 (Flexible Strategy)
 
-The other document except `_PRECISION.md` of this project is just raw and unchecked by human.
+- Extend runtime + data types for Hedge and Streak strategies.
 
-so its not a solid instruction.
+- Reuse the same precision checker and backtest dataset across all three.
 
-For example the data type / dataset form, it might be adjusted later depend on the requirement of this backbone document.
+/Users/susanto/Documents/OpenSource/trading/slow-trading-next-streak
+/Users/susanto/Documents/OpenSource/trading/slow-trading-next-multi
+/Users/susanto/Documents/OpenSource/trading/slow-trading-next-hedge
 
 # I. References
 
