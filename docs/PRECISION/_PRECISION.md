@@ -133,19 +133,14 @@ Considering the time & cost of making this, and how the accurate between user wa
 
 ## Version 1 (Base & Foundation of Precision)
 
-- making Precision Trading System but only considering the instance
+Multi instance only:
+`/Users/susanto/Documents/OpenSource/trading/slow-trading-next-multi`.
 
-/Users/susanto/Documents/OpenSource/trading/slow-trading-next-multi
-
-- Make sure the precision checker page is good.
-
-- Backtest dataset is good
-
-- The dashboard is exactly like the
-
-/Users/susanto/Documents/OpenSource/trading/slow-trading-next-multi
-
-- Backtest, sandbox, and live modes execute through the same core runtime path.
+- One shared runtime engine drives backtest, sandbox, and live through the same
+  core runtime path.
+- The Precision Checker page satisfies Section D.
+- The backtest dataset reconstructs vPoint formation per the note below.
+- The dashboard matches the Multi instance.
 - A recorded production test case can be compared with a backtest for the same
   period, strategy, configuration, and starting state.
 - The Precision Checker pairs positions by their entry `vPoint.id` and reports
@@ -159,6 +154,12 @@ Backtest
 
 - it should simulate when the vpoints are forming using klines data
 - the averaging execution is not exactly on the vpoint time because real condition of production vpoint have retrace about 1% first, so looking time and price on the klines
+
+```
+----> [the peak price] --> klines goes on --> retrace 1% first then we mark the "peak price" as the vpoint right. so the averaging is not exactly on the "peak price" back then
+```
+
+- You must not reinventing / modify the vpoints detection function just copy it on the instance code
 
 ## Version 2 (Flexible Strategy)
 
