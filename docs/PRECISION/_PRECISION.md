@@ -180,37 +180,3 @@ Backtest
 /Users/susanto/Documents/OpenSource/trading/slow-trading-next-multi
 /Users/susanto/Documents/OpenSource/trading/slow-trading-next-hedge
 ```
-
-# J. FAQ
-
-Yes — a few, and they're worth asking now because this repo is currently docs-only. No `package.json`, no `src`. So V1 starts with a real migration from the Multi instance, and these decisions shape everything after:
-
-1. **Base application copy.** `FOLDER.md` says "Use Multi as the application base, copy proven libraries." Should I start by copying the entire Multi app (code, configs, UI, tests) into this repo and then refactor, rather than rebuilding selectively?
-
-yes, copy as base — that preserves proven behavior and matches the spec.
-
-But think of the good folder structure first, i need this new project is good folder structure. and architecutre. read this `AGENTS.md`
-
-2. **Production test-case data.** V1 requires a recorded production test case compared with a backtest. Do you already have recorded production position JSON and historical datasets (like the `SUI_6month.json` format in `BACKTEST.md`) available, or should V1 ship the capture + dataset tooling and you record a fresh test case after? If data exists, where does it live?
-
-I dont have it.
-
-3. **Live execution scope in V1.** The shared runtime covers live, sandbox, and backtest — but for delivery, is live trading expected to be fully wired through the new runtime on day one, or is V1 primarily about backtest + precision checker with live going through the same refactored path but gated to preserve existing behavior exactly?
-
-My read of the backbone: preserve live behavior 1:1, refactor it onto the shared path, don't redesign it. Confirm that's the intent.
-
-4. **The ~1% retrace rule.** The backbone says averaging doesn't happen exactly at the peak — production waits for roughly 1% retrace first — and that the vPoint detection function must be copied as-is, not reinvented. Is the retrace logic part of that existing detection function (so copying it covers everything), or is it a separate timing behavior I need to model from klines? If separate, is 1% a hard constant or configurable per symbol?
-
-Just mimic the current production, also maybe see the trade history on the storage, so you will understand the timing fully.
-
-5. **Symbols and datasets for V1.** `BACKTEST.md` uses SUI as the example dataset. Is SUI/USDT the V1 target, and does the Multi repo have existing dataset-generation scripts I should port rather than write fresh?
-
-i dont have, decide dataset form / type.
-
-6. **Git workflow.** Want me to work on a branch like `codex/v1-multi-runtime`, with each milestone slice committed separately, or straight onto the current branch?
-
-Just use the current branch
-
-My default plan if you're happy with the recommendations: copy Multi as the base, extract the shared runtime and strategy plugin boundary, port the backtest dataset/runner, add the precision capture + checker page, and keep live behavior identical — with `npm run type` and `npm run quality` green at every slice.
-
-Go for it.
