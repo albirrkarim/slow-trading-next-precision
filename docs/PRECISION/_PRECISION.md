@@ -26,6 +26,13 @@ and production.
 
 Build a trading-system foundation that is scalable, precise, and flexible.
 
+The primary purpose of the Precision Trading System is to make backtest
+behavior and results reproduce production behavior and results as closely to
+1:1 as the available historical market data permits. Given the same period,
+strategy, configuration, and starting state, backtest and production must use
+the same runtime and strategy path. Their differences must be limited to
+environment adapters.
+
 - **Scalable:** The runtime must use memory efficiently and coordinate external
   API calls carefully as the number of accounts, symbols, and strategies grows.
 - **Precise:** Backtest and production must produce reproducible and closely
