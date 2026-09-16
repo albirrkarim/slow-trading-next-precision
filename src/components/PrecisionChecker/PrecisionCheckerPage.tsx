@@ -15,6 +15,7 @@ import axios from "axios";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import moment from "moment-timezone";
 import { endpoints } from "@/components/endpoints";
+import SidebarButton from "@/components/ui/SidebarButton";
 import type {
   PrecisionBacktestResultSummary,
   PrecisionComparisonResult,
@@ -106,11 +107,15 @@ export default function PrecisionCheckerPage() {
 
   return (
     <Stack spacing={3} sx={{ p: 3, maxWidth: 1200, mx: "auto" }}>
-      <Stack>
-        <Typography variant="h5">Precision Checker</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Compare final production and backtest positions for equivalent runs.
-        </Typography>
+      <Stack direction="row" alignItems="center" spacing={1}>
+        <SidebarButton />
+        <Stack>
+          <Typography variant="h5">Precision Checker</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Compare final production and backtest positions for equivalent
+            runs.
+          </Typography>
+        </Stack>
       </Stack>
 
       {error && <Alert severity="error">{error}</Alert>}

@@ -17,6 +17,8 @@ import {
 } from "@mui/material";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
 import TravelExploreIcon from "@mui/icons-material/TravelExplore";
+import QueryStatsIcon from "@mui/icons-material/QueryStats";
+import FactCheckIcon from "@mui/icons-material/FactCheck";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React from "react";
@@ -32,6 +34,18 @@ const sidebarSections = [
                 href: "/slow",
                 icon: <DashboardIcon />,
                 description: "Live dashboard for the standalone slow trading workflow.",
+            },
+            {
+                text: "Backtest",
+                href: "/backtest",
+                icon: <QueryStatsIcon />,
+                description: "Configure, run, and inspect precision backtests through the shared runtime.",
+            },
+            {
+                text: "Precision Checker",
+                href: "/precision-checker",
+                icon: <FactCheckIcon />,
+                description: "Compare final production and backtest positions for equivalent runs.",
             },
         ],
     },

@@ -20,6 +20,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import moment from "moment-timezone";
 
 import { endpoints } from "@/components/endpoints";
+import SidebarButton from "@/components/ui/SidebarButton";
 import type { BacktestDatasetSummary } from "@/lib/backtest/dataset";
 import type { PrecisionTestCaseSummary } from "@/lib/precision";
 
@@ -165,12 +166,15 @@ export default function BacktestDashboardPage() {
 
   return (
     <Stack spacing={3} sx={{ p: 3, maxWidth: 1200, mx: "auto" }}>
-      <Stack>
-        <Typography variant="h5">Backtest</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Re-run a recorded production test case through the shared runtime on
-          a kline dataset.
-        </Typography>
+      <Stack direction="row" alignItems="center" spacing={1}>
+        <SidebarButton />
+        <Stack>
+          <Typography variant="h5">Backtest</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Re-run a recorded production test case through the shared runtime
+            on a kline dataset.
+          </Typography>
+        </Stack>
       </Stack>
 
       {error && <Alert severity="error">{error}</Alert>}
