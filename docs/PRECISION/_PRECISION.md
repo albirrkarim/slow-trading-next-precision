@@ -123,7 +123,7 @@ backtest requirements in `docs/PRECISION/BACKTEST.md`.
 
 The other document except `_PRECISION.md` of this project is just raw and unchecked by human.
 
-so its not a solid instruction.
+so its not a solid form of instruction.
 
 For example the data type / dataset form, it might be adjusted later depend on the requirement of this backbone document.
 
