@@ -96,7 +96,7 @@ The architecture must be flexible enough to accommodate:
 
 # F. Migration Plan
 
-## What should not be migrated into this system
+## F.1 What should not be migrated into this system
 
 Because i want to make this system minimal
 
@@ -105,7 +105,7 @@ Because i want to make this system minimal
 - page /dev/coins
 - page /dev/black-swan
 
-## AI Subs agent
+## F.2 AI Subs agent
 
 We need to split the task into plan and coding, so the token usage could be efficient
 
@@ -131,7 +131,7 @@ planing will be on `docs/PRECISION/HIGH_LEVEL/TECHNICAL/*.md`
 
 Using GPT-5.6 SOL Medium thinking. to migrating the code and modifying the code.
 
-## Planning first
+## F.3 Planning first
 
 ### 1. Folder structure
 
