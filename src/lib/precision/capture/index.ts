@@ -8,6 +8,7 @@ import fs from "fs-extra";
 import md5 from "md5";
 import type {
   PrecisionRunConfigV1,
+  PrecisionSharedVolatilityV1,
   PrecisionStrategyId,
   ProdTestCaseV1,
 } from "../types";
@@ -28,6 +29,7 @@ interface ActiveCaptureRecord {
   configFingerprint: string;
   config: PrecisionRunConfigV1;
   initialState: SlowTradingModeState;
+  sharedVolatility: PrecisionSharedVolatilityV1;
 }
 
 /** Public summary of one active capture without heavy state payloads. */
@@ -112,6 +114,35 @@ function fingerprintRunConfig(config: PrecisionRunConfigV1): string {
   return md5(stableStringify(config));
 }
 
+/**
+ * Reads the shared public volatility memory per symbol so a backtest can
+ * reproduce the exact vPoint-detection starting state.
+ */
+async function readSharedVolatility(exchangeType: string) {
+  const result: PrecisionSharedVolatilityV1 = {};
+  const volatilityRoot = FILES.slow.volatility(
+    exchangeType as Parameters<typeof FILES.slow.volatility>[0],
+  );
+  if (!(await fs.pathExists(volatilityRoot))) {
+    return result;
+  }
+
+  for (const entry of await fs.readdir(volatilityRoot)) {
+    if (!entry.endsWith(".json")) {
+      continue;
+    }
+    const symbol = entry.slice(0, -".json".length);
+    const memory = await fs.readJSON(
+      `${volatilityRoot}/${entry}`,
+    );
+    if (memory && Array.isArray(memory.lastVolatility)) {
+      result[symbol] = memory;
+    }
+  }
+
+  return result;
+}
+
 /** Converts one persisted position into the canonical V1 precision shape. */
 function canonicalizePosition(
   position: Position,
@@ -166,6 +197,9 @@ async function start(params: {
       configFingerprint: fingerprintRunConfig(config),
       config,
       initialState: JSON.parse(JSON.stringify(storage.modes[mode])),
+      sharedVolatility: await readSharedVolatility(
+        storage.config.exchangeType,
+      ),
     };
     await slowTradingJsonFile.write.atomic(activePath, record);
 
@@ -259,10 +293,12 @@ async function end(params: {
       schema: 1,
       strategy: record.strategy,
       mode,
+      account: record.account,
       startTime: record.startTime,
       endTime,
       config: record.config,
       initialState: record.initialState,
+      sharedVolatility: record.sharedVolatility,
       endPositions,
     };
     const fileName = `${mode}-${record.startTime}-${endTime}.json`;

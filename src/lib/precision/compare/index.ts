@@ -265,6 +265,8 @@ export function validatePrecisionRun(value: unknown): PrecisionRunV1 {
     run.schema !== 1 ||
     !["multi", "hedge", "streak"].includes(run.strategy) ||
     !["live", "sandbox", "backtest"].includes(run.mode) ||
+    typeof run.account !== "string" ||
+    !run.account ||
     typeof run.startTime !== "number" ||
     !Number.isFinite(run.startTime) ||
     typeof run.endTime !== "number" ||

@@ -8,6 +8,30 @@ import type { ExchangeType, IExchange, ExchangeConfig } from "./types";
 const exchangeCache = new Map<string, IExchange>();
 
 /**
+ * Optional process-wide exchange factory override. Installed at a composition
+ * boundary (for example the precision backtest driver) so every runtime
+ * consumer receives a deterministic environment exchange.
+ */
+type ExchangeFactoryOverride = (
+  exchangeType?: ExchangeType,
+  config?: ExchangeConfig,
+) => IExchange | undefined;
+
+let exchangeFactoryOverride: ExchangeFactoryOverride | undefined;
+
+/** Installs the process-wide exchange factory override. */
+export function setExchangeFactoryOverride(
+  override: ExchangeFactoryOverride | undefined,
+): void {
+  exchangeFactoryOverride = override;
+}
+
+/** Removes the installed exchange factory override. */
+export function clearExchangeFactoryOverride(): void {
+  exchangeFactoryOverride = undefined;
+}
+
+/**
  * Generate cache key for exchange instance
  */
 function getCacheKey(exchangeType: ExchangeType, tradingMode?: string): string {
@@ -25,6 +49,14 @@ export function getExchange(
   config?: ExchangeConfig,
 ): IExchange {
   const type = exchangeType || getDefaultExchange();
+
+  if (exchangeFactoryOverride) {
+    const override = exchangeFactoryOverride(type, config);
+    if (override) {
+      return override;
+    }
+  }
+
   const cacheKey = getCacheKey(type, config?.defaultTradingMode);
 
   // Return cached instance if available

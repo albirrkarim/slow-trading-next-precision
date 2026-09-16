@@ -11,7 +11,8 @@ JSON for equivalent runs. No other precision type is measured in V1.
 
 The Production Dashboard provides **Start Production Test Case** and **End
 Production Test Case**. Under the runtime storage lock, Start atomically saves
-the strategy, mode, configuration, initial state, and start time; End atomically
+the strategy, mode, configuration, initial state, the shared volatility
+memory per symbol, and start time; End atomically
 saves the final form of every position present at Start or created before End,
 including positions closed during capture. It does not close positions.
 

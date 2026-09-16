@@ -64,12 +64,15 @@ const SLOW_FILES = {
   precision: {
     testCaseRoot: `${SLOW_TRADING_DIR}/prod-test-case`,
     backtestResultRoot: `${SLOW_TRADING_DIR}/backtest-result`,
+    backtestRunStatusRoot: `${SLOW_TRADING_DIR}/backtest-run`,
     activeCapture: (mode: "live" | "sandbox") =>
       `${SLOW_TRADING_DIR}/prod-test-case/active-${mode}.json`,
     testCase: (mode: "live" | "sandbox", startTime: number, endTime: number) =>
       `${SLOW_TRADING_DIR}/prod-test-case/${mode}-${startTime}-${endTime}.json`,
     backtestResult: (name: string) =>
       `${SLOW_TRADING_DIR}/backtest-result/${name}`,
+    backtestRunStatus: (runId: string) =>
+      `${SLOW_TRADING_DIR}/backtest-run/${runId}.json`,
   },
 
   getCachePrefix: (prefix: string) =>

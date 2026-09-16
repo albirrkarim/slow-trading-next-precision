@@ -57,10 +57,12 @@ interface PrecisionRunV1 {
   schema: 1;
   strategy: StrategyId;
   mode: RuntimeMode;
+  account: string;
   startTime: number;
   endTime: number;
   config: { runtime: RuntimeConfig; trading: TradingConfig };
   initialState: RuntimeState;
+  sharedVolatility: Record<string, PredictionEngineMemory>;
   endPositions: PositionV1[];
 }
 
