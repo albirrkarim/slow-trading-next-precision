@@ -47,7 +47,7 @@ strategy implementations. Differences between environments must be limited to
 replaceable adapters, such as market data, time, exchange execution, storage,
 and monitoring.
 
-See `docs/PRECISION/RUNTIME_ENGINE.md` for details.
+See `docs/PRECISION/HIGH_LEVEL/RUNTIME_ENGINE.md` for details.
 
 # C. Non-Goals
 
@@ -83,29 +83,66 @@ Production-only and backtest-only positions are reported separately and are not
 silently treated as matches. Input, decision, order-intent, and execution
 precision are not part of V1.
 
-See `docs/PRECISION/PRECISION_CHECKER.md` for the comparison workflow.
+See `docs/PRECISION/HIGH_LEVEL/PRECISION_CHECKER.md` for the comparison workflow.
 
 # E. System Architecture
 
 The architecture must be flexible enough to accommodate:
 
 - The three existing strategies, selected through explicit configuration
-- A clean folder structure, defined in `docs/PRECISION/FOLDER.md`
-- One shared runtime engine, defined in `docs/PRECISION/RUNTIME_ENGINE.md`
+- A clean folder structure, defined in `docs/PRECISION/HIGH_LEVEL/FOLDER.md`
+- One shared runtime engine, defined in `docs/PRECISION/HIGH_LEVEL/RUNTIME_ENGINE.md`
 - Data types that support the system's goals
 
 # F. Migration Plan
 
-## 1. Folder structure
+## What should not be migrated into this system
+
+Because i want to make this system minimal
+
+- price norm things
+- older version decision v12-v19
+- page /dev/coins
+- page /dev/black-swan
+
+## AI Subs agent
+
+We need to split the task into plan and coding, so the token usage could be efficient
+
+### Planing
+
+Using GPT-Astra High thinking.
+
+The smartest model will be understand what i need and write:
+
+- High level document
+
+this will be readed by me as human, make sure it simple and less techinal. also include the TC
+
+`docs/PRECISION/HIGH_LEVEL/TECHNICAL/*.md`
+
+- Detail technical document
+
+This will be readed by sub agents, and he will doing the work. also include TC
+
+planing will be on `docs/PRECISION/HIGH_LEVEL/TECHNICAL/*.md`
+
+### Coding
+
+Using GPT-5.6 SOL Medium thinking. to migrating the code and modifying the code.
+
+## Planning first
+
+### 1. Folder structure
 
 The folder structures of the three existing implementations are inconsistent
 and difficult to maintain.
 
-Define the new folder structure in `docs/PRECISION/FOLDER.md`.
+Define the new folder structure in `docs/PRECISION/HIGH_LEVEL/FOLDER.md`.
 
-## 2. Plan position data types
+### 2. Plan position data types
 
-Define the detailed data types in `docs/PRECISION/DATA_TYPE.md`.
+Define the detailed data types in `docs/PRECISION/HIGH_LEVEL/DATA_TYPE.md`.
 
 - Define a shared position structure that supports all three strategies while
   allowing each strategy to store its own strategy-specific state.
@@ -114,14 +151,16 @@ Define the detailed data types in `docs/PRECISION/DATA_TYPE.md`.
   backtest results can be paired.
 - Define which environment-only fields are excluded from result comparison.
 
-## 3. Planning the runtime engine
+### 3. Plan Runtime engine
 
-Design the runtime engine in `docs/PRECISION/RUNTIME_ENGINE.md` alongside the
-backtest requirements in `docs/PRECISION/BACKTEST.md`.
+Design the runtime engine in `docs/PRECISION/HIGH_LEVEL/RUNTIME_ENGINE.md` alongside the
+backtest requirements in `docs/PRECISION/HIGH_LEVEL/BACKTEST.md`.
 
 # G. Resolving
 
 The other document except `_PRECISION.md` of this project is just raw and unchecked by human.
+
+like in the `docs/PRECISION/TECHNICAL/*.md` `and docs/PRECISION/HIGH_LEVEL/*.md`
 
 so its not a solid form of instruction.
 
