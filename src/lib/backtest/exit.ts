@@ -13,8 +13,8 @@ import type {
   TradingModelMemory,
 } from "@/lib/trading/models";
 import type { DataBacktestPurpose } from "@lib/brain/algorithms/type-execute";
-import type { BacktestConfigDynamic } from "../type-backtest";
-import { type VolatilityPoint } from "../utils/volatility";
+import type { BacktestConfigDynamic } from "../dynamic/type-backtest";
+import { type VolatilityPoint } from "../dynamic/utils/volatility";
 import {
   calculateBacktestFeeAdjustedNetProfitUSDT,
   calculateBacktestNetProfitUSDT,

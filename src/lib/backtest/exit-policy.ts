@@ -4,7 +4,7 @@ import postAverageRescue from "@/lib/trading/post-average-rescue";
 import postAverageStopLoss from "@/lib/trading/post-average-stop-loss";
 import levelBasedPctDriftStopLoss from "@/lib/trading/level-based-pct-drift-stop-loss";
 import volatilityTargetStopLoss from "@/lib/trading/volatility-target-stop-loss";
-import type { VolatilityPoint } from "../utils/volatility";
+import type { VolatilityPoint } from "../dynamic/utils/volatility";
 import {
   BACKTEST_ONE_SIDE_FEE_RATIO,
   BACKTEST_ROUND_TRIP_FEE_PERCENT,

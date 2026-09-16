@@ -30,7 +30,7 @@ import entryFunding from "./entry-funding";
 import entryOpenPositionGuard from "./entry-open-position-guard";
 import lateEntryVPointDrift from "./late-entry-vpoint-drift";
 import entryMarket from "./entry-market";
-import { buildSlowWatchReserveState } from "../../slowTrading/watch-reserve";
+import { buildSlowWatchReserveState } from "../../runtime/watch-reserve";
 import tradingPosition from "../position";
 
 interface ExecuteEntryProps {

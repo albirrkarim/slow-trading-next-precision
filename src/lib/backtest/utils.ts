@@ -1,5 +1,5 @@
 import type { DynamicTradeMemory, VolatilityPoint } from "@/lib/dynamic";
-import { cropVolatility, updatePriceNorm } from "../utils/priceNorm";
+import { cropVolatility, updatePriceNorm } from "../dynamic/utils/priceNorm";
 
 interface GenerateInitialPriceNorm {
   symbols: string[];
