@@ -35,23 +35,23 @@ const sidebarSections = [
                 icon: <DashboardIcon />,
                 description: "Live dashboard for the standalone slow trading workflow.",
             },
-            {
-                text: "Backtest",
-                href: "/backtest",
-                icon: <QueryStatsIcon />,
-                description: "Configure, run, and inspect precision backtests through the shared runtime.",
-            },
-            {
-                text: "Precision Checker",
-                href: "/precision-checker",
-                icon: <FactCheckIcon />,
-                description: "Compare final production and backtest positions for equivalent runs.",
-            },
         ],
     },
     {
         title: "Development",
         items: [
+            {
+                text: "Backtest",
+                href: "/dev/backtest",
+                icon: <QueryStatsIcon />,
+                description: "Configure, run, and inspect precision backtests through the shared runtime.",
+            },
+            {
+                text: "Precision Checker",
+                href: "/dev/precision-checker",
+                icon: <FactCheckIcon />,
+                description: "Compare final production and backtest positions for equivalent runs.",
+            },
             {
                 text: "Good Coin Finder",
                 href: "/dev/coins",

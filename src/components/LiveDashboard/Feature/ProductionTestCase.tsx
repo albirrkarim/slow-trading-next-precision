@@ -125,7 +125,7 @@ export default function ProductionTestCase({ mode }: { mode: SlowTradingMode }) 
               End Production Test Case
             </Button>
             {pending && <CircularProgress size={18} sx={{ mx: 1 }} />}
-            <Link href="/precision-checker" rel="noreferrer" target="_blank">
+            <Link href="/dev/precision-checker" rel="noreferrer" target="_blank">
               <Box
                 alignItems="center"
                 component="span"

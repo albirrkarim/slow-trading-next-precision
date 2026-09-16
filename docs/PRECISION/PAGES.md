@@ -3,8 +3,8 @@
 | Route | Purpose |
 | --- | --- |
 | `/` | Production and sandbox dashboard |
-| `/backtest` | Configure, run, and inspect backtests |
-| `/precision-checker` | Compare final production and backtest positions |
+| `/dev/backtest` | Configure, run, and inspect backtests |
+| `/dev/precision-checker` | Compare final production and backtest positions |
 
 Pages use grouped server APIs. Trading, execution, storage, and comparison logic
 must not be implemented in React components.
@@ -48,7 +48,7 @@ Production Test Case** using `docs/PRECISION/PRECISION_CHECKER.md`.
 
 TC: `PROD:PRODUCTION_TEST_CASE_CAPTURE_CONTROLS`
 
-# B. Backtest Dashboard `/backtest`
+# B. Backtest Dashboard `/dev/backtest`
 
 Use the existing Multi workflow as reference:
 
@@ -66,7 +66,7 @@ the selected strategy. Backtest behavior is defined in
 
 TC: `BTEST:BACKTEST_DASHBOARD_PAGE`
 
-# C. Precision Checker `/precision-checker`
+# C. Precision Checker `/dev/precision-checker`
 
 The page selects a production test case and backtest, checks compatibility,
 and pairs final positions by entry `vPoint.id`. It shows each position's result

@@ -9,8 +9,8 @@ is needed to share production and backtest behavior.
 src/
   app/
     (dashboard)/page.tsx
-    (dashboard)/backtest/page.tsx
-    (dashboard)/precision-checker/page.tsx
+    dev/backtest/page.tsx
+    dev/precision-checker/page.tsx
   components/
     LiveDashboard/
     BacktestDashboard/

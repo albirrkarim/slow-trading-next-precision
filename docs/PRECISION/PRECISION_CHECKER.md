@@ -67,7 +67,7 @@ When no candidate pair exists, overall precision is unavailable.
 
 TC: `BOTH:PRODUCTION_BACKTEST_POSITION_COMPARISON`
 
-# F. Page `/precision-checker`
+# F. Page `/dev/precision-checker`
 
 Select a production test case and backtest result, validate them, and show the
 overall score, each pair score and differences, ambiguous keys, and unpaired

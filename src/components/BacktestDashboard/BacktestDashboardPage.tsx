@@ -298,7 +298,7 @@ export default function BacktestDashboardPage() {
                   )}
                 </Stack>
                 {runStatus.fileName && (
-                  <Link href="/precision-checker" rel="noreferrer" target="_blank">
+                  <Link href="/dev/precision-checker" rel="noreferrer" target="_blank">
                     Open Precision Checker
                   </Link>
                 )}
