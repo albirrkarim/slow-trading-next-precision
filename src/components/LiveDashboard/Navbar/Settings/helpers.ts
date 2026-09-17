@@ -217,9 +217,7 @@ export function makeConfigDraft(state: DashboardState): ConfigDraft {
       },
     },
     sandboxEnabled: state.runtime.sandboxEnabled,
-    sandboxInitialBalanceUSDT: String(
-      state.runtime.sandboxInitialBalanceUSDT ?? 0,
-    ),
+    sandboxInitialBalanceUSDT: state.runtime.sandboxInitialBalanceUSDT ?? 0,
     safeHavenUSDT: String(state.balances.safeHaven ?? 0),
     safeHavenAutoEnabled: state.runtime.safeHaven?.autoEnabled ?? false,
     safeHavenSchedules: (state.runtime.safeHaven?.schedules ?? []).map(
@@ -299,7 +297,7 @@ export function applyAccountProfileToConfigDraft(
       ...trading.modelConfig,
     }),
     sandboxEnabled: account.sandbox.enabled,
-    sandboxInitialBalanceUSDT: String(account.sandbox.initialBalanceUSDT),
+    sandboxInitialBalanceUSDT: account.sandbox.initialBalanceUSDT,
   };
 }
 

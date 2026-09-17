@@ -3,7 +3,11 @@
 import type { AdaptiveAveragingConfig } from "@/lib/dynamic";
 import type { ExchangeType, TradingMode } from "@/lib/exchange/types";
 import type { DashboardNotificationConfig } from "@/lib/notification/config";
-import type { SlowTradingAccount } from "@/lib/slowTrading";
+import type {
+  SlowTradingAccount,
+  SlowTradingAccountTradingConfig,
+  SlowTradingRuntimeConfig,
+} from "@/lib/slowTrading";
 import type { BlackSwanConfig } from "@/lib/trading/black-swan";
 import type { TradingModelConfig } from "@/lib/trading/models";
 import type { Dispatch, SetStateAction } from "react";
@@ -43,7 +47,7 @@ export interface SafeHavenScheduleDraft {
   lastQueuedAt?: Partial<Record<"live" | "sandbox", number>>;
 }
 
-export interface ConfigDraft {
+export interface ManagementConfig {
   name: string;
   description: string;
   decisionEngineVersion: string;
@@ -51,52 +55,68 @@ export interface ConfigDraft {
   exchangeAccounts: SlowTradingAccount[];
   exchangeType: ExchangeType;
   tradingMode: TradingMode;
-  lateEntryVPointPriceDriftEnabled?: boolean;
   symbolsText: string;
-  modelConfig: TradingModelConfig;
-  runnerEnabled: boolean;
-  autoEntryEnabled: boolean;
-  autoEntryDailyPnlLimitUSDT?: number;
-  autoExitEnabled: boolean;
-  entrySignalBypass: boolean;
-  autoRemoveSymbolAbsLevel: number;
-  autoRemoveSymbolMinMarketCapUSD?: number;
-  autoRemoveSymbolMinPrice?: number;
-  autoRemoveSymbolMinVPointPct?: number;
-  pnlHistoryBucketMinutes?: number;
-  blackSwan?: BlackSwanConfig;
-  blackSwanStageIntervalMinutes?: number;
-  speedupStageIntervalMinutes?: number;
-  speedupStagePositivePnlThresholdPct?: number;
-  speedupStageNegativePnlThresholdPct?: number;
-  speedupStageTakeProfitOffsetPct?: number;
-  standardMonitoringStageIntervalMinutes?: number;
-  managementStageIntervalMinutes?: number;
-  captureEntryStageIntervalMinutes?: number;
-  notification: DashboardNotificationConfig;
-  sandboxEnabled: boolean;
-  sandboxInitialBalanceUSDT: string;
-  safeHavenUSDT: string;
-  safeHavenAutoEnabled?: boolean;
-  safeHavenSchedules?: SafeHavenScheduleDraft[];
+}
+
+interface WithdrawConfig {
   withdrawalAutoEnabled: boolean;
   withdrawalSchedules: WithdrawalScheduleDraft[];
   withdrawalWalletBook: WithdrawalWalletDraft[];
-  enableWatchLogic?: boolean;
-  entrySpareBufferEnabled?: boolean;
-  watchReserveLevels?: number;
-  watchMaxNextAveragingLevels?: number;
-  watchReservePctAlloc?: number;
-  adaptiveAveraging?: AdaptiveAveragingConfig;
-  averagingRescueProjectionGuardEnabled?: boolean;
-  exitSidewaysToFreeWorkersForStrongCandidates?: boolean;
-  maxEntryMarginPct?: number;
-  maxEntryBased24HourVolPct?: number;
-  maxEntryMargin?: number;
-  maxOpenPositions?: number;
-  minActionableAbsoluteLevel?: number;
-  maxLeverage?: number;
-  exactLeverage?: number;
+}
+
+interface SafeHavenConfig {
+  safeHavenUSDT: string;
+  safeHavenAutoEnabled?: boolean;
+  safeHavenSchedules?: SafeHavenScheduleDraft[];
+  minimalAssetOnTrade?: number;
+}
+
+export interface ConfigDraft
+  extends
+    ManagementConfig,
+    SlowTradingAccountTradingConfig,
+    SlowTradingRuntimeConfig,
+    WithdrawConfig,
+    SafeHavenConfig {
+  blackSwan?: BlackSwanConfig;
+
+  // lateEntryVPointPriceDriftEnabled?: boolean;
+  // modelConfig: TradingModelConfig;
+  // runnerEnabled: boolean;
+  // autoEntryEnabled: boolean;
+  // autoEntryDailyPnlLimitUSDT?: number;
+  // autoExitEnabled: boolean;
+  // entrySignalBypass: boolean;
+  // autoRemoveSymbolAbsLevel: number;
+  // autoRemoveSymbolMinMarketCapUSD?: number;
+  // autoRemoveSymbolMinPrice?: number;
+  // autoRemoveSymbolMinVPointPct?: number;
+  // pnlHistoryBucketMinutes?: number;
+  // speedupStageIntervalMinutes?: number;
+  // speedupStagePositivePnlThresholdPct?: number;
+  // speedupStageNegativePnlThresholdPct?: number;
+  // speedupStageTakeProfitOffsetPct?: number;
+  // standardMonitoringStageIntervalMinutes?: number;
+  // managementStageIntervalMinutes?: number;
+  // captureEntryStageIntervalMinutes?: number;
+  // notification: DashboardNotificationConfig;
+  // sandboxEnabled: boolean;
+  // sandboxInitialBalanceUSDT: string;
+  // enableWatchLogic?: boolean;
+  // entrySpareBufferEnabled?: boolean;
+  // watchReserveLevels?: number;
+  // watchMaxNextAveragingLevels?: number;
+  // watchReservePctAlloc?: number;
+  // adaptiveAveraging?: AdaptiveAveragingConfig;
+  // averagingRescueProjectionGuardEnabled?: boolean;
+  // exitSidewaysToFreeWorkersForStrongCandidates?: boolean;
+  // maxEntryMarginPct?: number;
+  // maxEntryBased24HourVolPct?: number;
+  // maxEntryMargin?: number;
+  // maxOpenPositions?: number;
+  // minActionableAbsoluteLevel?: number;
+  // maxLeverage?: number;
+  // exactLeverage?: number;
 }
 
 export type ConfigDraftSetter = Dispatch<SetStateAction<ConfigDraft | null>>;

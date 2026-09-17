@@ -70,24 +70,26 @@ function SettingsTabIcon({ tab }: { tab: SettingsTab }) {
 
 export default function SettingsDialog(props: {
   configDraft: ConfigDraft;
-  dashboardState: DashboardState;
-  onCloseDialog: () => void;
-  onOpenDialog: () => void;
-  onReinitialize: () => Promise<void>;
-  reinitializing: boolean;
-  resetSandbox: (accountSlug: string) => Promise<void>;
-  resettingSandboxAccount: string | null;
-  saveConfig: (handleClose?: () => void) => Promise<void>;
-  savingConfig: boolean;
   setConfigDraft: ConfigDraftSetter;
-  syncOnlineStorageToLocal: (onlineBaseUrl: string) => Promise<void>;
-  syncingOnlineStorage: boolean;
-  tryWithdrawNow: (scheduleId: string) => Promise<void>;
-  tryingWithdraw: boolean;
+
+  dashboardState?: DashboardState;
+  onCloseDialog?: () => void;
+  onOpenDialog?: () => void;
+  onReinitialize?: () => Promise<void>;
+  reinitializing?: boolean;
+  resetSandbox?: (accountSlug: string) => Promise<void>;
+  resettingSandboxAccount?: string | null;
+  saveConfig?: (handleClose?: () => void) => Promise<void>;
+  savingConfig?: boolean;
+  syncOnlineStorageToLocal?: (onlineBaseUrl: string) => Promise<void>;
+  syncingOnlineStorage?: boolean;
+  tryWithdrawNow?: (scheduleId: string) => Promise<void>;
+  tryingWithdraw?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<SettingsTab>(DEFAULT_SETTINGS_TAB);
   const {
     configDraft,
+    setConfigDraft,
     dashboardState,
     onCloseDialog,
     onOpenDialog,
@@ -97,7 +99,6 @@ export default function SettingsDialog(props: {
     resettingSandboxAccount,
     saveConfig,
     savingConfig,
-    setConfigDraft,
     syncOnlineStorageToLocal,
     syncingOnlineStorage,
     tryWithdrawNow,
@@ -112,7 +113,7 @@ export default function SettingsDialog(props: {
       customButton={(handleOpen) => (
         <IconButton
           onClick={() => {
-            onOpenDialog();
+            onOpenDialog?.();
             handleOpen();
           }}
           title="Open dashboard settings"
@@ -176,24 +177,25 @@ export default function SettingsDialog(props: {
           </Box>
 
           <Box sx={{ minHeight: 420 }}>
-            {activeTab === "runtime" ? (
-              <SettingsDialogRuntimeTab
-                configDraft={configDraft}
-                onReinitialize={onReinitialize}
-                reinitializing={reinitializing}
-                resetSandbox={resetSandbox}
-                resettingSandboxAccount={resettingSandboxAccount}
-                setConfigDraft={setConfigDraft}
-                syncOnlineStorageToLocal={syncOnlineStorageToLocal}
-                syncingOnlineStorage={syncingOnlineStorage}
-              />
-            ) : null}
-
             {activeTab === "trading" ? (
               <SettingsDialogTradingTab
                 configDraft={configDraft}
                 dashboardState={dashboardState}
                 setConfigDraft={setConfigDraft}
+              />
+            ) : null}
+
+            {activeTab === "runtime" ? (
+              <SettingsDialogRuntimeTab
+                configDraft={configDraft}
+                setConfigDraft={setConfigDraft}
+
+                onReinitialize={onReinitialize}
+                reinitializing={reinitializing}
+                resetSandbox={resetSandbox}
+                resettingSandboxAccount={resettingSandboxAccount}
+                syncOnlineStorageToLocal={syncOnlineStorageToLocal}
+                syncingOnlineStorage={syncingOnlineStorage}
               />
             ) : null}
 
@@ -204,7 +206,7 @@ export default function SettingsDialog(props: {
               />
             ) : null}
 
-            {activeTab === "black-swan" ? (
+            {(activeTab === "black-swan" && dashboardState) ? (
               <SettingsDialogBlackSwanTab
                 configDraft={configDraft}
                 dashboardState={dashboardState}
@@ -226,7 +228,7 @@ export default function SettingsDialog(props: {
               />
             ) : null}
 
-            {activeTab === "withdraw" ? (
+            {(activeTab === "withdraw" && tryWithdrawNow && tryingWithdraw != undefined) ? (
               <SettingsDialogWithdrawTab
                 configDraft={configDraft}
                 setConfigDraft={setConfigDraft}
@@ -251,7 +253,7 @@ export default function SettingsDialog(props: {
               variant="contained"
               startIcon={<SaveIcon />}
               onClick={() => {
-                void saveConfig(handleClose);
+                void saveConfig?.(handleClose);
               }}
               disabled={savingConfig}
             >

@@ -13,81 +13,21 @@ import {
     TextField,
     Typography,
 } from "@mui/material";
+import { blue } from "@mui/material/colors";
 import axios from "axios";
 import md5 from "md5";
 import { useEffect, useState } from "react";
 import { deepCopy, delayExecution } from "../../client/utils";
 import { endpoints } from "../../endpoints";
-import DynamicBacktestConfig, {
-    type BacktestConfig,
-    DEFAULT_BACKTEST_CONFIG,
-} from "../DynamicTrade/Config";
+import BacktestDailyPnlCalendar from "../DynamicTrade/BacktestDailyPnlCalendar";
 import DebugEvaluation from "../DynamicTrade/Debug/Evaluation";
 import DebugKlines from "../DynamicTrade/Debug/Klines";
 import DebugSeries from "../DynamicTrade/Debug/Series";
-import HistoryBTestConfig from "../DynamicTrade/Leaderboards/HistoryBTestConfig";
 import { type SavedPayload } from "../DynamicTrade/type-dynamic-report";
-import { blue } from "@mui/material/colors";
-import BacktestDailyPnlCalendar from "../DynamicTrade/BacktestDailyPnlCalendar";
-import postAverageRescue from "@/lib/trading/post-average-rescue";
-import postAverageStopLoss from "@/lib/trading/post-average-stop-loss";
-import backtestRequestConfig from "../DynamicTrade/backtest-request-config";
+import PrecisionBTestConfig, { DEFAULT_BACKTEST_CONFIG } from "./Config";
+import type { BacktestConfig } from "./types";
 
 const BACKTEST_KEY = "dynamic";
-
-function normalizeModelConfig(
-    raw: Partial<BacktestConfig["modelConfig"]> | undefined,
-): BacktestConfig["modelConfig"] {
-    const modelConfig = {
-        ...DEFAULT_BACKTEST_CONFIG.modelConfig,
-        ...(raw ?? {}),
-    };
-    const {
-        takeProfitPercent,
-        stopLossPercent,
-        volatilityTargetStopLossPercent,
-        postAverageRescueExit,
-        postAverageStopLoss: rawPostAverageStopLoss,
-        maxHoldMinutes,
-        orderType,
-        useStopLossPlus,
-        stopLossPlusTrigger,
-        balanceUSDT,
-        maxRiskPercent,
-        maxBuyUSDT,
-        onlyTPFromDate,
-        dcaDipPercent,
-        maxDcaRounds,
-        confidenceBase,
-        safeUSDTPerMonth,
-        safePercentPerMonth,
-        minimalAssetOnTrade,
-    } = modelConfig;
-
-    return {
-        takeProfitPercent,
-        stopLossPercent,
-        volatilityTargetStopLossPercent,
-        postAverageRescueExit:
-            postAverageRescue.config.normalize(postAverageRescueExit),
-        postAverageStopLoss:
-            postAverageStopLoss.config.normalize(rawPostAverageStopLoss),
-        maxHoldMinutes,
-        orderType,
-        useStopLossPlus,
-        stopLossPlusTrigger,
-        balanceUSDT,
-        maxRiskPercent,
-        maxBuyUSDT,
-        onlyTPFromDate,
-        dcaDipPercent,
-        maxDcaRounds,
-        confidenceBase,
-        safeUSDTPerMonth,
-        safePercentPerMonth,
-        minimalAssetOnTrade,
-    };
-}
 
 type BacktestConfigInput = Partial<BacktestConfig> & {
     config?: Partial<BacktestConfig>;
@@ -100,12 +40,9 @@ type BacktestConfigEnvelope = BacktestConfigInput & {
 
 export function normalizeBacktestConfig(raw: unknown): BacktestConfig {
     const rawConfig =
-        raw && typeof raw === "object"
-            ? raw as BacktestConfigEnvelope
-            : {};
+        raw && typeof raw === "object" ? (raw as BacktestConfigEnvelope) : {};
     const config: BacktestConfigInput =
-        rawConfig.backtestConfig &&
-            typeof rawConfig.backtestConfig === "object"
+        rawConfig.backtestConfig && typeof rawConfig.backtestConfig === "object"
             ? rawConfig.backtestConfig
             : rawConfig;
 
@@ -123,12 +60,11 @@ export function normalizeBacktestConfig(raw: unknown): BacktestConfig {
         ...DEFAULT_BACKTEST_CONFIG,
         ...outerConfig,
         ...runtimeConfig,
-        modelConfig: normalizeModelConfig(
+        modelConfig:
             runtimeConfig.modelConfig ??
             outerConfig.modelConfig ??
             seasonalModelConfig?.[0] ??
             DEFAULT_BACKTEST_CONFIG.modelConfig,
-        ),
     };
 }
 
@@ -136,7 +72,9 @@ export default function DynamicTradeAnalytics() {
     const before = localStorage.getItem(BACKTEST_KEY);
 
     const [backtestConfig, setBacktestConfig] = useState<BacktestConfig>(
-        before ? normalizeBacktestConfig(JSON.parse(before)) : DEFAULT_BACKTEST_CONFIG
+        before
+            ? normalizeBacktestConfig(JSON.parse(before))
+            : DEFAULT_BACKTEST_CONFIG,
     );
 
     const [data, setData] = useState<DynamicTradeBacktestReturn | null>(null); // adapt type to your backend
@@ -172,7 +110,7 @@ export default function DynamicTradeAnalytics() {
         setHistoryLoading(true);
         try {
             const resp = await axios.get<SavedPayload[]>(
-                endpoints.dev.dynamicTrade.leaderboards
+                endpoints.dev.dynamicTrade.leaderboards,
             );
             setHistory(Array.isArray(resp.data) ? resp.data : []);
         } catch (err) {
@@ -185,7 +123,7 @@ export default function DynamicTradeAnalytics() {
     // save a payload into persistent history, unique by signature
     const saveHistory = async (
         backtest: BacktestConfig,
-        backtestResult: DynamicTradeBacktestReturn
+        backtestResult: DynamicTradeBacktestReturn,
     ) => {
         try {
             const id = makeId(backtest);
@@ -215,7 +153,7 @@ export default function DynamicTradeAnalytics() {
             }
             const resp = await axios.post<SavedPayload[]>(
                 endpoints.dev.dynamicTrade.leaderboards,
-                next[0]
+                next[0],
             );
             setHistory(Array.isArray(resp.data) ? resp.data : next);
         } catch (err) {
@@ -228,7 +166,7 @@ export default function DynamicTradeAnalytics() {
         try {
             const resp = await axios.delete<SavedPayload[]>(
                 endpoints.dev.dynamicTrade.leaderboards,
-                { data: { id } }
+                { data: { id } },
             );
             setHistory(Array.isArray(resp.data) ? resp.data : []);
         } catch (err) {
@@ -249,11 +187,10 @@ export default function DynamicTradeAnalytics() {
             );
             const usedConfigBefore = deepCopy(usedConfig);
 
-            const realBackendConfig = deepCopy(usedConfig);
 
             // derive start/end time in ms based on selected range
             const computeRangeMs = (
-                range: string
+                range: string,
             ): { startTime: number; endTime: number } => {
                 const now = new Date();
                 const endTime = now.getTime();
@@ -295,23 +232,21 @@ export default function DynamicTradeAnalytics() {
 
                 symbols: usedConfig.symbols,
                 range: usedConfig.range,
-                algorithm: usedConfig.algorithm,
+
                 startTime,
                 endTime,
-
-                decisionEngineVersion: usedConfig.decisionEngineVersion,
 
                 upToDateKlines: usedConfig.upToDateKlines,
                 upToDateDecisionBacktest: usedConfig.upToDateDecisionBacktest,
 
-                config: backtestRequestConfig.config.build(realBackendConfig),
+                config: usedConfig.modelConfig,
             };
 
             tradeLog.log("Sending payload:", JSON.stringify(payload, null, 2));
 
             const resp = await axios.post<DynamicTradeBacktestReturn>(
                 endpoints.dev.dynamicTrade.backtest,
-                payload
+                payload,
             );
 
             setData(resp.data);
@@ -372,6 +307,11 @@ export default function DynamicTradeAnalytics() {
                     <SidebarButton /> Backtest Precision - Using klines
                 </Typography>
 
+                <PrecisionBTestConfig
+                    backtestConfig={backtestConfig}
+                    setBacktestConfig={setBacktestConfig}
+                />
+
                 <Box
                     sx={{
                         p: 0.5,
@@ -395,8 +335,7 @@ export default function DynamicTradeAnalytics() {
                             variant="outlined"
                             size="small"
                             onClick={() => {
-                                const normalizedConfig =
-                                    parseManualJsonAndLoad(manualJson);
+                                const normalizedConfig = parseManualJsonAndLoad(manualJson);
                                 if (normalizedConfig) setManualJson("");
                             }}
                         >
@@ -413,14 +352,14 @@ export default function DynamicTradeAnalytics() {
                             {loading ? <CircularProgress size={16} /> : "Run JSON"}
                         </Button>
 
-                        <HistoryBTestConfig
+                        {/* <HistoryBTestConfig
                             history={history}
                             historyLoading={historyLoading}
                             deleteHistoryItem={deleteHistoryItem}
                             loadHistory={loadHistory}
                             onApplyConfig={setBacktestConfig}
                             onRunConfig={execute}
-                        />
+                        /> */}
 
                         <BacktestDailyPnlCalendar data={data} />
 
@@ -438,10 +377,6 @@ export default function DynamicTradeAnalytics() {
                 </Box>
             </Box>
 
-            <DynamicBacktestConfig
-                backtestConfig={backtestConfig}
-                setBacktestConfig={setBacktestConfig}
-            />
 
             {data && (
                 <>
