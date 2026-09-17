@@ -21,17 +21,17 @@ import { endpoints } from "../../endpoints";
 import DynamicBacktestConfig, {
     type BacktestConfig,
     DEFAULT_BACKTEST_CONFIG,
-} from "./Config";
-import DebugEvaluation from "./Debug/Evaluation";
-import DebugKlines from "./Debug/Klines";
-import DebugSeries from "./Debug/Series";
-import HistoryBTestConfig from "./Leaderboards/HistoryBTestConfig";
-import { type SavedPayload } from "./type-dynamic-report";
+} from "../DynamicTrade/Config";
+import DebugEvaluation from "../DynamicTrade/Debug/Evaluation";
+import DebugKlines from "../DynamicTrade/Debug/Klines";
+import DebugSeries from "../DynamicTrade/Debug/Series";
+import HistoryBTestConfig from "../DynamicTrade/Leaderboards/HistoryBTestConfig";
+import { type SavedPayload } from "../DynamicTrade/type-dynamic-report";
 import { blue } from "@mui/material/colors";
-import BacktestDailyPnlCalendar from "./BacktestDailyPnlCalendar";
+import BacktestDailyPnlCalendar from "../DynamicTrade/BacktestDailyPnlCalendar";
 import postAverageRescue from "@/lib/trading/post-average-rescue";
 import postAverageStopLoss from "@/lib/trading/post-average-stop-loss";
-import backtestRequestConfig from "./backtest-request-config";
+import backtestRequestConfig from "../DynamicTrade/backtest-request-config";
 
 const BACKTEST_KEY = "dynamic";
 
@@ -364,12 +364,12 @@ export default function DynamicTradeAnalytics() {
                     justifyContent: "space-between",
                     gap: 1,
                     alignItems: "center",
-                    backgroundColor: blue[500],
+                    backgroundColor: blue[900],
                     color: "white",
                 }}
             >
                 <Typography variant="h6">
-                    <SidebarButton /> Dynamic Trade - Using volatility rail
+                    <SidebarButton /> Backtest Precision - Using klines
                 </Typography>
 
                 <Box

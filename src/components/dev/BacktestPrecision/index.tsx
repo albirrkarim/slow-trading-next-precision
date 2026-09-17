@@ -1,10 +1,14 @@
-import { Box } from "@mui/material";
+"use client";
+
+import dynamic from "next/dynamic";
+
+const DynamicTrade = dynamic(() => import("./MainPage"), {
+    ssr: false,
+    loading: () => <p>Loading dynamic trade backtest...</p>,
+});
 
 export default function BacktestPrecision() {
-
     return (
-        <Box>
-            Backtest Precision
-        </Box>
+        <DynamicTrade />
     )
 }

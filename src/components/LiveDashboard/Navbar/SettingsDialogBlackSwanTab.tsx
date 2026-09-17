@@ -1,6 +1,6 @@
 "use client";
 
-import BlackSwanSettings from "./BlackSwanSettings";
+import BlackSwanSettings from "./Backswan/BlackSwanSettings";
 import type { ConfigDraft, ConfigDraftSetter, DashboardState } from "./types";
 
 export default function SettingsDialogBlackSwanTab({
