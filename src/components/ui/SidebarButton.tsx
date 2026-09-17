@@ -38,8 +38,20 @@ const sidebarSections = [
         title: "Development",
         items: [
             {
-                text: "Backtest",
-                href: "/dev/backtest",
+                text: "Precision Checker",
+                href: "/dev/precision-checker",
+                icon: <ShowChartIcon />,
+                description: "Precision checker",
+            },
+            {
+                text: "Backtest Precision",
+                href: "/dev/backtest-precision",
+                icon: <ShowChartIcon />,
+                description: "Inspect one symbol with chart context, volatility rails, and simulated trade behavior for debugging.",
+            },
+            {
+                text: "Backtest V Points Rails",
+                href: "/dev/backtest-vrails",
                 icon: <ShowChartIcon />,
                 description: "Inspect one symbol with chart context, volatility rails, and simulated trade behavior for debugging.",
             },
