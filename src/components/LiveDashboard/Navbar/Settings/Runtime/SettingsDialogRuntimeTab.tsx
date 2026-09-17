@@ -15,11 +15,11 @@ import {
   Typography,
 } from "@mui/material";
 
-import SettingsInfoField from "./SettingsInfoField";
-import SettingsDialogSection from "./SettingsDialogSection";
+import SettingsInfoField from "../Components/SettingsInfoField";
+import SettingsDialogSection from "../Components/SettingsDialogSection";
 import RuntimeMonitoringSettings from "./RuntimeMonitoringSettings";
-import type { ConfigDraft, ConfigDraftSetter } from "./types";
-import { updateAccountSettingsInConfigDraft } from "./helpers";
+import type { ConfigDraft, ConfigDraftSetter } from "../../types";
+import { updateAccountSettingsInConfigDraft } from "../helpers";
 
 const DEFAULT_SYNC_ONLINE_BASE_URL = "https://wealth.reinventwp.com";
 
@@ -120,12 +120,12 @@ export default function SettingsDialogRuntimeTab({
                 setConfigDraft((prev) =>
                   prev
                     ? {
-                        ...prev,
-                        autoEntryDailyPnlLimitUSDT: Math.min(
-                          0,
-                          Number(event.target.value),
-                        ),
-                      }
+                      ...prev,
+                      autoEntryDailyPnlLimitUSDT: Math.min(
+                        0,
+                        Number(event.target.value),
+                      ),
+                    }
                     : prev,
                 )
               }
@@ -209,13 +209,13 @@ export default function SettingsDialogRuntimeTab({
                         setConfigDraft((prev) =>
                           prev
                             ? updateAccountSettingsInConfigDraft(
-                                prev,
-                                account.slug,
-                                (accountDraft) => ({
-                                  ...accountDraft,
-                                  sandboxEnabled: checked,
-                                }),
-                              )
+                              prev,
+                              account.slug,
+                              (accountDraft) => ({
+                                ...accountDraft,
+                                sandboxEnabled: checked,
+                              }),
+                            )
                             : prev,
                         )
                       }
@@ -231,14 +231,14 @@ export default function SettingsDialogRuntimeTab({
                         setConfigDraft((prev) =>
                           prev
                             ? updateAccountSettingsInConfigDraft(
-                                prev,
-                                account.slug,
-                                (accountDraft) => ({
-                                  ...accountDraft,
-                                  sandboxInitialBalanceUSDT:
-                                    event.target.value,
-                                }),
-                              )
+                              prev,
+                              account.slug,
+                              (accountDraft) => ({
+                                ...accountDraft,
+                                sandboxInitialBalanceUSDT:
+                                  event.target.value,
+                              }),
+                            )
                             : prev,
                         )
                       }

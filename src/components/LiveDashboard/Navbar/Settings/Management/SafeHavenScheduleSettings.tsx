@@ -18,11 +18,11 @@ import { useState } from "react";
 import ButtonDialog from "@/components/ui/ButtonDialog";
 import slowTradingSafeHavenSchedule from "@/lib/slowTrading/safe-haven-schedule";
 
-import SettingsInfoField from "./SettingsInfoField";
+import SettingsInfoField from "../Components/SettingsInfoField";
 import type {
   ConfigDraftSetter,
   SafeHavenScheduleDraft,
-} from "./types";
+} from "../../types";
 
 function createDefaultSchedule(index: number): SafeHavenScheduleDraft {
   return {
@@ -172,26 +172,26 @@ export default function SafeHavenScheduleSettings(props: {
     setConfigDraft((current) =>
       current
         ? {
-            ...current,
-            safeHavenSchedules: (current.safeHavenSchedules ?? []).some(
-              (candidate) => candidate.id === schedule.id,
+          ...current,
+          safeHavenSchedules: (current.safeHavenSchedules ?? []).some(
+            (candidate) => candidate.id === schedule.id,
+          )
+            ? (current.safeHavenSchedules ?? []).map((candidate) =>
+              candidate.id === schedule.id ? schedule : candidate,
             )
-              ? (current.safeHavenSchedules ?? []).map((candidate) =>
-                  candidate.id === schedule.id ? schedule : candidate,
-                )
-              : [...(current.safeHavenSchedules ?? []), schedule],
-          }
+            : [...(current.safeHavenSchedules ?? []), schedule],
+        }
         : current,
     );
   const deleteSchedule = (id: string) =>
     setConfigDraft((current) =>
       current
         ? {
-            ...current,
-            safeHavenSchedules: (current.safeHavenSchedules ?? []).filter(
-              (candidate) => candidate.id !== id,
-            ),
-          }
+          ...current,
+          safeHavenSchedules: (current.safeHavenSchedules ?? []).filter(
+            (candidate) => candidate.id !== id,
+          ),
+        }
         : current,
     );
 
@@ -209,9 +209,9 @@ export default function SafeHavenScheduleSettings(props: {
               setConfigDraft((current) =>
                 current
                   ? {
-                      ...current,
-                      safeHavenAutoEnabled: event.target.checked,
-                    }
+                    ...current,
+                    safeHavenAutoEnabled: event.target.checked,
+                  }
                   : current,
               )
             }

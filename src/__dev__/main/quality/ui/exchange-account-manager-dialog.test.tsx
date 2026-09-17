@@ -7,8 +7,8 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import ExchangeAccountManagerDialog from "@/components/LiveDashboard/Navbar/Settings/ExchangeAccountManagerDialog";
-import type { ConfigDraft } from "@/components/LiveDashboard/Navbar/Settings/types";
+import ExchangeAccountManagerDialog from "@/components/LiveDashboard/Navbar/Settings/Management/ExchangeAccountManagerDialog";
+import type { ConfigDraft } from "@/components/LiveDashboard/Navbar/types";
 
 vi.mock("axios", () => ({
   default: {

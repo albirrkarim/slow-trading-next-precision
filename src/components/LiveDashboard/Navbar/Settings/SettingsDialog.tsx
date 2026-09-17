@@ -20,15 +20,15 @@ import {
   Tab,
   Tabs,
 } from "@mui/material";
-import SettingsDialogRuntimeTab from "./SettingsDialogRuntimeTab";
-import SettingsDialogBackupTab from "./SettingsDialogBackupTab";
-import SettingsDialogBlackSwanTab from "./SettingsDialogBlackSwanTab";
-import SettingsDialogManagementTab from "./SettingsDialogManagementTab";
-import SettingsDialogMcpTab from "./SettingsDialogMcpTab";
-import SettingsDialogNotificationTab from "./SettingsDialogNotificationTab";
-import SettingsDialogTradingTab from "./SettingsDialogTradingTab";
-import SettingsDialogWithdrawTab from "./SettingsDialogWithdrawTab";
-import type { ConfigDraft, ConfigDraftSetter, DashboardState } from "./types";
+import SettingsDialogRuntimeTab from "./Runtime/SettingsDialogRuntimeTab";
+import SettingsDialogBackupTab from "./Backup/SettingsDialogBackupTab";
+import SettingsDialogBlackSwanTab from "./Backswan/SettingsDialogBlackSwanTab";
+import SettingsDialogManagementTab from "./Management/SettingsDialogManagementTab";
+import SettingsDialogMcpTab from "./MCP/SettingsDialogMcpTab";
+import SettingsDialogNotificationTab from "./Notification/SettingsDialogNotificationTab";
+import SettingsDialogTradingTab from "./Trading/SettingsDialogTradingTab";
+import SettingsDialogWithdrawTab from "./Withdrawal/SettingsDialogWithdrawTab";
+import type { ConfigDraft, ConfigDraftSetter, DashboardState } from "../types";
 
 export const SETTINGS_TABS = [
   { label: "Trading", value: "trading" },

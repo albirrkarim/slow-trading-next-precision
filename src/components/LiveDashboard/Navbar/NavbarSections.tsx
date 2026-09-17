@@ -23,18 +23,18 @@ import ButtonLogout from "@/components/ui/ButtonLogout";
 import DarkToggle from "@/components/ui/DarkToggle";
 import SidebarButton from "@/components/ui/SidebarButton";
 
-import UtcClock from "../../Feature/UtcClock";
-import SlowTradingReporting from "../../Reporting";
+import UtcClock from "../Feature/UtcClock";
+import SlowTradingReporting from "../Reporting";
 import {
   computeBalanceSummaryFromBalances,
   getPnlPercentBg,
-} from "./helpers";
+} from "./Settings/helpers";
 import NavbarBalanceSummary from "./NavbarBalanceSummary";
 import NavbarBalanceRefreshButton from "./NavbarBalanceRefreshButton";
 import NavbarInstanceIp from "./NavbarInstanceIp";
 import NavbarStageRuns from "./NavbarStageRuns";
 import NavbarVolatilityThreshold from "./NavbarVolatilityThreshold";
-import SettingsDialog from "./SettingsDialog";
+import SettingsDialog from "./Settings/SettingsDialog";
 import type {
   ConfigDraft,
   DashboardState,

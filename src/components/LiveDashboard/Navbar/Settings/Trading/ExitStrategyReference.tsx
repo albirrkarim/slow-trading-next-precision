@@ -6,11 +6,11 @@ import { Box, Grid, Stack, Typography } from "@mui/material";
 import PostAverageRescueExitSettings from "./PostAverageRescueExitSettings";
 import PostAverageStopLossSettings from "./PostAverageStopLossSettings";
 import LevelBasedPctDriftStopLossSettings from "./LevelBasedPctDriftStopLossSettings";
-import ReadMoreDialogButton from "./ReadMoreDialogButton";
-import SettingsCheckbox from "./SettingsCheckbox";
-import SettingsInfoField from "./SettingsInfoField";
-import SettingsRuleAccordion from "./SettingsRuleAccordion";
-import type { ConfigDraft, ConfigDraftSetter } from "./types";
+import ReadMoreDialogButton from "../Components/ReadMoreDialogButton";
+import SettingsCheckbox from "../Components/SettingsCheckbox";
+import SettingsInfoField from "../Components/SettingsInfoField";
+import SettingsRuleAccordion from "../Components/SettingsRuleAccordion";
+import type { ConfigDraft, ConfigDraftSetter } from "../../types";
 
 const STOP_LOSS_PLUS_INFO =
   "Trailing profit lock after TP tracking starts. With TP 2% and retrace 1%, the initial exit threshold is 1%. The threshold rises with every higher profit peak.";
@@ -111,12 +111,12 @@ export default function ExitStrategyReference({
     setConfigDraft((previous) =>
       previous
         ? {
-            ...previous,
-            modelConfig: {
-              ...previous.modelConfig,
-              ...patch,
-            },
-          }
+          ...previous,
+          modelConfig: {
+            ...previous.modelConfig,
+            ...patch,
+          },
+        }
         : previous,
     );
   };
@@ -192,9 +192,9 @@ export default function ExitStrategyReference({
                 setConfigDraft((previous) =>
                   previous
                     ? {
-                        ...previous,
-                        exitSidewaysToFreeWorkersForStrongCandidates: checked,
-                      }
+                      ...previous,
+                      exitSidewaysToFreeWorkersForStrongCandidates: checked,
+                    }
                     : previous,
                 )
               }

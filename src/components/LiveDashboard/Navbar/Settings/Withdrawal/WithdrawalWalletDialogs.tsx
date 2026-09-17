@@ -8,8 +8,8 @@ import { useState } from "react";
 
 import ButtonDialog from "@/components/ui/ButtonDialog";
 
-import SettingsInfoField from "./SettingsInfoField";
-import type { WithdrawalWalletDraft } from "./types";
+import SettingsInfoField from "../Components/SettingsInfoField";
+import type { WithdrawalWalletDraft } from "../../types";
 import WithdrawalNetworkAutocomplete from "./WithdrawalNetworkAutocomplete";
 
 function createWalletId(): string {

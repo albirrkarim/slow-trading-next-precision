@@ -20,10 +20,10 @@ import blackSwanModel, {
   type BlackSwanConfig,
   type BlackSwanStatus,
 } from "@/lib/trading/black-swan";
-import SettingsDialogSection from "../Settings/SettingsDialogSection";
-import SettingsInfoField from "../Settings/SettingsInfoField";
+import SettingsDialogSection from "../Components/SettingsDialogSection";
+import SettingsInfoField from "../Components/SettingsInfoField";
 import BlackSwanSavingsPreview from "./BlackSwanSavingsPreview";
-import type { ConfigDraft, ConfigDraftSetter, DashboardState } from "../Settings/types";
+import type { ConfigDraft, ConfigDraftSetter, DashboardState } from "../../types";
 
 const STATUS_STEPS = [
   {

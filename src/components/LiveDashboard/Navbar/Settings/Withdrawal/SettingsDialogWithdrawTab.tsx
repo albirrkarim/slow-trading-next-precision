@@ -9,14 +9,14 @@ import {
   Typography,
 } from "@mui/material";
 
-import SettingsDialogSection from "./SettingsDialogSection";
-import SettingsInfoField from "./SettingsInfoField";
+import SettingsDialogSection from "../Components/SettingsDialogSection";
+import SettingsInfoField from "../Components/SettingsInfoField";
 import type {
   ConfigDraft,
   ConfigDraftSetter,
   WithdrawalScheduleDraft,
   WithdrawalWalletDraft,
-} from "./types";
+} from "../../types";
 import { WithdrawalScheduleCreateDialog } from "./WithdrawalScheduleDialogs";
 import WithdrawalScheduleTable from "./WithdrawalScheduleTable";
 import { WithdrawalWalletCreateDialog } from "./WithdrawalWalletDialogs";
@@ -39,9 +39,9 @@ export default function SettingsDialogWithdrawTab({
     setConfigDraft((prev) =>
       prev
         ? {
-            ...prev,
-            withdrawalWalletBook: [...prev.withdrawalWalletBook, wallet],
-          }
+          ...prev,
+          withdrawalWalletBook: [...prev.withdrawalWalletBook, wallet],
+        }
         : prev,
     );
   };
@@ -50,11 +50,11 @@ export default function SettingsDialogWithdrawTab({
     setConfigDraft((prev) =>
       prev
         ? {
-            ...prev,
-            withdrawalWalletBook: prev.withdrawalWalletBook.map((wallet) =>
-              wallet.id === updatedWallet.id ? updatedWallet : wallet,
-            ),
-          }
+          ...prev,
+          withdrawalWalletBook: prev.withdrawalWalletBook.map((wallet) =>
+            wallet.id === updatedWallet.id ? updatedWallet : wallet,
+          ),
+        }
         : prev,
     );
   };
@@ -77,12 +77,12 @@ export default function SettingsDialogWithdrawTab({
         withdrawalSchedules: prev.withdrawalSchedules.map((schedule) =>
           schedule.walletId === walletId
             ? {
-                ...schedule,
-                walletId: "",
-                targetNetwork: wallet?.network ?? schedule.targetNetwork,
-                targetWalletAddress:
-                  wallet?.address ?? schedule.targetWalletAddress,
-              }
+              ...schedule,
+              walletId: "",
+              targetNetwork: wallet?.network ?? schedule.targetNetwork,
+              targetWalletAddress:
+                wallet?.address ?? schedule.targetWalletAddress,
+            }
             : schedule,
         ),
       };
@@ -93,9 +93,9 @@ export default function SettingsDialogWithdrawTab({
     setConfigDraft((prev) =>
       prev
         ? {
-            ...prev,
-            withdrawalSchedules: [...prev.withdrawalSchedules, schedule],
-          }
+          ...prev,
+          withdrawalSchedules: [...prev.withdrawalSchedules, schedule],
+        }
         : prev,
     );
   };
@@ -104,13 +104,13 @@ export default function SettingsDialogWithdrawTab({
     setConfigDraft((prev) =>
       prev
         ? {
-            ...prev,
-            withdrawalSchedules: prev.withdrawalSchedules.map((schedule) =>
-              schedule.id === updatedSchedule.id
-                ? updatedSchedule
-                : schedule,
-            ),
-          }
+          ...prev,
+          withdrawalSchedules: prev.withdrawalSchedules.map((schedule) =>
+            schedule.id === updatedSchedule.id
+              ? updatedSchedule
+              : schedule,
+          ),
+        }
         : prev,
     );
   };
@@ -210,9 +210,9 @@ export default function SettingsDialogWithdrawTab({
                       setConfigDraft((prev) =>
                         prev
                           ? {
-                              ...prev,
-                              withdrawalAutoEnabled: event.target.checked,
-                            }
+                            ...prev,
+                            withdrawalAutoEnabled: event.target.checked,
+                          }
                           : prev,
                       )
                     }

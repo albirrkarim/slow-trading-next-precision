@@ -6,7 +6,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import NavbarInstanceIp from "@/components/LiveDashboard/Navbar/Settings/NavbarInstanceIp";
+import NavbarInstanceIp from "@/components/LiveDashboard/Navbar/NavbarInstanceIp";
 
 describe("NavbarInstanceIp", () => {
   it("copies the public IP when its chip is clicked", async () => {

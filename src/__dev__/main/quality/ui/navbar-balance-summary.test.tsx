@@ -6,8 +6,8 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
 
-import NavbarBalanceSummary from "@/components/LiveDashboard/Navbar/Settings/NavbarBalanceSummary";
-import type { BalanceSummary } from "@/components/LiveDashboard/Navbar/Settings/types";
+import NavbarBalanceSummary from "@/components/LiveDashboard/Navbar/NavbarBalanceSummary";
+import type { BalanceSummary } from "@/components/LiveDashboard/Navbar/types";
 
 const STORAGE_KEY = "slow-trading:navbar:balance-visible:v1";
 

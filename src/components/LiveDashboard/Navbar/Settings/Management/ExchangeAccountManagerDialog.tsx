@@ -27,10 +27,10 @@ import ButtonDialog from "@/components/ui/ButtonDialog";
 import IconButtonTooltip from "@/components/ui/IconButtonTooltip";
 import type { ExchangeAccountType } from "@/lib/exchange/account-context";
 import type { SlowTradingAccount } from "@/lib/slowTrading";
-import type { ConfigDraft, ConfigDraftSetter } from "./types";
-import SettingsInfoField from "./SettingsInfoField";
+import type { ConfigDraft, ConfigDraftSetter } from "../../types";
+import SettingsInfoField from "../Components/SettingsInfoField";
 import { tradeLog } from "@/lib/trading/helper/log";
-import { applyAccountProfileToConfigDraft } from "./helpers";
+import { applyAccountProfileToConfigDraft } from "../helpers";
 
 function maskCredentialValue(value: string): string {
   if (!value) {
@@ -157,8 +157,8 @@ export default function ExchangeAccountManagerDialog({
   )
     ? editingExchangeAccountSlug
     : (configDraft.exchangeAccounts.find(
-        (account) => account.slug === configDraft.exchangeAccountSlug,
-      )?.slug ??
+      (account) => account.slug === configDraft.exchangeAccountSlug,
+    )?.slug ??
       configDraft.exchangeAccounts[0]?.slug ??
       configDraft.exchangeAccountSlug);
   const editingExchangeAccount =
@@ -169,11 +169,11 @@ export default function ExchangeAccountManagerDialog({
     revealedCredentials.accountId === effectiveEditingAccountId
       ? revealedCredentials
       : {
-          accountId: effectiveEditingAccountId,
-          apiKey: false,
-          apiSecret: false,
-          passphrase: false,
-        };
+        accountId: effectiveEditingAccountId,
+        apiKey: false,
+        apiSecret: false,
+        passphrase: false,
+      };
 
   const setCredentialRevealed = (
     key: "apiKey" | "apiSecret" | "passphrase",
@@ -214,10 +214,10 @@ export default function ExchangeAccountManagerDialog({
       setConfigDraft((prev) =>
         prev
           ? {
-              ...prev,
-              exchangeAccounts: savedAccounts,
-              exchangeAccountSlug: savedExchangeAccountSlug,
-            }
+            ...prev,
+            exchangeAccounts: savedAccounts,
+            exchangeAccountSlug: savedExchangeAccountSlug,
+          }
           : prev,
       );
       setEditingExchangeAccountSlug((current) =>

@@ -27,7 +27,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { endpoints } from "@/components/endpoints";
 import type { SlowTradingMcpPermission } from "@/lib/slowTrading/types";
 
-import SettingsDialogSection from "./SettingsDialogSection";
+import SettingsDialogSection from "../Components/SettingsDialogSection";
 import SettingsDialogMcpToolPreview, {
   type McpToolCatalogItem,
 } from "./SettingsDialogMcpToolPreview";
@@ -37,43 +37,43 @@ const MCP_PERMISSIONS: Array<{
   label: string;
   description: string;
 }> = [
-  {
-    key: "tags.read",
-    label: "Tags read",
-    description: "List tag definitions, descriptions, filters, and assignments.",
-  },
-  {
-    key: "tags.write",
-    label: "Tags write",
-    description: "Create, update, and delete reusable tags.",
-  },
-  {
-    key: "coin_metadata.read",
-    label: "Coin metadata read",
-    description: "Read coin descriptions and tag attachments.",
-  },
-  {
-    key: "coin_metadata.write",
-    label: "Coin metadata write",
-    description: "Edit descriptions and tag attachments.",
-  },
-  {
-    key: "coin_metadata.broadcast",
-    label: "Metadata broadcast",
-    description: "Manually broadcast metadata to peer instances.",
-  },
-  {
-    key: "balance.read",
-    label: "Balance read",
-    description:
-      "Read available, spendable, reserved, Safe Haven, locked, and total balance values with their meanings.",
-  },
-  {
-    key: "trade_history.read",
-    label: "Trade history read",
-    description: "Read closed history and open positions.",
-  },
-];
+    {
+      key: "tags.read",
+      label: "Tags read",
+      description: "List tag definitions, descriptions, filters, and assignments.",
+    },
+    {
+      key: "tags.write",
+      label: "Tags write",
+      description: "Create, update, and delete reusable tags.",
+    },
+    {
+      key: "coin_metadata.read",
+      label: "Coin metadata read",
+      description: "Read coin descriptions and tag attachments.",
+    },
+    {
+      key: "coin_metadata.write",
+      label: "Coin metadata write",
+      description: "Edit descriptions and tag attachments.",
+    },
+    {
+      key: "coin_metadata.broadcast",
+      label: "Metadata broadcast",
+      description: "Manually broadcast metadata to peer instances.",
+    },
+    {
+      key: "balance.read",
+      label: "Balance read",
+      description:
+        "Read available, spendable, reserved, Safe Haven, locked, and total balance values with their meanings.",
+    },
+    {
+      key: "trade_history.read",
+      label: "Trade history read",
+      description: "Read closed history and open positions.",
+    },
+  ];
 
 interface McpTokenRecord {
   id: string;

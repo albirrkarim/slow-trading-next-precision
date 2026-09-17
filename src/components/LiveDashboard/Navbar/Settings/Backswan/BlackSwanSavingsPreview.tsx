@@ -32,7 +32,7 @@ import {
 import { endpoints } from "@/components/endpoints";
 import type { BlackSwanSavingsBacktestResult } from "@/lib/devBacktest/black-swan";
 import blackSwan from "@/lib/trading/black-swan";
-import type { ConfigDraft, DashboardState } from "../Settings/types";
+import type { ConfigDraft, DashboardState } from "../types";
 import BlackSwanExitReasonChart from "./BlackSwanExitReasonChart";
 import BlackSwanPositionScenarios from "./BlackSwanPositionScenarios";
 

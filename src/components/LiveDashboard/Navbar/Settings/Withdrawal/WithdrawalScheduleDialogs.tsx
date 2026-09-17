@@ -18,11 +18,11 @@ import { useState } from "react";
 
 import ButtonDialog from "@/components/ui/ButtonDialog";
 
-import SettingsInfoField from "./SettingsInfoField";
+import SettingsInfoField from "../Components/SettingsInfoField";
 import type {
   WithdrawalScheduleDraft,
   WithdrawalWalletDraft,
-} from "./types";
+} from "../../types";
 import WithdrawalNetworkAutocomplete from "./WithdrawalNetworkAutocomplete";
 
 function createScheduleId(): string {
@@ -69,9 +69,9 @@ function WithdrawalScheduleForm(props: {
       walletId,
       ...(wallet
         ? {
-            targetNetwork: wallet.network,
-            targetWalletAddress: wallet.address,
-          }
+          targetNetwork: wallet.network,
+          targetWalletAddress: wallet.address,
+        }
         : {}),
     });
   };

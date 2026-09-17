@@ -11,8 +11,8 @@ import { computeAutoEntryActive } from "@/components/LiveDashboard/Navbar/Settin
 import {
   getNavbarBackgroundColor,
   useNavbarThemeColor,
-} from "@/components/LiveDashboard/Navbar/Settings/theme-color";
-import type { DashboardState } from "@/components/LiveDashboard/Navbar/Settings/types";
+} from "@/components/LiveDashboard/Navbar/theme-color";
+import type { DashboardState } from "@/components/LiveDashboard/Navbar/types";
 
 const theme = createTheme({
   palette: {

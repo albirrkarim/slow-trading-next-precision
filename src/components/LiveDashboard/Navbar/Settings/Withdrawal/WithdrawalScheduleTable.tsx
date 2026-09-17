@@ -24,7 +24,7 @@ import {
 import type {
   WithdrawalScheduleDraft,
   WithdrawalWalletDraft,
-} from "./types";
+} from "../../types";
 
 function normalizeSchedule(
   schedule: WithdrawalScheduleDraft,
@@ -137,8 +137,8 @@ export default function WithdrawalScheduleTable(props: {
             const wallet = getWalletDisplay(schedule, walletBook);
             const walletEntry = schedule.walletId
               ? walletBook.find(
-                  (candidate) => candidate.id === schedule.walletId,
-                )
+                (candidate) => candidate.id === schedule.walletId,
+              )
               : undefined;
 
             return (

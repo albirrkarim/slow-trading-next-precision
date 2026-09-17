@@ -9,11 +9,11 @@ import axios from "axios";
 import { describe, expect, it, vi } from "vitest";
 
 import { endpoints } from "@/components/endpoints";
-import SettingsDialogBlackSwanTab from "@/components/LiveDashboard/Navbar/Settings/SettingsDialogBlackSwanTab";
-import SettingsDialogRuntimeTab from "@/components/LiveDashboard/Navbar/Settings/SettingsDialogRuntimeTab";
-import SettingsDialogManagementTab from "@/components/LiveDashboard/Navbar/Settings/SettingsDialogManagementTab";
+import SettingsDialogBlackSwanTab from "@/components/LiveDashboard/Navbar/Settings/Backswan/SettingsDialogBlackSwanTab";
+import SettingsDialogRuntimeTab from "@/components/LiveDashboard/Navbar/Settings/Runtime/SettingsDialogRuntimeTab";
+import SettingsDialogManagementTab from "@/components/LiveDashboard/Navbar/Settings/Management/SettingsDialogManagementTab";
 import { makeConfigDraft } from "@/components/LiveDashboard/Navbar/Settings/helpers";
-import { useLiveDashboardNavbar } from "@/components/LiveDashboard/Navbar/Settings/useLiveDashboardNavbar";
+import { useLiveDashboardNavbar } from "@/components/LiveDashboard/Navbar/useLiveDashboardNavbar";
 import { TradingMode } from "@/lib/exchange";
 
 vi.mock("axios", () => ({

@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   parseConfigBackup,
   stringifyConfigBackup,
-} from "@/components/LiveDashboard/Navbar/Settings/SettingsDialogBackupTab";
-import type { ConfigDraft } from "@/components/LiveDashboard/Navbar/Settings/types";
+} from "@/components/LiveDashboard/Navbar/Settings/Backup/SettingsDialogBackupTab";
+import type { ConfigDraft } from "@/components/LiveDashboard/Navbar/types";
 
 const configDraft = {
   adaptiveAveraging: {

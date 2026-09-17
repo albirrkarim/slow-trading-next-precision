@@ -16,11 +16,11 @@ import { DESCISION_MODELS } from "@/lib/dynamic/constants-clients";
 import type { TradingMode } from "@/lib/exchange/types";
 
 import ExchangeAccountManagerDialog from "./ExchangeAccountManagerDialog";
-import { parseSymbols } from "./helpers";
-import SettingsGroup from "./SettingsGroup";
-import SettingsInfoField from "./SettingsInfoField";
+import { parseSymbols } from "../helpers";
+import SettingsGroup from "../Components/SettingsGroup";
+import SettingsInfoField from "../Components/SettingsInfoField";
 import SafeHavenScheduleSettings from "./SafeHavenScheduleSettings";
-import type { ConfigDraft, ConfigDraftSetter } from "./types";
+import type { ConfigDraft, ConfigDraftSetter } from "../../types";
 
 const TRADING_MODE_OPTIONS: Array<{ value: TradingMode; label: string }> = [
   { value: "spot" as TradingMode, label: "Spot" },
@@ -69,12 +69,12 @@ export default function SettingsDialogManagementTab({
     setConfigDraft((prev) =>
       prev
         ? {
-            ...prev,
-            modelConfig: {
-              ...prev.modelConfig,
-              ...patch,
-            },
-          }
+          ...prev,
+          modelConfig: {
+            ...prev.modelConfig,
+            ...patch,
+          },
+        }
         : prev,
     );
   };
@@ -154,9 +154,9 @@ export default function SettingsDialogManagementTab({
                   setConfigDraft((prev) =>
                     prev
                       ? {
-                          ...prev,
-                          tradingMode: event.target.value as TradingMode,
-                        }
+                        ...prev,
+                        tradingMode: event.target.value as TradingMode,
+                      }
                       : prev,
                   )
                 }
@@ -179,9 +179,9 @@ export default function SettingsDialogManagementTab({
                   setConfigDraft((prev) =>
                     prev
                       ? {
-                          ...prev,
-                          decisionEngineVersion: event.target.value,
-                        }
+                        ...prev,
+                        decisionEngineVersion: event.target.value,
+                      }
                       : prev,
                   )
                 }
@@ -240,12 +240,12 @@ export default function SettingsDialogManagementTab({
                 setConfigDraft((prev) =>
                   prev
                     ? {
-                        ...prev,
-                        autoRemoveSymbolAbsLevel: Math.max(
-                          0,
-                          Math.floor(Number(event.target.value) || 0),
-                        ),
-                      }
+                      ...prev,
+                      autoRemoveSymbolAbsLevel: Math.max(
+                        0,
+                        Math.floor(Number(event.target.value) || 0),
+                      ),
+                    }
                     : prev,
                 )
               }
@@ -270,12 +270,12 @@ export default function SettingsDialogManagementTab({
                 setConfigDraft((prev) =>
                   prev
                     ? {
-                        ...prev,
-                        autoRemoveSymbolMinPrice: Math.max(
-                          0,
-                          Number(event.target.value) || 0,
-                        ),
-                      }
+                      ...prev,
+                      autoRemoveSymbolMinPrice: Math.max(
+                        0,
+                        Number(event.target.value) || 0,
+                      ),
+                    }
                     : prev,
                 )
               }
@@ -300,12 +300,12 @@ export default function SettingsDialogManagementTab({
                 setConfigDraft((prev) =>
                   prev
                     ? {
-                        ...prev,
-                        autoRemoveSymbolMinMarketCapUSD: Math.max(
-                          0,
-                          Number(event.target.value) || 0,
-                        ),
-                      }
+                      ...prev,
+                      autoRemoveSymbolMinMarketCapUSD: Math.max(
+                        0,
+                        Number(event.target.value) || 0,
+                      ),
+                    }
                     : prev,
                 )
               }
@@ -342,12 +342,12 @@ export default function SettingsDialogManagementTab({
                 setConfigDraft((prev) =>
                   prev
                     ? {
-                        ...prev,
-                        autoRemoveSymbolMinVPointPct: Math.max(
-                          0,
-                          Number(event.target.value) || 0,
-                        ),
-                      }
+                      ...prev,
+                      autoRemoveSymbolMinVPointPct: Math.max(
+                        0,
+                        Number(event.target.value) || 0,
+                      ),
+                    }
                     : prev,
                 )
               }

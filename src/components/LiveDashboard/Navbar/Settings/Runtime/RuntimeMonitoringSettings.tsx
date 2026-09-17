@@ -2,9 +2,9 @@
 
 import { Box, Divider, Stack, Typography } from "@mui/material";
 
-import SettingsInfoField from "./SettingsInfoField";
-import SettingsRuleAccordion from "./SettingsRuleAccordion";
-import type { ConfigDraft, ConfigDraftSetter } from "./types";
+import SettingsInfoField from "../Components/SettingsInfoField";
+import SettingsRuleAccordion from "../Components/SettingsRuleAccordion";
+import type { ConfigDraft, ConfigDraftSetter } from "../../types";
 
 function StageHeading({
   description,
@@ -38,9 +38,9 @@ function updateWholeMinutes(
   setConfigDraft((previous) =>
     previous
       ? {
-          ...previous,
-          [key]: Math.max(1, Math.floor(Number(value) || 1)),
-        }
+        ...previous,
+        [key]: Math.max(1, Math.floor(Number(value) || 1)),
+      }
       : previous,
   );
 }
@@ -102,13 +102,13 @@ export default function RuntimeMonitoringSettings({
                 setConfigDraft((previous) =>
                   previous
                     ? {
-                        ...previous,
-                        speedupStagePositivePnlThresholdPct: Number.isFinite(
-                          parsed,
-                        )
-                          ? Math.max(0, parsed)
-                          : 1.5,
-                      }
+                      ...previous,
+                      speedupStagePositivePnlThresholdPct: Number.isFinite(
+                        parsed,
+                      )
+                        ? Math.max(0, parsed)
+                        : 1.5,
+                    }
                     : previous,
                 );
               }}
@@ -135,13 +135,13 @@ export default function RuntimeMonitoringSettings({
                 setConfigDraft((previous) =>
                   previous
                     ? {
-                        ...previous,
-                        speedupStageNegativePnlThresholdPct: Number.isFinite(
-                          parsed,
-                        )
-                          ? Math.max(0, parsed)
-                          : 1.5,
-                      }
+                      ...previous,
+                      speedupStageNegativePnlThresholdPct: Number.isFinite(
+                        parsed,
+                      )
+                        ? Math.max(0, parsed)
+                        : 1.5,
+                    }
                     : previous,
                 );
               }}
@@ -176,11 +176,11 @@ export default function RuntimeMonitoringSettings({
                 setConfigDraft((previous) =>
                   previous
                     ? {
-                        ...previous,
-                        speedupStageTakeProfitOffsetPct: Number.isFinite(parsed)
-                          ? Math.max(0, parsed)
-                          : 0.5,
-                      }
+                      ...previous,
+                      speedupStageTakeProfitOffsetPct: Number.isFinite(parsed)
+                        ? Math.max(0, parsed)
+                        : 0.5,
+                    }
                     : previous,
                 );
               }}

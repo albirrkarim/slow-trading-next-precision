@@ -15,8 +15,8 @@ import {
 } from "@mui/material";
 import type { SlowTradingDashboardState } from "@/lib/slowTrading";
 
-import ReadMoreDialogButton from "../Navbar/Settings/ReadMoreDialogButton";
-import ExitThresholdChart from "../Navbar/Settings/ExitThresholdChart";
+import ReadMoreDialogButton from "../Navbar/Settings/Components/ReadMoreDialogButton";
+import ExitThresholdChart from "../Navbar/Settings/Trading/ExitThresholdChart";
 import AveragingSimulationPreview from "./AveragingSimulationPreview";
 import {
   buildTradingLivePreview,
@@ -742,8 +742,8 @@ export default function TradingLivePreview({
                       <PreviewMetric
                         key={`${candidate.symbol}-${candidate.level}-${index}`}
                         label={`${candidate.symbol}${candidate.level === null
-                            ? ""
-                            : ` level ${candidate.level}`
+                          ? ""
+                          : ` level ${candidate.level}`
                           }`}
                         value={formatUsdt(candidate.marginUsdt)}
                         valueTooltip="UNRESERVED"
@@ -758,8 +758,8 @@ export default function TradingLivePreview({
                       detail="entry margin + all earlier averaging margins, multiplied by the reserve multiplier"
                       formula={projectedBailoutFormula}
                       label={`Projected new worker${preview.projectedBailoutLevel === null
-                          ? ""
-                          : ` level ${preview.projectedBailoutLevel}`
+                        ? ""
+                        : ` level ${preview.projectedBailoutLevel}`
                         }`}
                     />
                   </Box>

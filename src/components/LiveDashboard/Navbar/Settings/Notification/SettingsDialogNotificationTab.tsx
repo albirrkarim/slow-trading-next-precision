@@ -35,26 +35,26 @@ import { useState } from "react";
 import NotificationExampleDialog, {
   type NotificationExampleSelection,
 } from "./NotificationExampleDialog";
-import type { ConfigDraft, ConfigDraftSetter } from "./types";
+import type { ConfigDraft, ConfigDraftSetter } from "../../types";
 
 const CHANNELS: Array<{
   key: NotificationChannel;
   label: string;
   description: string;
 }> = [
-  {
-    key: "telegram",
-    label: "Telegram",
-    description:
-      "Send SLOW dashboard execution notifications to the configured Telegram bot and chat.",
-  },
-  {
-    key: "email",
-    label: "Email",
-    description:
-      "Send the same SLOW dashboard execution notifications through the configured email sender.",
-  },
-];
+    {
+      key: "telegram",
+      label: "Telegram",
+      description:
+        "Send SLOW dashboard execution notifications to the configured Telegram bot and chat.",
+    },
+    {
+      key: "email",
+      label: "Email",
+      description:
+        "Send the same SLOW dashboard execution notifications through the configured email sender.",
+    },
+  ];
 
 export default function SettingsDialogNotificationTab(props: {
   configDraft: ConfigDraft;
@@ -76,9 +76,9 @@ export default function SettingsDialogNotificationTab(props: {
     setConfigDraft((prev) =>
       prev
         ? {
-            ...prev,
-            notification: updater(prev.notification),
-          }
+          ...prev,
+          notification: updater(prev.notification),
+        }
         : prev,
     );
   };
@@ -92,8 +92,7 @@ export default function SettingsDialogNotificationTab(props: {
       });
     } catch (error: any) {
       enqueueSnackbar(
-        `Failed to send ${channel} test: ${
-          error.response?.data?.error || error.message
+        `Failed to send ${channel} test: ${error.response?.data?.error || error.message
         }`,
         { variant: "error" },
       );
@@ -233,14 +232,14 @@ export default function SettingsDialogNotificationTab(props: {
                                           ...current[channel.key],
                                           types: event.target.checked
                                             ? [
-                                                ...currentTypes,
-                                                createNotificationTypeConfig(
-                                                  type,
-                                                ),
-                                              ]
-                                            : currentTypes.filter(
-                                                (item) => item.id !== type,
+                                              ...currentTypes,
+                                              createNotificationTypeConfig(
+                                                type,
                                               ),
+                                            ]
+                                            : currentTypes.filter(
+                                              (item) => item.id !== type,
+                                            ),
                                         },
                                       };
                                     })
@@ -287,7 +286,7 @@ export default function SettingsDialogNotificationTab(props: {
                                   1,
                                   Math.floor(
                                     Number(event.target.value) ||
-                                      DEFAULT_HIGH_VOLATILITY_MIN_ABSOLUTE_LEVEL,
+                                    DEFAULT_HIGH_VOLATILITY_MIN_ABSOLUTE_LEVEL,
                                   ),
                                 ),
                               })

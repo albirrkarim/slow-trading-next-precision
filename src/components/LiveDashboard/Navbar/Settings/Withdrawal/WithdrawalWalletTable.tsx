@@ -17,7 +17,7 @@ import {
 import type {
   WithdrawalScheduleDraft,
   WithdrawalWalletDraft,
-} from "./types";
+} from "../../types";
 import {
   WithdrawalWalletDeleteDialog,
   WithdrawalWalletUpdateDialog,

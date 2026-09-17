@@ -5,7 +5,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import ReadMoreDialogButton from "@/components/LiveDashboard/Navbar/Settings/ReadMoreDialogButton";
+import ReadMoreDialogButton from "@/components/LiveDashboard/Navbar/Settings/Components/ReadMoreDialogButton";
 
 describe("ReadMoreDialogButton", () => {
   it("uses an accessible book action to open detailed content", () => {

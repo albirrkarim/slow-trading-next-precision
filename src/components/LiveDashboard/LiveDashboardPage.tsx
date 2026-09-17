@@ -49,8 +49,8 @@ import SlowTradingQueuesPanel from "./Feature/SlowTradingQueues";
 import VPointsFrequency from "./Feature/VPointsFrequency";
 import WorkerEntrySequenceMetrics from "./Feature/WorkerEntrySequenceMetrics";
 import WorkerNeededEstimation from "./Feature/WorkerNeededEstimation";
-import LiveDashboardNavbar from "./Navbar/Settings";
-import DateSelectionDialog from "./Navbar/Settings/DateSelectionDialog";
+import LiveDashboardNavbar from "./Navbar";
+import DateSelectionDialog from "./Navbar/Settings/Components/DateSelectionDialog";
 import {
   computeDayPreview,
   formatDailyPnlMetaTitle,

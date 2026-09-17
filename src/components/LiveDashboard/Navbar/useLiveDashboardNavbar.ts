@@ -13,7 +13,7 @@ import {
   computeOpenPositionSummary,
   makeConfigDraft,
   parseSymbols,
-} from "./helpers";
+} from "./Settings/helpers";
 import type {
   ConfigDraft,
   ConfigDraftSetter,
@@ -72,18 +72,20 @@ function buildWithdrawalPayload(configDraft: ConfigDraft) {
 function buildSafeHavenPayload(configDraft: ConfigDraft) {
   return {
     autoEnabled: Boolean(configDraft.safeHavenAutoEnabled),
-    schedules: (configDraft.safeHavenSchedules ?? []).map((schedule, index) => ({
-      id: schedule.id || `safe-haven-${index + 1}`,
-      name: schedule.name || `Safe Haven ${index + 1}`,
-      enabled: schedule.enabled,
-      amountUSDT: Math.max(0, Number(schedule.amountUSDT) || 0),
-      pct: Math.min(100, Math.max(0, Number(schedule.pct) || 0)),
-      dayOfMonth: Math.min(
-        31,
-        Math.max(1, Math.floor(Number(schedule.dayOfMonth) || 1)),
-      ),
-      lastQueuedAt: schedule.lastQueuedAt,
-    })),
+    schedules: (configDraft.safeHavenSchedules ?? []).map(
+      (schedule, index) => ({
+        id: schedule.id || `safe-haven-${index + 1}`,
+        name: schedule.name || `Safe Haven ${index + 1}`,
+        enabled: schedule.enabled,
+        amountUSDT: Math.max(0, Number(schedule.amountUSDT) || 0),
+        pct: Math.min(100, Math.max(0, Number(schedule.pct) || 0)),
+        dayOfMonth: Math.min(
+          31,
+          Math.max(1, Math.floor(Number(schedule.dayOfMonth) || 1)),
+        ),
+        lastQueuedAt: schedule.lastQueuedAt,
+      }),
+    ),
   };
 }
 
@@ -155,10 +157,7 @@ export function useLiveDashboardNavbar({
         0,
         Number(configDraft.sandboxInitialBalanceUSDT) || 0,
       );
-      const safeHavenUSDT = Math.max(
-        0,
-        Number(configDraft.safeHavenUSDT) || 0,
-      );
+      const safeHavenUSDT = Math.max(0, Number(configDraft.safeHavenUSDT) || 0);
 
       await axios.put(endpoints.slow.prod.exchangeAccounts, {
         accounts: configDraft.exchangeAccounts,
@@ -193,8 +192,7 @@ export function useLiveDashboardNavbar({
             0,
             Math.floor(Number(configDraft.maxOpenPositions) || 0),
           ),
-          minActionableAbsoluteLevel:
-            configDraft.minActionableAbsoluteLevel,
+          minActionableAbsoluteLevel: configDraft.minActionableAbsoluteLevel,
           maxLeverage: configDraft.maxLeverage,
           exactLeverage: configDraft.exactLeverage,
           blackSwan: configDraft.blackSwan,
@@ -308,10 +306,7 @@ export function useLiveDashboardNavbar({
 
     setTryingWithdraw(true);
     try {
-      const safeHavenUSDT = Math.max(
-        0,
-        Number(configDraft.safeHavenUSDT) || 0,
-      );
+      const safeHavenUSDT = Math.max(0, Number(configDraft.safeHavenUSDT) || 0);
 
       await axios.put(endpoints.slow.prod.storage, {
         safeHavenUSDT,
