@@ -24,7 +24,7 @@ import {
 import type {
   WithdrawalScheduleDraft,
   WithdrawalWalletDraft,
-} from "../../types";
+} from "../settings-types";
 
 function normalizeSchedule(
   schedule: WithdrawalScheduleDraft,

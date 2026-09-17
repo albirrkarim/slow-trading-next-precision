@@ -19,7 +19,7 @@ import SettingsGroup from "../Components/SettingsGroup";
 import SettingsInfoField from "../Components/SettingsInfoField";
 import TradingConfigJsonEditor from "./TradingConfigJsonEditor";
 import TradingSettingsPreview from "./TradingSettingsPreview";
-import type { ConfigDraft, ConfigDraftSetter, DashboardState } from "../../types";
+import type { ConfigDraft, ConfigDraftSetter, DashboardState } from "../settings-types";
 import {
   applyAccountProfileToConfigDraft,
   updateAccountSettingsInConfigDraft,

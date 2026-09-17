@@ -10,7 +10,7 @@ import ReadMoreDialogButton from "../Components/ReadMoreDialogButton";
 import SettingsCheckbox from "../Components/SettingsCheckbox";
 import SettingsInfoField from "../Components/SettingsInfoField";
 import SettingsRuleAccordion from "../Components/SettingsRuleAccordion";
-import type { ConfigDraft, ConfigDraftSetter } from "../../types";
+import type { ConfigDraft, ConfigDraftSetter } from "../settings-types";
 
 const STOP_LOSS_PLUS_INFO =
   "Trailing profit lock after TP tracking starts. With TP 2% and retrace 1%, the initial exit threshold is 1%. The threshold rises with every higher profit peak.";

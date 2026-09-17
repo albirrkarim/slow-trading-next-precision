@@ -7,7 +7,7 @@ import {
   NavbarDayPreviewSection,
   NavbarIdentitySection,
 } from "./NavbarSections";
-import type { LiveDashboardNavbarProps } from "./types";
+import type { LiveDashboardNavbarProps } from "./navbar-types";
 import { useLiveDashboardNavbar } from "./useLiveDashboardNavbar";
 import {
   getNavbarBackgroundColor,

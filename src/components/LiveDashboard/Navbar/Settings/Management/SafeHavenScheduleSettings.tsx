@@ -22,7 +22,7 @@ import SettingsInfoField from "../Components/SettingsInfoField";
 import type {
   ConfigDraftSetter,
   SafeHavenScheduleDraft,
-} from "../../types";
+} from "../settings-types";
 
 function createDefaultSchedule(index: number): SafeHavenScheduleDraft {
   return {

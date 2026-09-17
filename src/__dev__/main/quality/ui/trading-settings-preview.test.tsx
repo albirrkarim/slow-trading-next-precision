@@ -20,7 +20,7 @@ import TradingSettingsPreview from "@/components/LiveDashboard/Navbar/Settings/T
 import type {
   ConfigDraft,
   DashboardState,
-} from "@/components/LiveDashboard/Navbar/types";
+} from "@/components/LiveDashboard/Navbar/navbar-types";
 import type { VolatilityPoint } from "@/lib/dynamic";
 import { TradingMode } from "@/lib/exchange";
 import type { SlowTradingDashboardState } from "@/lib/slowTrading";

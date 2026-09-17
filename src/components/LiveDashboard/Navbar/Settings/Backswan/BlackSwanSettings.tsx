@@ -23,7 +23,7 @@ import blackSwanModel, {
 import SettingsDialogSection from "../Components/SettingsDialogSection";
 import SettingsInfoField from "../Components/SettingsInfoField";
 import BlackSwanSavingsPreview from "./BlackSwanSavingsPreview";
-import type { ConfigDraft, ConfigDraftSetter, DashboardState } from "../../types";
+import type { ConfigDraft, ConfigDraftSetter, DashboardState } from "../settings-types";
 
 const STATUS_STEPS = [
   {

@@ -4,7 +4,7 @@ import {
   parseConfigBackup,
   stringifyConfigBackup,
 } from "@/components/LiveDashboard/Navbar/Settings/Backup/SettingsDialogBackupTab";
-import type { ConfigDraft } from "@/components/LiveDashboard/Navbar/types";
+import type { ConfigDraft } from "@/components/LiveDashboard/Navbar/navbar-types";
 
 const configDraft = {
   adaptiveAveraging: {

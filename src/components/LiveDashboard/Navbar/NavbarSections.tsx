@@ -41,7 +41,7 @@ import type {
   DayPreviewSummary,
   LiveDashboardNavbarProps,
   OpenPositionSummary,
-} from "./types";
+} from "./navbar-types";
 
 interface NavbarIdentitySectionProps {
   configDraft: ConfigDraft | null;

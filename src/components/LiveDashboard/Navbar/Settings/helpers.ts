@@ -19,7 +19,7 @@ import type {
   DashboardState,
   DayPreviewSummary,
   OpenPositionSummary,
-} from "../types";
+} from "./settings-types";
 import slowTradingClient from "@/lib/slowTrading/client";
 import slowTradingAccountConfig from "@/lib/slowTrading/account-config";
 import slowTradingDailyPnlLimit from "@/lib/slowTrading/daily-pnl-limit";

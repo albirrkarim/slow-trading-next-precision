@@ -10,7 +10,7 @@ import SettingsDialogTradingTab from "@/components/LiveDashboard/Navbar/Settings
 import type {
   ConfigDraft,
   DashboardState,
-} from "@/components/LiveDashboard/Navbar/types";
+} from "@/components/LiveDashboard/Navbar/navbar-types";
 import { VOLATILITY_THRESHOLD } from "@/lib/brain/constants";
 import { TradingMode } from "@/lib/exchange";
 import type { SlowTradingAccount } from "@/lib/slowTrading";

@@ -5,7 +5,7 @@ import PublicIcon from "@mui/icons-material/Public";
 import { Chip, Tooltip } from "@mui/material";
 import { useState } from "react";
 
-import type { DashboardState } from "./types";
+import type { DashboardState } from "./navbar-types";
 
 export default function NavbarInstanceIp({
   snapshot,

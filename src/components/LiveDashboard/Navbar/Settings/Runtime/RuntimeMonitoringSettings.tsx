@@ -4,7 +4,7 @@ import { Box, Divider, Stack, Typography } from "@mui/material";
 
 import SettingsInfoField from "../Components/SettingsInfoField";
 import SettingsRuleAccordion from "../Components/SettingsRuleAccordion";
-import type { ConfigDraft, ConfigDraftSetter } from "../../types";
+import type { ConfigDraft, ConfigDraftSetter } from "../settings-types";
 
 function StageHeading({
   description,

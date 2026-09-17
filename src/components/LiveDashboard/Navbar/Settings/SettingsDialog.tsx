@@ -28,7 +28,7 @@ import SettingsDialogMcpTab from "./MCP/SettingsDialogMcpTab";
 import SettingsDialogNotificationTab from "./Notification/SettingsDialogNotificationTab";
 import SettingsDialogTradingTab from "./Trading/SettingsDialogTradingTab";
 import SettingsDialogWithdrawTab from "./Withdrawal/SettingsDialogWithdrawTab";
-import type { ConfigDraft, ConfigDraftSetter, DashboardState } from "../types";
+import type { ConfigDraft, ConfigDraftSetter, DashboardState } from "./settings-types";
 
 export const SETTINGS_TABS = [
   { label: "Trading", value: "trading" },

@@ -16,7 +16,7 @@ import type {
   ConfigDraftSetter,
   WithdrawalScheduleDraft,
   WithdrawalWalletDraft,
-} from "../../types";
+} from "../settings-types";
 import { WithdrawalScheduleCreateDialog } from "./WithdrawalScheduleDialogs";
 import WithdrawalScheduleTable from "./WithdrawalScheduleTable";
 import { WithdrawalWalletCreateDialog } from "./WithdrawalWalletDialogs";

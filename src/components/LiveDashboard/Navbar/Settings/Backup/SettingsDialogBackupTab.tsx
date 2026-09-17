@@ -13,7 +13,7 @@ import {
   Typography,
 } from "@mui/material";
 
-import type { ConfigDraft, ConfigDraftSetter } from "../../types";
+import type { ConfigDraft, ConfigDraftSetter } from "../settings-types";
 
 const REQUIRED_CONFIG_KEYS = [
   "name",

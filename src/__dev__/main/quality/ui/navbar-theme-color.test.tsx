@@ -12,7 +12,7 @@ import {
   getNavbarBackgroundColor,
   useNavbarThemeColor,
 } from "@/components/LiveDashboard/Navbar/theme-color";
-import type { DashboardState } from "@/components/LiveDashboard/Navbar/types";
+import type { DashboardState } from "@/components/LiveDashboard/Navbar/navbar-types";
 
 const theme = createTheme({
   palette: {

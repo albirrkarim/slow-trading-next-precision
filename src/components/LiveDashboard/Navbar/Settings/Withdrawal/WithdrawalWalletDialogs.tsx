@@ -9,7 +9,7 @@ import { useState } from "react";
 import ButtonDialog from "@/components/ui/ButtonDialog";
 
 import SettingsInfoField from "../Components/SettingsInfoField";
-import type { WithdrawalWalletDraft } from "../../types";
+import type { WithdrawalWalletDraft } from "../settings-types";
 import WithdrawalNetworkAutocomplete from "./WithdrawalNetworkAutocomplete";
 
 function createWalletId(): string {

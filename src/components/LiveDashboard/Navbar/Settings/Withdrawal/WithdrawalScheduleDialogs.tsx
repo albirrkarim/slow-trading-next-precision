@@ -22,7 +22,7 @@ import SettingsInfoField from "../Components/SettingsInfoField";
 import type {
   WithdrawalScheduleDraft,
   WithdrawalWalletDraft,
-} from "../../types";
+} from "../settings-types";
 import WithdrawalNetworkAutocomplete from "./WithdrawalNetworkAutocomplete";
 
 function createScheduleId(): string {

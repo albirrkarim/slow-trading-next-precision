@@ -8,7 +8,7 @@ import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import ExchangeAccountManagerDialog from "@/components/LiveDashboard/Navbar/Settings/Management/ExchangeAccountManagerDialog";
-import type { ConfigDraft } from "@/components/LiveDashboard/Navbar/types";
+import type { ConfigDraft } from "@/components/LiveDashboard/Navbar/navbar-types";
 
 vi.mock("axios", () => ({
   default: {

@@ -17,7 +17,7 @@ import { makeConfigDraft } from "@/components/LiveDashboard/Navbar/Settings/help
 import type {
   ConfigDraft,
   DashboardState,
-} from "@/components/LiveDashboard/Navbar/types";
+} from "@/components/LiveDashboard/Navbar/navbar-types";
 import { DEFAULT_DYNAMIC_TRADE_CONFIG_PRODUCTION } from "@/lib/dynamic";
 import slowTradingAccountConfig from "@/lib/slowTrading/account-config";
 import type { SlowTradingAccount } from "@/lib/slowTrading";

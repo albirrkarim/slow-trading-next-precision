@@ -35,7 +35,7 @@ import { useState } from "react";
 import NotificationExampleDialog, {
   type NotificationExampleSelection,
 } from "./NotificationExampleDialog";
-import type { ConfigDraft, ConfigDraftSetter } from "../../types";
+import type { ConfigDraft, ConfigDraftSetter } from "../settings-types";
 
 const CHANNELS: Array<{
   key: NotificationChannel;

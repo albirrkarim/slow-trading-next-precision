@@ -1,17 +1,14 @@
 "use client";
 
-import type { Dispatch, SetStateAction } from "react";
 import type { AdaptiveAveragingConfig } from "@/lib/dynamic";
 import type { ExchangeType, TradingMode } from "@/lib/exchange/types";
 import type { DashboardNotificationConfig } from "@/lib/notification/config";
-import type {
-  SlowTradingAccount,
-  SlowTradingDashboardState,
-} from "@/lib/slowTrading";
-import type { TradingModelConfig } from "@/lib/trading/models";
+import type { SlowTradingAccount } from "@/lib/slowTrading";
 import type { BlackSwanConfig } from "@/lib/trading/black-swan";
+import type { TradingModelConfig } from "@/lib/trading/models";
+import type { Dispatch, SetStateAction } from "react";
 
-export type DashboardState = NonNullable<SlowTradingDashboardState>;
+export type { DashboardState } from "../navbar-types";
 
 export interface WithdrawalWalletDraft {
   id: string;
@@ -123,11 +120,4 @@ export interface BalanceSummary {
   startingBalance: number;
   locked: number;
   total: number;
-}
-
-export interface LiveDashboardNavbarProps {
-  dashboardState: SlowTradingDashboardState | null;
-  onRefresh: () => Promise<void>;
-  onReinitialize: () => Promise<void>;
-  reinitializing: boolean;
 }

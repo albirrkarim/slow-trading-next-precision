@@ -18,7 +18,7 @@ import {
 import SettingsInfoField from "../Components/SettingsInfoField";
 import SettingsDialogSection from "../Components/SettingsDialogSection";
 import RuntimeMonitoringSettings from "./RuntimeMonitoringSettings";
-import type { ConfigDraft, ConfigDraftSetter } from "../../types";
+import type { ConfigDraft, ConfigDraftSetter } from "../settings-types";
 import { updateAccountSettingsInConfigDraft } from "../helpers";
 
 const DEFAULT_SYNC_ONLINE_BASE_URL = "https://wealth.reinventwp.com";

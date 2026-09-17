@@ -27,7 +27,7 @@ import ButtonDialog from "@/components/ui/ButtonDialog";
 import IconButtonTooltip from "@/components/ui/IconButtonTooltip";
 import type { ExchangeAccountType } from "@/lib/exchange/account-context";
 import type { SlowTradingAccount } from "@/lib/slowTrading";
-import type { ConfigDraft, ConfigDraftSetter } from "../../types";
+import type { ConfigDraft, ConfigDraftSetter } from "../settings-types";
 import SettingsInfoField from "../Components/SettingsInfoField";
 import { tradeLog } from "@/lib/trading/helper/log";
 import { applyAccountProfileToConfigDraft } from "../helpers";

@@ -19,7 +19,7 @@ import type {
   ConfigDraftSetter,
   DashboardState,
   LiveDashboardNavbarProps,
-} from "./types";
+} from "./navbar-types";
 
 interface SlowTradingRunResponse {
   mode: "live" | "sandbox";
