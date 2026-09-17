@@ -5,29 +5,25 @@ import type { DataBacktestPurpose } from "@lib/brain/algorithms/type-execute";
 
 import { DEFAULT_DYNAMIC_TRADING_MEMORY } from "../constants";
 
+import { deepCopy } from "@/components/client/utils";
+import { decisionEngineV20 } from "@/lib/brain/algorithms/v4/decisions/v20/decision";
+import { PRICE_NORM_DATA_MS } from "@/lib/brain/constants";
+import { resolveMarketTypeForTradingMode } from "@/lib/exchange/utils";
+import slowTradingSidewaysExit from "@/lib/slowTrading/exit-sideways";
+import { generateAveragingRecommendations } from "@/lib/slowTrading/watch-reserve";
 import type {
   BacktestReturnDynamic,
   DynamicTradeMemory,
   RunBacktestDynamicProps,
   TradeHistoryDynamic,
 } from "../";
-import {
-  countGrowthOvertime,
-  cropVolatility,
-  onlyPushUnique,
-} from "../";
+import { countGrowthOvertime, onlyPushUnique } from "../";
+import { windowsMs } from "../constants-time";
+import { cropVolatility } from "../utils/priceNorm";
 import {
   performSafeHavenWithdrawal,
   scheduleSafeHavenRequest,
 } from "../utils/safeHaven";
-import { generateInitialPriceNorm } from "./utils";
-import { deepCopy } from "@/components/client/utils";
-import { decisionEngineV14 } from "@/lib/brain/algorithms/v4/decisions/v14/decision";
-import { PRICE_NORM_DATA_MS } from "@/lib/brain/constants";
-import slowTradingSidewaysExit from "@/lib/slowTrading/exit-sideways";
-import { generateAveragingRecommendations } from "@/lib/slowTrading/watch-reserve";
-import { resolveMarketTypeForTradingMode } from "@/lib/exchange/utils";
-import { windowsMs } from "../constants-time";
 import { tryToExit } from "./exit";
 import { tryExecuteBacktestAveraging, tryOpenBacktestEntry } from "./trading";
 
@@ -56,7 +52,7 @@ export async function runBacktestVolatilityDynamic({
   entryCutoffBufferMs = windowsMs["1m"] * 3,
   config,
   verbose = false,
-  decisionEngine = decisionEngineV14,
+  decisionEngine = decisionEngineV20,
 }: RunBacktestDynamicProps): Promise<BacktestReturnDynamic> {
   signal?.throwIfAborted();
   symbols.sort();
@@ -81,8 +77,6 @@ export async function runBacktestVolatilityDynamic({
     startingBalanceUSDT,
     quoteAsset: startingBalanceUSDT,
     volatilitySnapshots: [],
-
-    priceNormMapOverTime: {},
   });
 
   // A.3 Overall asset growth
@@ -128,7 +122,7 @@ export async function runBacktestVolatilityDynamic({
         useCache: useVolatilityCache,
         marketType,
       });
-  const { commonTime, volatilityMap, warmupMap } = volatilityDatasetInput;
+  const { commonTime, volatilityMap } = volatilityDatasetInput;
 
   // A.7 Volatility Map
   for (const symbol of symbols) {
@@ -150,15 +144,6 @@ export async function runBacktestVolatilityDynamic({
   ].sort((a, b) => a - b);
 
   const cutOffNoMoreEntry = times[times.length - 1] - entryCutoffBufferMs;
-
-  // A.9 Generate Initial price norm with time
-  generateInitialPriceNorm({
-    symbols,
-    dynamicTradeMemory,
-    volatilityMap: warmupMap,
-  });
-
-  // tradeLog.log("BEGIN WITH ", dynamicTradeMemory.priceNormMapOverTime);
 
   // A.10 Initialize the single all-time model config
   const modelConfig = deepCopy(configuredModelConfig);
@@ -193,14 +178,8 @@ export async function runBacktestVolatilityDynamic({
     volatilitySnapshots: [],
     downTrend: [],
 
-    priceNormMapOverTime: {},
-
     verbose,
   };
-
-  for (const symbol of symbols) {
-    backtestPack.priceNormMapOverTime[symbol] = [];
-  }
 
   // B. BEGIN BACKTEST
   for (let index = 0, len = times.length; index < len; index++) {
@@ -208,16 +187,6 @@ export async function runBacktestVolatilityDynamic({
       await yieldToCancellation(signal);
     }
     const currentTimeMs = times[index];
-
-    // in real production we cut off so the data not too large for storage
-    // LIMIT_PRICE_NORM_DATA_MONTHS
-    const cutOff = currentTimeMs - PRICE_NORM_DATA_MS;
-    for (const symbol of Object.keys(dynamicTradeMemory.priceNormMapOverTime)) {
-      dynamicTradeMemory.priceNormMapOverTime[symbol] =
-        dynamicTradeMemory.priceNormMapOverTime[symbol].filter(
-          (e) => e.t > cutOff,
-        );
-    }
 
     // B.1 Crop because we havent seen the next volatility points
     const cropedVMap = cropVolatility(
@@ -262,8 +231,7 @@ export async function runBacktestVolatilityDynamic({
         modelMemoryMap,
         dynamicTradeMemory,
         backtestPack,
-        minActionableAbsoluteLevel:
-          config.minActionableAbsoluteLevel,
+        minActionableAbsoluteLevel: config.minActionableAbsoluteLevel,
       });
 
       // B.5 Do buy
@@ -397,14 +365,6 @@ export async function runBacktestVolatilityDynamic({
   const totalTrades = Object.keys(tradeHistoryMap)
     .map((key) => tradeHistoryMap[key].length)
     .reduce((acc, n) => acc + n, 0);
-
-  // cut back the padding of price norm
-  for (const item of Object.keys(dynamicTradeMemory.priceNormMapOverTime)) {
-    dynamicTradeMemory.priceNormMapOverTime[item] =
-      dynamicTradeMemory.priceNormMapOverTime[item].filter(
-        (e) => e.t >= times[0],
-      );
-  }
 
   return {
     // To make id for cache

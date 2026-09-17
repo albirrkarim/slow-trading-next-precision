@@ -6,7 +6,8 @@ import type { Marker } from "@/components/LiveDashboard/converter";
 import MultiLineTimelined from "@/components/ui/Chart/MultiLineTimelined";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import type { IntervalKlines } from "@/lib/exchange";
-import axios from "axios";
+import { tradeLog } from "@/lib/trading/helper/log";
+import type { Position } from "@/lib/trading/models";
 import {
   Box,
   CircularProgress,
@@ -14,11 +15,10 @@ import {
   Select,
   Typography,
 } from "@mui/material";
+import axios from "axios";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import CurrencyChart from "./CurrencyChart";
-import { tradeLog } from "@/lib/trading/helper/log";
-import type { Position } from "@/lib/trading/models";
 
 type TrajectoryPoint = {
   price: number;
@@ -287,28 +287,6 @@ export default function TradeChartBase({
                 <MultiLineTimelined
                   series={vPointsSeries.series}
                   names={vPointsSeries.names}
-                />
-              )}
-            </>
-          )}
-        </HeaderMetrics>
-      )}
-
-      {priceSeries && (
-        <HeaderMetrics
-          title={
-            <Typography sx={{ mx: 1 }} variant="h6" gutterBottom>
-              Price Normalized
-            </Typography>
-          }
-          sx={{ my: 2 }}
-        >
-          {(expanded) => (
-            <>
-              {expanded && (
-                <MultiLineTimelined
-                  series={priceSeries.series}
-                  names={priceSeries.names}
                 />
               )}
             </>

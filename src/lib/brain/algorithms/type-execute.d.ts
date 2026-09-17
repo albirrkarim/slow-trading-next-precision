@@ -88,7 +88,8 @@ export interface EntryRecommendationDiagnostic {
 }
 
 export interface EntryRecommendationEvaluation<
-  TDiagnostic extends EntryRecommendationDiagnostic = EntryRecommendationDiagnostic,
+  TDiagnostic extends EntryRecommendationDiagnostic =
+    EntryRecommendationDiagnostic,
 > {
   diagnostics: TDiagnostic[];
   recommendations: EntryRecommendation[];
@@ -107,7 +108,6 @@ export interface AveragingRecommendation extends TradeRecommendationBase {
    * Position leverage retained for fallback/reporting.
    */
   maxLeverage?: number;
-
 }
 
 /**
@@ -203,8 +203,6 @@ export interface DataBacktestPurpose {
    * to determine we should change the model config
    */
   downTrend?: { timeMs: number; level: number }[];
-
-  priceNormMapOverTime: Record<string, PriceNorm[]>;
 
   verbose: boolean;
 }

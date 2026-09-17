@@ -26,7 +26,6 @@ function slowExchangeFiles(exchangeType: ExchangeType) {
 
   return {
     root,
-    priceNormMapOverTime: `${root}/priceNormMapOverTime.json`,
     volatility: `${root}/volatility`,
   };
 }
@@ -66,8 +65,6 @@ const SLOW_FILES = {
     `./storage/cache/${prefix}/${moment().format("DD_MMM_YYYY_HH")}_`,
 
   exchange: slowExchangeFiles,
-  priceNormMapOverTime: (exchangeType: ExchangeType) =>
-    slowExchangeFiles(exchangeType).priceNormMapOverTime,
   volatility: (exchangeType: ExchangeType) =>
     slowExchangeFiles(exchangeType).volatility,
 

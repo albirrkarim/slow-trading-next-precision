@@ -12,10 +12,6 @@ const exchangeMocks = vi.hoisted(() => ({
   getTotalFeePercent: vi.fn(),
 }));
 
-const dynamicMocks = vi.hoisted(() => ({
-  generateInitialPriceNorm: vi.fn(),
-}));
-
 vi.mock("@/lib/exchange/adapters/binance", () => ({
   BinanceAdapter: class {
     getBalance = exchangeMocks.getBalance;
@@ -32,7 +28,9 @@ vi.mock("@/lib/exchange/adapters/binance", () => ({
 }));
 
 vi.mock("@/components/api/production/utils", async () => {
-  const actual = await vi.importActual<any>("@/components/api/production/utils");
+  const actual = await vi.importActual<any>(
+    "@/components/api/production/utils",
+  );
 
   return {
     ...actual,
@@ -54,10 +52,6 @@ vi.mock("@/lib/dynamic", async () => {
     ...actual,
     default: {
       ...actual.default,
-      priceNorm: {
-        ...actual.default.priceNorm,
-        generateInitial: dynamicMocks.generateInitialPriceNorm,
-      },
     },
   };
 });
@@ -158,7 +152,9 @@ async function saveStorage(params: {
 
 describe("settings behavior: runtime cycle toggles", () => {
   beforeEach(async () => {
-    tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), "slow-settings-runtime-"));
+    tmpRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), "slow-settings-runtime-"),
+    );
     process.env.PERSISTENT_STORAGE_ROOT = tmpRoot;
     vi.clearAllMocks();
 
@@ -172,11 +168,6 @@ describe("settings behavior: runtime cycle toggles", () => {
     ]);
     exchangeMocks.getPositions.mockResolvedValue([]);
     exchangeMocks.getTotalFeePercent.mockReturnValue(0);
-    dynamicMocks.generateInitialPriceNorm.mockImplementation(
-      async ({ dynamicTradeMemory }: any) => {
-        dynamicTradeMemory.priceNormMapOverTime = {};
-      },
-    );
   });
 
   afterEach(async () => {
@@ -345,14 +336,17 @@ describe("settings behavior: runtime cycle toggles", () => {
     const afterEmptyCapture = await slowTrading.storage.data.load({
       modeScope: "active",
     });
-    const captureRun = afterEmptyCapture.modes.live.stageRuns?.["capture-entry"];
+    const captureRun =
+      afterEmptyCapture.modes.live.stageRuns?.["capture-entry"];
 
     // PROD:STAGE_RUN_STATS
     expect(captureRun).toMatchObject({ reports: 0, symbols: 0 });
     expect(captureRun?.t).toEqual(expect.any(Number));
-    expect(captureRun?.performance.sections.some(
-      (section) => section.s === "storage.load",
-    )).toBe(true);
+    expect(
+      captureRun?.performance.sections.some(
+        (section) => section.s === "storage.load",
+      ),
+    ).toBe(true);
 
     await slowTrading.service.runSlowTradingCycle({
       stage: "standard-monitoring",
@@ -425,7 +419,10 @@ describe("settings behavior: runtime cycle toggles", () => {
       runnerEnabled: true,
     });
     const enabledAveraging = vi
-      .spyOn(enabled.slowTrading.watchReserve.averaging, "generateRecommendations")
+      .spyOn(
+        enabled.slowTrading.watchReserve.averaging,
+        "generateRecommendations",
+      )
       .mockReturnValue({ recommendations: [] });
 
     await enabled.slowTrading.service.runSlowTradingCycle();
@@ -551,7 +548,9 @@ describe("settings behavior: runtime cycle toggles", () => {
     expect(averaging).not.toHaveBeenCalled();
     expect(exit).toHaveBeenCalledOnce();
     const loaded = await slowTrading.storage.data.load({ modeScope: "active" });
-    expect(loaded.modes.live.tradeSettings[0].model_memory.justBuy).toBeUndefined();
+    expect(
+      loaded.modes.live.tradeSettings[0].model_memory.justBuy,
+    ).toBeUndefined();
   });
 
   it("keeps unconfigured open positions after a cycle so removed coins can still exit", async () => {

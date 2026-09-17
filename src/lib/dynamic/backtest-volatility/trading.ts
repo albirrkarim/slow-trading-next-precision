@@ -4,7 +4,7 @@ import type {
   DataBacktestPurpose,
   EntryRecommendation,
 } from "@/lib/brain/algorithms/type-execute";
-import { decisionEngineLevelConfig } from "@/lib/brain/algorithms/v4/decisions/v19/constants";
+import { decisionEngineLevelConfig } from "@/lib/brain/algorithms/v4/decisions/helper/constants";
 import { timeMsToReadable } from "@/lib/datasets/utils";
 import type {
   BacktestConfigDynamic,
@@ -244,19 +244,20 @@ export function tryOpenBacktestEntry({
     marginUsdt,
     config,
   });
-  const reservedUsdt =
-    slowTradingWatchReserve.reserve.getReservedRemainingUsdt(
-      strategy.averaging,
-    );
+  const reservedUsdt = slowTradingWatchReserve.reserve.getReservedRemainingUsdt(
+    strategy.averaging,
+  );
   const bailoutGate =
-    slowTradingWatchReserve.balance.canKeepSpendableForLargestUnreservedBailout({
-      // BOTH:ALWAYS_HAVE_SPENDABLE_TO_BAILING_OUT
-      activePositions,
-      entryMarginUsdt: marginUsdt,
-      projectedWatchState: strategy.averaging,
-      reserveBudgetUsdt: reservedUsdt,
-      spendableUsdt: getBacktestSpendableQuoteAsset(dynamicTradeMemory),
-    });
+    slowTradingWatchReserve.balance.canKeepSpendableForLargestUnreservedBailout(
+      {
+        // BOTH:ALWAYS_HAVE_SPENDABLE_TO_BAILING_OUT
+        activePositions,
+        entryMarginUsdt: marginUsdt,
+        projectedWatchState: strategy.averaging,
+        reserveBudgetUsdt: reservedUsdt,
+        spendableUsdt: getBacktestSpendableQuoteAsset(dynamicTradeMemory),
+      },
+    );
 
   if (!bailoutGate.canEnter) {
     return false;
@@ -405,13 +406,15 @@ export function tryExecuteBacktestAveraging({
       ? ` | ADAPTIVE AVG ${usedPctAlloc}x (reserved $${nextStep.marginUsdt.toFixed(2)} -> used $${marginUsdt.toFixed(2)}, projected +${rescueProjection.projectedProfitPct.toFixed(2)}%)`
       : "";
 
-  if (!slowTradingWatchReserve.balance.canSpendWatchStepMargin({
-    // BOTH:HAVE_ENOUGH_TO_RESERVED
-    step: spendStep,
-    quoteAsset: dynamicTradeMemory.quoteAsset,
-    reservedQuoteAsset: dynamicTradeMemory.reservedQuoteAsset,
-    minimalUsdt: MINIMAL_USDT_TO_TRADE,
-  })) {
+  if (
+    !slowTradingWatchReserve.balance.canSpendWatchStepMargin({
+      // BOTH:HAVE_ENOUGH_TO_RESERVED
+      step: spendStep,
+      quoteAsset: dynamicTradeMemory.quoteAsset,
+      reservedQuoteAsset: dynamicTradeMemory.reservedQuoteAsset,
+      minimalUsdt: MINIMAL_USDT_TO_TRADE,
+    })
+  ) {
     return false;
   }
 
@@ -426,7 +429,8 @@ export function tryExecuteBacktestAveraging({
     );
 
   position.exposure.averageEntryPrice =
-    (position.exposure.averageEntryPrice * position.exposure.quantity + price * addedQuantity) /
+    (position.exposure.averageEntryPrice * position.exposure.quantity +
+      price * addedQuantity) /
     newQuantity;
   position.exposure.quantity = newQuantity;
   position.exposure.notionalUsdt = slowTradingWatchReserve.money.roundUsdt(

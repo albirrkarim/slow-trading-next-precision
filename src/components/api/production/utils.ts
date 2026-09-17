@@ -1,5 +1,5 @@
 import type { EntryRecommendation } from "@/lib/brain/algorithms/type-execute";
-import { decisionEngineLevelConfig } from "@/lib/brain/algorithms/v4/decisions/v19/constants";
+import { decisionEngineLevelConfig } from "@/lib/brain/algorithms/v4/decisions/helper/constants";
 import type { PredictionEngineMemory, VolatilityPoint } from "@/lib/dynamic";
 import { predictionEngine } from "@/lib/dynamic";
 import { tradeLog } from "@/lib/trading";

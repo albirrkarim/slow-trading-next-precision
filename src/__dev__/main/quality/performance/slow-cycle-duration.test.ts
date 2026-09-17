@@ -12,11 +12,6 @@ const exchangeMocks = vi.hoisted(() => ({
   getPositions: vi.fn(),
   getTotalFeePercent: vi.fn(),
 }));
-
-const dynamicMocks = vi.hoisted(() => ({
-  generateInitialPriceNorm: vi.fn(),
-}));
-
 const brainMocks = vi.hoisted(() => ({
   getInvestmentAmount: vi.fn(),
 }));
@@ -74,7 +69,9 @@ vi.mock("@/lib/exchange/adapters/binance", () => ({
 }));
 
 vi.mock("@/components/api/production/utils", async () => {
-  const actual = await vi.importActual<any>("@/components/api/production/utils");
+  const actual = await vi.importActual<any>(
+    "@/components/api/production/utils",
+  );
 
   return {
     ...actual,
@@ -97,10 +94,6 @@ vi.mock("@/lib/dynamic", async () => {
     ...actual,
     default: {
       ...actual.default,
-      priceNorm: {
-        ...actual.default.priceNorm,
-        generateInitial: dynamicMocks.generateInitialPriceNorm,
-      },
     },
   };
 });
@@ -156,14 +149,6 @@ describe("slow cycle performance", () => {
     exchangeMocks.getPositions.mockResolvedValue([]);
     exchangeMocks.getTotalFeePercent.mockReturnValue(0);
     brainMocks.getInvestmentAmount.mockReturnValue(20);
-    dynamicMocks.generateInitialPriceNorm.mockImplementation(
-      async ({ dynamicTradeMemory }: any) => {
-        await delay(5);
-        dynamicTradeMemory.priceNormMapOverTime = {
-          SUI: [{ t: Date.UTC(2026, 0, 1, 0, 5), value: 1 }],
-        };
-      },
-    );
   });
 
   afterEach(async () => {
@@ -213,7 +198,8 @@ describe("slow cycle performance", () => {
     const leafDurations = [...durations.entries()].filter(
       ([section]) => section !== "cycle.total" && section !== "signals.build",
     );
-    const slowestLeaf = leafDurations.sort((left, right) => right[1] - left[1])
+    const slowestLeaf = leafDurations
+      .sort((left, right) => right[1] - left[1])
       .at(0);
 
     // PROD:CYCLE_PERFORMANCE_SECTION_DURATION
@@ -222,7 +208,6 @@ describe("slow cycle performance", () => {
     expect(durations.get("signals.assignVolatility")).toBeGreaterThanOrEqual(
       750,
     );
-    expect(durations.has("cycle.priceNorm")).toBe(true);
     expect(durations.has("cycle.entryExecution")).toBe(true);
     expect(durations.has("cycle.cachePersist")).toBe(true);
     expect(durations.has("cycle.modeStatePersist")).toBe(true);

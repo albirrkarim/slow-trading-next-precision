@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
-import { Alert, Box, Button, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Button, Stack, TextField } from "@mui/material";
+import { useMemo, useState } from "react";
 
 import type { SlowTradingAccountTradingConfig } from "@/lib/slowTrading";
 import tradingConfigJson from "./trading-config-json";

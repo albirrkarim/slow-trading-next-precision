@@ -33,6 +33,5 @@ export const slowEndpoints = {
     initialize: `${DASHBOARD_UI_API}/dashboard/initialize`,
     klines: `${DASHBOARD_UI_API}/dashboard/klines`,
     volatility: `${DASHBOARD_UI_API}/dashboard/volatility`,
-    priceNorm: `${DASHBOARD_UI_API}/dashboard/price-norm`,
   },
 } as const;

@@ -1,37 +1,31 @@
 import { assignVolatility } from "@/components/api/production/utils";
-import { FILES } from "@/components/storage";
-import brain from "@/lib/brain";
-import { buildLatestKlineBySymbol } from "@/lib/brain/algorithms/v4/decisions/v19/latest-klines";
-import type { LatestKlineBySymbol } from "@/lib/brain/algorithms/v4/decisions/v19/types";
+import { buildLatestKlineBySymbol } from "@/lib/brain/algorithms/v4/decisions/helper/latest-klines";
+import type { LatestKlineBySymbol } from "@/lib/brain/algorithms/v4/decisions/helper/types";
 import dynamic, {
-  type DynamicTradeMemory,
   type PredictionEngineMemory,
   type VolatilityPoint,
 } from "@/lib/dynamic";
 import { getExchange } from "@/lib/exchange";
 import exchangeFundingRate from "@/lib/exchange/funding-rate";
+import binanceRequestCoordinator from "@/lib/exchange/platform/binance/request-coordinator";
 import type { UnifiedFundingRate } from "@/lib/exchange/types";
 import { resolveMarketTypeForTradingMode } from "@/lib/exchange/utils";
 import { tradeLog } from "@/lib/trading/helper/log";
 import type { TradingModelMemory } from "@/lib/trading/models";
-import fs from "fs-extra";
 import slowTradingMarket from "../market";
 import slowTradingMarketVolume from "../market-volume";
-import type { SlowTradingCycleProfiler } from "../performance";
-import slowTradingShared from "../shared";
-import slowTradingPublicMarketCache from "../public-market-cache";
-import type { SlowTradingStorageData } from "../types";
-import binanceRequestCoordinator from "@/lib/exchange/platform/binance/request-coordinator";
 import slowTradingNotifications from "../notifications";
+import type { SlowTradingCycleProfiler } from "../performance";
+import slowTradingPublicMarketCache from "../public-market-cache";
+import slowTradingShared from "../shared";
+import type { SlowTradingStorageData } from "../types";
 
-type PriceNormMap = NonNullable<DynamicTradeMemory["priceNormMapOverTime"]>;
 type PricePurpose = "position-sync" | "reporting";
 const FIVE_MINUTES_MS = 5 * 60_000;
 
 export interface SlowTradingSharedMarketSnapshot {
   currentTimeMs: number;
   latestKlineBySymbol: LatestKlineBySymbol;
-  priceNormMapOverTime: PriceNormMap;
   symbols: string[];
   volatilityMemoryBySymbol: Record<string, PredictionEngineMemory>;
   fundingRates: {
@@ -174,36 +168,9 @@ async function prepareUncached(params: {
     currentTimeMs = currentTimeKline[0];
   }
 
-  const sharedDynamicMemory = slowTradingShared.clone(
-    dynamic.defaults.tradingMemory,
-  );
-  if (params.prepareEntryContext) {
-    await params.profiler.time("signals.priceNorm", () =>
-      dynamic.priceNorm.generateInitial({
-        currentTimeMs,
-        symbols,
-        startTime: currentTimeMs,
-        dynamicTradeMemory: sharedDynamicMemory,
-        useCache: true,
-        exchangeType: params.storage.config.exchangeType,
-        volatilityMap: volatilityPointsMap,
-      }),
-    );
-    brain.algorithms.runtime.updatePriceNorm({
-      currentTimeMs,
-      dynamicTradeMemory: {
-        priceNormMapOverTime: sharedDynamicMemory.priceNormMapOverTime,
-      },
-      volatilityPointsMap,
-    });
-    await params.profiler.time("signals.writePriceNorm", () =>
-      fs.outputJSON(
-        FILES.slow.priceNormMapOverTime(params.storage.config.exchangeType),
-        sharedDynamicMemory.priceNormMapOverTime,
-        { spaces: 0 },
-      ),
-    );
-  }
+  // const sharedDynamicMemory = slowTradingShared.clone(
+  //   dynamic.defaults.tradingMemory,
+  // );
 
   const latestKlineBySymbol =
     params.prepareEntryContext &&
@@ -264,9 +231,6 @@ async function prepareUncached(params: {
   return {
     currentTimeMs,
     latestKlineBySymbol,
-    priceNormMapOverTime: slowTradingShared.clone(
-      sharedDynamicMemory.priceNormMapOverTime ?? {},
-    ),
     symbols,
     volatilityMemoryBySymbol,
     fundingRates: {

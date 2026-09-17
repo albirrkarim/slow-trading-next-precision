@@ -17,7 +17,6 @@ export type SlowTradingCycleSection =
   | "cycle.fundingRates"
   | "cycle.latestPrices"
   | "cycle.modeStatePersist"
-  | "cycle.priceNorm"
   | "cycle.reportingSync"
   | "cycle.total"
   | "cycle.volume24hRead"
@@ -31,9 +30,7 @@ export type SlowTradingCycleSection =
   | "signals.build"
   | "signals.currentTimeKlines"
   | "signals.historyHydration"
-  | "signals.priceNorm"
   | "signals.recommendations"
-  | "signals.writePriceNorm"
   | "storage.load";
 
 export interface SlowTradingCyclePerformanceEntry {

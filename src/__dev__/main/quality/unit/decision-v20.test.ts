@@ -10,11 +10,7 @@ import { describe, expect, it } from "vitest";
 
 const BASE_TIME = Date.UTC(2026, 6, 1, 13, 0);
 
-function point(
-  symbol: string,
-  level: number,
-  used = false,
-): VolatilityPoint {
+function point(symbol: string, level: number, used = false): VolatilityPoint {
   return {
     id: `${symbol}_${level}_${BASE_TIME}`,
     l: level > 0 ? "T" : "B",
@@ -46,9 +42,10 @@ describe("decision.v20 direct level entry", () => {
     });
 
     // PROD:DECISION_V20_LEVEL_GATE
-    expect(
-      evaluation.recommendations.map((item) => item.symbol),
-    ).toEqual(["AIXBT", "TAO"]);
+    expect(evaluation.recommendations.map((item) => item.symbol)).toEqual([
+      "AIXBT",
+      "TAO",
+    ]);
     expect(evaluation.recommendations[0].message).toContain(
       "absolute level 2 meets minimum 2",
     );
@@ -92,7 +89,6 @@ describe("decision.v20 direct level entry", () => {
     const recommendations = decisionEngineV20({
       currentTimeMs: BASE_TIME,
       dynamicTradeMemory: {
-        priceNormMapOverTime: {},
         quoteAsset: 100,
         safeHaven: 0,
         safeHavenHistory: [],
@@ -124,7 +120,7 @@ describe("decision.v20 direct level entry", () => {
     // BOTH:DECISION_V20_LEVEL_GATE
     expect(recommendations).toHaveLength(1);
     expect(recommendations[0]).toMatchObject({
-      investAmount: 62,
+      investAmount: 50,
       lvl: -2,
       symbol: "AIXBT",
     });
@@ -145,7 +141,7 @@ describe("decision.v20 direct level entry", () => {
       decisionEngineVersion: "decision.v20",
       minActionableAbsoluteLevel: 2,
       modelMemoryMap: {},
-      priceNormMapOverTime: {},
+
       volatilityPointsMap: {
         AIXBT: [point("AIXBT", -2)],
       },

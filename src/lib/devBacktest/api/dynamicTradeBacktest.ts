@@ -85,7 +85,6 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
     const [
       { DYNAMIC_ALGORITM_MAP, GET_RECOMMENDATIONS_MAP },
       { DECISION_ENGINE_MAP },
-      { getSharpDownRatio },
       { runBacktestVolatilityDynamic },
       { getHistoricalEntrySignal },
       { windowsMs },
@@ -94,7 +93,6 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
     ] = await Promise.all([
       import("@/lib/brain/algorithms"),
       import("@/lib/brain/algorithms/v4/decisions"),
-      import("@/lib/brain/algorithms/v4/decisions/v12/feature/utils"),
       import("@/lib/dynamic/backtest-volatility"),
       import("@/lib/dynamic/utils/history"),
       import("@/lib/dynamic/utils/nn/data/features/constants"),
@@ -122,8 +120,9 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
 
     // B. Dynamic backtest
     const enabledAccounts = multiAccount
-      ? (await slowTradingStorage.data.load({ modeScope: "active" })).runtime
-          .exchangeAccounts.filter((account) => account.enabled)
+      ? (
+          await slowTradingStorage.data.load({ modeScope: "active" })
+        ).runtime.exchangeAccounts.filter((account) => account.enabled)
       : [];
     if (multiAccount && enabledAccounts.length === 0) {
       throw new Error("Enable at least one SLOW account before backtesting.");
@@ -331,219 +330,7 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
     for (const symbol of symbols) {
       const volatilityPoints = volatilityPointsMap[symbol];
 
-      // if (!volatilityPoints || volatilityPoints.length === 0) continue;
-
-      // save dataset.
-      // if (cached.backtestPack.volatilitySnapshots) {
-      //   // CREATE DATASET
-      //   const datasetForThat = makeDataset({
-      //     vPoints: volatilityPoints,
-      //     vSnapshots: cached.backtestPack.volatilitySnapshots,
-      //     volatilityPointsMap,
-      //     globalMarketData,
-      //     klinesMap,
-      //   });
-
-      //   const datasetFolder = `storage/nn/datasets/${range}`;
-      //   await fs.ensureDir(datasetFolder);
-      //   await fs.writeJSON(`${datasetFolder}/${symbol}.json`, datasetForThat);
-
-      //   // INFERENCE
-
-      //   // const seriesTradesCoin = [];
-      //   // const records = [];
-
-      //   // for (
-      //   //   let i = DEFAULT_MAKE_DATASET_OPTS.N_HISTORY,
-      //   //     len = volatilityPoints.length;
-      //   //   i < len;
-      //   //   i++
-      //   // ) {
-      //   //   const current = volatilityPoints[i];
-
-      //   //   if (current.label == "BOTTOM" && current.level <= -1) {
-      //   //     const prevPoints = volatilityPoints.slice(
-      //   //       Math.max(0, i - DEFAULT_MAKE_DATASET_OPTS.N_HISTORY),
-      //   //       i
-      //   //     );
-
-      //   //     const minTime = current.time - DEFAULT_MAKE_DATASET_OPTS.ONE_MONTH_MS;
-
-      //   //     const oneMonthSnaps = cached.backtestPack.volatilitySnapshots.filter(
-      //   //       (e) => e.timeMs >= minTime && e.timeMs <= current.time
-      //   //     );
-
-      //   //     // ✅ Crop global volatility map for this current point
-      //   //     const timeFramedVolatilityPointsMap: Record<
-      //   //       string,
-      //   //       VolatilityPoint[]
-      //   //     > = {};
-      //   //     for (const [sym, points] of Object.entries(volatilityPointsMap)) {
-      //   //       timeFramedVolatilityPointsMap[sym] = points.filter(
-      //   //         (p) => p.t >= minTime && p.t <= current.time
-      //   //       );
-      //   //     }
-
-      //   //     const vector = makeVector({
-      //   //       symbol,
-      //   //       current,
-      //   //       prevPoints,
-      //   //       oneMonthSnaps,
-      //   //       volatilityPointsMap: timeFramedVolatilityPointsMap,
-      //   //       globalMarketData,
-      //   //     });
-
-      //   //     const predProb = nn2.predict(vector);
-
-      //   //     // tradeLog.log("predProb", predProb);
-
-      //   //     if (predProb >= 0.5) {
-      //   //       // trade
-      //   //       seriesTradesCoin.push({
-      //   //         time: Math.floor(current.time / 1000),
-      //   //         level: current.level,
-      //   //         color: DEFAULT_COLORS[idx % DEFAULT_COLORS.length],
-      //   //         text: "TRADE NN " + symbol + " " + predProb.toFixed(3),
-      //   //       });
-
-      //   //       records.push({
-      //   //         name: symbol,
-      //   //         input: vector,
-      //   //         current,
-      //   //         prevPoints,
-      //   //         oneMonthSnaps,
-      //   //         predProb: parseFloat(predProb.toFixed(7)),
-      //   //       });
-      //   //     }
-      //   //   }
-      //   // }
-
-      //   // seriesTrades.push(seriesTradesCoin);
-      //   // namesTrades.push("TRADE NN " + symbol);
-
-      //   // await fs.writeJson(`storage/nn/evaluation/coins/${symbol}.json`, records);
-      // }
-
       const last15Day = windowsMs["1m"] / 2;
-
-      // PRICE NORMALIZED
-      // Find min and max
-      // const prices = volatilityPoints.map((d) => d.price);
-      // const min = Math.min(...prices);
-      // const max = Math.max(...prices);
-
-      // // Normalize
-      // const pricesPointsGlobal = volatilityPoints.map((e) => ({
-      //   time: Math.floor(e.t / 1000),
-      //   level: (e.p - min) / (max - min || 1),
-      // }));
-
-      // priceSeries.series.push(pricesPointsGlobal);
-      // priceSeries.names.push(symbol + "_global");
-
-      // const memory = {
-      //   max: 0,
-      //   min: Infinity,
-      // };
-
-      // Realtime calculation
-      // const priceNormOverTime = [];
-      // const pricesPoints: SeriesMinimal[] = [];
-      // const downRatioOverTime: SeriesMinimal[] = [];
-      // for (const vPoint of volatilityPoints) {
-      //   // vPoint
-
-      //   if (vPoint.p < memory.min) {
-      //     memory.min = vPoint.p;
-      //   }
-
-      //   if (vPoint.p > memory.max) {
-      //     memory.max = vPoint.p;
-      //   }
-
-      //   const current =
-      //     (vPoint.p - memory.min) / (memory.max - memory.min || 1);
-
-      //   const item: PriceNorm = {
-      //     t: vPoint.t,
-      //     x: memory.max,
-      //     n: memory.min,
-      //     c: current,
-      //   };
-
-      //   priceNormOverTime.push(item);
-
-      //   const cutOff = vPoint.t - last15Day;
-      //   const recent = priceNormOverTime.filter((e) => e.t > cutOff);
-
-      //   const downRatio = getSharpDownRatio(recent);
-      //   vPoint.message = "DR " + downRatio.toFixed(2);
-      //   downRatioOverTime.push({
-      //     time: Math.floor(vPoint.t / 1000),
-      //     level: downRatio,
-      //   });
-
-      //   pricesPoints.push({
-      //     time: Math.floor(vPoint.t / 1000),
-      //     level: current,
-      //   });
-      // }
-
-      // priceSeries.series.push(pricesPoints);
-      // priceSeries.names.push(symbol);
-
-      // cached.dynamicTradeMemory.priceNormMapOverTime
-
-      // priceSeries.series.push(downRatioOverTime);
-      // priceSeries.names.push(symbol + "_DOWN_RATIO");
-
-      if (cached.dynamicTradeMemory.priceNormMapOverTime) {
-        const priceNorm =
-          cached.backtestPack.priceNormMapOverTime[symbol] ?? [];
-
-        const data = priceNorm.map((e) => ({
-          time: Math.floor(e.t / 1000),
-          level: e.c,
-        }));
-
-        // tradeLog.log("data", data.length);
-
-        const downRatioOverTime: SeriesMinimal[] = [];
-        // const upRatioOverTime: SeriesMinimal[] = [];
-
-        for (const item of priceNorm) {
-          const cutOff = item.t - last15Day;
-          const recent = priceNorm.filter(
-            (e) => e.t > cutOff && e.t <= item.t,
-          );
-
-          // tradeLog.log("recent ", recent.length);
-          const downRatio = getSharpDownRatio(recent);
-
-          downRatioOverTime.push({
-            time: Math.floor(item.t / 1000),
-            level: downRatio,
-          });
-
-          // const upRatio = getSharpUpRatio(recent);
-
-          // upRatioOverTime.push({
-          //   time: Math.floor(item.t / 1000),
-          //   level: upRatio,
-          // });
-        }
-
-        // if (symbol !== "BTC") {
-        priceSeries.series.push(downRatioOverTime);
-        priceSeries.names.push(symbol + "_DOWN_RATIO");
-
-        // priceSeries.series.push(upRatioOverTime);
-        // priceSeries.names.push(symbol + "_UP_RATIO");
-        // }
-
-        priceSeries.series.push(data);
-        priceSeries.names.push(symbol + "_PRICE_NORM");
-      }
 
       const volatilityPointsLeveledMarkers = convertVolatilityToLeveledMarkers(
         symbol,
@@ -759,7 +546,8 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
 
       const closedPositions =
         cached.backtestPack.modelMemoryMap[symbol]?.positionsSell ?? [];
-      tradeCountMap[symbol] = cached.backtestPack.tradeHistoryMap[symbol].length;
+      tradeCountMap[symbol] =
+        cached.backtestPack.tradeHistoryMap[symbol].length;
       tradeHistory.push(
         ...closedPositions.map((position) => ({
           account: position.account,
@@ -777,8 +565,7 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
     }
     tradeHistory.sort(
       (left, right) =>
-        (left.exitTime ?? left.entryTime) -
-        (right.exitTime ?? right.entryTime),
+        (left.exitTime ?? left.entryTime) - (right.exitTime ?? right.entryTime),
     );
 
     // G. Output

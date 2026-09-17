@@ -1,10 +1,10 @@
 import type { EntryRecommendation } from "@/lib/brain";
-import type { SpeedTier } from "@/lib/brain/algorithms/v4/decisions/v19/constants";
+import type { SpeedTier } from "@/lib/brain/algorithms/v4/decisions/helper/constants";
 import {
   buildSpeedTierBySymbolFromMetadata,
   getSpeedTierFromMap,
-} from "@/lib/brain/algorithms/v4/decisions/v19/speed-tier";
-import type { SpeedTierBySymbol } from "@/lib/brain/algorithms/v4/decisions/v19/types";
+} from "@/lib/brain/algorithms/v4/decisions/helper/speed-tier";
+import type { SpeedTierBySymbol } from "@/lib/brain/algorithms/v4/decisions/helper/types";
 import type { Position } from "@/lib/trading/models";
 
 const SIDEWAYS_NET_PNL_THRESHOLD_PERCENT = 1;
@@ -83,7 +83,8 @@ export function decideSidewaysExitForStrongCandidates(params: {
     .map((signal) => {
       const symbol = normalizeSymbol(signal.symbol);
       const speedTier = getSpeedTierFromMap(symbol, speedTierBySymbol);
-      const lateEntryPassed = candidateLateEntryPassedBySymbol[symbol] !== false;
+      const lateEntryPassed =
+        candidateLateEntryPassedBySymbol[symbol] !== false;
 
       return { lateEntryPassed, signal, speedTier, symbol };
     })
@@ -137,15 +138,15 @@ export function decideSidewaysExitForStrongCandidates(params: {
   const eligiblePositions =
     bestCandidate && availableWorkers < strongCandidates.length
       ? enrichedPositions
-        .filter((item) => item.speedTier > bestCandidate.speedTier)
-        .sort((left, right) => {
-          const byTier = right.speedTier - left.speedTier;
-          if (byTier !== 0) return byTier;
-          return (
-            Math.abs(left.netProfitPercent ?? 0) -
-            Math.abs(right.netProfitPercent ?? 0)
-          );
-        })
+          .filter((item) => item.speedTier > bestCandidate.speedTier)
+          .sort((left, right) => {
+            const byTier = right.speedTier - left.speedTier;
+            if (byTier !== 0) return byTier;
+            return (
+              Math.abs(left.netProfitPercent ?? 0) -
+              Math.abs(right.netProfitPercent ?? 0)
+            );
+          })
       : [];
 
   const target = eligiblePositions[0];
@@ -165,45 +166,44 @@ export function decideSidewaysExitForStrongCandidates(params: {
     };
   }
 
-  const agedSidewaysHoldMs =
-    params.agedSidewaysHoldMs ?? AGED_SIDEWAYS_HOLD_MS;
+  const agedSidewaysHoldMs = params.agedSidewaysHoldMs ?? AGED_SIDEWAYS_HOLD_MS;
   const currentTimeMs = params.currentTimeMs;
   const agedCandidates = levelFourCandidates.filter(
     (item) => item.lateEntryPassed,
   );
   const agedTarget = isFiniteNumber(currentTimeMs)
     ? enrichedPositions
-      .map((item) => {
-        const entryTime = item.position.opened.t;
-        const holdMs = isFiniteNumber(entryTime)
-          ? currentTimeMs - entryTime
-          : Number.NaN;
-        const candidate = agedCandidates.find(
-          (candidateItem) => candidateItem.speedTier <= item.speedTier,
-        );
+        .map((item) => {
+          const entryTime = item.position.opened.t;
+          const holdMs = isFiniteNumber(entryTime)
+            ? currentTimeMs - entryTime
+            : Number.NaN;
+          const candidate = agedCandidates.find(
+            (candidateItem) => candidateItem.speedTier <= item.speedTier,
+          );
 
-        return { ...item, candidate, holdMs };
-      })
-      .filter(
-        (item) =>
-          item.candidate &&
-          isFiniteNumber(item.holdMs) &&
-          item.holdMs >= agedSidewaysHoldMs,
-      )
-      .sort((left, right) => {
-        const leftCandidateTier = left.candidate?.speedTier ?? 3;
-        const rightCandidateTier = right.candidate?.speedTier ?? 3;
-        const byCandidateTier = leftCandidateTier - rightCandidateTier;
-        if (byCandidateTier !== 0) return byCandidateTier;
+          return { ...item, candidate, holdMs };
+        })
+        .filter(
+          (item) =>
+            item.candidate &&
+            isFiniteNumber(item.holdMs) &&
+            item.holdMs >= agedSidewaysHoldMs,
+        )
+        .sort((left, right) => {
+          const leftCandidateTier = left.candidate?.speedTier ?? 3;
+          const rightCandidateTier = right.candidate?.speedTier ?? 3;
+          const byCandidateTier = leftCandidateTier - rightCandidateTier;
+          if (byCandidateTier !== 0) return byCandidateTier;
 
-        const byHoldTime = right.holdMs - left.holdMs;
-        if (byHoldTime !== 0) return byHoldTime;
+          const byHoldTime = right.holdMs - left.holdMs;
+          if (byHoldTime !== 0) return byHoldTime;
 
-        return (
-          Math.abs(left.netProfitPercent ?? 0) -
-          Math.abs(right.netProfitPercent ?? 0)
-        );
-      })[0]
+          return (
+            Math.abs(left.netProfitPercent ?? 0) -
+            Math.abs(right.netProfitPercent ?? 0)
+          );
+        })[0]
     : undefined;
 
   if (agedTarget?.candidate) {

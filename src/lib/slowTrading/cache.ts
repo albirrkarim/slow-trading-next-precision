@@ -27,15 +27,6 @@ export async function persistModeStateCaches(params: {
       delete modelMemory.volatility;
     }
   }
-
-  const dynamicTradeMemory = modeState.dynamicTradeMemory;
-  if (dynamicTradeMemory.priceNormMapOverTime) {
-    await fs.writeJSON(
-      FILES.slow.priceNormMapOverTime(exchangeType),
-      dynamicTradeMemory.priceNormMapOverTime,
-    );
-    dynamicTradeMemory.priceNormMapOverTime = {};
-  }
 }
 
 /**

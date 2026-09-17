@@ -5,10 +5,7 @@ import {
   evaluateRecommendations,
   getRecommendationsProduction,
 } from "./algorithms";
-import {
-  getInvestmentAmount,
-  updatePriceNorm,
-} from "./algorithms/v4/decisions/v12/runtime";
+import { getInvestmentAmount } from "./algorithms/v4/decisions/helper/runtime";
 
 export type * from "./algorithms/type-execute";
 export type { DecisionEngineVersionType } from "./algorithms/v4/decisions";
@@ -30,7 +27,6 @@ const brain = {
     },
     runtime: {
       getInvestmentAmount,
-      updatePriceNorm,
     },
   },
 } as const;

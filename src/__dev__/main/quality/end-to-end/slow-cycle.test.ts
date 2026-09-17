@@ -12,10 +12,6 @@ const exchangeMocks = vi.hoisted(() => ({
   getTotalFeePercent: vi.fn(),
 }));
 
-const dynamicMocks = vi.hoisted(() => ({
-  generateInitialPriceNorm: vi.fn(),
-}));
-
 const productionMocks = vi.hoisted(() => ({
   assignVolatility: vi.fn(),
 }));
@@ -171,10 +167,6 @@ vi.mock("@/lib/dynamic", async () => {
     ...actual,
     default: {
       ...actual.default,
-      priceNorm: {
-        ...actual.default.priceNorm,
-        generateInitial: dynamicMocks.generateInitialPriceNorm,
-      },
     },
   };
 });
@@ -240,13 +232,6 @@ describe("slow end-to-end cycle", () => {
     exchangeMocks.getTotalFeePercent.mockReturnValue(0);
     brainMocks.getInvestmentAmount.mockReturnValue(20);
     marketCapMocks.getMap.mockResolvedValue({});
-    dynamicMocks.generateInitialPriceNorm.mockImplementation(
-      async ({ dynamicTradeMemory }: any) => {
-        dynamicTradeMemory.priceNormMapOverTime = {
-          SUI: [{ t: Date.UTC(2026, 0, 1, 0, 5), value: 1 }],
-        };
-      },
-    );
   });
 
   afterEach(async () => {
@@ -296,7 +281,6 @@ describe("slow end-to-end cycle", () => {
         symbol: "SUI_USDT",
       }),
     );
-    expect(dynamicMocks.generateInitialPriceNorm).toHaveBeenCalled();
     expect(await fs.pathExists(path.join(tmpRoot!, "slow/config.json"))).toBe(
       true,
     );
@@ -305,10 +289,7 @@ describe("slow end-to-end cycle", () => {
     );
     expect(
       await fs.pathExists(
-        path.join(
-          tmpRoot!,
-          "slow/sandbox/balance_snapshots/binance-1.json",
-        ),
+        path.join(tmpRoot!, "slow/sandbox/balance_snapshots/binance-1.json"),
       ),
     ).toBe(true);
     expect(dashboard.activeMode).toBe("sandbox");
@@ -368,7 +349,6 @@ describe("slow end-to-end cycle", () => {
 
     // PROD:MULTI_ACCOUNT_SHARED_MARKET_PREPARATION
     expect(productionMocks.assignVolatility).toHaveBeenCalledTimes(1);
-    expect(dynamicMocks.generateInitialPriceNorm).toHaveBeenCalledTimes(1);
     // PROD:MULTI_ACCOUNT_SEQUENTIAL_ACCOUNT_EXECUTION
     // PROD:MULTI_ACCOUNT_PRIVATE_STATE_ISOLATION
     expect(result.executedEntrySignals).toBe(2);
@@ -387,10 +367,12 @@ describe("slow end-to-end cycle", () => {
     expect(dailyNotifications[0]?.[0].message).toContain(
       "Accounts: alpha, beta",
     );
-    expect(alpha.modes.sandbox.dailyPerformanceNotificationState?.telegram).toBe(
-      beta.modes.sandbox.dailyPerformanceNotificationState?.telegram,
-    );
-    expect(alpha.modes.sandbox.dailyPerformanceNotificationState?.telegram).toBeTruthy();
+    expect(
+      alpha.modes.sandbox.dailyPerformanceNotificationState?.telegram,
+    ).toBe(beta.modes.sandbox.dailyPerformanceNotificationState?.telegram);
+    expect(
+      alpha.modes.sandbox.dailyPerformanceNotificationState?.telegram,
+    ).toBeTruthy();
   });
 
   it("classifies a persisted averaged position with shared volatility", async () => {

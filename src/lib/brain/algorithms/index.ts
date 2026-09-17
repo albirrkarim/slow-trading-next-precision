@@ -4,15 +4,6 @@ import type {
   EntryRecommendationEvaluation,
 } from "./type-execute";
 import { executeDynamicTradeV4 } from "./v4";
-import { getRecommendationsV14 } from "./v4/decisions/v14/recommendations";
-import { getRecommendationsV15 } from "./v4/decisions/v15/recommendations";
-import { getRecommendationsV16 } from "./v4/decisions/v16/recommendations";
-import { getRecommendationsV17 } from "./v4/decisions/v17/recommendations";
-import { getRecommendationsV18 } from "./v4/decisions/v18/recommendations";
-import {
-  evaluateRecommendationsV19,
-  getRecommendationsV19,
-} from "./v4/decisions/v19/recommendations";
 import {
   evaluateRecommendationsV20,
   getRecommendationsV20,
@@ -24,8 +15,10 @@ export const DYNAMIC_ALGORITM_MAP = {
 
 export type DynamicTradeAlgorithm = keyof typeof DYNAMIC_ALGORITM_MAP;
 
-type RecommendationResult = EntryRecommendation[] | Promise<EntryRecommendation[]>;
-type RecommendationParams = Parameters<typeof getRecommendationsV14>[0] &
+type RecommendationResult =
+  | EntryRecommendation[]
+  | Promise<EntryRecommendation[]>;
+type RecommendationParams = Parameters<typeof getRecommendationsV20>[0] &
   Record<string, any>;
 type RecommendationEvaluator = (
   params: RecommendationParams,
@@ -35,12 +28,6 @@ export const GET_RECOMMENDATIONS_MAP: Record<
   string,
   (params: RecommendationParams) => RecommendationResult
 > = {
-  "decision.v14": getRecommendationsV14,
-  "decision.v15": getRecommendationsV15,
-  "decision.v16": getRecommendationsV16,
-  "decision.v17": getRecommendationsV17,
-  "decision.v18": getRecommendationsV18,
-  "decision.v19": getRecommendationsV19,
   "decision.v20": getRecommendationsV20,
 } as const;
 
@@ -51,7 +38,6 @@ export const EVALUATE_RECOMMENDATIONS_MAP: Record<
   string,
   RecommendationEvaluator
 > = {
-  "decision.v19": evaluateRecommendationsV19 as RecommendationEvaluator,
   "decision.v20": evaluateRecommendationsV20 as RecommendationEvaluator,
 } as const;
 

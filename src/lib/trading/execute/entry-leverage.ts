@@ -1,5 +1,6 @@
 import type { EntryRecommendation } from "@/lib/brain/algorithms/type-execute";
-import { mapScaleValue } from "@/lib/brain/algorithms/v4/decisions/v12/classifier/utils";
+import { mapScaleValue } from "@/lib/brain/algorithms/v4/decisions/utils";
+
 import { TradingMode } from "@/lib/exchange/types";
 
 interface ResolveEntryLeverageConfig {

@@ -1,20 +1,14 @@
 import { KLINES_FOLDER, makeScopedFolder } from "@/components/api/constants";
 import type { MultiLinePair } from "@/components/api/dynamic";
-import { FILES } from "@/components/storage";
 import {
   convertVolatilityToLeveledMarkers,
   convertVolatilityToMarkers,
   type Marker,
-  type LeveledMarkers,
 } from "@/components/LiveDashboard/converter";
 import { buildTradeMarkersFromHistory } from "@/components/LiveDashboard/Shared/trade-chart-markers";
+import { FILES } from "@/components/storage";
 import { fetchKlinesFunction } from "@/lib/datasets/fetchKlines";
-import {
-  detectVolatilityPoints,
-  type PriceNorm,
-  type VolatilityPoint,
-} from "@/lib/dynamic";
-import { windowsMs } from "@/lib/dynamic/constants-time";
+import { detectVolatilityPoints, type VolatilityPoint } from "@/lib/dynamic";
 import type { ExchangeType } from "@/lib/exchange";
 import { DEFAULT_EXCHANGE } from "@/lib/exchange/constants";
 import { type Kline } from "@/lib/exchange/platform/tokocrypto";
@@ -39,72 +33,7 @@ export interface getKlinesReturn {
   endKlines: string;
   klines: Kline[];
   markers: Marker[];
-  priceSeries: MultiLinePair;
-  downRatioSeries: MultiLinePair;
   vPointsSeries: MultiLinePair;
-}
-
-function getPriceNorms({
-  volatilityPoints,
-}: {
-  volatilityPoints: VolatilityPoint[];
-}) {
-  const times = [...new Set(volatilityPoints.map((item) => item.t))].sort(
-    (a, b) => a - b,
-  );
-  const priceNorms: PriceNorm[] = [];
-
-  for (const currentTimeMs of times) {
-    const croppedVolatilityPoints = volatilityPoints.filter(
-      (item) => item.t <= currentTimeMs,
-    );
-    const cutOff = currentTimeMs - windowsMs["1m"] * 6;
-    const prices = croppedVolatilityPoints.map((item) => item.p);
-    const price = prices.at(-1);
-
-    if (!price) {
-      continue;
-    }
-
-    const recentNorms = priceNorms.filter((item) => item.t > cutOff);
-    const min = Math.min(...prices, ...recentNorms.map((item) => item.n));
-    const max = Math.max(...prices, ...recentNorms.map((item) => item.x));
-
-    priceNorms.push({
-      t: currentTimeMs,
-      x: max,
-      n: min,
-      c: parseFloat(((price - min) / (max - min || 1)).toFixed(2)),
-    });
-  }
-
-  return priceNorms;
-}
-
-function getSharpDownRatio(data: PriceNorm[]): number {
-  if (!data || data.length < 2) return 0;
-
-  let totalMoveMagnitude = 0;
-  let downMoveMagnitude = 0;
-
-  for (let i = 1; i < data.length; i += 1) {
-    const prev = data[i - 1];
-    const curr = data[i];
-    const diff = curr.c - prev.c;
-    const absDiff = Math.abs(diff);
-
-    if (absDiff === 0) continue;
-
-    totalMoveMagnitude += absDiff;
-
-    if (diff < 0) {
-      downMoveMagnitude += absDiff * (absDiff > 0.05 ? 1.5 : 1);
-    }
-  }
-
-  if (totalMoveMagnitude === 0) return 0;
-
-  return Math.min(1, downMoveMagnitude / totalMoveMagnitude);
 }
 
 type DashboardVolatilitySource = "generated" | "storage";
@@ -159,9 +88,7 @@ export function filterVolatilityPointsForKlines(
     return points;
   }
 
-  return points.filter(
-    (point) => point.t >= firstTime && point.t <= lastTime,
-  );
+  return points.filter((point) => point.t >= firstTime && point.t <= lastTime);
 }
 
 /**
@@ -257,14 +184,6 @@ export async function getKlines(req: NextApiRequest, res: NextApiResponse) {
       .format("YYYY-MM-DD HH:mm:ss"),
     klines,
     markers: [],
-    priceSeries: {
-      series: [],
-      names: [],
-    },
-    downRatioSeries: {
-      series: [],
-      names: [],
-    },
     vPointsSeries: {
       series: [],
       names: [],
@@ -289,16 +208,6 @@ export async function getKlines(req: NextApiRequest, res: NextApiResponse) {
 
     data.markers = markers;
 
-    const priceSeries: MultiLinePair = {
-      series: [],
-      names: [],
-    };
-
-    const downRatioSeries: MultiLinePair = {
-      series: [],
-      names: [],
-    };
-
     const vPointsSeries: MultiLinePair = {
       series: [],
       names: [],
@@ -313,39 +222,6 @@ export async function getKlines(req: NextApiRequest, res: NextApiResponse) {
     vPointsSeries.series.push(volatilityPointsLeveledMarkers);
     vPointsSeries.names.push(symbolParam);
 
-    const priceNorms = getPriceNorms({ volatilityPoints });
-
-    const priceNormSeries: LeveledMarkers[] = priceNorms.map((p) => ({
-      time: Math.floor(p.t / 1000) as any,
-      level: p.c,
-      color: "#7b1fa2",
-      text: `PriceNorm ${(p.c * 100).toFixed(0)}%`,
-    }));
-
-    const downRatioWindowMs = windowsMs["1m"] / 2;
-    const downRatioLeveledMarkers: LeveledMarkers[] = priceNorms.map((item) => {
-      const cutOff = item.t - downRatioWindowMs;
-      const recentPriceNorms = priceNorms.filter(
-        (entry) => entry.t > cutOff && entry.t <= item.t,
-      );
-      const downRatio = getSharpDownRatio(recentPriceNorms);
-
-      return {
-        time: Math.floor(item.t / 1000) as any,
-        level: downRatio,
-        color: "#ef6c00",
-        text: `DownRatio ${(downRatio * 100).toFixed(0)}%`,
-      };
-    });
-
-    priceSeries.series.push(priceNormSeries);
-    priceSeries.names.push(symbolParam);
-
-    downRatioSeries.series.push(downRatioLeveledMarkers);
-    downRatioSeries.names.push(symbolParam);
-
-    data.priceSeries = priceSeries;
-    data.downRatioSeries = downRatioSeries;
     data.vPointsSeries = vPointsSeries;
   }
 

@@ -1,19 +1,13 @@
 import { deepCopy } from "@/components/client/utils";
 import { getRecommendationsProduction } from "@/lib/brain/algorithms";
 import type { EntryRecommendation } from "@/lib/brain/algorithms/type-execute";
-import { PRICE_NORM_DATA_MS } from "@/lib/brain/constants";
-import { updatePriceNorm } from "@/lib/dynamic/utils/priceNorm";
 import type { ExchangeType } from "@/lib/exchange";
 import { DEFAULT_EXCHANGE } from "@/lib/exchange/constants";
-import type { TradingModelMemory } from "@/lib/trading/models";
-import {
-  cropVolatility,
-  DEFAULT_DYNAMIC_TRADING_MEMORY,
-  generateInitialPriceNorm,
-} from "..";
-import type { VolatilityPoint } from "./volatility";
 import { tradeLog } from "@/lib/trading";
+import type { TradingModelMemory } from "@/lib/trading/models";
 import moment from "moment-timezone";
+import { cropVolatility } from "./priceNorm";
+import type { VolatilityPoint } from "./volatility";
 
 interface GetHistoricalEntrySignalProps {
   volatilityMap: Record<string, VolatilityPoint[]>;
@@ -51,20 +45,7 @@ export async function getHistoricalEntrySignal({
     };
   }
 
-  const dynamicTradeMemory = deepCopy(DEFAULT_DYNAMIC_TRADING_MEMORY);
-  const currentTimeMs = Date.now();
-
   tradeLog.debug("RUN INITIAL PRICE");
-  await generateInitialPriceNorm({
-    currentTimeMs,
-    symbols,
-    startTime: currentTimeMs,
-    dynamicTradeMemory,
-    useCache: true,
-    saveToFile: true,
-    exchangeType,
-    volatilityMap: volatilityMapForHistory,
-  });
 
   // flattened time
   const times = [
@@ -84,33 +65,14 @@ export async function getHistoricalEntrySignal({
   );
 
   for (const currentTimeMsLocal of times) {
-    // in real production we cut off so the data not too large for storage
-    // LIMIT_PRICE_NORM_DATA_MONTHS
-    const cutOff = currentTimeMsLocal - PRICE_NORM_DATA_MS;
-    for (const symbol of Object.keys(dynamicTradeMemory.priceNormMapOverTime)) {
-      dynamicTradeMemory.priceNormMapOverTime[symbol] =
-        dynamicTradeMemory.priceNormMapOverTime[symbol].filter(
-          (e) => e.t > cutOff,
-        );
-    }
-
     // B.2 Crop because we havent seen the next volatility points
     const cropedVMap = cropVolatility(
       currentTimeMsLocal,
       volatilityMapForHistory,
     );
 
-    updatePriceNorm({
-      currentTimeMs: currentTimeMsLocal,
-      dynamicTradeMemory: {
-        priceNormMapOverTime: dynamicTradeMemory.priceNormMapOverTime,
-      },
-      volatilityPointsMap: cropedVMap,
-    });
-
     const entrySignals = await getRecommendations({
       volatilityPointsMap: cropedVMap,
-      priceNormMapOverTime: dynamicTradeMemory.priceNormMapOverTime,
       modelMemoryMap,
       minActionableAbsoluteLevel,
     });

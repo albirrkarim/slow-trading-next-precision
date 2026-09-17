@@ -33,32 +33,31 @@ import type {
 import { tradeLog } from "@/lib/trading/helper/log";
 
 import { delayExecution, queueExecution } from "../client/utils";
-import CoinTagManagerDialog from "../dev/Coins/CoinTagManagerDialog";
 import type { TagData } from "../dev/Coins/CoinTagManagerDialog";
+import CoinTagManagerDialog from "../dev/Coins/CoinTagManagerDialog";
 import HeaderMetrics from "../ui/HeaderMetrics";
 import TypographyTooltip from "../ui/TypographyTooltip";
+import BinanceCooldownStatusSection from "./BinanceCooldownStatusSection";
+import BlackSwanStatusSection from "./BlackSwanStatusSection";
+import CoinMetadataDownloadDialog from "./Feature/CoinMetadataDownloadDialog";
+import EntryBlockers from "./Feature/EntryBlockers";
+import EntrySequenceMetrics from "./Feature/EntrySequences";
 import LatestVolatilityPoints from "./Feature/LatestVolatilityPoints";
 import OpenPositions from "./Feature/OpenPositions";
-import PriceNormFeature from "./Feature/PriceNorm";
 import QuickBacktest from "./Feature/QuickBacktest";
 import SlowTradingQueuesPanel from "./Feature/SlowTradingQueues";
 import VPointsFrequency from "./Feature/VPointsFrequency";
-import EntryBlockers from "./Feature/EntryBlockers";
 import WorkerEntrySequenceMetrics from "./Feature/WorkerEntrySequenceMetrics";
 import WorkerNeededEstimation from "./Feature/WorkerNeededEstimation";
 import LiveDashboardNavbar from "./Navbar";
-import BlackSwanStatusSection from "./BlackSwanStatusSection";
-import BinanceCooldownStatusSection from "./BinanceCooldownStatusSection";
-import SystemAccountSummary from "./SystemAccountSummary";
 import DateSelectionDialog from "./Navbar/DateSelectionDialog";
-import { DASHBOARD_POLL_INTERVAL_MS } from "./constants";
-import { applyTimeWindowClient, calculateTimeRange, makeSeries } from "./utils";
-import EntrySequenceMetrics from "./Feature/EntrySequences";
-import CoinMetadataDownloadDialog from "./Feature/CoinMetadataDownloadDialog";
 import {
   computeDayPreview,
   formatDailyPnlMetaTitle,
 } from "./Navbar/helpers";
+import SystemAccountSummary from "./SystemAccountSummary";
+import { DASHBOARD_POLL_INTERVAL_MS } from "./constants";
+import { applyTimeWindowClient, calculateTimeRange, makeSeries } from "./utils";
 
 export interface DashboardConfig {
   range: string;
@@ -1077,29 +1076,6 @@ export default function DynamicTradeHistoryPage({
             onSimulationSeriesChange={applyQuickBacktestSimulationSeries}
           />
         )}
-
-        <HeaderMetrics
-          title={
-            <Typography
-              variant="body1"
-              sx={{ fontWeight: "bold" }}
-            >
-              Price Normalized
-            </Typography>
-          }
-        >
-          {(expanded) => (
-            <>
-              {expanded && (
-                <PriceNormFeature
-                  symbols={symbols}
-                  config={config}
-                  exchangeType={currentExchangeType}
-                />
-              )}
-            </>
-          )}
-        </HeaderMetrics>
 
       </Box>
     </Box>

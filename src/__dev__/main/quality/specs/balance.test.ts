@@ -57,7 +57,6 @@ function createStorage(): SlowTradingStorageData {
           safeHavenRequest: 0,
           safeHavenHistory: [],
           volatilitySnapshots: [],
-          priceNormMapOverTime: {},
         },
       },
       sandbox: {
@@ -70,7 +69,6 @@ function createStorage(): SlowTradingStorageData {
           safeHavenRequest: 0,
           safeHavenHistory: [],
           volatilitySnapshots: [],
-          priceNormMapOverTime: {},
         },
       },
     },

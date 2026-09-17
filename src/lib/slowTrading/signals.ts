@@ -3,25 +3,30 @@ import {
   assignVolatility,
   getManualEntrySignal,
 } from "@/components/api/production/utils";
-import { FILES } from "@/components/storage";
 import brain, {
   type EntryRecommendation,
   type EntryRecommendationDiagnostic,
 } from "@/lib/brain";
-import { decisionEngineLevelConfig } from "@/lib/brain/algorithms/v4/decisions/v19/constants";
+
 import dynamic, {
   type DynamicTradeMemory,
   type VolatilityPoint,
 } from "@/lib/dynamic";
 import { getExchange, TradingMode } from "@/lib/exchange";
+import binanceRequestCoordinator from "@/lib/exchange/platform/binance/request-coordinator";
 import { resolveMarketTypeForTradingMode } from "@/lib/exchange/utils";
 import { MINIMAL_USDT_TO_TRADE } from "@/lib/trading/constants";
-import { resolveEntryLeverage } from "@/lib/trading/execute/entry-leverage";
 import entryFunding from "@/lib/trading/execute/entry-funding";
+import { resolveEntryLeverage } from "@/lib/trading/execute/entry-leverage";
 import entryMarket from "@/lib/trading/execute/entry-market";
 import lateEntryVPointDrift from "@/lib/trading/execute/late-entry-vpoint-drift";
-import fs from "fs-extra";
+import type { TradingModelMemory } from "@/lib/trading/models";
+import { decisionEngineLevelConfig } from "../brain/algorithms/v4/decisions/helper/constants";
 import slowTradingAutoRemoveSymbols from "./auto-remove-symbols";
+import slowTradingCycleSharedMarket, {
+  type SlowTradingSharedMarketSnapshot,
+} from "./cycle/shared-market";
+import slowTradingDailyPnlLimit from "./daily-pnl-limit";
 import slowTradingMarket from "./market";
 import slowTradingMarketVolume from "./market-volume";
 import slowTradingPerformance, {
@@ -34,13 +39,7 @@ import type {
   SlowTradingModeState,
   SlowTradingStorageData,
 } from "./types";
-import type { TradingModelMemory } from "@/lib/trading/models";
 import slowTradingWatchReserve from "./watch-reserve";
-import slowTradingDailyPnlLimit from "./daily-pnl-limit";
-import slowTradingCycleSharedMarket, {
-  type SlowTradingSharedMarketSnapshot,
-} from "./cycle/shared-market";
-import binanceRequestCoordinator from "@/lib/exchange/platform/binance/request-coordinator";
 
 /** Removes the backtest-only point-wide marker before production evaluation. */
 function clearLegacyVolatilityUsage(
@@ -418,39 +417,6 @@ export async function buildSlowTradingSignals(params?: {
           modelMemoryMap[symbol].volatility?.lastVolatility ?? [];
       }
 
-      if (params?.marketSnapshot) {
-        dynamicTradeMemory.priceNormMapOverTime = slowTradingShared.clone(
-          params.marketSnapshot.priceNormMapOverTime,
-        );
-      } else {
-        await profiler.time("signals.priceNorm", () =>
-          dynamic.priceNorm.generateInitial({
-            currentTimeMs,
-            symbols,
-            startTime: currentTimeMs,
-            dynamicTradeMemory,
-            useCache: true,
-            exchangeType,
-            volatilityMap: volatilityPointsMap,
-          }),
-        );
-
-        brain.algorithms.runtime.updatePriceNorm({
-          currentTimeMs,
-          dynamicTradeMemory: {
-            priceNormMapOverTime: dynamicTradeMemory.priceNormMapOverTime,
-          },
-          volatilityPointsMap,
-        });
-
-        await profiler.time("signals.writePriceNorm", () =>
-          fs.writeJSON(
-            FILES.slow.priceNormMapOverTime(exchangeType),
-            dynamicTradeMemory.priceNormMapOverTime,
-          ),
-        );
-      }
-
       const evaluation = await profiler.time("signals.recommendations", () =>
         brain.algorithms.recommendations.evaluate({
           decisionEngineVersion:
@@ -461,7 +427,6 @@ export async function buildSlowTradingSignals(params?: {
             : undefined,
           marketType,
           volatilityPointsMap: slowTradingShared.clone(volatilityPointsMap),
-          priceNormMapOverTime: dynamicTradeMemory.priceNormMapOverTime,
           modelMemoryMap,
           bypass,
           minActionableAbsoluteLevel: storage.config.minActionableAbsoluteLevel,
@@ -824,8 +789,7 @@ export async function buildSlowTradingEntryDiagnostics(params?: {
           const lateEntryGuard = lateEntryVPointDrift.evaluate({
             currentPrice,
             direction,
-            enabled:
-              storage.config.lateEntryVPointPriceDriftEnabled !== false,
+            enabled: storage.config.lateEntryVPointPriceDriftEnabled !== false,
             vPointPrice: entrySignal.p,
           });
 

@@ -1,15 +1,6 @@
-import { deepCopy } from "@/components/client/utils";
 import { FILES } from "@/components/storage";
-import type {
-  DynamicTradeMemory,
-  PredictionEngineMemory,
-  VolatilityPoint,
-} from "@/lib/dynamic";
-import {
-  DEFAULT_DYNAMIC_TRADING_MEMORY,
-  generateInitialPriceNorm,
-  predictionEngine,
-} from "@/lib/dynamic";
+import type { PredictionEngineMemory, VolatilityPoint } from "@/lib/dynamic";
+import { predictionEngine } from "@/lib/dynamic";
 import { DEFAULT_EXCHANGE } from "@/lib/exchange/constants";
 import exchangeFundingRate from "@/lib/exchange/funding-rate";
 import {
@@ -88,7 +79,6 @@ async function initializeDashboard(req: NextApiRequest, res: NextApiResponse) {
     }
 
     if (reinitialize) {
-      await fs.remove(FILES.slow.priceNormMapOverTime(exchangeType));
       await fs.remove(FILES.slow.volatility(exchangeType));
     }
 
@@ -123,7 +113,9 @@ async function initializeDashboard(req: NextApiRequest, res: NextApiResponse) {
     }
 
     if (
-      !(await fs.exists(FILES.slow.priceNormMapOverTime(exchangeType))) ||
+      !(await fs.exists(
+        `${FILES.slow.volatility(exchangeType)}/${symbols[0]}.json`,
+      )) ||
       reinitialize
     ) {
       // Volatility
@@ -177,23 +169,6 @@ async function initializeDashboard(req: NextApiRequest, res: NextApiResponse) {
           volatilityMap[symbol] = vMemory.lastVolatility;
         }
       }
-
-      // Price Norm
-      const dynamicTradeMemory: DynamicTradeMemory = deepCopy(
-        DEFAULT_DYNAMIC_TRADING_MEMORY,
-      );
-      const currentTimeMs = Date.now();
-
-      await generateInitialPriceNorm({
-        currentTimeMs,
-        symbols,
-        startTime: currentTimeMs,
-        dynamicTradeMemory,
-        useCache: false,
-        saveToFile: true,
-        exchangeType,
-        volatilityMap,
-      });
     }
 
     res.json({

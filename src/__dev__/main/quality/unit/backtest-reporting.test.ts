@@ -15,7 +15,6 @@ function createDynamicTradeMemory(quoteAsset = 390): DynamicTradeMemory {
     safeHavenRequest: 0,
     safeHavenHistory: [],
     volatilitySnapshots: [],
-    priceNormMapOverTime: {},
   };
 }
 
@@ -119,7 +118,7 @@ describe("backtest canonical position reporting", () => {
         tradeHistoryMap: { SUI: [] },
         growthOvertime: [],
         modelMemoryMap: { SUI: modelMemory },
-        priceNormMapOverTime: {},
+
         verbose: false,
       },
       config: {
@@ -133,9 +132,7 @@ describe("backtest canonical position reporting", () => {
     expect(position.pnl.netPct).toBeCloseTo(9.89);
     expect(position.closed?.feeUsdt).toBeCloseTo(0.044);
     // BOTH:POSITION_VPOINT_PATH
-    expect(position.vPoints).toEqual([
-      { id: "B_NOT_AVERAGED", lvl: -3 },
-    ]);
+    expect(position.vPoints).toEqual([{ id: "B_NOT_AVERAGED", lvl: -3 }]);
     expect(recoveredUsdt).toBeCloseTo(13.956);
     expect(recoveredUsdt).toBeLessThan(position.exposure.notionalUsdt);
   });
@@ -175,7 +172,7 @@ describe("backtest canonical position reporting", () => {
           tradeHistoryMap: { SUI: [] },
           growthOvertime: [],
           modelMemoryMap: { SUI: modelMemory },
-          priceNormMapOverTime: {},
+
           verbose: false,
         },
         config: {
@@ -267,7 +264,7 @@ describe("backtest canonical position reporting", () => {
         tradeHistoryMap: { SUI: [] },
         growthOvertime: [],
         modelMemoryMap: { SUI: modelMemory },
-        priceNormMapOverTime: {},
+
         verbose: false,
       },
       config: {

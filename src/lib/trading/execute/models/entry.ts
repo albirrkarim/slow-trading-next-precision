@@ -1,4 +1,4 @@
-import { decisionEngineLevelConfig } from "@/lib/brain/algorithms/v4/decisions/v19/constants";
+import { decisionEngineLevelConfig } from "@/lib/brain/algorithms/v4/decisions/helper/constants";
 import { timeMsToReadable } from "@/lib/datasets/utils";
 import type { Kline } from "@/lib/exchange/platform/tokocrypto";
 import { MINIMAL_USDT_TO_TRADE } from "@/lib/trading/constants";
@@ -7,7 +7,7 @@ import { TRADE_MESSAGE } from "@/lib/trading/message";
 import type {
   TradeDecision,
   TradingModelConfig,
-  TradingModelMemory
+  TradingModelMemory,
 } from "../../models/type";
 
 /**
@@ -38,15 +38,15 @@ function getPositionSize({
 interface DynamicEntryProps {
   symbol: string;
   current: Kline;
-  config: TradingModelConfig
-  memory: TradingModelMemory
-  bypass?: boolean
+  config: TradingModelConfig;
+  memory: TradingModelMemory;
+  bypass?: boolean;
   minActionableAbsoluteLevel?: number;
 }
 
 /**
  * Dynamic V2 - Multi trading mode
- * 
+ *
  * It can be spot and future
  */
 export async function dynamicEntry({
@@ -107,7 +107,6 @@ export async function dynamicEntry({
 
   // B.2 JUST BUY
   if (memory.justBuy !== undefined) {
-
     let amount =
       typeof memory.justBuy == "boolean" ? balanceUSDT : memory.justBuy;
 
@@ -118,12 +117,13 @@ export async function dynamicEntry({
     if (amount > 0 && last && isEntryLevelActionable) {
       const qty = amount / price;
 
-      const log = `[BUY] ${readableTime} - ${TRADE_MESSAGE.buy.HIT} ${memory.tToBuyMS
-        ? "timeToBuyMS" + timeMsToReadable(memory.tToBuyMS ?? 0)
-        : ""
-        }, Price: ${price} | Level: ${last?.lvl} | Qty: ${qty.toFixed(
-          5
-        )} | USDT: ${amount.toFixed(2)} | Balance Left ${balanceLeft}`;
+      const log = `[BUY] ${readableTime} - ${TRADE_MESSAGE.buy.HIT} ${
+        memory.tToBuyMS
+          ? "timeToBuyMS" + timeMsToReadable(memory.tToBuyMS ?? 0)
+          : ""
+      }, Price: ${price} | Level: ${last?.lvl} | Qty: ${qty.toFixed(
+        5,
+      )} | USDT: ${amount.toFixed(2)} | Balance Left ${balanceLeft}`;
 
       const reason = `${readableTime} - Buying near support`;
 
@@ -164,11 +164,7 @@ export async function dynamicEntry({
   // C. Automatic Action
   // C.1. ENTRY (BUY)
   if (!memory.onlySell) {
-    if (
-      last &&
-      last.l === "B" &&
-      isEntryLevelActionable
-    ) {
+    if (last && last.l === "B" && isEntryLevelActionable) {
       const confidence = 1;
 
       const amount = getPositionSize({
@@ -180,16 +176,19 @@ export async function dynamicEntry({
       if (amount > MINIMAL_USDT_TO_TRADE) {
         const qty = amount / price;
 
-        const log = `[BUY] ${readableTime} - ${memory.positions.length == 0
-          ? TRADE_MESSAGE.buy.ENTRY
-          : TRADE_MESSAGE.buy.AGAIN
-          } ${TRADE_MESSAGE.buy.COMMON} ${memory.tToBuyMS
+        const log = `[BUY] ${readableTime} - ${
+          memory.positions.length == 0
+            ? TRADE_MESSAGE.buy.ENTRY
+            : TRADE_MESSAGE.buy.AGAIN
+        } ${TRADE_MESSAGE.buy.COMMON} ${
+          memory.tToBuyMS
             ? "timeToBuyMS" + timeMsToReadable(memory.tToBuyMS ?? 0)
             : ""
-          }, Price: ${price} | Level: ${last.lvl
-          } | Confidence: ${confidence} | Qty: ${qty.toFixed(
-            5
-          )} | USDT: ${amount.toFixed(2)}`;
+        }, Price: ${price} | Level: ${
+          last.lvl
+        } | Confidence: ${confidence} | Qty: ${qty.toFixed(
+          5,
+        )} | USDT: ${amount.toFixed(2)}`;
 
         return {
           action: "BUY",
@@ -197,17 +196,14 @@ export async function dynamicEntry({
           amount,
           category: TRADE_MESSAGE.buy.COMMON,
           reason: `${readableTime} - Confidence ${(confidence * 100).toFixed(
-            0
+            0,
           )}% | Buying near support`,
           log,
           emailNotif: `📥 [BUY] Bought $${amount} of ${symbol}`,
           entryVPoint: { id: last.id, lvl: last.lvl },
         };
       } else {
-        tradeLog.log(
-          `No enough balance for ${TRADE_MESSAGE.buy.ENTRY}`,
-          last
-        );
+        tradeLog.log(`No enough balance for ${TRADE_MESSAGE.buy.ENTRY}`, last);
 
         return {
           action: "HOLD",
@@ -227,7 +223,6 @@ export async function dynamicEntry({
       });
 
       if (amount > MINIMAL_USDT_TO_TRADE) {
-
         const log = `[SHORT] ${readableTime} - ${TRADE_MESSAGE.buy.ENTRY} ${TRADE_MESSAGE.buy.COMMON}, Price: ${price} | Level: ${last.lvl} | Confidence: ${confidence} | USDT: ${amount.toFixed(2)}`;
 
         return {

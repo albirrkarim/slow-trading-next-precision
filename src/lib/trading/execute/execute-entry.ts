@@ -16,7 +16,7 @@ import type {
 } from "@/lib/trading/models";
 import moment from "moment-timezone";
 import type { EntryRecommendation } from "../../brain/algorithms/type-execute";
-import { decisionEngineLevelConfig } from "../../brain/algorithms/v4/decisions/v19/constants";
+import { decisionEngineLevelConfig } from "../../brain/algorithms/v4/decisions/helper/constants";
 import type { Kline } from "../../exchange/platform/tokocrypto";
 import { tradeLog } from "../helper/log";
 import { notif } from "../helper/notification"; // Email/notification system
@@ -345,8 +345,7 @@ export async function executeEntry({
     config: modelConfig,
     memory: modelMemory,
     bypass,
-    minActionableAbsoluteLevel:
-      dynamicTradeConfig.minActionableAbsoluteLevel,
+    minActionableAbsoluteLevel: dynamicTradeConfig.minActionableAbsoluteLevel,
   });
 
   const entryVPoint = decision.entryVPoint ?? {
@@ -367,8 +366,7 @@ export async function executeEntry({
     /**
      * Get the amount of USDT from model suggestion or the all in with all USDT asset in balance
      */
-    const requestedDecisionMarginUsdt =
-      decision.amount ?? quoteAssetBefore;
+    const requestedDecisionMarginUsdt = decision.amount ?? quoteAssetBefore;
 
     // Calculate total buy fee early because futures reserve fitting is based on margin.
     const totalFeePercent = exchange.getFees().getTotalFeePercent({
@@ -420,8 +418,7 @@ export async function executeEntry({
     const availableSaldo = fundingPlan.availableNotionalUsdt;
     const enableWatchLogic = dynamicTradeConfig.enableWatchLogic !== false;
     const watchReserveLevels = dynamicTradeConfig.watchReserveLevels ?? 2;
-    const watchReservePctAlloc =
-      dynamicTradeConfig.watchReservePctAlloc ?? 2;
+    const watchReservePctAlloc = dynamicTradeConfig.watchReservePctAlloc ?? 2;
 
     const preferredQuantity = availableSaldo / price;
 
@@ -662,9 +659,7 @@ export async function executeEntry({
                 | Position["strategy"]["entry"]["engine"]
                 | undefined,
               feature: buildPersistedEntryFeature(entrySignal),
-              label: decision.category
-                ?.replaceAll("[", "")
-                .replaceAll("]", ""),
+              label: decision.category?.replaceAll("[", "").replaceAll("]", ""),
             },
             averaging:
               liveWatchState ??

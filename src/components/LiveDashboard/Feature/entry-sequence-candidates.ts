@@ -1,5 +1,5 @@
 import type { EntryRecommendation } from "@/lib/brain/algorithms/type-execute";
-import { decisionEngineLevelConfig } from "@/lib/brain/algorithms/v4/decisions/v19/constants";
+import { decisionEngineLevelConfig } from "@/lib/brain/algorithms/v4/decisions/helper/constants";
 import type { VolatilityPoint } from "@/lib/dynamic";
 
 const entrySequenceCandidates = {

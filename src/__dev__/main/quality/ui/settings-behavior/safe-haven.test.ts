@@ -6,7 +6,6 @@ import type { DynamicTradeMemory } from "@/lib/dynamic";
 
 function createMemory(): DynamicTradeMemory {
   return {
-    priceNormMapOverTime: {},
     quoteAsset: 1_000,
     reservedQuoteAsset: 0,
     safeHaven: 0,

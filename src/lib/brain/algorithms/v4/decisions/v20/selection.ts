@@ -4,8 +4,8 @@ import type {
 } from "@lib/brain/algorithms/type-execute";
 import type { VolatilityPoint } from "@lib/dynamic/utils/volatility";
 
-import { mapScaleValue } from "../v18/decision";
-import { decisionEngineLevelConfig } from "../v19/constants";
+import { decisionEngineLevelConfig } from "../helper/constants";
+import { mapScaleValue } from "../utils";
 
 function makeEntryRecommendation(
   point: VolatilityPoint,
@@ -24,13 +24,7 @@ function makeEntryRecommendation(
   }
 
   if (point.l === "T") {
-    amountProbab = mapScaleValue(
-      1,
-      5,
-      point.lvl,
-      0.5,
-      point.probability ?? 1,
-    );
+    amountProbab = mapScaleValue(1, 5, point.lvl, 0.5, point.probability ?? 1);
   }
 
   const direction = point.l === "B" ? "LONG" : "SHORT";
@@ -104,10 +98,7 @@ export function evaluateRecommendationsV20Sync({
     // It does not project lower levels or rank candidates by Speed timing.
     currentPoint.used = true;
     recommendations.push(
-      makeEntryRecommendation(
-        currentPoint,
-        resolvedMinActionableAbsoluteLevel,
-      ),
+      makeEntryRecommendation(currentPoint, resolvedMinActionableAbsoluteLevel),
     );
     diagnostics.push({
       code: "READY",

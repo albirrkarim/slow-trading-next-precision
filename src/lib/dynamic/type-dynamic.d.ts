@@ -248,32 +248,4 @@ export interface DynamicTradeMemory {
    * for decision
    */
   deltaTimeMap?: Record<string, Record<string, Record<string, any>>>;
-
-  /**
-   * One year record or equivalent of 70 volatility point
-   */
-  priceNormMapOverTime: Record<string, PriceNorm[]>;
-}
-
-export interface PriceNorm {
-  /** milliseconds */
-  t: number;
-
-  /**
-   * highest price seen in the window
-   */
-  x: number;
-
-  /**
-   * lowest price seen in the window
-   */
-  n: number;
-
-  /**
-   * current price normalized 0-1
-   *
-   * maximal two floating points
-   * eg: 0.65
-   */
-  c: number;
 }

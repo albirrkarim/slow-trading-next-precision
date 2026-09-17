@@ -9,7 +9,7 @@ import type {
   EntryRecommendation,
 } from "@lib/brain/algorithms/type-execute";
 
-import { getInvestmentAmount } from "../v18/runtime";
+import { getInvestmentAmount } from "../helper/runtime";
 import { getRecommendationsV20Sync } from "./recommendations";
 
 export function decisionEngineV20({
