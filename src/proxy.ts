@@ -9,7 +9,7 @@ const DEV_BACKTEST_ENABLED =
 
 function isProtectedPath(pathname: string) {
   return (
-    pathname.startsWith("/slow") ||
+    pathname.startsWith("/") ||
     (pathname.startsWith("/api/slow-trading") &&
       !pathname.includes("coin-metadata")) ||
     (DEV_BACKTEST_ENABLED &&

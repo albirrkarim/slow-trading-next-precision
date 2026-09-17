@@ -1,7 +1,8 @@
 "use client";
 
-import MenuIcon from "@mui/icons-material/Menu";
 import DashboardIcon from "@mui/icons-material/Dashboard";
+import MenuIcon from "@mui/icons-material/Menu";
+import ShowChartIcon from "@mui/icons-material/ShowChart";
 import {
     Box,
     Divider,
@@ -15,9 +16,6 @@ import {
     Tooltip,
     Typography,
 } from "@mui/material";
-import ShowChartIcon from "@mui/icons-material/ShowChart";
-import TravelExploreIcon from "@mui/icons-material/TravelExplore";
-import CrisisAlertIcon from "@mui/icons-material/CrisisAlert";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React from "react";
@@ -26,11 +24,11 @@ const drawerWidth = 260;
 
 const sidebarSections = [
     {
-        title: "Slow Trading",
+        title: "Production",
         items: [
             {
-                text: "Precision Trade (Slow)",
-                href: "/slow",
+                text: "Precision Trade",
+                href: "/",
                 icon: <DashboardIcon />,
                 description: "Live dashboard for the standalone slow trading workflow.",
             },
@@ -40,20 +38,8 @@ const sidebarSections = [
         title: "Development",
         items: [
             {
-                text: "Black Swan Backtest",
-                href: "/dev/black-swan",
-                icon: <CrisisAlertIcon />,
-                description: "Replay portfolio crash protection from raw closed one-minute candles.",
-            },
-            {
-                text: "Good Coin Finder",
-                href: "/dev/coins",
-                icon: <TravelExploreIcon />,
-                description: "Compare Binance coin volatility levels across cached two- and five-year datasets.",
-            },
-            {
-                text: "Backtest Agent Live Trade History",
-                href: "/dev/dynamic-trade",
+                text: "Backtest",
+                href: "/dev/backtest",
                 icon: <ShowChartIcon />,
                 description: "Inspect one symbol with chart context, volatility rails, and simulated trade behavior for debugging.",
             },
@@ -71,7 +57,7 @@ export default function SidebarButton() {
         <Box sx={{ width: drawerWidth }}>
             <Box sx={{ p: 2 }}>
                 <Typography variant="h6" fontWeight="bold">
-                    Slow Trading
+                    Precision Trading
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                     All Time is in UTC
