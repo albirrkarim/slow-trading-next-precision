@@ -5,7 +5,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import SettingsCheckbox from "@/components/LiveDashboard/Navbar/SettingsCheckbox";
+import SettingsCheckbox from "@/components/LiveDashboard/Navbar/Settings/SettingsCheckbox";
 
 describe("SettingsCheckbox", () => {
   it("renders state, tooltip trigger, and optional action", () => {

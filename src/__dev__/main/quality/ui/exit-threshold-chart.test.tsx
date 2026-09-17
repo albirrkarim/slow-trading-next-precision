@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 
 import ExitThresholdChart, {
   buildExitThresholdChartModel,
-} from "@/components/LiveDashboard/Navbar/ExitThresholdChart";
+} from "@/components/LiveDashboard/Navbar/Settings/ExitThresholdChart";
 
 describe("ExitThresholdChart", () => {
   it("builds the StopLoss+ path from percentage ratios", () => {

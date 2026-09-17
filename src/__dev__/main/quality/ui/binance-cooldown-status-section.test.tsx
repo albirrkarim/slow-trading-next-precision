@@ -7,7 +7,7 @@ import userEvent from "@testing-library/user-event";
 import { SnackbarProvider } from "notistack";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import BinanceCooldownStatusSection from "@/components/LiveDashboard/BinanceCooldownStatusSection";
+import BinanceCooldownStatusSection from "@/components/LiveDashboard/Reporting/BinanceCooldownStatusSection";
 import type { SlowTradingDashboardState } from "@/lib/slowTrading";
 
 const mocks = vi.hoisted(() => ({

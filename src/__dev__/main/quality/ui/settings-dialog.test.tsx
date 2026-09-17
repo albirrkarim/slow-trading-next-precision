@@ -9,11 +9,11 @@ import axios from "axios";
 import { describe, expect, it, vi } from "vitest";
 
 import { endpoints } from "@/components/endpoints";
-import SettingsDialogBlackSwanTab from "@/components/LiveDashboard/Navbar/SettingsDialogBlackSwanTab";
-import SettingsDialogRuntimeTab from "@/components/LiveDashboard/Navbar/SettingsDialogRuntimeTab";
-import SettingsDialogManagementTab from "@/components/LiveDashboard/Navbar/SettingsDialogManagementTab";
-import { makeConfigDraft } from "@/components/LiveDashboard/Navbar/helpers";
-import { useLiveDashboardNavbar } from "@/components/LiveDashboard/Navbar/useLiveDashboardNavbar";
+import SettingsDialogBlackSwanTab from "@/components/LiveDashboard/Navbar/Settings/SettingsDialogBlackSwanTab";
+import SettingsDialogRuntimeTab from "@/components/LiveDashboard/Navbar/Settings/SettingsDialogRuntimeTab";
+import SettingsDialogManagementTab from "@/components/LiveDashboard/Navbar/Settings/SettingsDialogManagementTab";
+import { makeConfigDraft } from "@/components/LiveDashboard/Navbar/Settings/helpers";
+import { useLiveDashboardNavbar } from "@/components/LiveDashboard/Navbar/Settings/useLiveDashboardNavbar";
 import { TradingMode } from "@/lib/exchange";
 
 vi.mock("axios", () => ({
@@ -152,49 +152,49 @@ function Harness() {
           navbar.setConfigDraft((prev) =>
             prev
               ? {
-                  ...prev,
-                  autoEntryEnabled: true,
-                  autoExitEnabled: true,
-                  autoRemoveSymbolAbsLevel: 6,
-                  autoRemoveSymbolMinMarketCapUSD: 100_000_000,
-                  autoRemoveSymbolMinPrice: 0.01,
-                  autoRemoveSymbolMinVPointPct: 17.5,
-                  pnlHistoryBucketMinutes: 15,
-                  averagingRescueProjectionGuardEnabled: false,
-                  enableWatchLogic: true,
-                  exchangeAccountSlug: "1",
-                  maxEntryMargin: 20,
-                  maxEntryBased24HourVolPct: 0.5,
-                  maxEntryMarginPct: 50,
-                  maxOpenPositions: 3,
-                  minActionableAbsoluteLevel: 4,
-                  maxLeverage: 3,
-                  exactLeverage: 6,
-                  notification: {
-                    ...prev.notification,
-                    telegram: {
-                      enabled: true,
-                      types: [
-                        {
-                          id: "NOTIF_HIGH_VOLATILITY",
-                          params: { level: 4 },
-                        },
-                        {
-                          id: "NOTIF_STALE_POSITION",
-                          params: { hour: 2 },
-                        },
-                      ],
-                    },
+                ...prev,
+                autoEntryEnabled: true,
+                autoExitEnabled: true,
+                autoRemoveSymbolAbsLevel: 6,
+                autoRemoveSymbolMinMarketCapUSD: 100_000_000,
+                autoRemoveSymbolMinPrice: 0.01,
+                autoRemoveSymbolMinVPointPct: 17.5,
+                pnlHistoryBucketMinutes: 15,
+                averagingRescueProjectionGuardEnabled: false,
+                enableWatchLogic: true,
+                exchangeAccountSlug: "1",
+                maxEntryMargin: 20,
+                maxEntryBased24HourVolPct: 0.5,
+                maxEntryMarginPct: 50,
+                maxOpenPositions: 3,
+                minActionableAbsoluteLevel: 4,
+                maxLeverage: 3,
+                exactLeverage: 6,
+                notification: {
+                  ...prev.notification,
+                  telegram: {
+                    enabled: true,
+                    types: [
+                      {
+                        id: "NOTIF_HIGH_VOLATILITY",
+                        params: { level: 4 },
+                      },
+                      {
+                        id: "NOTIF_STALE_POSITION",
+                        params: { hour: 2 },
+                      },
+                    ],
                   },
-                  modelConfig: {
-                    ...prev.modelConfig,
-                    stopLossPercent: 12,
-                    takeProfitPercent: 7,
-                    useStopLossPlus: true,
-                  },
-                  runnerEnabled: true,
-                  symbolsText: "SUI, AAVE",
-                }
+                },
+                modelConfig: {
+                  ...prev.modelConfig,
+                  stopLossPercent: 12,
+                  takeProfitPercent: 7,
+                  useStopLossPlus: true,
+                },
+                runnerEnabled: true,
+                symbolsText: "SUI, AAVE",
+              }
               : prev,
           )
         }

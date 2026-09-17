@@ -37,8 +37,8 @@ import type { TagData } from "../dev/Coins/CoinTagManagerDialog";
 import CoinTagManagerDialog from "../dev/Coins/CoinTagManagerDialog";
 import HeaderMetrics from "../ui/HeaderMetrics";
 import TypographyTooltip from "../ui/TypographyTooltip";
-import BinanceCooldownStatusSection from "./BinanceCooldownStatusSection";
-import BlackSwanStatusSection from "./BlackSwanStatusSection";
+import BinanceCooldownStatusSection from "./Reporting/BinanceCooldownStatusSection";
+import BlackSwanStatusSection from "./Reporting/BlackSwanStatusSection";
 import CoinMetadataDownloadDialog from "./Feature/CoinMetadataDownloadDialog";
 import EntryBlockers from "./Feature/EntryBlockers";
 import EntrySequenceMetrics from "./Feature/EntrySequences";
@@ -49,13 +49,13 @@ import SlowTradingQueuesPanel from "./Feature/SlowTradingQueues";
 import VPointsFrequency from "./Feature/VPointsFrequency";
 import WorkerEntrySequenceMetrics from "./Feature/WorkerEntrySequenceMetrics";
 import WorkerNeededEstimation from "./Feature/WorkerNeededEstimation";
-import LiveDashboardNavbar from "./Navbar";
-import DateSelectionDialog from "./Navbar/DateSelectionDialog";
+import LiveDashboardNavbar from "./Navbar/Settings";
+import DateSelectionDialog from "./Navbar/Settings/DateSelectionDialog";
 import {
   computeDayPreview,
   formatDailyPnlMetaTitle,
-} from "./Navbar/helpers";
-import SystemAccountSummary from "./SystemAccountSummary";
+} from "./Navbar/Settings/helpers";
+import SystemAccountSummary from "./Reporting/SystemAccountSummary";
 import { DASHBOARD_POLL_INTERVAL_MS } from "./constants";
 import { applyTimeWindowClient, calculateTimeRange, makeSeries } from "./utils";
 

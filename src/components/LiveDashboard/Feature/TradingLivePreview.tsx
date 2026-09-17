@@ -15,8 +15,8 @@ import {
 } from "@mui/material";
 import type { SlowTradingDashboardState } from "@/lib/slowTrading";
 
-import ReadMoreDialogButton from "../Navbar/ReadMoreDialogButton";
-import ExitThresholdChart from "../Navbar/ExitThresholdChart";
+import ReadMoreDialogButton from "../Navbar/Settings/ReadMoreDialogButton";
+import ExitThresholdChart from "../Navbar/Settings/ExitThresholdChart";
 import AveragingSimulationPreview from "./AveragingSimulationPreview";
 import {
   buildTradingLivePreview,
@@ -260,34 +260,32 @@ function ExitStagePreview({
   const lossFormula =
     stage.estimatedLossUsdt === null
       ? "Stop loss disabled"
-      : `${formatUsdt(stage.estimatedNotionalUsdt)} x ${
-          stopLossPct
-        }% = -${formatUsdt(stage.estimatedLossUsdt)}`;
+      : `${formatUsdt(stage.estimatedNotionalUsdt)} x ${stopLossPct
+      }% = -${formatUsdt(stage.estimatedLossUsdt)}`;
   const usdtLossFormula =
     stopLossUSDT === null || stage.stopLossUSDTEquivalentPct === null
       ? "USDT stop loss disabled"
       : `-${formatUsdt(stopLossUSDT)} / ${formatUsdt(
-          stage.estimatedNotionalUsdt,
-        )} x 100 = -${stage.stopLossUSDTEquivalentPct}%`;
+        stage.estimatedNotionalUsdt,
+      )} x 100 = -${stage.stopLossUSDTEquivalentPct}%`;
   const targetZoneLossFormula =
     stage.estimatedTargetZoneLossUsdt === null
       ? "Target-zone stop disabled"
-      : `${formatUsdt(stage.estimatedNotionalUsdt)} x ${
-          targetZoneStopLossPct
-        }% = -${formatUsdt(stage.estimatedTargetZoneLossUsdt)}`;
+      : `${formatUsdt(stage.estimatedNotionalUsdt)} x ${targetZoneStopLossPct
+      }% = -${formatUsdt(stage.estimatedTargetZoneLossUsdt)}`;
   const postAverageStopLoss = stage.postAverageStopLoss;
   const postAverageStopParts = [
     postAverageStopLoss?.maxNetPnlPct &&
-    postAverageStopLoss.estimatedPercentLossUsdt !== null
+      postAverageStopLoss.estimatedPercentLossUsdt !== null
       ? `${postAverageStopLoss.maxNetPnlPct}% = -${formatUsdt(
-          postAverageStopLoss.estimatedPercentLossUsdt,
-        )}`
+        postAverageStopLoss.estimatedPercentLossUsdt,
+      )}`
       : null,
     postAverageStopLoss?.maxNetPnlUsdt &&
-    postAverageStopLoss.usdtEquivalentPct !== null
+      postAverageStopLoss.usdtEquivalentPct !== null
       ? `-${formatUsdt(
-          Math.abs(postAverageStopLoss.maxNetPnlUsdt),
-        )} = -${postAverageStopLoss.usdtEquivalentPct}%`
+        Math.abs(postAverageStopLoss.maxNetPnlUsdt),
+      )} = -${postAverageStopLoss.usdtEquivalentPct}%`
       : null,
   ].filter((part): part is string => Boolean(part));
   const postAverageStopFormula =
@@ -296,28 +294,27 @@ function ExitStagePreview({
       : "Both boundaries disabled for this tier";
   const levelBasedDriftStop = stage.levelBasedPctDriftStopLoss;
   const levelBasedDriftFormula = levelBasedDriftStop
-    ? `${levelBasedDriftStop.anchorPrice.toFixed(2)} x (1 - ${
-        levelBasedDriftStop.adverseDriftPct
-      }%) = ${levelBasedDriftStop.triggerPrice.toFixed(2)} · estimated loss ${formatUsdt(
-        levelBasedDriftStop.estimatedLossUsdt,
-      )}`
+    ? `${levelBasedDriftStop.anchorPrice.toFixed(2)} x (1 - ${levelBasedDriftStop.adverseDriftPct
+    }%) = ${levelBasedDriftStop.triggerPrice.toFixed(2)} · estimated loss ${formatUsdt(
+      levelBasedDriftStop.estimatedLossUsdt,
+    )}`
     : "No condition for this absolute vPoint level";
   const firstStopLabel =
     stage.firstStopLoss?.type === "LEVEL_BASED_PCT_DRIFT"
       ? "Level-based vPoint drift stop reaches first"
       : stage.firstStopLoss?.type === "POST_AVERAGE"
-      ? "Post-average stop reaches first"
-      : stage.firstStopLoss?.type === "NET_USDT"
-        ? "Net USDT stop reaches first"
-        : "Hard stop reaches first";
+        ? "Post-average stop reaches first"
+        : stage.firstStopLoss?.type === "NET_USDT"
+          ? "Net USDT stop reaches first"
+          : "Hard stop reaches first";
   const firstStopFormula =
     stage.firstStopLoss?.type === "LEVEL_BASED_PCT_DRIFT"
       ? levelBasedDriftFormula
       : stage.firstStopLoss?.type === "POST_AVERAGE"
-      ? postAverageStopFormula
-      : stage.firstStopLoss?.type === "NET_USDT"
-        ? `Position exits at -${formatUsdt(stage.firstStopLoss.estimatedLossUsdt)}`
-        : lossFormula;
+        ? postAverageStopFormula
+        : stage.firstStopLoss?.type === "NET_USDT"
+          ? `Position exits at -${formatUsdt(stage.firstStopLoss.estimatedLossUsdt)}`
+          : lossFormula;
 
   return (
     <Box
@@ -430,9 +427,8 @@ function ExitStagePreview({
             }
             detail="after this many completed averages, runtime and backtest exit when either active fee-adjusted net PnL boundary is reached; 0 disables that boundary"
             formula={postAverageStopFormula}
-            label={`Post-average stop · tier ≥${postAverageStopLoss.minAveragingCount} average${
-              postAverageStopLoss.minAveragingCount === 1 ? "" : "s"
-            } · current ${stage.averagingStepsUsed}`}
+            label={`Post-average stop · tier ≥${postAverageStopLoss.minAveragingCount} average${postAverageStopLoss.minAveragingCount === 1 ? "" : "s"
+              } · current ${stage.averagingStepsUsed}`}
           />
         )}
       </Box>
@@ -507,10 +503,10 @@ export default function TradingLivePreview({
     .join(" + ")} = ${formatUsdt(preview.workerCostUsdt)}`;
   const spareBufferFormula = preview.entrySpareBufferEnabled
     ? `${formatUsdt(preview.workerCostUsdt)} worker + ${formatUsdt(
-        preview.entrySpareBufferUsdt,
-      )} spare = ${formatUsdt(
-        preview.workerCostUsdt + preview.entrySpareBufferUsdt,
-      )} of ${formatUsdt(preview.spendableUsdt)}`
+      preview.entrySpareBufferUsdt,
+    )} spare = ${formatUsdt(
+      preview.workerCostUsdt + preview.entrySpareBufferUsdt,
+    )} of ${formatUsdt(preview.spendableUsdt)}`
     : "Disabled — no additional entry-sized amount is kept";
   const bailoutCandidateAmounts = [
     ...preview.bailoutCandidates.map((candidate) => candidate.marginUsdt),
@@ -521,15 +517,15 @@ export default function TradingLivePreview({
   const bailoutFormula =
     bailoutCandidateAmounts.length > 0
       ? `max(${bailoutCandidateAmounts
-          .map(formatUsdt)
-          .join(", ")}) = ${formatUsdt(preview.bailoutBufferUsdt)}`
+        .map(formatUsdt)
+        .join(", ")}) = ${formatUsdt(preview.bailoutBufferUsdt)}`
       : `No UNRESERVED steps = ${formatUsdt(0)}`;
   const projectedBailoutFormula =
     preview.projectedBailoutMultiplier === null
       ? formatUsdt(preview.projectedBailoutUsdt)
       : `(${preview.projectedBailoutPartsUsdt
-          .map(formatUsdt)
-          .join(" + ")}) x ${preview.projectedBailoutMultiplier} = ${formatUsdt(
+        .map(formatUsdt)
+        .join(" + ")}) x ${preview.projectedBailoutMultiplier} = ${formatUsdt(
           preview.projectedBailoutUsdt,
         )}`;
   const balanceWorkerCapacityFormula = `floor(${formatUsdt(
@@ -575,9 +571,8 @@ export default function TradingLivePreview({
           </Typography>
           <Tooltip
             arrow
-            title={`Uses the current spendable balance and open positions with the ${
-              allowSpendableAssumption ? "unsaved" : "saved"
-            } Trading settings. Coin-specific liquidity limits and final exchange fees are applied during execution.`}
+            title={`Uses the current spendable balance and open positions with the ${allowSpendableAssumption ? "unsaved" : "saved"
+              } Trading settings. Coin-specific liquidity limits and final exchange fees are applied during execution.`}
           >
             <InfoOutlinedIcon
               aria-label="About live trading preview"
@@ -602,7 +597,7 @@ export default function TradingLivePreview({
             <PreviewMetric
               color={
                 preview.maxOpenPositions > 0 &&
-                preview.currentOpenPositions >= preview.maxOpenPositions
+                  preview.currentOpenPositions >= preview.maxOpenPositions
                   ? "error.main"
                   : undefined
               }
@@ -746,11 +741,10 @@ export default function TradingLivePreview({
                     {preview.bailoutCandidates.map((candidate, index) => (
                       <PreviewMetric
                         key={`${candidate.symbol}-${candidate.level}-${index}`}
-                        label={`${candidate.symbol}${
-                          candidate.level === null
+                        label={`${candidate.symbol}${candidate.level === null
                             ? ""
                             : ` level ${candidate.level}`
-                        }`}
+                          }`}
                         value={formatUsdt(candidate.marginUsdt)}
                         valueTooltip="UNRESERVED"
                       />
@@ -763,11 +757,10 @@ export default function TradingLivePreview({
                     <PreviewCalculation
                       detail="entry margin + all earlier averaging margins, multiplied by the reserve multiplier"
                       formula={projectedBailoutFormula}
-                      label={`Projected new worker${
-                        preview.projectedBailoutLevel === null
+                      label={`Projected new worker${preview.projectedBailoutLevel === null
                           ? ""
                           : ` level ${preview.projectedBailoutLevel}`
-                      }`}
+                        }`}
                     />
                   </Box>
                 )}

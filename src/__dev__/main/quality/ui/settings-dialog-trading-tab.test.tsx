@@ -6,11 +6,11 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import type { SetStateAction } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import SettingsDialogTradingTab from "@/components/LiveDashboard/Navbar/SettingsDialogTradingTab";
+import SettingsDialogTradingTab from "@/components/LiveDashboard/Navbar/Settings/SettingsDialogTradingTab";
 import type {
   ConfigDraft,
   DashboardState,
-} from "@/components/LiveDashboard/Navbar/types";
+} from "@/components/LiveDashboard/Navbar/Settings/types";
 import { VOLATILITY_THRESHOLD } from "@/lib/brain/constants";
 import { TradingMode } from "@/lib/exchange";
 import type { SlowTradingAccount } from "@/lib/slowTrading";

@@ -9,8 +9,8 @@ import type { AdaptiveAveragingConfig } from "@/lib/dynamic";
 import adaptiveAveraging from "@/lib/trading/adaptive-averaging";
 import postAverageRescue from "@/lib/trading/post-average-rescue";
 import postAverageStopLoss from "@/lib/trading/post-average-stop-loss";
-import PostAverageRescueExitSettings from "@/components/LiveDashboard/Navbar/PostAverageRescueExitSettings";
-import PostAverageStopLossSettings from "@/components/LiveDashboard/Navbar/PostAverageStopLossSettings";
+import PostAverageRescueExitSettings from "@/components/LiveDashboard/Navbar/Settings/PostAverageRescueExitSettings";
+import PostAverageStopLossSettings from "@/components/LiveDashboard/Navbar/Settings/PostAverageStopLossSettings";
 import {
     Box,
     Checkbox,

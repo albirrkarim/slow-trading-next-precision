@@ -9,15 +9,15 @@ import path from "node:path";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import SettingsDialog from "@/components/LiveDashboard/Navbar/SettingsDialog";
-import SettingsDialogRuntimeTab from "@/components/LiveDashboard/Navbar/SettingsDialogRuntimeTab";
-import SettingsDialogTradingTab from "@/components/LiveDashboard/Navbar/SettingsDialogTradingTab";
-import { NavbarIdentitySection } from "@/components/LiveDashboard/Navbar/NavbarSections";
-import { makeConfigDraft } from "@/components/LiveDashboard/Navbar/helpers";
+import SettingsDialog from "@/components/LiveDashboard/Navbar/Settings/SettingsDialog";
+import SettingsDialogRuntimeTab from "@/components/LiveDashboard/Navbar/Settings/SettingsDialogRuntimeTab";
+import SettingsDialogTradingTab from "@/components/LiveDashboard/Navbar/Settings/SettingsDialogTradingTab";
+import { NavbarIdentitySection } from "@/components/LiveDashboard/Navbar/Settings/NavbarSections";
+import { makeConfigDraft } from "@/components/LiveDashboard/Navbar/Settings/helpers";
 import type {
   ConfigDraft,
   DashboardState,
-} from "@/components/LiveDashboard/Navbar/types";
+} from "@/components/LiveDashboard/Navbar/Settings/types";
 import { DEFAULT_DYNAMIC_TRADE_CONFIG_PRODUCTION } from "@/lib/dynamic";
 import slowTradingAccountConfig from "@/lib/slowTrading/account-config";
 import type { SlowTradingAccount } from "@/lib/slowTrading";

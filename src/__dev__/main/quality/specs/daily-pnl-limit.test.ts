@@ -1,12 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { computeDayPreview } from "@/components/LiveDashboard/Navbar/helpers";
+import { computeDayPreview } from "@/components/LiveDashboard/Navbar/Settings/helpers";
 import slowTradingDailyPnlLimit from "@/lib/slowTrading/daily-pnl-limit";
 
-function closedTrade(params: {
-  closedAt: number;
-  netUsdt: number;
-}) {
+function closedTrade(params: { closedAt: number; netUsdt: number }) {
   return {
     closed: { t: params.closedAt },
     opened: { t: params.closedAt - 60_000 },
@@ -55,8 +52,6 @@ describe("daily PnL automatic-entry stop", () => {
     expect(
       slowTradingDailyPnlLimit.config.normalizeThresholdUsdt("invalid"),
     ).toBe(-50);
-    expect(
-      slowTradingDailyPnlLimit.config.normalizeThresholdUsdt(25),
-    ).toBe(0);
+    expect(slowTradingDailyPnlLimit.config.normalizeThresholdUsdt(25)).toBe(0);
   });
 });

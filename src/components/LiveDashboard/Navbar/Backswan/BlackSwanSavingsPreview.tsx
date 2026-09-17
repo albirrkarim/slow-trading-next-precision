@@ -32,7 +32,7 @@ import {
 import { endpoints } from "@/components/endpoints";
 import type { BlackSwanSavingsBacktestResult } from "@/lib/devBacktest/black-swan";
 import blackSwan from "@/lib/trading/black-swan";
-import type { ConfigDraft, DashboardState } from "./types";
+import type { ConfigDraft, DashboardState } from "../Settings/types";
 import BlackSwanExitReasonChart from "./BlackSwanExitReasonChart";
 import BlackSwanPositionScenarios from "./BlackSwanPositionScenarios";
 
@@ -326,8 +326,8 @@ export default function BlackSwanSavingsPreview({
           if (!controller.signal.aborted) {
             setError(
               requestError?.response?.data?.error ||
-                requestError?.message ||
-                "Protection replay failed.",
+              requestError?.message ||
+              "Protection replay failed.",
             );
           }
         })
@@ -361,8 +361,8 @@ export default function BlackSwanSavingsPreview({
           direction={{ xs: "column", sm: "row" }}
           justifyContent="space-between"
           spacing={1.5}
-          >
-            <Box>
+        >
+          <Box>
             <Stack alignItems="center" direction="row" spacing={0.75}>
               <Typography fontWeight={800} variant="h6">
                 Black Swan Protection Replay
@@ -483,7 +483,7 @@ export default function BlackSwanSavingsPreview({
                 label="Existing-strategy / liquidation exits"
                 value={String(
                   result.summary.positionCount -
-                    result.summary.emergencyClosedPositions,
+                  result.summary.emergencyClosedPositions,
                 )}
               />
             </Box>

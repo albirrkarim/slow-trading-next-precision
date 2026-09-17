@@ -7,7 +7,7 @@ import {
   computeDayPreview,
   computeOpenPositionSummary,
   formatDailyPnlMetaTitle,
-} from "@/components/LiveDashboard/Navbar/helpers";
+} from "@/components/LiveDashboard/Navbar/Settings/helpers";
 import { createTestPosition } from "../fixtures/position";
 
 function createStorage(): SlowTradingStorageData {

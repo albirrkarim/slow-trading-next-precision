@@ -5,7 +5,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import NavbarStageRuns from "@/components/LiveDashboard/Navbar/NavbarStageRuns";
+import NavbarStageRuns from "@/components/LiveDashboard/Navbar/Settings/NavbarStageRuns";
 
 describe("navbar production stage runs", () => {
   it("shows all stages and expands only the selected timing breakdown", async () => {

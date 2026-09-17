@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import BlackSwanStatusSection from "@/components/LiveDashboard/BlackSwanStatusSection";
+import BlackSwanStatusSection from "@/components/LiveDashboard/Reporting/BlackSwanStatusSection";
 import type { SlowTradingDashboardState } from "@/lib/slowTrading";
 
 const mocks = vi.hoisted(() => ({

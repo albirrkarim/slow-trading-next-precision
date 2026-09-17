@@ -7,8 +7,8 @@ import { SnackbarProvider } from "notistack";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import SettingsDialogNotificationTab from "@/components/LiveDashboard/Navbar/SettingsDialogNotificationTab";
-import type { ConfigDraft } from "@/components/LiveDashboard/Navbar/types";
+import SettingsDialogNotificationTab from "@/components/LiveDashboard/Navbar/Settings/SettingsDialogNotificationTab";
+import type { ConfigDraft } from "@/components/LiveDashboard/Navbar/Settings/types";
 
 vi.mock("axios", () => ({
   default: {

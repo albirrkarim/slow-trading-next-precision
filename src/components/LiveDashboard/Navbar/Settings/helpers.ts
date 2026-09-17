@@ -12,9 +12,7 @@ import levelBasedPctDriftStopLoss from "@/lib/trading/level-based-pct-drift-stop
 import blackSwan from "@/lib/trading/black-swan";
 import type { Theme } from "@mui/material";
 
-import {
-  computeDailyPnlPercentStats,
-} from "../Reporting/utils";
+import { computeDailyPnlPercentStats } from "../../Reporting/utils";
 import type {
   BalanceSummary,
   ConfigDraft,
@@ -75,10 +73,9 @@ export function cloneModelConfig(
     postAverageStopLoss: postAverageStopLoss.config.normalize(
       rawPostAverageStopLoss,
     ),
-    levelBasedPctDriftStopLoss:
-      levelBasedPctDriftStopLoss.config.normalize(
-        rawLevelBasedPctDriftStopLoss,
-      ),
+    levelBasedPctDriftStopLoss: levelBasedPctDriftStopLoss.config.normalize(
+      rawLevelBasedPctDriftStopLoss,
+    ),
     maxHoldMinutes,
     orderType,
     useStopLossPlus,
@@ -323,11 +320,10 @@ export function applyConfigDraftToAccountProfile(
 
   return {
     ...account,
-    trading:
-      slowTradingAccountConfig.trading.fromEffectiveConfig(
-        effectiveConfig,
-        tradingNotes,
-      ),
+    trading: slowTradingAccountConfig.trading.fromEffectiveConfig(
+      effectiveConfig,
+      tradingNotes,
+    ),
     sandbox: {
       enabled: draft.sandboxEnabled,
       initialBalanceUSDT: Math.max(
@@ -390,8 +386,7 @@ export function applyBacktestConfigToDraft(
         DEFAULT_DYNAMIC_TRADE_CONFIG_PRODUCTION.modelConfig,
     ),
     enableWatchLogic: backtestConfig.enableWatchLogic,
-    entrySpareBufferEnabled:
-      backtestConfig.entrySpareBufferEnabled ?? true,
+    entrySpareBufferEnabled: backtestConfig.entrySpareBufferEnabled ?? true,
     watchReserveLevels: backtestConfig.watchReserveLevels,
     watchMaxNextAveragingLevels: backtestConfig.watchMaxNextAveragingLevels,
     watchReservePctAlloc: backtestConfig.watchReservePctAlloc,
@@ -512,9 +507,7 @@ export function formatDailyPnlMetaTitle(
   dailyUsdtProfit: number,
 ): string {
   const normalizedAppName = appName.trim() || "SLOW";
-  const normalizedPnl = Number.isFinite(dailyUsdtProfit)
-    ? dailyUsdtProfit
-    : 0;
+  const normalizedPnl = Number.isFinite(dailyUsdtProfit) ? dailyUsdtProfit : 0;
   const sign = normalizedPnl >= 0 ? "+" : "-";
 
   return `${normalizedAppName} | ${sign}$${Math.abs(normalizedPnl).toFixed(2)}`;

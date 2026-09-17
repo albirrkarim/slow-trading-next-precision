@@ -6,8 +6,8 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
-import SystemAccountSummary from "@/components/LiveDashboard/SystemAccountSummary";
-import { getCustomAccountTradingConfig } from "@/components/LiveDashboard/account-trading-summary";
+import SystemAccountSummary from "@/components/LiveDashboard/Reporting/SystemAccountSummary";
+import { getCustomAccountTradingConfig } from "@/components/LiveDashboard/Reporting/account-trading-summary";
 import { DEFAULT_DYNAMIC_TRADE_CONFIG_PRODUCTION } from "@/lib/dynamic/constants";
 import slowTradingAccountConfig from "@/lib/slowTrading/account-config";
 

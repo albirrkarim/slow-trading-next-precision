@@ -7,12 +7,12 @@ import { ThemeProvider, useTheme } from "@mui/material";
 import { createTheme } from "@mui/material/styles";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { computeAutoEntryActive } from "@/components/LiveDashboard/Navbar/helpers";
+import { computeAutoEntryActive } from "@/components/LiveDashboard/Navbar/Settings/helpers";
 import {
   getNavbarBackgroundColor,
   useNavbarThemeColor,
-} from "@/components/LiveDashboard/Navbar/theme-color";
-import type { DashboardState } from "@/components/LiveDashboard/Navbar/types";
+} from "@/components/LiveDashboard/Navbar/Settings/theme-color";
+import type { DashboardState } from "@/components/LiveDashboard/Navbar/Settings/types";
 
 const theme = createTheme({
   palette: {

@@ -23,8 +23,8 @@ import ButtonLogout from "@/components/ui/ButtonLogout";
 import DarkToggle from "@/components/ui/DarkToggle";
 import SidebarButton from "@/components/ui/SidebarButton";
 
-import UtcClock from "../Feature/UtcClock";
-import SlowTradingReporting from "../Reporting";
+import UtcClock from "../../Feature/UtcClock";
+import SlowTradingReporting from "../../Reporting";
 import {
   computeBalanceSummaryFromBalances,
   getPnlPercentBg,
@@ -113,18 +113,18 @@ export function NavbarIdentitySection({
 }: NavbarIdentitySectionProps) {
   const accountSummaries = dashboardState
     ? (dashboardState.accountSummaries ?? [
-        {
-          slug: dashboardState.runtime.exchangeAccountSlug,
-          name:
-            dashboardState.runtime.exchangeAccounts.find(
-              (account) =>
-                account.slug === dashboardState.runtime.exchangeAccountSlug,
-            )?.name ?? dashboardState.runtime.exchangeAccountSlug,
-          enabled: true,
-          activeMode: dashboardState.activeMode,
-          balances: dashboardState.balances,
-        },
-      ]).filter((account) => account.enabled)
+      {
+        slug: dashboardState.runtime.exchangeAccountSlug,
+        name:
+          dashboardState.runtime.exchangeAccounts.find(
+            (account) =>
+              account.slug === dashboardState.runtime.exchangeAccountSlug,
+          )?.name ?? dashboardState.runtime.exchangeAccountSlug,
+        enabled: true,
+        activeMode: dashboardState.activeMode,
+        balances: dashboardState.balances,
+      },
+    ]).filter((account) => account.enabled)
     : [];
   const activeModes = new Set(
     accountSummaries.map((account) => account.activeMode),

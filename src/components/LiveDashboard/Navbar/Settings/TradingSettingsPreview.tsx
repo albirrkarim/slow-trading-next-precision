@@ -1,6 +1,6 @@
 "use client";
 
-import TradingLivePreview from "../Feature/TradingLivePreview";
+import TradingLivePreview from "../../Feature/TradingLivePreview";
 import type { ConfigDraft, DashboardState } from "./types";
 
 /** Builds the portfolio snapshot owned by the account being edited. */

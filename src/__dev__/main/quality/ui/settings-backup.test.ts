@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   parseConfigBackup,
   stringifyConfigBackup,
-} from "@/components/LiveDashboard/Navbar/SettingsDialogBackupTab";
-import type { ConfigDraft } from "@/components/LiveDashboard/Navbar/types";
+} from "@/components/LiveDashboard/Navbar/Settings/SettingsDialogBackupTab";
+import type { ConfigDraft } from "@/components/LiveDashboard/Navbar/Settings/types";
 
 const configDraft = {
   adaptiveAveraging: {
@@ -102,10 +102,8 @@ describe("settings config backup", () => {
   });
 
   it("defaults the daily PnL stop when importing an older backup", () => {
-    const {
-      autoEntryDailyPnlLimitUSDT: _legacyMissingField,
-      ...legacyBackup
-    } = configDraft;
+    const { autoEntryDailyPnlLimitUSDT: _legacyMissingField, ...legacyBackup } =
+      configDraft;
 
     expect(
       parseConfigBackup(JSON.stringify(legacyBackup))

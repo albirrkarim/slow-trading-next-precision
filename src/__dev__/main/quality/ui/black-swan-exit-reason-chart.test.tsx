@@ -3,7 +3,7 @@
  */
 
 import { render, screen } from "@testing-library/react";
-import BlackSwanExitReasonChart from "@/components/LiveDashboard/Navbar/BlackSwanExitReasonChart";
+import BlackSwanExitReasonChart from "@/components/LiveDashboard/Navbar/Backswan/BlackSwanExitReasonChart";
 import type { BlackSwanSavingsPositionResult } from "@/lib/devBacktest/black-swan";
 import { describe, expect, it } from "vitest";
 
