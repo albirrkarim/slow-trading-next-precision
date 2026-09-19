@@ -77,6 +77,26 @@ type KlineMarker = {
   markers: Marker[][];
 };
 
+const EMPTY_COIN_METADATA: CoinTagState = {
+  coinDescriptions: {},
+  coinTags: {},
+  tags: [],
+};
+
+/** Checks that an API response has the collections required by the dashboard. */
+function isCoinTagState(value: unknown): value is CoinTagState {
+  if (!value || typeof value !== "object") return false;
+
+  const state = value as Partial<CoinTagState>;
+  return (
+    Boolean(state.coinDescriptions) &&
+    typeof state.coinDescriptions === "object" &&
+    Boolean(state.coinTags) &&
+    typeof state.coinTags === "object" &&
+    Array.isArray(state.tags)
+  );
+}
+
 /**
  * Merges Quick Backtest simulation lines into the volatility chart while
  * keeping simulated trades colored exactly like their base vPoint coin line.
@@ -162,11 +182,8 @@ export default function DynamicTradeHistoryPage({
       names: [],
       series: [],
     });
-  const [coinMetadata, setCoinMetadata] = useState<CoinTagState>({
-    coinDescriptions: {},
-    coinTags: {},
-    tags: [],
-  });
+  const [coinMetadata, setCoinMetadata] =
+    useState<CoinTagState>(EMPTY_COIN_METADATA);
   const [broadcastingCoinMetadata, setBroadcastingCoinMetadata] =
     useState(false);
   const [downloadingCoinMetadata, setDownloadingCoinMetadata] = useState(false);
@@ -377,7 +394,12 @@ export default function DynamicTradeHistoryPage({
   useEffect(() => {
     void axios
       .get<CoinTagState>(endpoints.slow.prod.coinMetadata)
-      .then((response) => setCoinMetadata(response.data))
+      .then((response) => {
+        if (!isCoinTagState(response.data)) {
+          throw new Error("Coin metadata endpoint returned an invalid response");
+        }
+        setCoinMetadata(response.data);
+      })
       .catch((error) => tradeLog.error(error));
   }, []);
 

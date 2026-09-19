@@ -13,7 +13,6 @@ import {
     TextField,
     Typography,
 } from "@mui/material";
-import { blue } from "@mui/material/colors";
 import axios from "axios";
 import md5 from "md5";
 import { useEffect, useState } from "react";
@@ -304,19 +303,35 @@ export default function DynamicTradeAnalytics() {
     return (
         <Box>
             <Box
+                component="header"
                 sx={{
-                    py: 1,
-                    px: 0.5,
+                    p: 1,
                     display: "flex",
-                    justifyContent: "space-between",
                     gap: 1,
                     alignItems: "center",
-                    backgroundColor: blue[900],
-                    color: "white",
+                    flexWrap: { xs: "wrap", xl: "nowrap" },
+                    backgroundColor: "primary.dark",
+                    borderBottom: 1,
+                    borderColor: "primary.main",
+                    boxShadow: 1,
+                    color: "common.white",
                 }}
             >
-                <Typography variant="h6">
-                    <SidebarButton /> Backtest Precision - Using klines
+                <Typography
+                    component="div"
+                    variant="h6"
+                    sx={{
+                        alignItems: "center",
+                        display: "flex",
+                        flex: "0 0 auto",
+                        fontSize: "1rem",
+                        fontWeight: 700,
+                        minHeight: 40,
+                        whiteSpace: "nowrap",
+                    }}
+                >
+                    <SidebarButton />
+                    Backtest Precision · Klines
                 </Typography>
 
                 <PrecisionBTestConfig
@@ -328,19 +343,32 @@ export default function DynamicTradeAnalytics() {
                     sx={{
                         p: 0.5,
                         gap: 1,
-                        borderRadius: "5px",
+                        borderRadius: 1.5,
                         display: "flex",
-                        backgroundColor: "white",
+                        flex: { xs: "1 1 100%", xl: "0 0 auto" },
+                        backgroundColor: "background.paper",
+                        border: 1,
+                        borderColor: "divider",
+                        color: "text.primary",
                     }}
                 >
-                    <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+                    <Box
+                        sx={{
+                            display: "flex",
+                            flex: 1,
+                            flexWrap: { xs: "wrap", sm: "nowrap" },
+                            gap: 0.75,
+                            alignItems: "center",
+                        }}
+                    >
                         {/* Manual JSON input (multiline) */}
                         <TextField
                             value={manualJson}
                             onChange={(e) => setManualJson(e.target.value)}
                             placeholder='{ "symbols": [...], "range": "1year", }'
                             size="small"
-                            sx={{ width: 300, mr: 1 }}
+                            inputProps={{ "aria-label": "Manual backtest JSON" }}
+                            sx={{ flex: "1 1 260px", minWidth: 220 }}
                         />
 
                         <Button
@@ -350,6 +378,7 @@ export default function DynamicTradeAnalytics() {
                                 const normalizedConfig = parseManualJsonAndLoad(manualJson);
                                 if (normalizedConfig) setManualJson("");
                             }}
+                            sx={{ minHeight: 40, whiteSpace: "nowrap" }}
                         >
                             Load JSON
                         </Button>
@@ -359,7 +388,7 @@ export default function DynamicTradeAnalytics() {
                             size="small"
                             onClick={() => runManualJson(manualJson)}
                             disabled={loading}
-                            sx={{ ml: 0.5 }}
+                            sx={{ minHeight: 40, whiteSpace: "nowrap" }}
                         >
                             {loading ? <CircularProgress size={16} /> : "Run JSON"}
                         </Button>
@@ -380,8 +409,20 @@ export default function DynamicTradeAnalytics() {
                         {/* regular execute */}
                         <IconButton
                             onClick={() => execute()}
-                            color="info"
                             disabled={loading}
+                            aria-label="Run backtest"
+                            title="Run backtest"
+                            sx={{
+                                bgcolor: "primary.main",
+                                color: "primary.contrastText",
+                                minHeight: 40,
+                                minWidth: 40,
+                                "&:hover": { bgcolor: "primary.dark" },
+                                "&.Mui-disabled": {
+                                    bgcolor: "action.disabledBackground",
+                                    color: "action.disabled",
+                                },
+                            }}
                         >
                             {loading ? <CircularProgress size={20} /> : <PlayArrowIcon />}
                         </IconButton>

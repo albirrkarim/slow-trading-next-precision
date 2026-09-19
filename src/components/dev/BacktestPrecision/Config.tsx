@@ -101,19 +101,33 @@ export default function DynamicBacktestConfig({
     return (
         <Box
             sx={{
-                backgroundColor: "white",
-                borderRadius: "6px",
-                p: 1,
+                alignItems: "center",
+                backgroundColor: "background.paper",
+                border: 1,
+                borderColor: "divider",
+                borderRadius: 1.5,
+                color: "text.primary",
                 display: "flex",
+                flex: "1 1 680px",
+                flexWrap: "wrap",
+                gap: 0.75,
+                minWidth: 0,
+                p: 0.5,
+                "& .MuiIconButton-root": {
+                    color: "primary.main",
+                    minHeight: 40,
+                    minWidth: 40,
+                },
             }}
         >
             <HeaderMetrics
+                sx={{ flex: "1 1 320px", minWidth: 240 }}
                 title={
                     <TextField
                         label="Config name (optional)"
                         fullWidth
                         sx={{
-                            minWidth: "500px",
+                            minWidth: 0,
                         }}
                         size="small"
                         value={backtestConfig.name ?? ""}

@@ -9,9 +9,11 @@ const DEV_BACKTEST_ENABLED =
 
 function isProtectedPath(pathname: string) {
   return (
-    pathname.startsWith("/") ||
+    pathname === "/" ||
+    pathname === "/slow" ||
+    pathname.startsWith("/slow/") ||
     (pathname.startsWith("/api/slow-trading") &&
-      !pathname.includes("coin-metadata")) ||
+      pathname !== "/api/slow-trading/coin-metadata") ||
     (DEV_BACKTEST_ENABLED &&
       (pathname.startsWith("/dev/dynamic-trade") ||
         pathname.startsWith("/dev/coins")))
@@ -21,7 +23,7 @@ function isProtectedPath(pathname: string) {
 function isProtectedApiPath(pathname: string) {
   return (
     pathname.startsWith("/api/slow-trading") &&
-    !pathname.includes("coin-metadata")
+    pathname !== "/api/slow-trading/coin-metadata"
   );
 }
 
@@ -152,6 +154,7 @@ export async function proxy(req: NextRequest) {
 
 export const config = {
   matcher: [
+    "/",
     "/slow",
     "/slow/:path*",
     "/api/slow-trading",
