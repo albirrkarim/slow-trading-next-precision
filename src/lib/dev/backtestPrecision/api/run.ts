@@ -5,6 +5,8 @@ import type { SlowTradingSettingsConfig } from "@/lib/slowTrading";
 import { tradeLog } from "@/lib/trading";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { BacktestPrecisionParams } from "./precision-api-types";
+import { precisionRuntime } from "@/lib/precision";
+import { fetchKlinesFunction } from "@/lib/datasets";
 
 export default async function backtestPrecisionHandler(
   req: NextApiRequest,
@@ -59,8 +61,17 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
   console.log("params", params);
 
   // B. Getting klines to provide the runtime with klines data
+  // preparing the klines first save to storage
 
   // C.
+  // for the times
+  precisionRuntime({
+    mode: "backtest",
+    clock: 0,
+    market: {
+      getKlines: fetchKlinesFunction,
+    },
+  });
 
   res.json({
     data: true,

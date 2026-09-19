@@ -3,6 +3,33 @@
 Extract the common path from Multi's `src/lib/slowTrading` and `src/lib/trading`.
 Do not create an event framework or redesign strategy rules.
 
+the engine will be on `src/lib/precision/*`
+
+# 0. Notes from users
+
+correct me if im wrong, i just figuring out.
+
+i think the runtime engine will be have initialization. its a backtest or production.
+
+**BACKETEST**
+when it is backtest so we dont doing delay on the interval of the Stages like speedup etc.
+
+we will keep increment every 5 minutes go on. when it has some position is on the speedup, so we firing rate one minute. of that specific position.
+
+i think we have central clock. so that clock will be runing and changing from the start to the end of the backtest.
+
+central clock will be feed into the market.getKlines function
+
+so the time incremental flow is maybe something like this
+
+5minuteA -> 1minuteB1 -> 1minuteB2 -> -> 1minuteB3 -> 1minuteB4 -> 5minuteB
+
+because in the middle we have speedup stage that require 1 minute getting, other wise it will goes increment up 5minutes again and again. to the end of the backtest.
+
+**PRODUCTION (LIVE/SANDBOX)**
+
+when it is production so no need central clock
+
 # A. Goal
 
 Live, sandbox, and backtest call the same functions for decisions, entry,
@@ -13,7 +40,7 @@ TC: `BOTH:SHARED_RUNTIME_ENGINE`
 # B. Dependencies
 
 ```ts
-interface RuntimeInput {
+interface RuntimeEngineInput {
   mode: "live" | "sandbox" | "backtest";
   clock: RuntimeClock;
   market: MarketSource;
@@ -23,11 +50,23 @@ interface RuntimeInput {
   config: RuntimeConfig;
 }
 
-interface RuntimeClock { now(): number }
-interface MarketSource { snapshot(input: MarketRequest): Promise<MarketSnapshot> }
-interface ExecutionSource { execute(action: TradingAction): Promise<ExecutionResult> }
-interface RuntimeStorage { load(scope: StorageScope): Promise<RuntimeState>; commit(scope: StorageScope, state: RuntimeState): Promise<void> }
-interface StrategyPlugin { id: StrategyId; decide(input: StrategyInput): Promise<StrategyDecision> }
+interface RuntimeClock {
+  now(): number;
+}
+interface MarketSource {
+  snapshot(input: MarketRequest): Promise<MarketSnapshot>;
+}
+interface ExecutionSource {
+  execute(action: TradingAction): Promise<ExecutionResult>;
+}
+interface RuntimeStorage {
+  load(scope: StorageScope): Promise<RuntimeState>;
+  commit(scope: StorageScope, state: RuntimeState): Promise<void>;
+}
+interface StrategyPlugin {
+  id: StrategyId;
+  decide(input: StrategyInput): Promise<StrategyDecision>;
+}
 ```
 
 - `clock` supplies the logical Unix-millisecond time.
@@ -40,13 +79,13 @@ Implement these contracts as grouped APIs and reuse current types where possible
 
 # C. Stages and ordering
 
-| Order | Stage | Default cadence |
-| --- | --- | --- |
-| 1 | Risk Sentinel | 1 minute |
-| 2 | Speedup | 1 minute |
-| 3 | Standard Monitoring | 5 minutes |
-| 4 | Management | 5 minutes |
-| 5 | Capture Entry | 5 minutes |
+| Order | Stage               | Default cadence |
+| ----- | ------------------- | --------------- |
+| 1     | Risk Sentinel       | 1 minute        |
+| 2     | Speedup             | 1 minute        |
+| 3     | Standard Monitoring | 5 minutes       |
+| 4     | Management          | 5 minutes       |
+| 5     | Capture Entry       | 5 minutes       |
 
 At each logical one-minute close, a stage is due when the UTC epoch-minute is
 divisible by its interval. Run due stages in table order, accounts by configured
