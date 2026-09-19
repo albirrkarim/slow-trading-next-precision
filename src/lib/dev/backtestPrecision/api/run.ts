@@ -4,6 +4,7 @@ import { isDevBacktestEnabled } from "@/lib/env/devBacktest";
 import type { SlowTradingSettingsConfig } from "@/lib/slowTrading";
 import { tradeLog } from "@/lib/trading";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { BacktestPrecisionParams } from "./precision-api-types";
 
 export default async function backtestPrecisionHandler(
   req: NextApiRequest,
@@ -26,18 +27,11 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
   // A. Initialize
   const params = req.method == "GET" ? req.query : req.body;
   const {
-    symbols = ["BTC"],
     upToDateKlines = false,
     upToDateDecisionBacktest = false,
     config,
-
-    mode = "kline",
-
-    decisionEngineVersion = "decision.v7",
-
     verbose = true,
-    multiAccount = false,
-  } = params as DynamicTradeBacktestInput;
+  } = params as BacktestPrecisionParams;
 
   const settingsConfig = config as unknown as SlowTradingSettingsConfig;
 
@@ -55,37 +49,20 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
     verbose: Boolean(verbose),
   });
 
-  // We need BTC
-  if (!symbols.includes("BTC")) {
-    symbols.push("BTC");
-  }
-
-  symbols.sort((a, b) => a.localeCompare(b));
-
-  // B. Dynamic backtest
-  const enabledAccounts = multiAccount
-    ? settingsConfig.accounts.filter((account) => account.enabled)
-    : [];
-  if (multiAccount && enabledAccounts.length === 0) {
+  const enabledAccounts = settingsConfig.accounts.filter(
+    (account) => account.enabled,
+  );
+  if (enabledAccounts.length === 0) {
     throw new Error("Enable at least one SLOW account before backtesting.");
   }
-  // BTEST:BACKTEST_ACCOUNT_INPUT_LOG
-  console.log("[backtest-precision] received account inputs", {
-    decisionEngineVersion,
-    mode,
-    range,
-    symbols,
-    totalStartingBalanceUSDT: enabledAccounts.reduce(
-      (total, account) => total + account.sandbox.initialBalanceUSDT,
-      0,
-    ),
-    accounts: enabledAccounts.map((account) => ({
-      enabled: account.enabled,
-      name: account.name,
-      sandboxEnabled: account.sandbox.enabled,
-      slug: account.slug,
-      startingBalanceUSDT: account.sandbox.initialBalanceUSDT,
-      trading: account.trading,
-    })),
+
+  console.log("params", params);
+
+  // B. Getting klines to provide the runtime with klines data
+
+  // C.
+
+  res.json({
+    data: true,
   });
 }
