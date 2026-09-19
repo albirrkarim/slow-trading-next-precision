@@ -179,174 +179,211 @@ This document defines the shared orchestration boundary. Detailed dataset and
 fill rules remain in [BACKTEST.md](BACKTEST.md), and result comparison remains
 in [PRECISION_CHECKER.md](PRECISION_CHECKER.md).
 
-# G. Class design sketch
-
-The engine keeps frequently used state in memory and receives its dependencies
-through the constructor. The same class is initialized with either the backtest
-adapter or the production adapter.
-
-This is a conceptual TypeScript sketch. Types and helper functions illustrate
-responsibilities; their implementations will reuse the existing trading code.
-`onAction` performs execution and returns execution facts. The engine applies
-those facts to its state. `onNotif` is an optional output hook.
+I think of js class like this
 
 ```ts
+
+
 class RuntimeEngine {
-  state: RuntimeState;
+  state = {
+    currentTime,// global clock
 
-  constructor(
-    private readonly dependencies: {
-      initialState: RuntimeState;
-      clock: RuntimeClock;
-      market: MarketSource;
-      exchange: ExchangeSource;
-      storage: RuntimeStorage;
-      onStrategy: StrategyHandler;
-      onAction: ActionHandler;
-      onNotif?: NotificationHandler;
-    },
-  ) {
-    this.state = dependencies.initialState;
+    mode // live, sandbox, backtest
+    openPositions = []
+
+    config
+    balance
+
+    // other state that need be accessed fast in memory without digging from storage
   }
 
-  // State includes currentTime, mode, config, and account-specific balances
-  // and open positions, plus other frequently accessed runtime data.
+  market,
 
-  async start() {
-    // Load or restore state.
-    // Advance through logical ticks in backtest, or wait for real-time ticks
-    // in production, using the injected clock.
-    // Run due stages in the order defined in Section D.
+
+  /**
+   * we pass the exchange lib so it can later be tested outside
+   * does it really called the update balance after doing some action
+   */
+  exchange,
+
+  /**
+   * with the strategy outside we can doing manythings
+   * adapt to our 3 instance.
+   *
+   */
+  onStrategy,
+
+  onAction,
+
+  onNotif
+
+  constructor({ config, market, exchange,onStrategy, onAction, onNotif}){
+    this.onStrategy = onStrategy
+    this.onAction = onAction
+    this.onNotif = onNotif
+    this.config = config;
   }
 
-  async standardStage() {
-    // Monitor positions currently eligible for Standard Monitoring.
-    // Re-evaluate whether each position belongs in Speedup on the next pass.
+  start(){
+    // start the runtime engine
   }
 
-  async speedupStage() {
-    // Monitor positions currently eligible for Speedup.
-    // Return a position to Standard when no Speedup criteria remain true.
+  standardStages(){
+
+    // for each position that lastmonitoredis = standard
+
+    // do monitoring
+    this.monitoring
+
+    // also check criterion so the position might moved to speedup stages
   }
 
-  async monitoring(context: MonitoringContext) {
-    // Context contains the account, position, and shared visible market data.
-    // Risk and forced exits take priority over normal exit and averaging.
-    await this.exit(context);
+  speedupStages(){
 
-    if (!context.position.closed) {
-      await this.averaging(context);
-    }
+    // for each position that lastmonitoredis = speedup
 
-    // Each successful action updates and saves state before the next action.
+    // do monitoring
+    this.monitoring
+
+
+    // also check criterion so the position might moved to standard stages
   }
 
-  async captureEntry() {
-    // Refresh volatility points using only currently visible market data.
-    // Feed state and the latest vPoints into dependencies.onStrategy.
-    // For an eligible entry decision, execute through dependencies.onAction.
-    // Apply the result, update the account balance, and save state.
+  monitoring(){
+    // Shared market data. the latest price etc..
+    // then the data Consumed by
+    this.averaging(data)
+    this.exit(data)
+
+    this.updateBalance
   }
 
-  async averaging(context: MonitoringContext) {
-    // Evaluate averaging rules using the current position and strategy.
-    // If eligible, await dependencies.onAction with the action parameters.
-    // Apply the confirmed execution result to the position.
-    // Update the account balance and save state before any next action.
+
+  captureEntry(){
+    // trying to entry
+
+    // updating the volatility points
+
+    // on strategy feeded with the latest volatility points
+    const decision = await this.onStrategy(this.state,vpointsMap)
+
+    // maybe the decision
+    // const result = await this.onAction()
   }
 
-  async exit(context: MonitoringContext) {
-    // Evaluate risk, forced-exit, and normal-exit rules in priority order.
-    // If eligible, await dependencies.onAction with the action parameters.
-    // Apply the confirmed execution result, including whether it closed
-    // the position, then update the account balance and save state.
+  averaging(){
+    // trying to do averaging
+
+    // telling outside todo something, maybe real execution etc
+    const result = await this.onAction()
+    // from the result we record back to internal runtime engine stage
+    // is success?
+    // is it changing the position data
+    // is it closed the position
+
+    // is it live mode?
+    // if yes we need to call exchange update balance
+    // if not we do the calculation to update the balance with the current trade result.
   }
 
-  async updateBalance(accountId: string) {
-    // Use the injected exchange/account capability for the selected account.
-    // Live mode reconciles with the actual exchange balance.
-    // Sandbox and backtest expose balances calculated from simulated fills.
-    // Keep environment-specific balance handling inside the adapter.
+  exit(){
+    // trying to do exit from the open position
+
+    // using the config and the exit rules/ conditions we decide the exit.
+
+    // telling outside todo something, maybe real execution etc
+    const result = await this.onAction()
+    // from the result we record back to internal runtime engine stage
+    // is success?
+    // is it changing the position data
+    // is it closed the position
+
+    // is it live mode?
+    // if yes we need to call exchange update balance
+    // if not we do the calculation to update the balance with the current trade result.
   }
 
-  async updateConfig(config: RuntimeConfig) {
-    // Validate and persist configuration changes, then update in-memory state
-    // at a safe cycle boundary. Production can call this while running.
+  updateBalance(){
+
+    // foreach accounts
+    const balanceAccount = this.exchange.getBalance
+  }
+
+  // used in production
+  updateConfig(){
+    // update config to the state and storage
   }
 }
-```
 
-## Backtest adapter example
 
-The adapter serves cached klines filtered by logical time and returns simulated
-execution facts. Execution duration can be measured here. V1 supports the
-deterministic slippage described in `BACKTEST.md`; simulated execution latency
-is a possible later extension.
 
-```ts
-const backtestAdapter = {
-  clock: backtestClock,
-  exchange: simulatedExchange,
-  storage: isolatedStorage,
+// A. Backtest
+/**
+ * we can measure the api execution time with this function
+ * from begin to the end
+ *
+ * With this function in the backtest adapter
+ * we can doing simulate the slipage or late execution because of the api
+*/
+const onAction = async (currentTime:number, type: "entry" |"averaging" | "exit" ,params)=>{
+  //
+  //
 
-  market: {
-    async getKlines(currentTime: number, params: KlineRequest) {
-      // Cache entries are separated by symbol and candle interval.
-      const klines = klinesMap[params.symbol][params.interval];
+  // entry
 
+  // averaging
+
+  // exit
+
+
+  // return the actual data to the runtime engine,
+  // the actual price that we got.
+  // so it later will update the data on the this.state.openPosition
+  return {position}
+}
+
+
+klinesMap[symbol]= klines from cache
+//
+const market = {
+  getKlines: (currentTime,otherParams)=>{
       return fetchKlines({
-        ...params,
-        currentTime,
-        klines, // Inject cached candles instead of making a network request.
-      });
-      // fetchKlines must expose only candles with closeT <= currentTime.
-    },
-  },
+        klines: klinesMap[otherParams.symbol] // inject the klines[] into the function so it doesnt make request to outside
+   })
+  }
+}
 
-  async onAction(action: TradingAction): Promise<ExecutionResult> {
-    // Handle entry, averaging, or exit at the current logical time.
-    // Return actual simulated fill price, quantity, fees, and execution time.
-    // The engine uses this result to update its positions and accounting.
-    return simulatedExecution.execute(action);
-  },
 
-  async onNotif(notification: RuntimeNotification) {
-    // Record locally for inspection or assertions; do not send externally.
-    await backtestOutput.recordNotification(notification);
-  },
-};
+// Later we can use onNotif as the test.
+const onNotif=(params)=>{
+  notif.send(params)
+}
 
+
+// so it will be something like this Same Runtime engine, diferent environment adapter
 const backtestRuntime = new RuntimeEngine({
-  ...backtestAdapter,
-  initialState: backtestInitialState,
-  onStrategy: multiStrategy.decide,
-});
+  config,
+  market,
+  onAction,
+  onNotif
+})
 
-await backtestRuntime.start();
-```
+backtestRuntime.start()
 
-## Production adapter example
 
-Production injects real-time scheduling and the existing exchange, storage,
-and notification libraries. Startup loads the saved configuration first and
-uses its active live or sandbox mode to select execution, balance handling,
-and the account state to restore. The caller does not pass a mode.
 
-```ts
-async function initiateProductionRuntime() {
-  const config = await productionStorage.config.load();
-  const mode = config.activeMode;
-  const productionAdapter = createProductionAdapter({ mode, config });
+async function initiateProductionRuntime(){
 
-  // Restore configuration, account balances, and positions for this mode.
-  const initialState = await productionAdapter.storage.load();
+// load up config from storage
+// load up balance
 
-  const productionRuntime = new RuntimeEngine({
-    ...productionAdapter,
-    initialState,
-    onStrategy: multiStrategy.decide,
-  });
+const productionRuntime = new RuntimeEngine({
+  config,
+  market,
+  onAction,
+  onNotif
+})
 
-  await productionRuntime.start();
+productionRuntime.start()
 }
 ```
