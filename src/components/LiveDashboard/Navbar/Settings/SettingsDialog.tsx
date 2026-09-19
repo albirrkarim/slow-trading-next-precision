@@ -73,6 +73,7 @@ export default function SettingsDialog(props: {
   setConfigDraft: ConfigDraftSetter;
 
   dashboardState?: DashboardState;
+  hiddenTabs?: readonly SettingsTab[];
   onCloseDialog?: () => void;
   onOpenDialog?: () => void;
   onReinitialize?: () => Promise<void>;
@@ -93,6 +94,7 @@ export default function SettingsDialog(props: {
     configDraft,
     setConfigDraft,
     dashboardState,
+    hiddenTabs = [],
     onCloseDialog,
     onOpenDialog,
     onReinitialize,
@@ -167,7 +169,9 @@ export default function SettingsDialog(props: {
                 },
               }}
             >
-              {SETTINGS_TABS.map((tab) => (
+              {SETTINGS_TABS.filter(
+                (tab) => !hiddenTabs.includes(tab.value),
+              ).map((tab) => (
                 <Tab
                   icon={<SettingsTabIcon tab={tab.value} />}
                   iconPosition="start"
@@ -246,26 +250,28 @@ export default function SettingsDialog(props: {
             {activeTab === "mcp" && <SettingsDialogMcpTab />}
           </Box>
 
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: 1,
-              mt: 2,
-            }}
-          >
-            <Button onClick={handleClose}>Close</Button>
-            <Button
-              variant="contained"
-              startIcon={<SaveIcon />}
-              onClick={() => {
-                void saveConfig?.(handleClose);
+          {saveConfig && (
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 1,
+                mt: 2,
               }}
-              disabled={savingConfig}
             >
-              {savingConfig ? "Saving..." : "Save"}
-            </Button>
-          </Box>
+              <Button onClick={handleClose}>Close</Button>
+              <Button
+                variant="contained"
+                startIcon={<SaveIcon />}
+                onClick={() => {
+                  void saveConfig(handleClose);
+                }}
+                disabled={savingConfig}
+              >
+                {savingConfig ? "Saving..." : "Save"}
+              </Button>
+            </Box>
+          )}
         </Box>
       )}
     </ButtonDialog>

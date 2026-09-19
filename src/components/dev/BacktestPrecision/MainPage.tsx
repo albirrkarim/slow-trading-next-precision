@@ -55,8 +55,8 @@ export function normalizeBacktestConfig(raw: unknown): BacktestConfig {
             : {};
     const groupedSettings =
         "management" in runtimeConfig &&
-        "runtime" in runtimeConfig &&
-        "accounts" in runtimeConfig
+            "runtime" in runtimeConfig &&
+            "accounts" in runtimeConfig
             ? (runtimeConfig as ConfigDraft)
             : undefined;
 
@@ -236,28 +236,19 @@ export default function DynamicTradeAnalytics() {
 
             // build payload exactly as requested
             const payload = {
-                multiAccount: true,
-                mode: usedConfig.mode,
-
                 // BTEST:BACKTEST_MANAGEMENT_SYMBOLS
-                symbols: usedConfig.settings.management.symbols,
                 range: usedConfig.range,
-
                 startTime,
                 endTime,
-
                 upToDateKlines: usedConfig.upToDateKlines,
                 upToDateDecisionBacktest: usedConfig.upToDateDecisionBacktest,
-
                 config: usedConfig.settings,
-                decisionEngineVersion:
-                    usedConfig.settings.management.decisionEngineVersion,
             };
 
             tradeLog.log("Sending payload:", JSON.stringify(payload, null, 2));
 
             const resp = await axios.post<DynamicTradeBacktestReturn>(
-                endpoints.dev.dynamicTrade.backtest,
+                endpoints.dev.backtestPrecision.backtest,
                 payload,
             );
 

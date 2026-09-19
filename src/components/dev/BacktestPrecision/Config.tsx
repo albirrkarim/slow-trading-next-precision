@@ -177,6 +177,7 @@ export default function DynamicBacktestConfig({
                 <SettingsDialog
                     configDraft={backtestConfig.settings}
                     dashboardState={dashboardState}
+                    hiddenTabs={["notification", "withdraw", "mcp"]}
                     setConfigDraft={setTradingConfig}
                 />
             )}

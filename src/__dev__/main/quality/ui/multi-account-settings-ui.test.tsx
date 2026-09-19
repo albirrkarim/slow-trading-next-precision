@@ -12,6 +12,9 @@ import { describe, expect, it, vi } from "vitest";
 import SettingsDialog from "@/components/LiveDashboard/Navbar/Settings/SettingsDialog";
 import SettingsDialogRuntimeTab from "@/components/LiveDashboard/Navbar/Settings/Runtime/SettingsDialogRuntimeTab";
 import SettingsDialogTradingTab from "@/components/LiveDashboard/Navbar/Settings/Trading/SettingsDialogTradingTab";
+import DynamicBacktestConfig, {
+  DEFAULT_BACKTEST_CONFIG,
+} from "@/components/dev/BacktestPrecision/Config";
 import { buildBacktestDashboardState } from "@/components/dev/BacktestPrecision/backtest-dashboard-state";
 import { NavbarIdentitySection } from "@/components/LiveDashboard/Navbar/NavbarSections";
 import { makeConfigDraft } from "@/components/LiveDashboard/Navbar/Settings/helpers";
@@ -500,6 +503,42 @@ describe("multi-account settings UI", () => {
       { enabled: true, slug: "beta", startingBalanceUSDT: 2_000 },
       { enabled: false, slug: "paused", startingBalanceUSDT: 500 },
     ]);
+  });
+
+  it("hides footer actions when settings auto-persist without a save callback", async () => {
+    const user = userEvent.setup();
+
+    function Harness() {
+      const [draft, setDraft] = useState<ConfigDraft | null>(createDraft());
+      if (!draft) return null;
+
+      return (
+        <DynamicBacktestConfig
+          backtestConfig={{ ...DEFAULT_BACKTEST_CONFIG, settings: draft }}
+          setBacktestConfig={(value) => {
+            const current = { ...DEFAULT_BACKTEST_CONFIG, settings: draft };
+            const next =
+              typeof value === "function" ? value(current) : value;
+            setDraft(next.settings ?? null);
+          }}
+        />
+      );
+    }
+
+    render(<Harness />);
+    await user.click(
+      screen.getByRole("button", { name: "Open dashboard settings" }),
+    );
+
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /^Close$/ }),
+    ).toBeNull();
+    expect(screen.getByRole("button", { name: "Close dialog" })).toBeTruthy();
+    expect(screen.queryByRole("tab", { name: "NOTIFICATION" })).toBeNull();
+    expect(screen.queryByRole("tab", { name: "WITHDRAW" })).toBeNull();
+    expect(screen.queryByRole("tab", { name: "MCP" })).toBeNull();
+    expect(screen.getByRole("tab", { name: "RUNTIME" })).toBeTruthy();
   });
 
   it("shows persisted balances with manual refresh only for live accounts", async () => {
