@@ -240,6 +240,8 @@ src/lib/backtest/
     types.ts
     validate.ts
     build.ts
+    manifest.ts
+    series.ts
   adapters/
     clock.ts
     market.ts
@@ -670,23 +672,24 @@ TC: `PROD:EMPTY_MONITORING_NO_MARKET_IO`
 Create a new raw-kline dataset. Do not reuse the compact precomputed-vPoint
 cache in `src/lib/devBacktest/volatility-dataset` as the Precision dataset.
 
-The high-level schema is the base. The technical implementation also needs
-deterministic exchange rules used by shared execution:
+The high-level schema is the base. The dataset manifest contains references,
+not candle arrays. The technical contract is:
 
 ```ts
-interface BacktestDatasetV1 {
+interface BacktestDatasetManifestV1 {
   schema: 1;
+  fingerprint: string;
   sourceExchangeType: ExchangeType;
   marketType: "SPOT" | "FUTURES";
   warmupStartTime: number;
   startTime: number;
   endTime: number;
   symbols: string[];
-  klines: Record<
+  series: Record<
     string,
     {
-      "1m": Kline[];
-      "5m": Kline[];
+      "1m": BacktestKlineSeriesRef;
+      "5m": BacktestKlineSeriesRef;
     }
   >;
   executionRules: Record<
@@ -700,13 +703,52 @@ interface BacktestDatasetV1 {
     }
   >;
 }
+
+interface BacktestKlineSeriesRef {
+  file: string;
+  fingerprint: string;
+  count: number;
+  firstOpenT: number;
+  lastCloseT: number;
+}
+
+interface BacktestKlineSeriesIndexV1 {
+  schema: 1;
+  sourceExchangeType: ExchangeType;
+  marketType: "SPOT" | "FUTURES";
+  rangeKey: string;
+  symbol: string;
+  interval: "1m" | "5m";
+  current: BacktestKlineSeriesRef;
+}
 ```
+
+The manifest `fingerprint` is a deterministic hash of the validated manifest
+fields other than `fingerprint` itself, including concrete time boundaries,
+ordered series fingerprints, and execution rules. It is not the mutable
+range/symbol manifest cache-entry key. A preset-range refresh may replace the
+same manifest entry with a new fingerprint; completed-result caching must use
+that fingerprint so it cannot return a result calculated from older candles.
+
+Each referenced `file` contains only one compact `Kline[]`. It is immutable and
+named by a deterministic content fingerprint calculated from source exchange,
+market, canonical range identity, concrete bounds, symbol, interval, and the
+candle array. Store only normalized relative paths in manifests; reject
+absolute paths and traversal outside `storage/backtest-dataset/klines`.
 
 The matching schema example in `HIGH_LEVEL/BACKTEST.md` is authoritative at the
 planning level and must remain consistent with this concrete contract.
 
-Store compact JSON under `storage/backtest-dataset`. Dataset file naming must
-be a stable hash of:
+Store compact JSON under this layout:
+
+```text
+storage/backtest-dataset/
+  manifests/<manifest-key>.json
+  series-index/<exchange>/<market>/<range-key>/<interval>/<symbol>.json
+  klines/<series-content-fingerprint>.json
+```
+
+The manifest key must be a stable hash of:
 
 - dataset schema/version;
 - source exchange and market type;
@@ -718,46 +760,76 @@ be a stable hash of:
 
 Do not put the wall-clock time used to resolve a preset range into its cache
 key. Re-running the same preset later with the same symbols must find the same
-cache entry. The dataset file itself records the concrete boundaries used when
-that entry was built. An explicit refresh resolves new concrete boundaries and
-atomically replaces the same preset-range entry.
+manifest entry. The manifest and referenced series record the concrete
+boundaries used when that entry was built. An explicit refresh resolves new
+concrete boundaries and atomically replaces the same preset-range manifest
+entry.
 
 Do not include credentials, account identity, trading configuration, or
 `upToDateKlines` in the key. The freshness flag controls whether a matching
 entry may be reused; it does not describe the dataset's identity.
 
+Each series-index key is independent of the requested symbol set. It contains:
+
+- dataset/series schema version;
+- source exchange and market type;
+- canonical range identity;
+- normalized symbol;
+- interval (`1m` or `5m`).
+
+This two-level identity is required. A manifest for `[AAVE, BTC]` and another
+for `[AAVE, BTC, SOL]` must reference the same AAVE and BTC files. Building the
+second manifest downloads only missing SOL series.
+
 ## 11.1 Cache lookup and build behavior
 
-Dataset access is cache-first:
+Dataset assembly is cache-first:
 
-1. Normalize the request and calculate the cache key before any network call.
-2. When `upToDateKlines` is false or absent, open and validate the matching
-   cached dataset.
-3. On a valid hit, return it without fetching any kline interval.
-4. On a miss or invalid/corrupt entry, acquire a per-key build lock, check the
-   cache again, then fetch the independent 1m and 5m series once.
-5. Validate the complete built dataset and publish compact JSON through a
-   temporary file plus atomic rename.
-6. When `upToDateKlines` is true, deliberately rebuild and atomically replace
-   the matching entry instead of returning it. Concurrent forced refreshes for
-   the same key still share one in-flight build.
+1. Normalize the request and calculate the manifest and required series keys
+   before any network call.
+2. For every symbol and for `1m` and `5m`, open the series-index entry and
+   validate its referenced immutable kline file.
+3. When `upToDateKlines` is false or absent, reuse every valid series hit and
+   fetch only missing or invalid series.
+4. Before fetching, acquire a per-series-key build lock and check that series
+   again. Download it once, validate it, write the immutable content-addressed
+   kline file, then atomically publish its series-index entry.
+5. After every required series is valid, build and validate the lightweight
+   manifest and publish it through a temporary file plus atomic rename.
+6. When `upToDateKlines` is true, deliberately refresh every requested
+   symbol/interval series, then publish a new manifest. Concurrent forced
+   refreshes for the same series key still share one in-flight build.
 
-The per-key lock/single-flight mechanism must work for concurrent requests in
-the server process. The second waiter reads the file produced by the first;
-it must not repeat the download. A different symbol set, preset range token, or
-custom range boundary has a different key and may build independently.
+The per-series lock/single-flight mechanism must work for concurrent requests
+in the server process. The second waiter reads the immutable file produced by
+the first; it must not repeat the download. Manifests are aggregation metadata,
+not ownership boundaries for kline files.
+
+Never write all requested symbols' candle arrays into the manifest or another
+combined kline file. The backtest market adapter may load and index referenced
+series in memory, but persistent cache storage remains one file per
+symbol/interval/content fingerprint.
 
 TC: `BTEST:BACKTEST_DATASET_CACHE`
 
 ## 11.2 Dataset validation
 
-`validate.ts` must reject:
+Manifest validation must reject:
 
 - Unsupported schema.
 - Missing BTC.
 - Symbols that are not normalized, unique, and sorted.
-- Missing 1m or 5m series for a symbol.
-- Empty series.
+- Missing 1m or 5m series references for a symbol.
+- An absolute, escaping, missing, or unreadable series path.
+- Duplicate series references where distinct symbol/interval identities are
+  expected.
+- Manifest metadata that does not match referenced series metadata.
+- A manifest fingerprint that does not match its ordered references and
+  execution rules.
+
+Each referenced kline file must then be streamed/read and reject:
+
+- An empty candle array.
 - Non-finite or reversed time bounds.
 - A candle whose tuple does not contain valid open and close times.
 - Out-of-order or duplicate candle open times.
@@ -765,7 +837,10 @@ TC: `BTEST:BACKTEST_DATASET_CACHE`
 - Coverage that starts after `warmupStartTime` or ends before `endTime`.
 - A 1m candle not spaced by exactly 60,000 ms from its predecessor.
 - A 5m candle not spaced by exactly 300,000 ms from its predecessor.
-- Missing or invalid execution rules.
+- A series fingerprint that does not match its identity, bounds, and candle
+  content.
+
+The manifest must also reject missing or invalid execution rules.
 
 One-minute and five-minute candles are fetched and stored independently. Never
 derive 5m candles from the 1m series.
@@ -1189,12 +1264,53 @@ TC: `BTEST:BACKTEST_REPRODUCIBLE`
 
 # 20. Backtest runner and child process
 
-## 20.1 In-process runner library
+## 20.1 Completed-result cache
+
+The completed-result cache is independent from the dataset cache. Store
+validated compact results under `storage/backtest-result` using a stable key
+derived from:
+
+- result schema and an explicit Precision engine revision;
+- manifest `fingerprint`, not merely the range/symbol manifest cache key;
+- strategy id and decision-engine version;
+- normalized shared runtime/management/trading settings;
+- enabled accounts in configured order;
+- each account's effective trading configuration, starting balance, and
+  captured initial state;
+- deterministic simulated-execution settings such as slippage.
+
+Do not include `forceRecomputeBacktest`, `upToDateKlines`, verbosity, logging,
+wall-clock duration, or credentials in the result key.
+
+Lookup behavior:
+
+1. Resolve and validate the manifest and all referenced series first.
+2. Calculate the completed-result key from the manifest fingerprint and
+   normalized run input.
+3. When both refresh flags are false, return a valid matching result without
+   spawning the backtest child.
+4. When `forceRecomputeBacktest` is true, ignore the completed-result hit, reuse
+   the selected cached dataset, run the engine, and atomically replace the
+   result entry.
+5. When `upToDateKlines` is true, refresh all requested series and run the
+   engine even if the refreshed manifest fingerprint matches the previous one.
+6. A miss, invalid result, changed manifest fingerprint, changed settings, or
+   changed starting state runs the engine and writes a new result atomically.
+7. Concurrent identical misses or forced recomputations share one in-flight
+   engine run per result key.
+
+The Precision API/page property is named `forceRecomputeBacktest`. Remove the
+misleading legacy `upToDateDecisionBacktest` property from Precision types and
+components only; do not change legacy Dynamic Backtest pages in this phase.
+
+TC: `BTEST:BACKTEST_RESULT_CACHE`
+
+## 20.2 In-process runner library
 
 `src/lib/backtest/runner/index.ts`:
 
 1. Validate request/config.
-2. Load and validate the raw dataset.
+2. Load and validate the manifest and each referenced kline series.
 3. Create dataset clock, market, execution, storage, effects, and metrics.
 4. Resolve the Multi strategy plugin.
 5. Create the shared runtime engine in `backtest` mode.
@@ -1211,7 +1327,7 @@ order. The persisted Precision run schema remains account-scoped. A transient
 API batch may return a list of account-scoped results; do not invent one merged
 position identity.
 
-## 20.2 Driver protocol
+## 20.3 Driver protocol
 
 `src/driver/backtest.ts` is a small process entry point. It receives input and
 output file paths through arguments, reads compact JSON, runs the library, and
@@ -1222,7 +1338,7 @@ Suggested arguments:
 ```text
 --input /tmp/.../input.json
 --output /tmp/.../output.json
---dataset /absolute/storage/backtest-dataset/<id>.json
+--dataset-manifest /absolute/storage/backtest-dataset/manifests/<id>.json
 ```
 
 The driver must:
@@ -1234,25 +1350,29 @@ The driver must:
 - Return a non-zero exit code and structured stderr on failure.
 - Write output through a temporary file plus rename.
 
-## 20.3 API process launcher
+## 20.4 API process launcher
 
 Update `src/lib/dev/backtestPrecision/api/run.ts`:
 
 1. Validate `BacktestPrecisionParams`.
 2. Normalize/sort management symbols and include BTC.
 3. Remove account credentials from the child payload.
-4. Resolve the range-and-symbol dataset key and load the validated cache by
-   default; build it only on a miss, corruption, or explicit
-   `upToDateKlines: true` refresh.
-5. Create a temp directory with `fs.mkdtemp`.
-6. Create an isolated persistent root and marker inside it.
-7. Spawn Node with `require.resolve("tsx/cli")` and
+4. Resolve the range/symbol manifest and its per-symbol/per-interval series
+   references. Reuse valid immutable kline files by default; fetch only missing
+   or invalid series, or refresh every requested series when
+   `upToDateKlines: true`.
+5. Resolve the completed-result key and return a valid cached result when both
+   refresh controls are false.
+6. Create a temp directory with `fs.mkdtemp`.
+7. Create an isolated persistent root and marker inside it.
+8. Spawn Node with `require.resolve("tsx/cli")` and
    `src/driver/backtest.ts` for the development endpoint.
-8. Pass a sanitized environment.
-9. Capture bounded stdout/stderr.
-10. Read and validate the result.
-11. Delete the temp directory in `finally`.
-12. Return the new Precision Backtest response.
+9. Pass a sanitized environment.
+10. Capture bounded stdout/stderr.
+11. Read and validate the result.
+12. Atomically publish the completed-result cache entry.
+13. Delete the temp directory in `finally`.
+14. Return the new Precision Backtest response.
 
 Strip at least these environment variables from the child:
 
@@ -1296,10 +1416,15 @@ TC: `BTEST:BACKTEST_DATASET_CACHE`
 `BacktestPrecisionParams` continues to receive:
 
 - range or explicit start/end;
-- dataset and completed-result freshness controls;
+- `upToDateKlines` for dataset refresh;
+- `forceRecomputeBacktest` for completed-result bypass;
 - grouped SLOW settings;
 - symbols from `config.management.symbols`;
 - per-account starting balance from each enabled account's sandbox config.
+
+`upToDateDecisionBacktest` is the legacy Dynamic Backtest name. Do not expose it
+from Precision request/page types; use `forceRecomputeBacktest` with the cache
+semantics defined in Section 20.1.
 
 The backend, not the browser, is authoritative for validation and BTC
 inclusion.
@@ -1392,13 +1517,20 @@ Files:
 Tests:
 
 - dataset validation for every rejection rule;
-- identical normalized symbols/range reuse the cached dataset with zero kline
-  network calls;
+- manifests contain references and metadata but no embedded candle arrays;
+- identical normalized symbol/range/interval series reuse immutable kline files
+  with zero network calls;
 - repeated preset-range requests keep the same key even when wall time has
   advanced;
-- changed symbols or range resolve to a different cache key;
-- `upToDateKlines: true` refreshes and atomically replaces the same key;
-- concurrent identical cache misses perform only one dataset download/build;
+- adding a symbol creates a new manifest but downloads only that symbol's 1m
+  and 5m files;
+- removing a symbol creates/reuses a smaller manifest without deleting shared
+  series files;
+- changed range resolves to different series and manifest keys;
+- `upToDateKlines: true` writes new immutable series, then atomically publishes
+  updated indexes and a new manifest while the old manifest remains readable;
+- concurrent identical series misses perform only one download per
+  symbol/interval;
 - 1m/5m independent visibility;
 - warmup behavior;
 - no-future-candle behavior;
@@ -1492,6 +1624,14 @@ Tests:
 - open positions remain open at end;
 - multi-account configured order and separate result identity;
 - backend sanitized run summary logging.
+- matching result cache hit does not spawn a child;
+- `forceRecomputeBacktest` reuses the dataset but reruns the engine;
+- `upToDateKlines` refreshes the dataset and reruns the engine;
+- changed manifest fingerprint, settings, or starting state misses the result
+  cache;
+- concurrent identical result misses execute the engine once;
+- Precision types contain `forceRecomputeBacktest`, not
+  `upToDateDecisionBacktest`.
 
 Exit gate: `/dev/backtest-precision` returns real shared-engine results.
 
@@ -1561,7 +1701,8 @@ Use a dedicated folder such as
 | `BOTH:RUNTIME_ACTION_COMMIT` | successful action commits before next action |
 | `PROD:RUNTIME_FAILURE_ISOLATION` | deferred: future production adapter preserves account isolation after a failure |
 | `BTEST:BACKTEST_REPRODUCIBLE` | normalized results repeat exactly |
-| `BTEST:BACKTEST_DATASET_CACHE` | normalized symbols/range reuse one validated dataset; refresh and concurrent-build behavior do not duplicate downloads |
+| `BTEST:BACKTEST_DATASET_CACHE` | manifests contain no candle arrays; symbol/interval shards are independently reused, refreshed, validated, and single-flight built |
+| `BTEST:BACKTEST_RESULT_CACHE` | matching completed runs are reused; dataset refresh and force-recompute controls bypass the correct independent cache layer |
 | `BOTH:PLUGIN_STRATEGY` | Multi plugin has no storage/exchange effects |
 | `BOTH:RUNTIME_METRICS` | calls/actions/commits/errors are measured |
 | `BOTH:RUNTIME_SAFETY_GUARDS` | backtest/sandbox cannot reach live effects |
@@ -1578,6 +1719,8 @@ The implementing agent must avoid these mistakes:
 - Do not execute at the historical peak price stored in a newly confirmed
   vPoint.
 - Do not derive 5m candles from 1m candles.
+- Do not embed multiple symbols or intervals of kline arrays in a dataset
+  manifest or combined cache file.
 - Do not use current market cap/funding during a historical run.
 - Do not keep `executionMode: "sandbox"` on backtest positions.
 - Do not force-close positions at `endTime`.
@@ -1614,6 +1757,15 @@ Before declaring implementation complete, verify all items:
       functions.
 - [ ] Backtest has no private exchange, notification, withdrawal, or MCP call.
 - [ ] Backtest storage root is isolated and guarded.
+- [ ] Dataset cache and completed-result cache have independent keys and
+      refresh behavior.
+- [ ] Dataset manifests contain only references/metadata; cached kline arrays
+      are separate immutable files per symbol and interval.
+- [ ] Adding a symbol reuses existing symbol files and downloads only the new
+      symbol's missing intervals.
+- [ ] `forceRecomputeBacktest` reruns the engine without redownloading klines.
+- [ ] `upToDateKlines` refreshes klines and reruns the engine.
+- [ ] Precision types do not expose legacy `upToDateDecisionBacktest`.
 - [ ] Every returned market candle is visible at logical time.
 - [ ] Streaming vPoints equal batch detector output.
 - [ ] Entry/averaging use confirmation-time market price and logical time.
