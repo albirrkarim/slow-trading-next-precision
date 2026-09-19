@@ -1,43 +1,74 @@
 # Shared Runtime Engine — V1
 
-Extract the common path from Multi's `src/lib/slowTrading` and `src/lib/trading`.
-Do not create an event framework or redesign strategy rules.
+Status: implementation plan for the Multi strategy foundation.
 
-the engine will be on `src/lib/precision/*`
-
-# 0. Notes from users
-
-correct me if im wrong, i just figuring out.
-
-i think the runtime engine will be have initialization. its a backtest or production.
-
-**BACKETEST**
-when it is backtest so we dont doing delay on the interval of the Stages like speedup etc.
-
-we will keep increment every 5 minutes go on. when it has some position is on the speedup, so we firing rate one minute. of that specific position.
-
-i think we have central clock. so that clock will be runing and changing from the start to the end of the backtest.
-
-central clock will be feed into the market.getKlines function
-
-so the time incremental flow is maybe something like this
-
-5minuteA -> 1minuteB1 -> 1minuteB2 -> -> 1minuteB3 -> 1minuteB4 -> 5minuteB
-
-because in the middle we have speedup stage that require 1 minute getting, other wise it will goes increment up 5minutes again and again. to the end of the backtest.
-
-**PRODUCTION (LIVE/SANDBOX)**
-
-when it is production so no need central clock
+The engine will live under `src/lib/precision`. It will extract the proven
+behavior from Multi's `src/lib/slowTrading` and `src/lib/trading`; it will not
+create an event framework or redesign strategy rules.
 
 # A. Goal
 
-Live, sandbox, and backtest call the same functions for decisions, entry,
-averaging, exit, accounting, and position updates.
+Live, sandbox, and backtest must call the same runtime cycle for decisions,
+entry, averaging, exit, accounting, and position updates. The only differences
+between modes are their adapters for time, market data, execution, storage, and
+operational side effects.
+
+```text
+                       shared runtime engine
+                    /          |           \
+               strategy     trading      accounting
+                  logic       actions      + state
+                    ^            ^           ^
+                    |            |           |
+             environment adapters selected during initialization
+              live          sandbox          backtest
+```
+
+The engine owns ordering and state transitions. Adapters provide facts or
+perform effects, but they do not decide what the strategy should do.
 
 TC: `BOTH:SHARED_RUNTIME_ENGINE`
 
-# B. Dependencies
+# B. Clarification of the clock and cadence
+
+Every mode has a clock.
+
+- Live and sandbox use a system-clock adapter. The scheduler waits for real
+  aligned minute closes, then asks the engine to process that logical time.
+- Backtest uses a dataset-clock adapter. It advances through historical
+  one-minute closes without real waiting.
+
+The engine therefore never reads `Date.now()` inside strategy, trading, or
+accounting decisions. The logical time supplied by the clock is authoritative.
+Wall-clock time may still be used outside decisions to measure performance.
+
+Backtest advances one logical minute at a time, even when only five-minute
+stages are due less often. This is necessary because Risk Sentinel and Speedup
+may run every minute. It does **not** rerun all positions every minute:
+
+```text
+12:00  Risk -> Speedup -> Standard -> Management -> Capture Entry
+12:01  Risk -> Speedup
+12:02  Risk -> Speedup
+12:03  Risk -> Speedup
+12:04  Risk -> Speedup
+12:05  Risk -> Speedup -> Standard -> Management -> Capture Entry
+```
+
+At the one-minute passes, Speedup receives only positions currently owned by
+Speedup. Standard positions wait for the next Standard pass. At a five-minute
+boundary, due stages still run in the fixed order shown above.
+
+This produces the intended `5m -> 1m -> 1m -> 1m -> 1m -> 5m` behavior while
+preserving the same scheduler rules in production and backtest.
+
+TC: `BOTH:RUNTIME_LOGICAL_CLOCK`
+
+# C. Initialization and lifecycle
+
+The application or backtest driver initializes one engine instance with all
+required dependencies. A run must not switch mode, strategy, account catalog,
+or storage scope after initialization.
 
 ```ts
 interface RuntimeEngineInput {
@@ -48,87 +79,393 @@ interface RuntimeEngineInput {
   storage: RuntimeStorage;
   strategy: StrategyPlugin;
   config: RuntimeConfig;
+  metrics: RuntimeMetrics;
+  logger: RuntimeLogger;
 }
 
 interface RuntimeClock {
   now(): number;
 }
+
 interface MarketSource {
   snapshot(input: MarketRequest): Promise<MarketSnapshot>;
 }
+
 interface ExecutionSource {
   execute(action: TradingAction): Promise<ExecutionResult>;
 }
+
 interface RuntimeStorage {
   load(scope: StorageScope): Promise<RuntimeState>;
   commit(scope: StorageScope, state: RuntimeState): Promise<void>;
 }
+
 interface StrategyPlugin {
   id: StrategyId;
   decide(input: StrategyInput): Promise<StrategyDecision>;
 }
 ```
 
-- `clock` supplies the logical Unix-millisecond time.
-- `market` returns only data visible at that time and fails when data is missing.
-- `execution` submits live orders or performs deterministic simulated fills.
-- `storage` loads and atomically saves state isolated by mode and account.
-- `strategy` returns decisions and never accesses exchange or storage directly.
+The concrete types should reuse the current Multi types wherever they already
+represent the required data. These contracts describe ownership; they are not
+permission to replace proven position, configuration, or exchange types.
 
-Implement these contracts as grouped APIs and reuse current types where possible.
+The public API should be grouped:
 
-# C. Stages and ordering
+```ts
+precision.runtime.create(input)
+precision.runtime.schedule.getDueStages(input)
+precision.runtime.engine.runCycle(input)
+precision.runtime.engine.runRange(input) // backtest driver
+```
 
-| Order | Stage               | Default cadence |
-| ----- | ------------------- | --------------- |
-| 1     | Risk Sentinel       | 1 minute        |
-| 2     | Speedup             | 1 minute        |
-| 3     | Standard Monitoring | 5 minutes       |
-| 4     | Management          | 5 minutes       |
-| 5     | Capture Entry       | 5 minutes       |
+Initialization validates before any cycle starts:
 
-At each logical one-minute close, a stage is due when the UTC epoch-minute is
-divisible by its interval. Run due stages in table order, accounts by configured
-order, and symbols alphabetically. A mode processes one cycle at a time;
-duplicate stage/time requests are ignored. A missed production cycle is logged
-and skipped, not silently replayed.
+- The mode matches the execution and storage adapters.
+- At least one account and symbol are configured.
+- Stage intervals are positive whole minutes.
+- The strategy configuration is valid.
+- Backtest coverage includes warmup, start, and end times.
+- Backtest storage is isolated and operational side effects are disabled.
 
-Backtest uses the same stage eligibility and ordering without real waiting.
+TC: `BOTH:RUNTIME_INITIALIZATION`
+
+# D. Engine boundaries
+
+## D.1 Engine responsibilities
+
+The shared engine owns:
+
+- Selecting due stages for a logical time.
+- Enforcing stage, account, symbol, position, and action order.
+- Loading the latest configuration and state before work begins.
+- Sharing public market preparation across accounts.
+- Calling the strategy and shared trading functions.
+- Applying execution results to balance and position state.
+- Persisting each completed state-changing action.
+- Recording deterministic diagnostics and metrics.
+
+## D.2 Adapter responsibilities
+
+- `clock` supplies logical Unix-millisecond time.
+- `market` returns only information visible at that logical time.
+- `execution` submits an order or produces a deterministic simulated fill.
+- `storage` loads and atomically saves mode-and-account-isolated state.
+- `strategy` converts runtime facts into decisions and never accesses exchange,
+  storage, notifications, or the wall clock directly.
+
+Notification, withdrawal, MCP, dashboard, and HTTP behavior are outside the
+shared trading engine. Production may react to engine results through separate
+operational services. Backtest does not initialize those services.
+
+TC: `BOTH:RUNTIME_ADAPTER_BOUNDARIES`
+
+# E. Scheduling and deterministic order
+
+The default stages are:
+
+| Order | Stage               | Default cadence | Primary responsibility |
+| ----: | ------------------- | --------------: | ---------------------- |
+| 1     | Risk Sentinel       |        1 minute | Shared risk evidence and account protection |
+| 2     | Speedup             |        1 minute | Urgent open positions only |
+| 3     | Standard Monitoring |       5 minutes | Remaining open positions |
+| 4     | Management          |       5 minutes | Coin-list maintenance; no trading actions |
+| 5     | Capture Entry       |       5 minutes | Symbols without an open position |
+
+A stage is due when the UTC epoch-minute is divisible by its configured
+interval. Risk Sentinel remains a one-minute safety stage. Configurable
+intervals retain their existing normalization rules.
+
+For one logical time, ordering is always:
+
+1. Due stages in the table order.
+2. Accounts in configured catalog order.
+3. Symbols in uppercase alphabetical order.
+4. Positions in stable persisted order.
+5. Actions in the priority defined in Section G.
+
+Only one mutation cycle may run at a time for a mode. A completed duplicate
+`mode + account + stage + logical time` is ignored. Production records and
+skips a missed aligned cycle instead of replaying historical trading work.
+Backtest processes every required logical minute and fails if one is missing.
 
 TC: `BOTH:RUNTIME_SCHEDULING`
+TC: `BOTH:RUNTIME_DETERMINISTIC_ORDER`
+TC: `PROD:RUNTIME_MISSED_CYCLE_POLICY`
 
-# D. Trading flow
+# F. Stage ownership
 
-For each eligible account and symbol:
+## F.1 Risk Sentinel
 
-1. Load configuration and account state.
-2. Load the market snapshot for logical time.
-3. Ask the selected strategy for a decision.
-4. Apply risk or forced exit, then normal exit.
-5. Average only if the position remains open.
-6. Enter only if no position blocks entry.
-7. Execute through the selected adapter.
-8. Apply shared quantity, fee, PnL, and position calculations.
-9. Save state before processing the next action for that position.
+Capture public BTC and market-breadth evidence once. Apply that immutable
+evidence to each account sequentially. It may block entry or request forced
+exits, but account protection state and notifications remain account-specific.
 
-A position closed in this cycle cannot be processed again.
+## F.2 Speedup
+
+Select open positions using the existing persisted Speedup rules. Speedup owns
+only those selected positions for that cycle. Standard Monitoring must not
+process them again at the same logical time.
+
+## F.3 Standard Monitoring
+
+Select every open position not owned by Speedup. Refresh its normal monitoring
+state and allow exit or averaging according to the existing strategy rules.
+Updated persisted state may make the position eligible for a later Speedup
+pass; it does not cause a second pass in the current stage.
+
+## F.4 Management
+
+Evaluate configured symbols for the existing coin-management rules. It does
+not run entry, averaging, exit, balance authorization, or position PnL work.
+
+## F.5 Capture Entry
+
+Select configured symbols without an open position. Prepare entry candidates,
+then apply account-specific guards, worker capacity, used-vPoint checks,
+balance authorization, and final execution-price checks. A disabled account
+cannot enter, but an account with an open position remains eligible for exit
+monitoring.
+
+TC: `BOTH:RUNTIME_STAGE_OWNERSHIP`
+
+# G. One stage cycle
+
+For each due stage, the engine follows this sequence:
+
+1. Load the latest runtime configuration, account catalog, and scoped state.
+2. Determine whether any account can have work before requesting market data.
+3. Prepare one immutable public market snapshot for the union of required
+   symbols. An empty stage performs no market or private exchange requests.
+4. Process accounts sequentially in configured order.
+5. Reclassify the account's exact eligible symbols from its latest state.
+6. Ask the strategy for decisions using the logical time and shared snapshot.
+7. Apply actions in this priority:
+   - Risk or forced exit.
+   - Normal exit.
+   - Averaging, only when the position remains open.
+   - Entry, only in Capture Entry and only when no position blocks it.
+8. Execute through the selected adapter.
+9. Apply the shared quantity, fee, PnL, balance, and position calculations.
+10. Atomically save state before another action may mutate that position or
+    account balance.
+11. Record the completed stage result and metrics.
+
+A position closed during a cycle cannot be averaged, exited, or monitored
+again in that cycle. At most one balance-changing action is in flight for an
+account. Public market work may be shared; balances, positions, orders, and
+storage never are.
 
 TC: `BOTH:RUNTIME_EXECUTION_CYCLE`
+TC: `BOTH:RUNTIME_EXIT_PRIORITY`
+TC: `BOTH:RUNTIME_ACCOUNT_ISOLATION`
 
-# E. Strategies and accounts
+# H. Market data and time visibility
 
-Multi, Hedge, and Streak use one strategy contract with their own configuration,
-state, market requirements, and decisions. Public market snapshots may be shared;
-balances, positions, execution, and storage remain account-specific.
+Every market request includes the logical time, symbols, interval, and required
+lookback. The returned snapshot must state its effective time and may contain
+only completed market data visible at that time.
+
+For backtest:
+
+- A candle is visible only when its close time is at or before logical time.
+- One-minute and five-minute candles remain independent source series.
+- Warmup data is visible to indicators but cannot create trading actions before
+  `startTime`.
+- vPoints are reconstructed during the run with the copied production
+  detection function; future completed vPoints are never preloaded.
+- Missing required data, gaps, duplicates, or a future-data response fail the
+  run with a clear error.
+
+For live and sandbox, the market adapter keeps the current cache,
+single-flight, rate-limit, and freshness behavior. Sharing a market snapshot
+does not authorize an order; final private and price guards still run at the
+execution boundary.
+
+TC: `BOTH:BACKTEST_CANDLE_VISIBILITY`
+TC: `BOTH:RUNTIME_SHARED_MARKET_SNAPSHOT`
+
+# I. Execution behavior by mode
+
+## I.1 Live
+
+The live adapter submits real orders and preserves current idempotency,
+exchange reconciliation, uncertain-order recovery, precision, leverage, and
+margin-mode behavior.
+
+## I.2 Sandbox
+
+Sandbox runs the same engine and calculations but may only use its sandbox
+execution and sandbox storage scope. It must never submit a live order or
+write live state.
+
+## I.3 Backtest
+
+The backtest adapter never calls a private exchange endpoint. An accepted
+market action fills at the close of the latest visible completed one-minute
+candle, with fill time equal to logical time. Optional slippage is deterministic.
+V1 has no random latency, partial fills, order book, or random rejection.
+
+All modes return the canonical position shape defined in `DATA_TYPE.md`.
+`executionMode` is the only environment field excluded by the V1 Precision
+Checker.
+
+TC: `BTEST:BACKTEST_MARKET_FILL`
+TC: `BOTH:RUNTIME_MODE_ISOLATION`
+
+# J. Persistence and recovery
+
+Storage scope is at least `mode + account`. Shared public cache data must not be
+stored inside one account's state. Commits are atomic from the caller's point
+of view.
+
+The engine persists after every successful balance-changing action instead of
+waiting for the whole multi-account cycle. This prevents a later failure from
+discarding an already executed order.
+
+Failure policy:
+
+- Backtest fails immediately on missing data, invalid state, or execution
+  failure. It does not produce a partial success result.
+- A production account failure is recorded and does not corrupt or overwrite
+  another account's state.
+- Failure of required shared market preparation fails that stage for all
+  dependent accounts.
+- A failed or uncertain live order is not blindly submitted again. Existing
+  idempotency and reconciliation decide its outcome.
+- The last successful stage statistics are not replaced by a failed pass.
+
+Backtest starts from the supplied `initialState` and writes only to its isolated
+run storage. Repeating the same dataset, configuration, strategy, and initial
+state must produce the same final state and action log.
+
+TC: `BOTH:RUNTIME_ACTION_COMMIT`
+TC: `PROD:RUNTIME_FAILURE_ISOLATION`
+TC: `BTEST:BACKTEST_REPRODUCIBLE`
+
+# K. Strategy contract
+
+V1 implements Multi first. The contract must nevertheless keep runtime work
+outside the strategy so Hedge and Streak can be added later without copying the
+engine.
+
+A strategy plugin may define:
+
+- Its configuration and strategy-owned position state.
+- Required public market inputs.
+- Entry, exit, and averaging decisions.
+- Strategy-specific diagnostics.
+
+A strategy plugin may not:
+
+- Read or write storage directly.
+- Read the wall clock directly.
+- Submit exchange orders.
+- Send notifications or withdrawals.
+- Change account or stage ordering.
+- Reimplement shared quantity, fee, PnL, or balance accounting.
 
 TC: `BOTH:PLUGIN_STRATEGY`
 
-# F. Safety and tests
+# L. Metrics and diagnostics
 
-- Backtest and sandbox cannot submit real orders or write live state.
-- Live order submission preserves existing idempotency and recovery behavior.
-- All modes expose the canonical final position shape.
-- Tests cover stage order, cadence, account/symbol order, exit priority, mode
-  isolation, missing market data, and repeated backtest results.
+Every run records enough information to explain and compare behavior without
+changing decisions:
 
-Generic event envelopes and a new persistence architecture are not part of V1.
+- Logical time, mode, strategy, stage, account, and symbols.
+- Stage duration and section durations.
+- Market and private API call counts.
+- Cache hits, retries, errors, and rate-limit usage.
+- Decisions and ordered action intents.
+- Execution results and state-commit counts.
+- Skipped stages, accounts, symbols, and their reasons.
+
+Performance duration uses wall-clock measurement. Trading timestamps always use
+logical time. Metrics must not include credentials or raw private exchange
+payloads in persisted position JSON.
+
+TC: `BOTH:RUNTIME_METRICS`
+
+# M. V1 safety rules
+
+- Backtest and sandbox cannot use the live execution or live storage adapters.
+- Backtest cannot initialize notification, withdrawal, or MCP services.
+- Runtime configuration and input snapshots are treated as immutable during a
+  decision.
+- The engine rejects a market snapshot newer than its logical time.
+- Account execution remains sequential until shared locking and rate limiting
+  prove parallel private mutation safe.
+- The engine does not force-close positions at the end of a backtest.
+
+TC: `BOTH:RUNTIME_SAFETY_GUARDS`
+
+# N. Implementation milestones
+
+## N.1 Freeze current behavior
+
+- Add characterization tests for Multi stage selection, action priority,
+  accounting, and account ordering.
+- Mark shared behavior with the TC codes in this document.
+- Reuse current model and configuration types instead of creating parallel
+  shapes.
+
+## N.2 Introduce time and scheduling
+
+- Replace decision-path wall-clock reads with `RuntimeClock` input.
+- Implement one pure due-stage calculation used by production and backtest.
+- Add duplicate-stage and deterministic-order tests.
+
+## N.3 Extract environment adapters
+
+- Wrap current production market, execution, and storage behavior behind the
+  contracts in Section C without changing its results.
+- Add isolated sandbox and dataset-backed adapters.
+- Add adapter/mode mismatch guards.
+
+## N.4 Extract one shared cycle
+
+- Move stage ownership and the ordered account cycle into
+  `src/lib/precision`.
+- Keep existing trading calculations in `src/lib/trading`.
+- Keep Multi-specific decision behavior in the Multi strategy plugin.
+- Make the production runner call the shared engine.
+
+## N.5 Move backtest onto the engine
+
+- Replace the separate dynamic trading loop with the dataset clock, market,
+  execution, and isolated storage adapters.
+- Reconstruct vPoints only from visible historical candles.
+- Remove duplicated backtest decision and accounting paths after parity tests
+  pass.
+
+## N.6 Prove precision and safety
+
+- Run the same recorded production case through backtest.
+- Verify deterministic repeated results.
+- Compare canonical final positions with the Precision Checker.
+- Verify no backtest or sandbox path can reach live orders or live storage.
+
+# O. Completion criteria
+
+The V1 runtime engine is complete when:
+
+- Production live, production sandbox, and historical backtest all enter the
+  same `runCycle` implementation.
+- No strategy or trading decision reads wall-clock time directly.
+- The same due-stage function and ordering tests pass for production and
+  backtest.
+- Multi's existing entry, averaging, exit, PnL, fee, balance, vPoint, and risk
+  behavior remains covered.
+- Public market data is shared while private account state stays isolated and
+  sequential.
+- Backtest uses only data visible at logical time and reproduces vPoint
+  formation timing.
+- Repeated backtests are byte-for-byte deterministic after excluding explicitly
+  measured wall-clock duration fields.
+- A recorded production case can be compared against its backtest result using
+  the final-position rules in `_PRECISION.md`.
+- API calls, durations, errors, retries, rate-limit usage, decisions, actions,
+  and commits are measurable.
+
+Generic event envelopes, a new persistence architecture, parallel private
+account execution, and strategy redesign are not part of V1.

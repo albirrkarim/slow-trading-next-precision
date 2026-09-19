@@ -535,10 +535,10 @@ describe("multi-account settings UI", () => {
       screen.queryByRole("button", { name: /^Close$/ }),
     ).toBeNull();
     expect(screen.getByRole("button", { name: "Close dialog" })).toBeTruthy();
-    expect(screen.queryByRole("tab", { name: "NOTIFICATION" })).toBeNull();
-    expect(screen.queryByRole("tab", { name: "WITHDRAW" })).toBeNull();
-    expect(screen.queryByRole("tab", { name: "MCP" })).toBeNull();
-    expect(screen.getByRole("tab", { name: "RUNTIME" })).toBeTruthy();
+    expect(screen.queryByRole("tab", { name: /notification/i })).toBeNull();
+    expect(screen.queryByRole("tab", { name: /withdraw/i })).toBeNull();
+    expect(screen.queryByRole("tab", { name: /^mcp$/i })).toBeNull();
+    expect(screen.getByRole("tab", { name: /runtime/i })).toBeTruthy();
   });
 
   it("shows persisted balances with manual refresh only for live accounts", async () => {
