@@ -13,6 +13,20 @@ entry, averaging, exit, accounting, and position updates. The only differences
 between modes are their adapters for time, market data, execution, storage, and
 operational side effects.
 
+That is the final architecture, not the scope of the first implementation
+phase. V1 is delivered backtest-first:
+
+```text
+src/lib/dev/backtestPrecision/api/run.ts
+  -> backtest child/runner
+  -> shared-capable Precision runtime engine
+```
+
+The current production path, including `src/instrumentation.ts` and
+`src/lib/slowTrading/**` orchestration, remains unchanged during this phase.
+The engine contracts must be capable of accepting production adapters later,
+so production can adopt the same engine without a redesign.
+
 ```text
                        shared runtime engine
                     /          |           \
@@ -66,9 +80,10 @@ TC: `BOTH:RUNTIME_LOGICAL_CLOCK`
 
 # C. Initialization and lifecycle
 
-The application or backtest driver initializes one engine instance with all
-required dependencies. A run must not switch mode, strategy, account catalog,
-or storage scope after initialization.
+An environment driver initializes one engine instance with all required
+dependencies. In the current phase, that driver is the Precision Backtest
+runner. A run must not switch mode, strategy, account catalog, or storage scope
+after initialization.
 
 ```ts
 interface RuntimeEngineInput {
@@ -115,8 +130,9 @@ The public API should be grouped:
 ```ts
 precision.runtime.create(input)
 precision.runtime.schedule.getDueStages(input)
-precision.runtime.engine.runCycle(input)
-precision.runtime.engine.runRange(input) // backtest driver
+engine.runMinute({ t })
+engine.runStage({ stage, t })
+backtest.runner.run(input) // owns historical range iteration
 ```
 
 Initialization validates before any cycle starts:
@@ -409,17 +425,18 @@ TC: `BOTH:RUNTIME_SAFETY_GUARDS`
 - Reuse current model and configuration types instead of creating parallel
   shapes.
 
-## N.2 Introduce time and scheduling
+## N.2 Introduce time and scheduling contracts
 
-- Replace decision-path wall-clock reads with `RuntimeClock` input.
-- Implement one pure due-stage calculation used by production and backtest.
+- Replace decision-path wall-clock reads reached by Precision Backtest with
+  `RuntimeClock` input.
+- Implement one environment-neutral pure due-stage calculation.
 - Add duplicate-stage and deterministic-order tests.
 
-## N.3 Extract environment adapters
+## N.3 Build backtest adapters
 
-- Wrap current production market, execution, and storage behavior behind the
-  contracts in Section C without changing its results.
-- Add isolated sandbox and dataset-backed adapters.
+- Add dataset-backed clock, market, and execution adapters.
+- Add isolated in-memory storage and no-op effects adapters.
+- Use fake production-shaped adapters only to prove contract neutrality.
 - Add adapter/mode mismatch guards.
 
 ## N.4 Extract one shared cycle
@@ -428,32 +445,44 @@ TC: `BOTH:RUNTIME_SAFETY_GUARDS`
   `src/lib/precision`.
 - Keep existing trading calculations in `src/lib/trading`.
 - Keep Multi-specific decision behavior in the Multi strategy plugin.
-- Make the production runner call the shared engine.
+- Do not make the production runner call the engine in this phase.
 
-## N.5 Move backtest onto the engine
+## N.5 Integrate Precision Backtest first
 
 - Replace the separate dynamic trading loop with the dataset clock, market,
   execution, and isolated storage adapters.
 - Reconstruct vPoints only from visible historical candles.
+- Make `src/lib/dev/backtestPrecision/api/run.ts` the first application entry
+  point that invokes the engine through the isolated runner.
 - Remove duplicated backtest decision and accounting paths after parity tests
   pass.
 
-## N.6 Prove precision and safety
+## N.6 Prove backtest precision and safety
 
-- Run the same recorded production case through backtest.
 - Verify deterministic repeated results.
-- Compare canonical final positions with the Precision Checker.
-- Verify no backtest or sandbox path can reach live orders or live storage.
+- Compare canonical final positions with golden Precision Checker fixtures.
+- Verify no backtest path can reach live orders or live storage.
+
+## N.7 Future production adoption — not current implementation
+
+- Create production clock, market, execution, storage, and effects adapters.
+- Update `src/instrumentation.ts` to bootstrap the shared engine through the
+  production runner/facade.
+- Replace independent production stage timers with one aligned-minute
+  dispatcher.
+- Run captured production cases through the Precision Checker.
 
 # O. Completion criteria
 
-The V1 runtime engine is complete when:
+The current backtest-first phase is complete when:
 
-- Production live, production sandbox, and historical backtest all enter the
-  same `runCycle` implementation.
-- No strategy or trading decision reads wall-clock time directly.
-- The same due-stage function and ordering tests pass for production and
-  backtest.
+- Precision Backtest enters the environment-neutral runtime engine through
+  `src/lib/dev/backtestPrecision/api/run.ts`.
+- The engine passes with real backtest adapters and fake production-shaped
+  adapters, without importing production infrastructure.
+- No strategy or trading decision reached by the new engine reads wall-clock
+  time directly.
+- Due-stage and ordering behavior is covered independently of environment.
 - Multi's existing entry, averaging, exit, PnL, fee, balance, vPoint, and risk
   behavior remains covered.
 - Public market data is shared while private account state stays isolated and
@@ -462,10 +491,16 @@ The V1 runtime engine is complete when:
   formation timing.
 - Repeated backtests are byte-for-byte deterministic after excluding explicitly
   measured wall-clock duration fields.
-- A recorded production case can be compared against its backtest result using
-  the final-position rules in `_PRECISION.md`.
+- Golden cases can be compared using the final-position rules in
+  `_PRECISION.md`.
 - API calls, durations, errors, retries, rate-limit usage, decisions, actions,
   and commits are measurable.
+
+The full migration is complete later when production live, production sandbox,
+and historical backtest all enter the same engine; `src/instrumentation.ts`
+boots the production adapters; the same due-stage and ordering tests cover all
+modes; and a captured production case can be compared against its backtest
+result.
 
 Generic event envelopes, a new persistence architecture, parallel private
 account execution, and strategy redesign are not part of V1.
