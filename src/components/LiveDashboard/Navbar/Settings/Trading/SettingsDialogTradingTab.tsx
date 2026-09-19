@@ -10,13 +10,9 @@ import {
   ToggleButton,
   ToggleButtonGroup,
 } from "@mui/material";
-import { useState } from "react";
+import { useState, type Dispatch, type SetStateAction } from "react";
 
 import SettingsInfoField from "../Components/SettingsInfoField";
-import {
-  applyAccountProfileToConfigDraft,
-  updateAccountSettingsInConfigDraft,
-} from "../helpers";
 import type {
   ConfigDraft,
   ConfigDraftSetter,
@@ -38,24 +34,30 @@ export default function SettingsDialogTradingTab({
   setConfigDraft,
 }: SettingsDialogTradingTabProps) {
   const [editorMode, setEditorMode] = useState<"json" | "ui">("ui");
-  const selectedAccount = configDraft.exchangeAccounts.find(
-    (account) => account.slug === configDraft.exchangeAccountSlug,
+  const selectedAccount = configDraft.accounts.find(
+    (account) => account.slug === configDraft.runtime.exchangeAccountSlug,
   );
-  const setSelectedAccountDraft: ConfigDraftSetter = (value) => {
+  const setSelectedAccountTrading: Dispatch<
+    SetStateAction<SlowTradingAccountTradingConfig>
+  > = (value) => {
     setConfigDraft((current) => {
-      if (!current || current.exchangeAccounts.length === 0) {
-        return typeof value === "function" ? value(current) : value;
-      }
-
-      return updateAccountSettingsInConfigDraft(
-        current,
-        current.exchangeAccountSlug,
-        (currentAccountDraft) => {
-          const next =
-            typeof value === "function" ? value(currentAccountDraft) : value;
-          return next ?? currentAccountDraft;
-        },
-      );
+      if (!current) return current;
+      const accountSlug = current.runtime.exchangeAccountSlug;
+      return {
+        ...current,
+        accounts: current.accounts.map((account) =>
+          account.slug === accountSlug
+            ? {
+                ...account,
+                trading:
+                  typeof value === "function"
+                    ? value(account.trading)
+                    : value,
+                updatedAt: Date.now(),
+              }
+            : account,
+        ),
+      };
     });
   };
 
@@ -65,8 +67,8 @@ export default function SettingsDialogTradingTab({
     setConfigDraft((current) => {
       if (!current) return current;
 
-      const account = current.exchangeAccounts.find(
-        (candidate) => candidate.slug === current.exchangeAccountSlug,
+      const account = current.accounts.find(
+        (candidate) => candidate.slug === current.runtime.exchangeAccountSlug,
       );
       if (!account) return current;
 
@@ -77,12 +79,11 @@ export default function SettingsDialogTradingTab({
       };
       const nextDraft = {
         ...current,
-        exchangeAccounts: current.exchangeAccounts.map((candidate) =>
+        accounts: current.accounts.map((candidate) =>
           candidate.slug === account.slug ? nextAccount : candidate,
         ),
       };
-
-      return applyAccountProfileToConfigDraft(nextDraft, nextAccount);
+      return nextDraft;
     });
   };
 
@@ -130,26 +131,32 @@ export default function SettingsDialogTradingTab({
               </ToggleButton>
             </ToggleButtonGroup>
 
-            {configDraft.exchangeAccounts.length > 0 && (
+            {configDraft.accounts.length > 0 && (
               <SettingsInfoField
                 info="Chooses which account's Trading configuration is shown in this editor. It does not control which accounts execute."
                 label="Editing Account"
                 onChange={(event) => {
-                  const account = configDraft.exchangeAccounts.find(
+                  const account = configDraft.accounts.find(
                     (candidate) => candidate.slug === event.target.value,
                   );
                   setConfigDraft((current) =>
                     current && account
-                      ? applyAccountProfileToConfigDraft(current, account)
+                      ? {
+                          ...current,
+                          runtime: {
+                            ...current.runtime,
+                            exchangeAccountSlug: account.slug,
+                          },
+                        }
                       : current,
                   );
                 }}
                 select
                 size="small"
                 sx={{ width: { xs: "100%", sm: 240 } }}
-                value={configDraft.exchangeAccountSlug}
+                value={configDraft.runtime.exchangeAccountSlug}
               >
-                {configDraft.exchangeAccounts.map((account) => (
+                {configDraft.accounts.map((account) => (
                   <MenuItem key={account.slug} value={account.slug}>
                     {account.name}
                   </MenuItem>
@@ -165,13 +172,13 @@ export default function SettingsDialogTradingTab({
               onApply={applySelectedAccountTradingConfig}
               tradingConfig={selectedAccount.trading}
             />
-          ) : (
+          ) : selectedAccount ? (
             <TradingAccountSettings
-              configDraft={configDraft}
+              tradingConfig={selectedAccount.trading}
               dashboardState={dashboardState}
-              setConfigDraft={setSelectedAccountDraft}
+              setTradingConfig={setSelectedAccountTrading}
             />
-          )}
+          ) : null}
         </Stack>
       </Grid>
 

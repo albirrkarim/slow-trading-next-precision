@@ -208,10 +208,8 @@ describe("SLOW dashboard capacity metrics", () => {
         symbols: ["SOL", "INJ"],
         exchangeType: "binance",
         tradingMode: TradingMode.FUTURES,
-        modelConfig: {
-          takeProfitPercent: 5,
-          stopLossPercent: 20,
-        } as any,
+        takeProfitPercent: 5,
+        stopLossPercent: 20,
         enableWatchLogic: true,
         maxEntryBased24HourVolPct: 0.2,
         maxEntryMargin: 0,

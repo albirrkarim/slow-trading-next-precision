@@ -2,7 +2,7 @@ import { type FetchKlinesFunction } from "@lib/datasets/type";
 import { type Kline } from "@/lib/exchange/platform/tokocrypto";
 import type {
   PredictionEngineMemory,
-  TradingModelConfigDynamic,
+  TradingConfigDynamicFields,
 } from "@lib/dynamic";
 import type {
   ExchangeType,
@@ -64,7 +64,7 @@ export interface LevelBasedPctDriftStopLossConfig {
   conditions: LevelBasedPctDriftStopLossCondition[];
 }
 
-interface TradingModelConfigAccumulator {
+interface TradingConfigAccumulator {
   /**
    * Decimal drop from the last buy price required to trigger a DCA buy.
    *   - Unit: decimal (e.g. 0.05 = 5%)
@@ -90,7 +90,7 @@ interface TradingModelConfigAccumulator {
   confidenceBase?: number;
 }
 
-interface TradingModelConfigExecution {
+interface TradingConfigExecution {
   /**
    * Max Amount of USDT that you will use on buy order
    * Unit: USDT
@@ -111,11 +111,11 @@ interface TradingModelConfigExecution {
 /**
  * Config that model trading use to determine descission
  */
-export interface TradingModelConfig
+export interface TradingConfig
   extends
-    TradingModelConfigAccumulator,
-    TradingModelConfigExecution,
-    TradingModelConfigDynamic {
+    TradingConfigAccumulator,
+    TradingConfigExecution,
+    TradingConfigDynamicFields {
   /**
    * The percentage of profit at which the system should take profit and close the position.
    * For example, 5 means take profit when the position gains 5%.
@@ -543,7 +543,7 @@ export interface GetTradingDecisionProps {
   /**
    * Strategy configuration
    */
-  config: TradingModelConfig;
+  config: TradingConfig;
 
   /**
    * Some memory for the trading model

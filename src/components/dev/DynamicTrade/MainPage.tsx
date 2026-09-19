@@ -35,11 +35,11 @@ import backtestRequestConfig from "./backtest-request-config";
 
 const BACKTEST_KEY = "dynamic";
 
-function normalizeModelConfig(
-    raw: Partial<BacktestConfig["modelConfig"]> | undefined,
-): BacktestConfig["modelConfig"] {
-    const modelConfig = {
-        ...DEFAULT_BACKTEST_CONFIG.modelConfig,
+function normalizeTradingConfig(
+    raw: Partial<BacktestConfig> | undefined,
+) {
+    const tradingConfig = {
+        ...DEFAULT_BACKTEST_CONFIG,
         ...(raw ?? {}),
     };
     const {
@@ -62,7 +62,7 @@ function normalizeModelConfig(
         safeUSDTPerMonth,
         safePercentPerMonth,
         minimalAssetOnTrade,
-    } = modelConfig;
+    } = tradingConfig;
 
     return {
         takeProfitPercent,
@@ -91,7 +91,6 @@ function normalizeModelConfig(
 
 type BacktestConfigInput = Partial<BacktestConfig> & {
     config?: Partial<BacktestConfig>;
-    seasonalModelConfig?: BacktestConfig["modelConfig"][];
 };
 
 type BacktestConfigEnvelope = BacktestConfigInput & {
@@ -111,7 +110,6 @@ export function normalizeBacktestConfig(raw: unknown): BacktestConfig {
 
     const {
         config: nestedRuntimeConfig,
-        seasonalModelConfig,
         ...outerConfig
     } = config;
     const runtimeConfig =
@@ -123,12 +121,10 @@ export function normalizeBacktestConfig(raw: unknown): BacktestConfig {
         ...DEFAULT_BACKTEST_CONFIG,
         ...outerConfig,
         ...runtimeConfig,
-        modelConfig: normalizeModelConfig(
-            runtimeConfig.modelConfig ??
-            outerConfig.modelConfig ??
-            seasonalModelConfig?.[0] ??
-            DEFAULT_BACKTEST_CONFIG.modelConfig,
-        ),
+        ...normalizeTradingConfig({
+            ...outerConfig,
+            ...runtimeConfig,
+        }),
     };
 }
 

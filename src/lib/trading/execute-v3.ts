@@ -15,7 +15,11 @@ import {
 import { notif } from "./helper/notification"; // Email/notification system
 import moment from "moment-timezone";
 import { TRADE_MESSAGE } from "./message";
-import type { TradingConfig, TradingDetail, TradingReturn } from "./type"; // Config & return types
+import type {
+  TradingDetail,
+  TradingExecutionConfig,
+  TradingReturn,
+} from "./type"; // Config & return types
 import { getLastPosition, mergePositions } from "./helper/utils";
 import { MINIMAL_USDT_TO_TRADE } from "./constants";
 import { tradeLog } from "./helper/log";
@@ -87,7 +91,7 @@ function buildV3Position(params: {
 
 /**
  * Executes trading logic (BUY/SELL/HOLD) for a given symbol
- * using last-minute candle data and strategy model configuration.
+ * using last-minute candle data and the flat trading configuration.
  *
  * Designed for both:
  * - Backtesting (pass in mock balance & candles)
@@ -104,16 +108,16 @@ export async function executeTradingV3({
   fetchKlines = fetchKlinesFunction, // Function to fetch candle data
   getTradingDecisionFunction,
   balance, // Initial balance (for backtest) or undefined (live)
-  modelConfig, // Strategy configuration,
+  tradingConfig, // Strategy configuration,
   modelMemory,
   exchangeType = "tokocrypto",
   tradingMode = TradingMode.SPOT,
-}: TradingConfig): Promise<TradingReturn> {
+}: TradingExecutionConfig): Promise<TradingReturn> {
   const {
     orderType = "taker",
     onlyTPFromDate,
     maxBuyUSDT,
-  } = modelConfig; // Default to taker orders (market)
+  } = tradingConfig; // Default to taker orders (market)
 
   if (!modelMemory.positions) {
     // Save buy record, to track the price
@@ -208,12 +212,12 @@ export async function executeTradingV3({
   }
 
   // C.1 Also inform the model with the usdt balance
-  modelConfig.balanceUSDT = currentBalance ? currentBalance.quoteAsset : 0;
+  tradingConfig.balanceUSDT = currentBalance ? currentBalance.quoteAsset : 0;
 
   // C.1.2 Also set maximal USD
   if (maxBuyUSDT !== undefined) {
-    if (modelConfig.balanceUSDT > maxBuyUSDT) {
-      modelConfig.balanceUSDT = maxBuyUSDT;
+    if (tradingConfig.balanceUSDT > maxBuyUSDT) {
+      tradingConfig.balanceUSDT = maxBuyUSDT;
     }
   }
 
@@ -225,7 +229,7 @@ export async function executeTradingV3({
     current,
     fetchKlines,
     position: currentPosition,
-    config: modelConfig,
+    config: tradingConfig,
     memory: modelMemory,
   });
 

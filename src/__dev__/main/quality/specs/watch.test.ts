@@ -477,7 +477,7 @@ describe("slow specs watch", () => {
     const result = await executeAveraging({
       accountSlug: "account-1",
       symbol: "SUI",
-      modelConfig: { orderType: "taker" } as any,
+      tradingConfig: { orderType: "taker" } as any,
       modelMemory,
       volatilityPoints: [],
       exchangeType: "tokocrypto",
@@ -571,7 +571,7 @@ describe("slow specs watch", () => {
     const result = await executeAveraging({
       accountSlug: "account-1",
       symbol: "SUI",
-      modelConfig: { orderType: "taker" } as any,
+      tradingConfig: { orderType: "taker" } as any,
       modelMemory,
       volatilityPoints: [point],
       exchangeType: "tokocrypto",
@@ -640,7 +640,7 @@ describe("slow specs watch", () => {
 
     const result = await executeAveraging({
       symbol: "SUI",
-      modelConfig: { orderType: "taker" } as any,
+      tradingConfig: { orderType: "taker" } as any,
       modelMemory,
       volatilityPoints: [],
       exchangeType: "tokocrypto",
@@ -682,7 +682,7 @@ describe("slow specs watch", () => {
     const result = await executeAveraging({
       accountSlug: "account-1",
       symbol: "SUI",
-      modelConfig: { orderType: "taker" } as any,
+      tradingConfig: { orderType: "taker" } as any,
       modelMemory,
       volatilityPoints,
       exchangeType: "tokocrypto",
@@ -733,7 +733,7 @@ describe("slow specs watch", () => {
 
     const result = await executeAveraging({
       symbol: "SUI",
-      modelConfig: { orderType: "taker" } as any,
+      tradingConfig: { orderType: "taker" } as any,
       modelMemory,
       volatilityPoints: [],
       exchangeType: "tokocrypto",
@@ -779,7 +779,7 @@ describe("slow specs watch", () => {
 
     const result = await executeAveraging({
       symbol: "SUI",
-      modelConfig: { orderType: "taker" } as any,
+      tradingConfig: { orderType: "taker" } as any,
       modelMemory,
       volatilityPoints: [],
       exchangeType: "tokocrypto",
@@ -825,7 +825,7 @@ describe("slow specs watch", () => {
 
     const result = await executeAveraging({
       symbol: "SUI",
-      modelConfig: { orderType: "taker" } as any,
+      tradingConfig: { orderType: "taker" } as any,
       modelMemory,
       volatilityPoints: [],
       exchangeType: "tokocrypto",
@@ -851,7 +851,7 @@ describe("slow specs watch", () => {
 
     const guardDisabledResult = await executeAveraging({
       symbol: "SUI",
-      modelConfig: { orderType: "taker" } as any,
+      tradingConfig: { orderType: "taker" } as any,
       modelMemory,
       volatilityPoints: [],
       exchangeType: "tokocrypto",

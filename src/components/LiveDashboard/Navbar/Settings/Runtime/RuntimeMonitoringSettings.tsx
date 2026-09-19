@@ -39,7 +39,10 @@ function updateWholeMinutes(
     previous
       ? {
         ...previous,
-        [key]: Math.max(1, Math.floor(Number(value) || 1)),
+        runtime: {
+          ...previous.runtime,
+          [key]: Math.max(1, Math.floor(Number(value) || 1)),
+        },
       }
       : previous,
   );
@@ -52,8 +55,11 @@ export default function RuntimeMonitoringSettings({
   configDraft: ConfigDraft;
   setConfigDraft: ConfigDraftSetter;
 }) {
-  const takeProfitPct = configDraft.modelConfig?.takeProfitPercent ?? 0;
-  const stopLossPlusEnabled = Boolean(configDraft.modelConfig?.useStopLossPlus);
+  const selectedTrading = configDraft.accounts.find(
+    (account) => account.slug === configDraft.runtime.exchangeAccountSlug,
+  )?.trading;
+  const takeProfitPct = selectedTrading?.takeProfitPercent ?? 0;
+  const stopLossPlusEnabled = Boolean(selectedTrading?.useStopLossPlus);
 
   return (
     <Stack spacing={2.5}>
@@ -67,7 +73,7 @@ export default function RuntimeMonitoringSettings({
           type="number"
           size="small"
           fullWidth
-          value={configDraft.speedupStageIntervalMinutes ?? 1}
+          value={configDraft.runtime.speedupStageIntervalMinutes ?? 1}
           onChange={(event) =>
             updateWholeMinutes(
               setConfigDraft,
@@ -96,18 +102,21 @@ export default function RuntimeMonitoringSettings({
               type="number"
               size="small"
               fullWidth
-              value={configDraft.speedupStagePositivePnlThresholdPct ?? 1.5}
+              value={configDraft.runtime.speedupStagePositivePnlThresholdPct ?? 1.5}
               onChange={(event) => {
                 const parsed = Number(event.target.value);
                 setConfigDraft((previous) =>
                   previous
                     ? {
                       ...previous,
-                      speedupStagePositivePnlThresholdPct: Number.isFinite(
-                        parsed,
-                      )
-                        ? Math.max(0, parsed)
-                        : 1.5,
+                      runtime: {
+                        ...previous.runtime,
+                        speedupStagePositivePnlThresholdPct: Number.isFinite(
+                          parsed,
+                        )
+                          ? Math.max(0, parsed)
+                          : 1.5,
+                      },
                     }
                     : previous,
                 );
@@ -129,18 +138,21 @@ export default function RuntimeMonitoringSettings({
               type="number"
               size="small"
               fullWidth
-              value={configDraft.speedupStageNegativePnlThresholdPct ?? 1.5}
+              value={configDraft.runtime.speedupStageNegativePnlThresholdPct ?? 1.5}
               onChange={(event) => {
                 const parsed = Number(event.target.value);
                 setConfigDraft((previous) =>
                   previous
                     ? {
                       ...previous,
-                      speedupStageNegativePnlThresholdPct: Number.isFinite(
-                        parsed,
-                      )
-                        ? Math.max(0, parsed)
-                        : 1.5,
+                      runtime: {
+                        ...previous.runtime,
+                        speedupStageNegativePnlThresholdPct: Number.isFinite(
+                          parsed,
+                        )
+                          ? Math.max(0, parsed)
+                          : 1.5,
+                      },
                     }
                     : previous,
                 );
@@ -170,16 +182,19 @@ export default function RuntimeMonitoringSettings({
               type="number"
               size="small"
               fullWidth
-              value={configDraft.speedupStageTakeProfitOffsetPct ?? 0.5}
+              value={configDraft.runtime.speedupStageTakeProfitOffsetPct ?? 0.5}
               onChange={(event) => {
                 const parsed = Number(event.target.value);
                 setConfigDraft((previous) =>
                   previous
                     ? {
                       ...previous,
-                      speedupStageTakeProfitOffsetPct: Number.isFinite(parsed)
-                        ? Math.max(0, parsed)
-                        : 0.5,
+                      runtime: {
+                        ...previous.runtime,
+                        speedupStageTakeProfitOffsetPct: Number.isFinite(parsed)
+                          ? Math.max(0, parsed)
+                          : 0.5,
+                      },
                     }
                     : previous,
                 );
@@ -218,7 +233,7 @@ export default function RuntimeMonitoringSettings({
           type="number"
           size="small"
           fullWidth
-          value={configDraft.standardMonitoringStageIntervalMinutes ?? 5}
+          value={configDraft.runtime.standardMonitoringStageIntervalMinutes ?? 5}
           onChange={(event) =>
             updateWholeMinutes(
               setConfigDraft,
@@ -245,7 +260,7 @@ export default function RuntimeMonitoringSettings({
           type="number"
           size="small"
           fullWidth
-          value={configDraft.managementStageIntervalMinutes ?? 5}
+          value={configDraft.runtime.managementStageIntervalMinutes ?? 5}
           onChange={(event) =>
             updateWholeMinutes(
               setConfigDraft,
@@ -272,7 +287,7 @@ export default function RuntimeMonitoringSettings({
           type="number"
           size="small"
           fullWidth
-          value={configDraft.captureEntryStageIntervalMinutes ?? 5}
+          value={configDraft.runtime.captureEntryStageIntervalMinutes ?? 5}
           onChange={(event) =>
             updateWholeMinutes(
               setConfigDraft,
@@ -299,7 +314,7 @@ export default function RuntimeMonitoringSettings({
           type="number"
           size="small"
           fullWidth
-          value={configDraft.pnlHistoryBucketMinutes ?? 60}
+          value={configDraft.runtime.pnlHistoryBucketMinutes ?? 60}
           onChange={(event) =>
             updateWholeMinutes(
               setConfigDraft,

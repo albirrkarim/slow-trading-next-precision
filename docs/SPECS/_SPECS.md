@@ -1,14 +1,65 @@
 # Specification
 
-## Testing codes
+I need to know the current system behavior, for checking up. make sure AI dont mess up in the future. So i write here the current behavior.
 
-`TC` means testing code. A TC is written as a comment in both the production
-calculation and its test so future changes can find the behavior and its proof.
+This behavior must be tested. because it is my strategy
 
-- `PROD:` identifies behavior in the production/runtime leaderboard flow.
-- `BTEST:` identifies backtest-only behavior.
-- `BOTH:` identifies behavior shared by production and backtest flows and must
-  be tested in both.
+Both test file and the code must have commented testing code like this:
 
-The copied application starts with production-only TCs. Add `BTEST:` and `BOTH:`
-as the shared backtest runtime is implemented.
+```typescript
+// BOTH:MONITORING_OPEN_POSITION
+
+// BTEST:MONITORING_OPEN_POSITION
+
+// PROD:MONITORING_OPEN_POSITION
+```
+
+Information:
+
+- The `TC`is short name for testing code.
+
+- Prefix `BOTH:` is behavior that must be exist on backtest and production
+  it mean the testing will be twice, because it testing the backtest and the production code. where the code of having the prfix `BOTH:` is defined.
+
+- Prefix `BTEST:` is behavior that must be exist in backtest only
+
+- Prefix `PROD:` is behavior that must exist in the production/runtime SLOW flow,
+  not in the backtest flow.
+  It may apply to live mode, sandbox mode, or both, depending on the TC name.
+  For example, `PROD:*_SANDBOX` means the production/runtime sandbox mode.
+
+## A. Runtime Behavior (runtime.test.ts)
+
+readmore `RUNTIME.md`
+
+## B. Trading Features
+
+readmore `TRADING.md`
+
+## C. Storage (storage.test.ts)
+
+readmore `STORAGE.md`
+
+## D. Notification (notif.test.ts)
+
+readmore `NOTIFICATION.md`
+
+## E. Logging
+
+readmore `LOGGING.md`
+
+## F. Debugging
+
+readmore `DEBUGGING.md`
+
+# G. Edge Cases
+
+readmore `EDGE_CASES.md`
+
+# H. Decision Engine
+
+readmore `DECISION_ENGINE.md`
+
+# I. Production Cycle Architecture
+
+readmore `CYCLE.md`

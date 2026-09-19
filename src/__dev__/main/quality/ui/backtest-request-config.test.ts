@@ -6,12 +6,13 @@ import {
 } from "@/components/dev/DynamicTrade/Config";
 import { normalizeBacktestConfig } from "@/components/dev/DynamicTrade/MainPage";
 import backtestRequestConfig from "@/components/dev/DynamicTrade/backtest-request-config";
+import { pickTradingConfigFields } from "@/components/LiveDashboard/Navbar/Settings/helpers";
 import { TradingMode } from "@/lib/exchange";
 
 describe("dynamic backtest request config", () => {
   it("forwards the complete UI runtime configuration", () => {
-    const modelConfig = {
-      ...DEFAULT_BACKTEST_CONFIG.modelConfig,
+    const tradingConfig = {
+      ...pickTradingConfigFields(DEFAULT_BACKTEST_CONFIG),
       minimalAssetOnTrade: 600,
       postAverageRescueExit: {
         enabled: true,
@@ -53,7 +54,7 @@ describe("dynamic backtest request config", () => {
       maxLeverage: 8,
       maxOpenPositions: 6,
       minActionableAbsoluteLevel: 1,
-      modelConfig,
+      ...tradingConfig,
       startingBalanceUSDT: 500,
       tradingMode: TradingMode.FUTURES,
       watchMaxNextAveragingLevels: 3,
@@ -78,7 +79,7 @@ describe("dynamic backtest request config", () => {
       maxLeverage: 8,
       maxOpenPositions: 6,
       minActionableAbsoluteLevel: 1,
-      modelConfig,
+      ...tradingConfig,
       startingBalanceUSDT: 500,
       tradingMode: TradingMode.FUTURES,
       watchMaxNextAveragingLevels: 3,
@@ -134,10 +135,8 @@ describe("dynamic backtest request config", () => {
         startingBalanceUSDT: 700,
         tradingMode: TradingMode.FUTURES,
         watchReserveLevels: 1,
-        modelConfig: {
-          takeProfitPercent: 1.1,
-          stopLossPercent: 15,
-        },
+        takeProfitPercent: 1.1,
+        stopLossPercent: 15,
       },
     });
 
@@ -150,10 +149,8 @@ describe("dynamic backtest request config", () => {
       symbols: ["AAVE", "ARB"],
       tradingMode: TradingMode.FUTURES,
       watchReserveLevels: 1,
-      modelConfig: {
-        takeProfitPercent: 1.1,
-        stopLossPercent: 15,
-      },
+      takeProfitPercent: 1.1,
+      stopLossPercent: 15,
     });
   });
 

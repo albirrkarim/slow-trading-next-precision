@@ -1,6 +1,7 @@
 "use client";
 
 import adaptiveAveraging from "@/lib/trading/adaptive-averaging";
+import type { SlowTradingAccountTradingConfig } from "@/lib/slowTrading";
 import {
     Grid,
     Stack
@@ -9,29 +10,27 @@ import {
 import SettingsCheckbox from "../Components/SettingsCheckbox";
 import SettingsGroup from "../Components/SettingsGroup";
 import SettingsInfoField from "../Components/SettingsInfoField";
-import type { ConfigDraft, ConfigDraftSetter, DashboardState } from "../settings-types";
+import type { DashboardState } from "../settings-types";
+import type { Dispatch, SetStateAction } from "react";
 import ExitStrategyReference from "./ExitStrategyReference";
 import { VOLATILITY_THRESHOLD } from "@/lib/brain/constants";
 
 
 interface SettingsDialogTradingTabProps {
-    configDraft: ConfigDraft;
+    tradingConfig: SlowTradingAccountTradingConfig;
     dashboardState?: DashboardState;
-    setConfigDraft: ConfigDraftSetter;
+    setTradingConfig: Dispatch<SetStateAction<SlowTradingAccountTradingConfig>>;
 }
 
 
 export default function TradingAccountSettings({
-    configDraft,
+    tradingConfig,
     dashboardState,
-    setConfigDraft,
+    setTradingConfig,
 }: SettingsDialogTradingTabProps) {
-    const averagingEnabled = configDraft.enableWatchLogic ?? false;
-    const selectedAccount = configDraft.exchangeAccounts.find(
-        (account) => account.slug === configDraft.exchangeAccountSlug,
-    );
+    const averagingEnabled = tradingConfig.enableWatchLogic ?? false;
     const adaptiveConfig = adaptiveAveraging.config.normalize(
-        configDraft.adaptiveAveraging,
+        tradingConfig.adaptiveAveraging,
         false,
     );
     return (
@@ -45,39 +44,23 @@ export default function TradingAccountSettings({
                 multiline
                 onChange={(event) => {
                     const notes = event.target.value;
-                    // PROD:MULTI_ACCOUNT_TRADING_NOTES
-                    setConfigDraft((prev) => {
-                        if (!prev) return prev;
-
-                        return {
-                            ...prev,
-                            exchangeAccounts: prev.exchangeAccounts.map((account) =>
-                                account.slug === prev.exchangeAccountSlug
-                                    ? {
-                                        ...account,
-                                        trading: { ...account.trading, notes },
-                                        updatedAt: Date.now(),
-                                    }
-                                    : account,
-                            ),
-                        };
-                    });
+                    setTradingConfig((prev) => ({ ...prev, notes }));
                 }}
                 placeholder="Describe the strategy and why these settings were chosen..."
                 size="small"
-                value={selectedAccount?.trading.notes ?? ""}
+                value={tradingConfig.notes}
             />
             <SettingsGroup title="Entry">
                 <Grid container spacing={2}>
                     <Grid size={{ xs: 12, md: 6 }}>
                         <SettingsCheckbox
                             checked={
-                                configDraft.lateEntryVPointPriceDriftEnabled !== false
+                                tradingConfig.lateEntryVPointPriceDriftEnabled !== false
                             }
                             info="When ON, production and sandbox entries are blocked after price moves too far in the profitable direction from the source vPoint. This setting belongs only to the selected account."
                             label="Late Entry vPoint Price Drift Guard"
                             onChange={(checked) =>
-                                setConfigDraft((prev) =>
+                                setTradingConfig((prev) =>
                                     prev
                                         ? {
                                             ...prev,
@@ -95,9 +78,9 @@ export default function TradingAccountSettings({
                             type="number"
                             size="small"
                             fullWidth
-                            value={configDraft.maxOpenPositions ?? 0}
+                            value={tradingConfig.maxOpenPositions ?? 0}
                             onChange={(event) =>
-                                setConfigDraft((prev) =>
+                                setTradingConfig((prev) =>
                                     prev
                                         ? {
                                             ...prev,
@@ -126,9 +109,9 @@ export default function TradingAccountSettings({
                             type="number"
                             size="small"
                             fullWidth
-                            value={configDraft.maxEntryBased24HourVolPct ?? 0.2}
+                            value={tradingConfig.maxEntryBased24HourVolPct ?? 0.2}
                             onChange={(event) =>
-                                setConfigDraft((prev) =>
+                                setTradingConfig((prev) =>
                                     prev
                                         ? {
                                             ...prev,
@@ -149,9 +132,9 @@ export default function TradingAccountSettings({
                             type="number"
                             size="small"
                             fullWidth
-                            value={configDraft.maxEntryMarginPct ?? 0}
+                            value={tradingConfig.maxEntryMarginPct ?? 0}
                             onChange={(event) =>
-                                setConfigDraft((prev) =>
+                                setTradingConfig((prev) =>
                                     prev
                                         ? {
                                             ...prev,
@@ -170,9 +153,9 @@ export default function TradingAccountSettings({
                             type="number"
                             size="small"
                             fullWidth
-                            value={configDraft.maxEntryMargin ?? 0}
+                            value={tradingConfig.maxEntryMargin ?? 0}
                             onChange={(event) =>
-                                setConfigDraft((prev) =>
+                                setTradingConfig((prev) =>
                                     prev
                                         ? {
                                             ...prev,
@@ -191,9 +174,9 @@ export default function TradingAccountSettings({
                             type="number"
                             size="small"
                             fullWidth
-                            value={configDraft.minActionableAbsoluteLevel}
+                            value={tradingConfig.minActionableAbsoluteLevel}
                             onChange={(event) =>
-                                setConfigDraft((prev) =>
+                                setTradingConfig((prev) =>
                                     prev
                                         ? {
                                             ...prev,
@@ -222,9 +205,9 @@ export default function TradingAccountSettings({
                             type="number"
                             size="small"
                             fullWidth
-                            value={configDraft.maxLeverage ?? 0}
+                            value={tradingConfig.maxLeverage ?? 0}
                             onChange={(event) =>
-                                setConfigDraft((prev) =>
+                                setTradingConfig((prev) =>
                                     prev
                                         ? { ...prev, maxLeverage: Number(event.target.value) }
                                         : prev,
@@ -240,9 +223,9 @@ export default function TradingAccountSettings({
                             type="number"
                             size="small"
                             fullWidth
-                            value={configDraft.exactLeverage ?? 0}
+                            value={tradingConfig.exactLeverage ?? 0}
                             onChange={(event) =>
-                                setConfigDraft((prev) =>
+                                setTradingConfig((prev) =>
                                     prev
                                         ? {
                                             ...prev,
@@ -276,7 +259,7 @@ export default function TradingAccountSettings({
                         labelFontWeight={700}
                         labelVariant="subtitle1"
                         onChange={(checked) =>
-                            setConfigDraft((prev) =>
+                            setTradingConfig((prev) =>
                                 prev ? { ...prev, enableWatchLogic: checked } : prev,
                             )
                         }
@@ -291,9 +274,9 @@ export default function TradingAccountSettings({
                             type="number"
                             size="small"
                             fullWidth
-                            value={configDraft.watchReserveLevels ?? 2}
+                            value={tradingConfig.watchReserveLevels ?? 2}
                             onChange={(event) =>
-                                setConfigDraft((prev) =>
+                                setTradingConfig((prev) =>
                                     prev
                                         ? {
                                             ...prev,
@@ -313,9 +296,9 @@ export default function TradingAccountSettings({
                             type="number"
                             size="small"
                             fullWidth
-                            value={configDraft.watchReservePctAlloc ?? 2}
+                            value={tradingConfig.watchReservePctAlloc ?? 2}
                             onChange={(event) =>
-                                setConfigDraft((prev) =>
+                                setTradingConfig((prev) =>
                                     prev
                                         ? {
                                             ...prev,
@@ -335,9 +318,9 @@ export default function TradingAccountSettings({
                             type="number"
                             size="small"
                             fullWidth
-                            value={configDraft.watchMaxNextAveragingLevels ?? 2}
+                            value={tradingConfig.watchMaxNextAveragingLevels ?? 2}
                             onChange={(event) =>
-                                setConfigDraft((prev) =>
+                                setTradingConfig((prev) =>
                                     prev
                                         ? {
                                             ...prev,
@@ -354,12 +337,12 @@ export default function TradingAccountSettings({
 
                     <Grid size={{ xs: 12, md: 8 }}>
                         <SettingsCheckbox
-                            checked={configDraft.entrySpareBufferEnabled ?? true}
+                            checked={tradingConfig.entrySpareBufferEnabled ?? true}
                             disabled={!averagingEnabled}
                             info="When ON, entry sizing leaves one additional entry-margin unit spendable after paying for the entry and its reserved averaging steps. It is not locked or reserved. Example: with 210 USDT, one 2x reserve, and no other limit, SLOW fits floor(210 / (1x entry + 2x reserve + 1x spare)) = 52 USDT. Turn OFF to fit only the entry and reserved steps; the separate largest-UNRESERVED bailout guard still applies."
                             label="Spare Entry-Margin Buffer"
                             onChange={(checked) =>
-                                setConfigDraft((prev) =>
+                                setTradingConfig((prev) =>
                                     prev
                                         ? { ...prev, entrySpareBufferEnabled: checked }
                                         : prev,
@@ -371,13 +354,13 @@ export default function TradingAccountSettings({
 
                 <SettingsCheckbox
                     checked={
-                        configDraft.averagingRescueProjectionGuardEnabled ?? true
+                        tradingConfig.averagingRescueProjectionGuardEnabled ?? true
                     }
                     disabled={!averagingEnabled}
                     info="When ON, an averaging attempt must improve the weighted entry and reach the projected rescue-profit target. When OFF, failure of that projection does not block the normal watch-step margin."
                     label="Averaging Rescue Projection Guard"
                     onChange={(checked) =>
-                        setConfigDraft((prev) =>
+                        setTradingConfig((prev) =>
                             prev
                                 ? {
                                     ...prev,
@@ -394,7 +377,7 @@ export default function TradingAccountSettings({
                     info="When ON, SLOW can raise the averaging multiplier above the reserve multiplier when enough spendable balance exists and the configured projected-profit target can be reached."
                     label="Adaptive Averaging"
                     onChange={(checked) =>
-                        setConfigDraft((prev) =>
+                        setTradingConfig((prev) =>
                             prev
                                 ? {
                                     ...prev,
@@ -419,7 +402,7 @@ export default function TradingAccountSettings({
                             info="Highest multiplier the adaptive search may try. The normal reserve multiplier is always evaluated first."
                             label="Adaptive Max Multiplier"
                             onChange={(event) =>
-                                setConfigDraft((prev) =>
+                                setTradingConfig((prev) =>
                                     prev
                                         ? {
                                             ...prev,
@@ -453,7 +436,7 @@ export default function TradingAccountSettings({
                             info="Minimum projected position profit required at the rescue target anchored to the triggering vPoint."
                             label="Adaptive Minimum Projected Profit %"
                             onChange={(event) =>
-                                setConfigDraft((prev) =>
+                                setTradingConfig((prev) =>
                                     prev
                                         ? {
                                             ...prev,
@@ -484,11 +467,11 @@ export default function TradingAccountSettings({
 
             <SettingsGroup title="Exit">
                 <ExitStrategyReference
-                    configDraft={configDraft}
+                    tradingConfig={tradingConfig}
                     defaultAdverseDriftPct={
                         dashboardState ? dashboardState.globalConfig.volatilityThresholdPct : VOLATILITY_THRESHOLD
                     }
-                    setConfigDraft={setConfigDraft}
+                    setTradingConfig={setTradingConfig}
                 />
             </SettingsGroup>
         </Stack>

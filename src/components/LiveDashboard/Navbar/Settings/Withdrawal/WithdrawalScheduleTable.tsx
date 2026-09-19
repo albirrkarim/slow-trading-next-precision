@@ -39,7 +39,7 @@ function normalizeSchedule(
   };
 }
 
-function formatAmount(value: string): string {
+function formatAmount(value: number): string {
   return `${Math.max(0, Number(value) || 0).toFixed(2)} USDT`;
 }
 

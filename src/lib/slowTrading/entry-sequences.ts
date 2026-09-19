@@ -471,7 +471,7 @@ function estimateSystemMaximalCapacity({
         pctAlloc,
       })
     : 1;
-  const takeProfitPct = config.modelConfig?.takeProfitPercent ?? 0;
+  const takeProfitPct = config.takeProfitPercent ?? 0;
   const intervals = collectEntrySequenceIntervals({
     entrySignals,
     fallbackEndTimeMs: rangeEnd,

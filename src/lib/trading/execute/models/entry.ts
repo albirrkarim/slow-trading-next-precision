@@ -6,7 +6,7 @@ import { tradeLog } from "@/lib/trading/helper/log";
 import { TRADE_MESSAGE } from "@/lib/trading/message";
 import type {
   TradeDecision,
-  TradingModelConfig,
+  TradingConfig,
   TradingModelMemory,
 } from "../../models/type";
 
@@ -38,7 +38,7 @@ function getPositionSize({
 interface DynamicEntryProps {
   symbol: string;
   current: Kline;
-  config: TradingModelConfig;
+  config: TradingConfig;
   memory: TradingModelMemory;
   bypass?: boolean;
   minActionableAbsoluteLevel?: number;

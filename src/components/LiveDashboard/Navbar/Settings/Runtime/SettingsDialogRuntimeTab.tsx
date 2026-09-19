@@ -19,7 +19,6 @@ import SettingsInfoField from "../Components/SettingsInfoField";
 import SettingsDialogSection from "../Components/SettingsDialogSection";
 import RuntimeMonitoringSettings from "./RuntimeMonitoringSettings";
 import type { ConfigDraft, ConfigDraftSetter } from "../settings-types";
-import { updateAccountSettingsInConfigDraft } from "../helpers";
 
 const DEFAULT_SYNC_ONLINE_BASE_URL = "https://wealth.reinventwp.com";
 
@@ -80,6 +79,10 @@ export default function SettingsDialogRuntimeTab({
   const [syncOnlineBaseUrl, setSyncOnlineBaseUrl] = useState(
     DEFAULT_SYNC_ONLINE_BASE_URL,
   );
+  const updateRuntime = (patch: Partial<ConfigDraft["runtime"]>) =>
+    setConfigDraft((prev) =>
+      prev ? { ...prev, runtime: { ...prev.runtime, ...patch } } : prev,
+    );
 
   return (
     <Grid container spacing={2}>
@@ -90,24 +93,20 @@ export default function SettingsDialogRuntimeTab({
         >
           <Stack spacing={2}>
             <RuntimeToggle
-              checked={configDraft.runnerEnabled}
+              checked={configDraft.runtime.runnerEnabled}
               label="Runner"
               description="When ON, the background scheduler keeps scanning and executing on its normal cadence."
               onChange={(checked) =>
-                setConfigDraft((prev) =>
-                  prev ? { ...prev, runnerEnabled: checked } : prev,
-                )
+                updateRuntime({ runnerEnabled: checked })
               }
             />
 
             <RuntimeToggle
-              checked={configDraft.autoEntryEnabled}
+              checked={configDraft.runtime.autoEntryEnabled}
               label="Auto Entry"
               description="When ON, qualifying signals can open positions without manual intervention."
               onChange={(checked) =>
-                setConfigDraft((prev) =>
-                  prev ? { ...prev, autoEntryEnabled: checked } : prev,
-                )
+                updateRuntime({ autoEntryEnabled: checked })
               }
             />
 
@@ -116,19 +115,14 @@ export default function SettingsDialogRuntimeTab({
               type="number"
               size="small"
               fullWidth
-              value={configDraft.autoEntryDailyPnlLimitUSDT ?? -50}
+              value={configDraft.runtime.autoEntryDailyPnlLimitUSDT ?? -50}
               onChange={(event) =>
-                setConfigDraft((prev) =>
-                  prev
-                    ? {
-                      ...prev,
-                      autoEntryDailyPnlLimitUSDT: Math.min(
-                        0,
-                        Number(event.target.value),
-                      ),
-                    }
-                    : prev,
-                )
+                updateRuntime({
+                  autoEntryDailyPnlLimitUSDT: Math.min(
+                    0,
+                    Number(event.target.value),
+                  ),
+                })
               }
               slotProps={{
                 htmlInput: {
@@ -140,24 +134,20 @@ export default function SettingsDialogRuntimeTab({
             />
 
             <RuntimeToggle
-              checked={configDraft.autoExitEnabled}
+              checked={configDraft.runtime.autoExitEnabled}
               label="Auto Exit"
               description="When ON, TP and SL management can close positions automatically."
               onChange={(checked) =>
-                setConfigDraft((prev) =>
-                  prev ? { ...prev, autoExitEnabled: checked } : prev,
-                )
+                updateRuntime({ autoExitEnabled: checked })
               }
             />
 
             <RuntimeToggle
-              checked={configDraft.entrySignalBypass}
+              checked={configDraft.runtime.entrySignalBypass}
               label="Entry Signal Bypass"
               description="When ON, the normal signal gate is relaxed for automatic entries. Manual entry already overrides the normal verification path."
               onChange={(checked) =>
-                setConfigDraft((prev) =>
-                  prev ? { ...prev, entrySignalBypass: checked } : prev,
-                )
+                updateRuntime({ entrySignalBypass: checked })
               }
             />
           </Stack>
@@ -181,7 +171,7 @@ export default function SettingsDialogRuntimeTab({
             description="Each account independently chooses live or sandbox execution and owns its sandbox starting balance."
           >
             <Stack spacing={2}>
-              {(configDraft.exchangeAccounts ?? []).map((account) => {
+              {configDraft.accounts.map((account) => {
                 const resetting = resettingSandboxAccount === account.slug;
                 return (
                   <Box
@@ -210,14 +200,20 @@ export default function SettingsDialogRuntimeTab({
                         onChange={(checked) =>
                           setConfigDraft((prev) =>
                             prev
-                              ? updateAccountSettingsInConfigDraft(
-                                prev,
-                                account.slug,
-                                (accountDraft) => ({
-                                  ...accountDraft,
-                                  sandboxEnabled: checked,
-                                }),
-                              )
+                              ? {
+                                  ...prev,
+                                  accounts: prev.accounts.map((candidate) =>
+                                    candidate.slug === account.slug
+                                      ? {
+                                          ...candidate,
+                                          sandbox: {
+                                            ...candidate.sandbox,
+                                            enabled: checked,
+                                          },
+                                        }
+                                      : candidate,
+                                  ),
+                                }
                               : prev,
                           )
                         }
@@ -232,15 +228,21 @@ export default function SettingsDialogRuntimeTab({
                         onChange={(event) =>
                           setConfigDraft((prev) =>
                             prev
-                              ? updateAccountSettingsInConfigDraft(
-                                prev,
-                                account.slug,
-                                (accountDraft) => ({
-                                  ...accountDraft,
-                                  sandboxInitialBalanceUSDT:
-                                    parseFloat(event.target.value),
-                                }),
-                              )
+                              ? {
+                                  ...prev,
+                                  accounts: prev.accounts.map((candidate) =>
+                                    candidate.slug === account.slug
+                                      ? {
+                                          ...candidate,
+                                          sandbox: {
+                                            ...candidate.sandbox,
+                                            initialBalanceUSDT:
+                                              parseFloat(event.target.value),
+                                          },
+                                        }
+                                      : candidate,
+                                  ),
+                                }
                               : prev,
                           )
                         }

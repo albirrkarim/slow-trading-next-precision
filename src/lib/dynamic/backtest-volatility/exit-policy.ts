@@ -1,5 +1,5 @@
 import { TRADE_MESSAGE } from "@/lib/trading/message";
-import type { Position, TradingModelConfig } from "@/lib/trading/models";
+import type { Position, TradingConfig } from "@/lib/trading/models";
 import postAverageRescue from "@/lib/trading/post-average-rescue";
 import postAverageStopLoss from "@/lib/trading/post-average-stop-loss";
 import levelBasedPctDriftStopLoss from "@/lib/trading/level-based-pct-drift-stop-loss";
@@ -20,7 +20,7 @@ export interface BacktestExitDecision {
   message?: string;
 }
 
-interface ResolveBacktestExitDecisionProps {
+interface ResolveBacktestExitDecisionProps extends TradingConfig {
   position: Position;
   currentPrice: number;
   forceSell: boolean;
@@ -28,7 +28,6 @@ interface ResolveBacktestExitDecisionProps {
   hasHitTargetZone?: boolean;
   lastVolatilityPrice?: number;
   lastVolatilityPoint?: VolatilityPoint;
-  modelConfig: TradingModelConfig;
   exitFeeRatio?: number;
 }
 
@@ -195,8 +194,8 @@ export function resolveBacktestExitDecision({
   hasHitTargetZone = false,
   lastVolatilityPrice,
   lastVolatilityPoint,
-  modelConfig,
   exitFeeRatio,
+  ...tradingConfig
 }: ResolveBacktestExitDecisionProps): BacktestExitDecision {
   const netProfitPercent = calculateBacktestNetProfitPercent(
     position,
@@ -229,7 +228,7 @@ export function resolveBacktestExitDecision({
 
   const lossBoundaries: BacktestRailLossBoundary[] = [];
   const levelBasedDriftStop = levelBasedPctDriftStopLoss.evaluate({
-    config: modelConfig.levelBasedPctDriftStopLoss,
+    config: tradingConfig.levelBasedPctDriftStopLoss,
     currentPrice,
     direction: position.direction,
     vPoint: lastVolatilityPoint,
@@ -263,7 +262,7 @@ export function resolveBacktestExitDecision({
       targetNetPnlUsdt,
     });
   }
-  const configuredStopLossUSDT = Number(modelConfig.stopLossUSDT ?? 50);
+  const configuredStopLossUSDT = Number(tradingConfig.stopLossUSDT ?? 50);
   const stopLossUSDT =
     Number.isFinite(configuredStopLossUSDT) && configuredStopLossUSDT > 0
       ? configuredStopLossUSDT
@@ -292,7 +291,7 @@ export function resolveBacktestExitDecision({
     });
   }
 
-  const hardStopLossPercent = modelConfig.stopLossPercent ?? 0;
+  const hardStopLossPercent = tradingConfig.stopLossPercent ?? 0;
   // BOTH:TRADITIONAL_TP_SL
   if (
     hardStopLossPercent > 0 &&
@@ -315,7 +314,7 @@ export function resolveBacktestExitDecision({
   }
 
   const targetZoneStopLossPercent = Number(
-    modelConfig.volatilityTargetStopLossPercent,
+    tradingConfig.volatilityTargetStopLossPercent,
   );
   // BOTH:VOLATILITY_TARGET_SL_VALUE
   if (
@@ -345,7 +344,7 @@ export function resolveBacktestExitDecision({
   }
 
   const postAverageLoss = postAverageStopLoss.evaluate({
-    config: modelConfig.postAverageStopLoss,
+    config: tradingConfig.postAverageStopLoss,
     netPnlPercent: feeAdjustedNetProfitPercent,
     netPnlUsdt: feeAdjustedNetProfitUSDT,
     position,
@@ -456,7 +455,7 @@ export function resolveBacktestExitDecision({
     };
   }
 
-  const takeProfitPercent = modelConfig.takeProfitPercent ?? 0;
+  const takeProfitPercent = tradingConfig.takeProfitPercent ?? 0;
 
   const rescueExit = postAverageRescue.evaluate({
     netPnlPercent: feeAdjustedNetProfitPercent,
@@ -464,7 +463,7 @@ export function resolveBacktestExitDecision({
     direction: position.direction,
     lastVolatilityPrice,
     position,
-    config: modelConfig.postAverageRescueExit,
+    config: tradingConfig.postAverageRescueExit,
   });
 
   // BOTH:POST_AVERAGE_RESCUE_EXIT

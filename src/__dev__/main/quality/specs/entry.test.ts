@@ -20,12 +20,10 @@ function createBacktestConfig(
 ): BacktestConfigDynamic {
   return {
     startingBalanceUSDT: 100,
-    modelConfig: {
-      takeProfitPercent: 5,
-      stopLossPercent: 10,
-      orderType: "taker",
-      useStopLossPlus: false,
-    },
+    takeProfitPercent: 5,
+    stopLossPercent: 10,
+    orderType: "taker",
+    useStopLossPlus: false,
     tradingMode: TradingMode.SPOT,
     marginMode: "ISOLATED",
     enableWatchLogic: true,

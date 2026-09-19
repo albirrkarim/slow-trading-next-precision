@@ -29,9 +29,9 @@ function createDefaultSchedule(index: number): SafeHavenScheduleDraft {
     id: "",
     name: `Safe Haven ${index + 1}`,
     enabled: true,
-    amountUSDT: "10",
-    pct: "0",
-    dayOfMonth: "1",
+    amountUSDT: 10,
+    pct: 0,
+    dayOfMonth: 1,
   };
 }
 
@@ -85,7 +85,7 @@ function ScheduleForm(props: {
             info="Fixed amount to protect. A value above 0 takes priority over the percentage."
             label="Amount (USDT)"
             onChange={(event) =>
-              patchSchedule({ amountUSDT: event.target.value })
+              patchSchedule({ amountUSDT: Number(event.target.value) || 0 })
             }
             size="small"
             slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
@@ -98,7 +98,9 @@ function ScheduleForm(props: {
             fullWidth
             info="Percentage of current portfolio assets to protect, using 10 for 10%. Used only when Amount is 0."
             label="Portfolio Percent (%)"
-            onChange={(event) => patchSchedule({ pct: event.target.value })}
+            onChange={(event) =>
+              patchSchedule({ pct: Number(event.target.value) || 0 })
+            }
             size="small"
             slotProps={{ htmlInput: { min: 0, max: 100, step: 0.1 } }}
             type="number"
@@ -111,7 +113,7 @@ function ScheduleForm(props: {
             info="Runs monthly on this UTC date. Dates 29–31 use the month's final day when shorter."
             label="Day of Month (UTC)"
             onChange={(event) =>
-              patchSchedule({ dayOfMonth: event.target.value })
+              patchSchedule({ dayOfMonth: Number(event.target.value) || 1 })
             }
             size="small"
             slotProps={{ htmlInput: { min: 1, max: 31, step: 1 } }}
@@ -173,13 +175,19 @@ export default function SafeHavenScheduleSettings(props: {
       current
         ? {
           ...current,
-          safeHavenSchedules: (current.safeHavenSchedules ?? []).some(
-            (candidate) => candidate.id === schedule.id,
-          )
-            ? (current.safeHavenSchedules ?? []).map((candidate) =>
-              candidate.id === schedule.id ? schedule : candidate,
-            )
-            : [...(current.safeHavenSchedules ?? []), schedule],
+          runtime: {
+            ...current.runtime,
+            safeHaven: {
+              ...current.runtime.safeHaven,
+              schedules: current.runtime.safeHaven.schedules.some(
+                (candidate) => candidate.id === schedule.id,
+              )
+                ? current.runtime.safeHaven.schedules.map((candidate) =>
+                    candidate.id === schedule.id ? schedule : candidate,
+                  )
+                : [...current.runtime.safeHaven.schedules, schedule],
+            },
+          },
         }
         : current,
     );
@@ -188,9 +196,15 @@ export default function SafeHavenScheduleSettings(props: {
       current
         ? {
           ...current,
-          safeHavenSchedules: (current.safeHavenSchedules ?? []).filter(
-            (candidate) => candidate.id !== id,
-          ),
+          runtime: {
+            ...current.runtime,
+            safeHaven: {
+              ...current.runtime.safeHaven,
+              schedules: current.runtime.safeHaven.schedules.filter(
+                (candidate) => candidate.id !== id,
+              ),
+            },
+          },
         }
         : current,
     );
@@ -210,7 +224,13 @@ export default function SafeHavenScheduleSettings(props: {
                 current
                   ? {
                     ...current,
-                    safeHavenAutoEnabled: event.target.checked,
+                    runtime: {
+                      ...current.runtime,
+                      safeHaven: {
+                        ...current.runtime.safeHaven,
+                        autoEnabled: event.target.checked,
+                      },
+                    },
                   }
                   : current,
               )

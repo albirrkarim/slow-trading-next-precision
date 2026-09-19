@@ -18,7 +18,7 @@ vi.mock("axios", () => ({
 
 function Harness() {
   const [configDraft, setConfigDraft] = useState<ConfigDraft | null>({
-    notification: {
+    runtime: { notification: {
       telegram: {
         enabled: true,
         types: [
@@ -61,7 +61,7 @@ function Harness() {
           },
         ],
       },
-    },
+    } },
   } as unknown as ConfigDraft);
 
   if (!configDraft) {
@@ -75,7 +75,7 @@ function Harness() {
         setConfigDraft={setConfigDraft}
       />
       <output data-testid="notification-config">
-        {JSON.stringify(configDraft.notification)}
+        {JSON.stringify(configDraft.runtime.notification)}
       </output>
     </SnackbarProvider>
   );
@@ -83,7 +83,7 @@ function Harness() {
 
 function DisabledStaleHarness() {
   const [configDraft, setConfigDraft] = useState<ConfigDraft | null>({
-    notification: {
+    runtime: { notification: {
       telegram: {
         enabled: true,
         types: [],
@@ -92,7 +92,7 @@ function DisabledStaleHarness() {
         enabled: false,
         types: [],
       },
-    },
+    } },
   } as unknown as ConfigDraft);
 
   if (!configDraft) {

@@ -28,16 +28,13 @@ describe("per-account trading configuration summary", () => {
       ...trading.adaptiveAveraging!,
       enabled: false,
     };
-    trading.modelConfig = {
-      ...trading.modelConfig,
-      takeProfitPercent: 1.1,
-    };
+    trading.takeProfitPercent = 1.1;
 
     expect(getCustomAccountTradingConfig(trading)).toEqual({
       adaptiveAveraging: { enabled: false },
       exitSidewaysToFreeWorkersForStrongCandidates: true,
       maxOpenPositions: 6,
-      modelConfig: { takeProfitPercent: 1.1 },
+      takeProfitPercent: 1.1,
     });
   });
 

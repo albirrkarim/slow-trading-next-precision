@@ -1,15 +1,9 @@
 "use client";
 
-import type { BacktestConfig } from "@/components/dev/DynamicTrade/Config";
-import { PRODUCTION_DECISION_ENGINE } from "@/components/constants";
-import { DEFAULT_DYNAMIC_TRADE_CONFIG_PRODUCTION } from "@/lib/dynamic/constants";
-import { TradingMode } from "@/lib/exchange/types";
-import type { TradingModelConfig } from "@/lib/trading/models";
-import adaptiveAveraging from "@/lib/trading/adaptive-averaging";
+import type { TradingConfig } from "@/lib/trading/models";
 import postAverageRescue from "@/lib/trading/post-average-rescue";
 import postAverageStopLoss from "@/lib/trading/post-average-stop-loss";
 import levelBasedPctDriftStopLoss from "@/lib/trading/level-based-pct-drift-stop-loss";
-import blackSwan from "@/lib/trading/black-swan";
 import type { Theme } from "@mui/material";
 
 import { computeDailyPnlPercentStats } from "../../Reporting/utils";
@@ -21,9 +15,7 @@ import type {
   OpenPositionSummary,
 } from "./settings-types";
 import slowTradingClient from "@/lib/slowTrading/client";
-import slowTradingAccountConfig from "@/lib/slowTrading/account-config";
 import slowTradingDailyPnlLimit from "@/lib/slowTrading/daily-pnl-limit";
-import type { SlowTradingAccount } from "@/lib/slowTrading";
 
 function computeLockedPositionValue(
   position: NonNullable<DashboardState>["openPositions"][number],
@@ -33,9 +25,9 @@ function computeLockedPositionValue(
   );
 }
 
-export function cloneModelConfig(
-  modelConfig: TradingModelConfig,
-): TradingModelConfig {
+export function pickTradingConfigFields(
+  tradingConfig: TradingConfig,
+): TradingConfig {
   const {
     takeProfitPercent,
     stopLossPercent,
@@ -59,7 +51,7 @@ export function cloneModelConfig(
     safeUSDTPerMonth,
     safePercentPerMonth,
     minimalAssetOnTrade,
-  } = modelConfig;
+  } = tradingConfig;
 
   return {
     takeProfitPercent,
@@ -93,316 +85,29 @@ export function cloneModelConfig(
   };
 }
 
-export function mapBacktestTradingMode(
-  backtestConfig: BacktestConfig,
-): TradingMode {
-  if (backtestConfig.tradingMode === TradingMode.FUTURES) {
-    return TradingMode.FUTURES;
-  }
-
-  if (
-    backtestConfig.tradingMode === TradingMode.MARGIN_CROSS ||
-    backtestConfig.marginMode === "CROSS"
-  ) {
-    return TradingMode.MARGIN_CROSS;
-  }
-
-  if (
-    backtestConfig.tradingMode === TradingMode.MARGIN_ISOLATED ||
-    backtestConfig.marginMode === "ISOLATED"
-  ) {
-    return TradingMode.MARGIN_ISOLATED;
-  }
-
-  return TradingMode.SPOT;
-}
-
 export function makeConfigDraft(state: DashboardState): ConfigDraft {
-  const persistedExchangeAccounts = state.runtime.exchangeAccounts ?? [];
-  const exchangeAccounts =
-    persistedExchangeAccounts.length > 0
-      ? persistedExchangeAccounts.map((account) => ({
-          ...account,
-          credentials: { ...account.credentials },
-        }))
-      : [
-          {
-            slug: state.runtime.exchangeAccountSlug ?? "binance-1",
-            type: "binance" as const,
-            name: "Binance 1",
-            description: "",
-            credentials: {
-              apiKey: "",
-              apiSecret: "",
-            },
-            enabled: true,
-            trading: slowTradingAccountConfig.trading.fromEffectiveConfig(
-              state.config,
-            ),
-            sandbox: {
-              enabled: state.runtime.sandboxEnabled,
-              initialBalanceUSDT:
-                state.runtime.sandboxInitialBalanceUSDT ?? 1000,
-            },
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-          },
-        ];
-  const exchangeAccountSlug = exchangeAccounts.some(
-    (account) => account.slug === state.runtime.exchangeAccountSlug,
-  )
-    ? state.runtime.exchangeAccountSlug
-    : (exchangeAccounts[0]?.slug ?? "binance-1");
-
-  return {
-    name: state.config.name ?? "",
-    description: state.config.description ?? "",
-    decisionEngineVersion:
-      state.config.decisionEngineVersion ?? PRODUCTION_DECISION_ENGINE,
-    exchangeAccountSlug,
+  const {
     exchangeAccounts,
-    exchangeType: state.config.exchangeType,
-    tradingMode: state.config.tradingMode,
-    lateEntryVPointPriceDriftEnabled:
-      state.config.lateEntryVPointPriceDriftEnabled !== false,
-    symbolsText: state.config.symbols.join(", "),
-    modelConfig: cloneModelConfig(
-      state.config.modelConfig ??
-        DEFAULT_DYNAMIC_TRADE_CONFIG_PRODUCTION.modelConfig,
-    ),
-    runnerEnabled: state.runtime.runnerEnabled,
-    autoEntryEnabled: state.runtime.autoEntryEnabled,
-    autoEntryDailyPnlLimitUSDT:
-      state.runtime.autoEntryDailyPnlLimitUSDT ??
-      slowTradingDailyPnlLimit.config.defaultThresholdUsdt,
-    autoExitEnabled: state.runtime.autoExitEnabled,
-    entrySignalBypass: state.runtime.entrySignalBypass,
-    autoRemoveSymbolAbsLevel: state.runtime.autoRemoveSymbolAbsLevel ?? 0,
-    autoRemoveSymbolMinMarketCapUSD:
-      state.runtime.autoRemoveSymbolMinMarketCapUSD ?? 0,
-    autoRemoveSymbolMinPrice: state.runtime.autoRemoveSymbolMinPrice ?? 0,
-    autoRemoveSymbolMinVPointPct:
-      state.runtime.autoRemoveSymbolMinVPointPct ?? 15,
-    pnlHistoryBucketMinutes: state.runtime.pnlHistoryBucketMinutes ?? 60,
-    blackSwan: blackSwan.config.normalize(state.config.blackSwan),
-    blackSwanStageIntervalMinutes:
-      state.runtime.blackSwanStageIntervalMinutes ?? 1,
-    speedupStageIntervalMinutes: state.runtime.speedupStageIntervalMinutes ?? 1,
-    speedupStagePositivePnlThresholdPct:
-      state.runtime.speedupStagePositivePnlThresholdPct ?? 1.5,
-    speedupStageNegativePnlThresholdPct:
-      state.runtime.speedupStageNegativePnlThresholdPct ?? 1.5,
-    speedupStageTakeProfitOffsetPct:
-      state.runtime.speedupStageTakeProfitOffsetPct ?? 0.5,
-    standardMonitoringStageIntervalMinutes:
-      state.runtime.standardMonitoringStageIntervalMinutes ?? 5,
-    managementStageIntervalMinutes:
-      state.runtime.managementStageIntervalMinutes ?? 5,
-    captureEntryStageIntervalMinutes:
-      state.runtime.captureEntryStageIntervalMinutes ?? 5,
-    notification: {
-      telegram: {
-        ...state.runtime.notification.telegram,
-        types: state.runtime.notification.telegram.types.map((item) => ({
-          ...item,
-          params: item.params ? { ...item.params } : undefined,
-        })),
-      },
-      email: {
-        ...state.runtime.notification.email,
-        types: state.runtime.notification.email.types.map((item) => ({
-          ...item,
-          params: item.params ? { ...item.params } : undefined,
-        })),
-      },
+    sandboxEnabled: _sandboxEnabled,
+    sandboxInitialBalanceUSDT: _sandboxInitialBalanceUSDT,
+    ...runtime
+  } = structuredClone(state.runtime);
+
+  return {
+    management: {
+      name: state.config.name,
+      description: state.config.description,
+      symbols: [...state.config.symbols],
+      minimalAssetOnTrade: state.config.minimalAssetOnTrade,
+      safePercentPerMonth: state.config.safePercentPerMonth,
+      safeUSDTPerMonth: state.config.safeUSDTPerMonth,
+      exchangeType: state.config.exchangeType,
+      tradingMode: state.config.tradingMode,
+      decisionEngineVersion: state.config.decisionEngineVersion,
+      blackSwan: structuredClone(state.config.blackSwan),
     },
-    sandboxEnabled: state.runtime.sandboxEnabled,
-    sandboxInitialBalanceUSDT: state.runtime.sandboxInitialBalanceUSDT ?? 0,
-    safeHavenUSDT: String(state.balances.safeHaven ?? 0),
-    safeHavenAutoEnabled: state.runtime.safeHaven?.autoEnabled ?? false,
-    safeHavenSchedules: (state.runtime.safeHaven?.schedules ?? []).map(
-      (schedule) => ({
-        ...schedule,
-        amountUSDT: String(schedule.amountUSDT ?? 0),
-        pct: String(schedule.pct ?? 0),
-        dayOfMonth: String(schedule.dayOfMonth ?? 1),
-      }),
-    ),
-    withdrawalAutoEnabled: state.runtime.withdrawal?.autoEnabled ?? false,
-    withdrawalSchedules: (state.runtime.withdrawal?.schedules ?? []).map(
-      (schedule) => ({
-        ...schedule,
-        amountUSDT: String(schedule.amountUSDT ?? 0),
-        dayOfMonth: String(schedule.dayOfMonth ?? 1),
-        walletId: schedule.walletId ?? "",
-      }),
-    ),
-    withdrawalWalletBook: (state.runtime.withdrawal?.walletBook ?? []).map(
-      (wallet) => ({ ...wallet }),
-    ),
-    enableWatchLogic: state.config.enableWatchLogic ?? false,
-    entrySpareBufferEnabled: state.config.entrySpareBufferEnabled ?? true,
-    watchReserveLevels: state.config.watchReserveLevels,
-    watchMaxNextAveragingLevels: state.config.watchMaxNextAveragingLevels,
-    watchReservePctAlloc: state.config.watchReservePctAlloc,
-    adaptiveAveraging: adaptiveAveraging.config.normalize(
-      state.config.adaptiveAveraging,
-      false,
-    ),
-    averagingRescueProjectionGuardEnabled:
-      state.config.averagingRescueProjectionGuardEnabled ?? true,
-    exitSidewaysToFreeWorkersForStrongCandidates:
-      state.config.exitSidewaysToFreeWorkersForStrongCandidates ?? false,
-    maxEntryBased24HourVolPct: state.config.maxEntryBased24HourVolPct ?? 0.2,
-    maxEntryMarginPct: state.config.maxEntryMarginPct,
-    maxEntryMargin: state.config.maxEntryMargin,
-    maxOpenPositions: state.config.maxOpenPositions ?? 0,
-    minActionableAbsoluteLevel: state.config.minActionableAbsoluteLevel ?? 2,
-    maxLeverage: state.config.maxLeverage,
-    exactLeverage: state.config.exactLeverage ?? 0,
-  };
-}
-
-/** Applies the Trading and Sandbox settings owned by one account to the editor. */
-export function applyAccountProfileToConfigDraft(
-  draft: ConfigDraft,
-  account: SlowTradingAccount,
-): ConfigDraft {
-  const trading = account.trading;
-  return {
-    ...draft,
-    exchangeAccountSlug: account.slug,
-    exchangeType: "binance",
-    adaptiveAveraging: trading.adaptiveAveraging,
-    averagingRescueProjectionGuardEnabled:
-      trading.averagingRescueProjectionGuardEnabled,
-    enableWatchLogic: trading.enableWatchLogic,
-    entrySpareBufferEnabled: trading.entrySpareBufferEnabled ?? true,
-    lateEntryVPointPriceDriftEnabled:
-      trading.lateEntryVPointPriceDriftEnabled !== false,
-    exactLeverage: trading.exactLeverage,
-    exitSidewaysToFreeWorkersForStrongCandidates:
-      trading.exitSidewaysToFreeWorkersForStrongCandidates,
-    maxEntryBased24HourVolPct: trading.maxEntryBased24HourVolPct,
-    maxEntryMargin: trading.maxEntryMargin,
-    maxEntryMarginPct: trading.maxEntryMarginPct,
-    maxLeverage: trading.maxLeverage,
-    maxOpenPositions: trading.maxOpenPositions,
-    minActionableAbsoluteLevel: trading.minActionableAbsoluteLevel,
-    watchMaxNextAveragingLevels: trading.watchMaxNextAveragingLevels,
-    watchReserveLevels: trading.watchReserveLevels,
-    watchReservePctAlloc: trading.watchReservePctAlloc,
-    modelConfig: cloneModelConfig({
-      ...draft.modelConfig,
-      ...trading.modelConfig,
-    }),
-    sandboxEnabled: account.sandbox.enabled,
-    sandboxInitialBalanceUSDT: account.sandbox.initialBalanceUSDT,
-  };
-}
-
-/** Writes one account-scoped Trading and Sandbox editor back to its profile. */
-export function applyConfigDraftToAccountProfile(
-  account: SlowTradingAccount,
-  draft: ConfigDraft,
-): SlowTradingAccount {
-  const effectiveConfig = {
-    ...DEFAULT_DYNAMIC_TRADE_CONFIG_PRODUCTION,
-    ...draft,
-    symbols: parseSymbols(draft.symbolsText),
-    modelConfig: cloneModelConfig(draft.modelConfig),
-  };
-  const tradingNotes =
-    draft.exchangeAccounts.find((candidate) => candidate.slug === account.slug)
-      ?.trading.notes ?? account.trading.notes;
-
-  return {
-    ...account,
-    trading: slowTradingAccountConfig.trading.fromEffectiveConfig(
-      effectiveConfig,
-      tradingNotes,
-    ),
-    sandbox: {
-      enabled: draft.sandboxEnabled,
-      initialBalanceUSDT: Math.max(
-        0,
-        Number(draft.sandboxInitialBalanceUSDT) || 0,
-      ),
-    },
-    updatedAt: Date.now(),
-  };
-}
-
-/** Applies an account-scoped editor update without changing shared settings. */
-export function updateAccountSettingsInConfigDraft(
-  draft: ConfigDraft,
-  accountSlug: string,
-  updater: (accountDraft: ConfigDraft) => ConfigDraft,
-): ConfigDraft {
-  const account = draft.exchangeAccounts.find(
-    (candidate) => candidate.slug === accountSlug,
-  );
-  if (!account) return draft;
-
-  const nextAccountDraft = updater(
-    applyAccountProfileToConfigDraft(draft, account),
-  );
-  const nextAccount = applyConfigDraftToAccountProfile(
-    account,
-    nextAccountDraft,
-  );
-  const exchangeAccounts = draft.exchangeAccounts.map((candidate) =>
-    candidate.slug === accountSlug ? nextAccount : candidate,
-  );
-
-  if (draft.exchangeAccountSlug !== accountSlug) {
-    return { ...draft, exchangeAccounts };
-  }
-
-  return {
-    ...nextAccountDraft,
-    exchangeAccountSlug: draft.exchangeAccountSlug,
-    exchangeAccounts,
-  };
-}
-
-export function applyBacktestConfigToDraft(
-  currentDraft: ConfigDraft,
-  backtestConfig: BacktestConfig,
-): ConfigDraft {
-  return {
-    ...currentDraft,
-    name: backtestConfig.name ?? "",
-    description: backtestConfig.description ?? "",
-    decisionEngineVersion:
-      backtestConfig.decisionEngineVersion ??
-      currentDraft.decisionEngineVersion,
-    tradingMode: mapBacktestTradingMode(backtestConfig),
-    symbolsText: backtestConfig.symbols.join(", "),
-    modelConfig: cloneModelConfig(
-      backtestConfig.modelConfig ??
-        DEFAULT_DYNAMIC_TRADE_CONFIG_PRODUCTION.modelConfig,
-    ),
-    enableWatchLogic: backtestConfig.enableWatchLogic,
-    entrySpareBufferEnabled: backtestConfig.entrySpareBufferEnabled ?? true,
-    watchReserveLevels: backtestConfig.watchReserveLevels,
-    watchMaxNextAveragingLevels: backtestConfig.watchMaxNextAveragingLevels,
-    watchReservePctAlloc: backtestConfig.watchReservePctAlloc,
-    adaptiveAveraging: adaptiveAveraging.config.normalize(
-      backtestConfig.adaptiveAveraging,
-      false,
-    ),
-    averagingRescueProjectionGuardEnabled:
-      backtestConfig.averagingRescueProjectionGuardEnabled,
-    exitSidewaysToFreeWorkersForStrongCandidates:
-      backtestConfig.exitSidewaysToFreeWorkersForStrongCandidates,
-    maxEntryBased24HourVolPct: backtestConfig.maxEntryBased24HourVolPct,
-    maxEntryMarginPct: backtestConfig.maxEntryMarginPct,
-    maxEntryMargin: backtestConfig.maxEntryMargin,
-    maxOpenPositions: backtestConfig.maxOpenPositions ?? 0,
-    minActionableAbsoluteLevel: backtestConfig.minActionableAbsoluteLevel ?? 2,
-    maxLeverage: backtestConfig.maxLeverage,
-    exactLeverage: backtestConfig.exactLeverage,
+    runtime,
+    accounts: exchangeAccounts.map((account) => structuredClone(account)),
   };
 }
 

@@ -97,9 +97,7 @@ describe("decision.v20 direct level entry", () => {
         volatilitySnapshots: [],
       },
       minActionableAbsoluteLevel: 2,
-      modelConfig: {
-        takeProfitPercent: 3,
-      },
+      takeProfitPercent: 3,
       modelMemoryMap: {
         AIXBT: {
           positions: [],

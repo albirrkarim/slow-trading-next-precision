@@ -36,8 +36,8 @@ function createSpeedupCriteria(storage: SlowTradingStorageData) {
     positivePnlThresholdPct:
       storage.runtime.speedupStagePositivePnlThresholdPct,
     takeProfitOffsetPct: storage.runtime.speedupStageTakeProfitOffsetPct,
-    takeProfitPercent: storage.config.modelConfig.takeProfitPercent,
-    useStopLossPlus: storage.config.modelConfig.useStopLossPlus,
+    takeProfitPercent: storage.config.takeProfitPercent,
+    useStopLossPlus: storage.config.useStopLossPlus,
     volatilityThresholdPct: VOLATILITY_THRESHOLD,
   };
 }

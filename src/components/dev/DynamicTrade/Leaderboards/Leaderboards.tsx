@@ -30,7 +30,6 @@ const productionKeys = [
     "name",
     "description",
     "symbols",
-    "modelConfig",
 ];
 
 export interface LeaderboardsProps {

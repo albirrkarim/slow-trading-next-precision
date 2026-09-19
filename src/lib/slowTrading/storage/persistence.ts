@@ -7,7 +7,6 @@ import {
 } from "@/lib/notification/config";
 import adaptiveAveraging from "@/lib/trading/adaptive-averaging";
 import blackSwan from "@/lib/trading/black-swan";
-import levelBasedPctDriftStopLoss from "@/lib/trading/level-based-pct-drift-stop-loss";
 import fs from "fs-extra";
 import {
   createDefaultSlowTradingAccounts,
@@ -92,14 +91,6 @@ interface LoadSlowTradingStorageOptions {
   modeScope?: "all" | "active";
 }
 
-/** Legacy config files may still contain a complete effective trading config. */
-type SlowTradingReadableConfigFileData = Omit<
-  SlowTradingConfigFileData,
-  "config"
-> & {
-  config: SlowTradingStorageData["config"];
-};
-
 /**
  * Create the default SLOW strategy config without allocating mode memory.
  */
@@ -114,27 +105,6 @@ function createDefaultSlowTradingConfig(): SlowTradingStorageData["config"] {
     blackSwan: blackSwan.config.normalize(
       DEFAULT_DYNAMIC_TRADE_CONFIG_PRODUCTION.blackSwan,
     ),
-  };
-}
-
-/** Applies newly introduced exit defaults without restoring intentionally omitted legacy fields. */
-function normalizeExitModelConfigDefaults(
-  value: SlowTradingStorageData["config"]["modelConfig"] | undefined,
-  defaults: SlowTradingStorageData["config"]["modelConfig"],
-): SlowTradingStorageData["config"]["modelConfig"] {
-  if (!value) {
-    return clone(defaults);
-  }
-
-  return {
-    ...value,
-    exitOnVPointAbsLevel:
-      value.exitOnVPointAbsLevel ?? defaults.exitOnVPointAbsLevel,
-    stopLossUSDT: value.stopLossUSDT ?? defaults.stopLossUSDT,
-    levelBasedPctDriftStopLoss:
-      levelBasedPctDriftStopLoss.config.normalize(
-        value.levelBasedPctDriftStopLoss,
-      ),
   };
 }
 
@@ -409,7 +379,8 @@ function splitSlowTradingStorage(
     accounts,
     configFile: {
       // PROD:MULTI_ACCOUNT_CONFIG_OWNERSHIP
-      config: slowTradingAccountConfig.shared.toPersistedConfig(sharedConfig),
+      management:
+        slowTradingAccountConfig.shared.toPersistedConfig(sharedConfig),
       runtime,
       updatedAt: storage.updatedAt,
     },
@@ -465,27 +436,32 @@ async function loadSlowTradingConfigFile(accountSlug?: string): Promise<{
   const configRaw = hasConfigFile
     ? ((await fs.readJSON(
         FILES.slow.config,
-      )) as Partial<SlowTradingReadableConfigFileData>)
+      )) as Partial<SlowTradingConfigFileData>)
     : {};
   const baseConfig = createDefaultSlowTradingConfig();
   const baseRuntime = createDefaultSlowTradingRuntime();
   const sharedConfig = {
     ...baseConfig,
-    ...(configRaw.config ?? {}),
-    modelConfig: normalizeExitModelConfigDefaults(
-      configRaw.config?.modelConfig,
-      baseConfig.modelConfig,
-    ),
+    ...(configRaw.management ?? {}),
+    minimalAssetOnTrade: hasConfigFile
+      ? configRaw.management?.minimalAssetOnTrade
+      : baseConfig.minimalAssetOnTrade,
+    safePercentPerMonth: hasConfigFile
+      ? configRaw.management?.safePercentPerMonth
+      : baseConfig.safePercentPerMonth,
+    safeUSDTPerMonth: hasConfigFile
+      ? configRaw.management?.safeUSDTPerMonth
+      : baseConfig.safeUSDTPerMonth,
     adaptiveAveraging: adaptiveAveraging.config.normalize(
-      configRaw.config?.adaptiveAveraging ?? baseConfig.adaptiveAveraging,
+      baseConfig.adaptiveAveraging,
     ),
     blackSwan: blackSwan.config.normalize(
-      configRaw.config?.blackSwan ?? baseConfig.blackSwan,
+      configRaw.management?.blackSwan ?? baseConfig.blackSwan,
     ),
-    maxOpenPositions: normalizeMaxOpenPositions(
-      configRaw.config?.maxOpenPositions ?? baseConfig.maxOpenPositions,
+    maxOpenPositions: normalizeMaxOpenPositions(baseConfig.maxOpenPositions),
+    symbols: uniqueSymbols(
+      configRaw.management?.symbols ?? baseConfig.symbols,
     ),
-    symbols: uniqueSymbols(configRaw.config?.symbols ?? baseConfig.symbols),
   };
   const exchangeAccounts = await loadSlowTradingExchangeAccounts(
     sharedConfig,
@@ -506,7 +482,7 @@ async function loadSlowTradingConfigFile(accountSlug?: string): Promise<{
     withdrawal: normalizeWithdrawalConfig(configRaw.runtime?.withdrawal),
     safeHaven: normalizeSafeHavenConfig(
       configRaw.runtime?.safeHaven,
-      sharedConfig.modelConfig,
+      sharedConfig,
     ),
     mcp: normalizeMcpConfig(configRaw.runtime?.mcp),
   });
@@ -577,10 +553,6 @@ async function migrateLegacySlowTradingState(): Promise<SlowTradingStorageData |
   const config = {
     ...base.config,
     ...(raw.config ?? {}),
-    modelConfig: normalizeExitModelConfigDefaults(
-      raw.config?.modelConfig,
-      base.config.modelConfig,
-    ),
     blackSwan: blackSwan.config.normalize(
       raw.config?.blackSwan ?? base.config.blackSwan,
     ),
@@ -613,7 +585,7 @@ async function migrateLegacySlowTradingState(): Promise<SlowTradingStorageData |
       raw.runtime?.autoEntryDailyPnlLimitUSDT === undefined,
     ),
     withdrawal: normalizeWithdrawalConfig(raw.runtime?.withdrawal),
-    safeHaven: normalizeSafeHavenConfig(raw.runtime?.safeHaven, config.modelConfig),
+    safeHaven: normalizeSafeHavenConfig(raw.runtime?.safeHaven, config),
     mcp: normalizeMcpConfig(raw.runtime?.mcp),
   });
 

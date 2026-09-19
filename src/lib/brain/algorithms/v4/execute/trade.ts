@@ -27,7 +27,7 @@ export async function doTrade({
 
   klinesMap,
   modelMemoryMap,
-  modelConfig,
+  tradingConfig,
 
   getTradingDecisionFunction = MODEL_MAP["dynamic.v1"],
 
@@ -77,7 +77,7 @@ export async function doTrade({
         baseAsset: pos?.exposure.quantity ?? 0,
       }
       : undefined,
-    modelConfig,
+    tradingConfig,
     modelMemory,
     exchangeType: dynamicTradeMemory.exchange ?? "tokocrypto",
     tradingMode: dynamicTradeMemory.tradingMode ?? TradingMode.SPOT

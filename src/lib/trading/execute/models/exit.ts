@@ -12,7 +12,7 @@ import type { Kline } from "@/lib/exchange/platform/tokocrypto";
 import type {
   Position,
   TradeDecision,
-  TradingModelConfig,
+  TradingConfig,
   TradingModelMemory,
 } from "../../models";
 import { sellPosition } from "../../models/utils";
@@ -20,7 +20,7 @@ import { sellPosition } from "../../models/utils";
 interface DynamicExitProps {
   symbol: string;
   current: Kline;
-  config: TradingModelConfig;
+  config: TradingConfig;
   memory: TradingModelMemory;
 
   exchangeType: ExchangeType;

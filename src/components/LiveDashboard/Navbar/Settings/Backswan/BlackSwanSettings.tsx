@@ -111,9 +111,14 @@ export default function BlackSwanSettings({
 }) {
   const update = (blackSwan: BlackSwanConfig) =>
     setConfigDraft((previous) =>
-      previous ? { ...previous, blackSwan } : previous,
+      previous
+        ? {
+            ...previous,
+            management: { ...previous.management, blackSwan },
+          }
+        : previous,
     );
-  const config = blackSwanModel.config.normalize(configDraft.blackSwan);
+  const config = blackSwanModel.config.normalize(configDraft.management.blackSwan);
   const currentState = blackSwanModel.state.normalize(dashboardState.blackSwan);
   const exitPolicyDetails = EXIT_POLICY_DETAILS[config.exitPolicy];
   // PROD:BLACK_SWAN_SAVINGS_PREVIEW_RESOURCE_GUARD
@@ -256,11 +261,17 @@ export default function BlackSwanSettings({
                   onChange={(value) =>
                     setConfigDraft((previous) =>
                       previous
-                        ? { ...previous, blackSwanStageIntervalMinutes: value }
+                        ? {
+                            ...previous,
+                            runtime: {
+                              ...previous.runtime,
+                              blackSwanStageIntervalMinutes: value,
+                            },
+                          }
                         : previous,
                     )
                   }
-                  value={configDraft.blackSwanStageIntervalMinutes ?? 1}
+                  value={configDraft.runtime.blackSwanStageIntervalMinutes ?? 1}
                 />
                 <Field
                   integer

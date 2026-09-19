@@ -5,11 +5,11 @@ import slowTradingClient, {
   type SlowTradingDashboardState,
 } from "@/lib/slowTrading/client";
 import { resolveEntryLeverage } from "@/lib/trading/execute/entry-leverage";
-import type { TradingModelConfig } from "@/lib/trading/models";
+import type { TradingConfig } from "@/lib/trading/models";
 import postAverageStopLoss from "@/lib/trading/post-average-stop-loss";
 import levelBasedPctDriftStopLoss from "@/lib/trading/level-based-pct-drift-stop-loss";
 
-export interface TradingLivePreviewConfig {
+export interface TradingLivePreviewConfig extends TradingConfig {
   adaptiveAveraging?: AdaptiveAveragingConfig;
   enableWatchLogic?: boolean;
   entrySpareBufferEnabled?: boolean;
@@ -19,7 +19,6 @@ export interface TradingLivePreviewConfig {
   maxOpenPositions?: number;
   maxLeverage?: number;
   minActionableAbsoluteLevel?: number;
-  modelConfig: TradingModelConfig;
   tradingMode: TradingMode;
   watchMaxNextAveragingLevels?: number;
   watchReserveLevels?: number;
@@ -367,22 +366,22 @@ export function buildTradingLivePreview(params: {
   });
   const takeProfitPct = Math.max(
     0,
-    Number(config.modelConfig.takeProfitPercent) || 0,
+    Number(config.takeProfitPercent) || 0,
   );
   const configuredStopLossPct = Number(
-    config.modelConfig.stopLossPercent,
+    config.stopLossPercent,
   );
   const stopLossPct =
     Number.isFinite(configuredStopLossPct) && configuredStopLossPct > 0
       ? configuredStopLossPct
       : null;
-  const configuredStopLossUSDT = Number(config.modelConfig.stopLossUSDT ?? 50);
+  const configuredStopLossUSDT = Number(config.stopLossUSDT ?? 50);
   const stopLossUSDT =
     Number.isFinite(configuredStopLossUSDT) && configuredStopLossUSDT > 0
       ? configuredStopLossUSDT
       : null;
   const configuredTargetZoneStopLossPct = Number(
-    config.modelConfig.volatilityTargetStopLossPercent,
+    config.volatilityTargetStopLossPercent,
   );
   const targetZoneStopLossPct =
     Number.isFinite(configuredTargetZoneStopLossPct) &&
@@ -480,7 +479,7 @@ export function buildTradingLivePreview(params: {
     const absoluteLevel = entryAbsoluteLevel + index;
     const levelBasedCondition = levelBasedPctDriftStopLoss.condition.get(
       absoluteLevel,
-      config.modelConfig.levelBasedPctDriftStopLoss,
+      config.levelBasedPctDriftStopLoss,
     );
     const stagePrices = marginParts.slice(0, index + 1).map((_, priceIndex) =>
       NORMALIZED_ENTRY_PRICE *
@@ -517,7 +516,7 @@ export function buildTradingLivePreview(params: {
           );
     const postAverageThreshold = postAverageStopLoss.threshold.get(
       index,
-      config.modelConfig.postAverageStopLoss,
+      config.postAverageStopLoss,
     );
     const postAveragePercentLossUsdt =
       (postAverageThreshold?.maxNetPnlPct ?? 0) < 0

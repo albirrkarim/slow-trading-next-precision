@@ -16,7 +16,6 @@ import { DESCISION_MODELS } from "@/lib/dynamic/constants-clients";
 import type { TradingMode } from "@/lib/exchange/types";
 
 import ExchangeAccountManagerDialog from "./ExchangeAccountManagerDialog";
-import { parseSymbols } from "../helpers";
 import SettingsGroup from "../Components/SettingsGroup";
 import SettingsInfoField from "../Components/SettingsInfoField";
 import SafeHavenScheduleSettings from "./SafeHavenScheduleSettings";
@@ -65,17 +64,20 @@ export default function SettingsDialogManagementTab({
   configDraft: ConfigDraft;
   setConfigDraft: ConfigDraftSetter;
 }) {
-  const updateModelConfig = (patch: Partial<typeof configDraft.modelConfig>) => {
+  const updateManagement = (patch: Partial<ConfigDraft["management"]>) => {
     setConfigDraft((prev) =>
       prev
         ? {
           ...prev,
-          modelConfig: {
-            ...prev.modelConfig,
-            ...patch,
-          },
+          management: { ...prev.management, ...patch },
         }
         : prev,
+    );
+  };
+
+  const updateRuntime = (patch: Partial<ConfigDraft["runtime"]>) => {
+    setConfigDraft((prev) =>
+      prev ? { ...prev, runtime: { ...prev.runtime, ...patch } } : prev,
     );
   };
 
@@ -90,12 +92,10 @@ export default function SettingsDialogManagementTab({
                 info="Display name for this slow-trading profile in the dashboard and stored config."
                 label="Name"
                 onChange={(event) =>
-                  setConfigDraft((prev) =>
-                    prev ? { ...prev, name: event.target.value } : prev,
-                  )
+                  updateManagement({ name: event.target.value })
                 }
                 size="small"
-                value={configDraft.name}
+                value={configDraft.management.name}
               />
               <SettingsInfoField
                 fullWidth
@@ -105,12 +105,10 @@ export default function SettingsDialogManagementTab({
                 minRows={4}
                 multiline
                 onChange={(event) =>
-                  setConfigDraft((prev) =>
-                    prev ? { ...prev, description: event.target.value } : prev,
-                  )
+                  updateManagement({ description: event.target.value })
                 }
                 size="small"
-                value={configDraft.description}
+                value={configDraft.management.description}
               />
             </Stack>
           </Grid>
@@ -128,7 +126,7 @@ export default function SettingsDialogManagementTab({
                     Exchange Accounts
                   </Typography>
                   <Typography color="text.secondary" variant="caption">
-                    {configDraft.exchangeAccounts.length} configured
+                    {configDraft.accounts.length} configured
                   </Typography>
                 </Box>
                 <ExchangeAccountManagerDialog
@@ -151,18 +149,13 @@ export default function SettingsDialogManagementTab({
                 info="Controls whether entries behave like spot, margin, or futures."
                 label="Trading Mode"
                 onChange={(event) =>
-                  setConfigDraft((prev) =>
-                    prev
-                      ? {
-                        ...prev,
-                        tradingMode: event.target.value as TradingMode,
-                      }
-                      : prev,
-                  )
+                  updateManagement({
+                    tradingMode: event.target.value as TradingMode,
+                  })
                 }
                 select
                 size="small"
-                value={configDraft.tradingMode}
+                value={configDraft.management.tradingMode}
               >
                 {TRADING_MODE_OPTIONS.map((option) => (
                   <MenuItem key={option.value} value={option.value}>
@@ -176,18 +169,13 @@ export default function SettingsDialogManagementTab({
                 info="This controls the recommendation engine used when slow trading generates entry signals."
                 label="Decision Engine"
                 onChange={(event) =>
-                  setConfigDraft((prev) =>
-                    prev
-                      ? {
-                        ...prev,
-                        decisionEngineVersion: event.target.value,
-                      }
-                      : prev,
-                  )
+                  updateManagement({
+                    decisionEngineVersion: event.target.value,
+                  })
                 }
                 select
                 size="small"
-                value={configDraft.decisionEngineVersion}
+                value={configDraft.management.decisionEngineVersion}
               >
                 {DESCISION_MODELS.map((item) => (
                   <MenuItem
@@ -211,11 +199,9 @@ export default function SettingsDialogManagementTab({
         <CoinMultiSelect
           label="Symbols"
           onChange={(symbols) =>
-            setConfigDraft((prev) =>
-              prev ? { ...prev, symbolsText: symbols.join(", ") } : prev,
-            )
+            updateManagement({ symbols })
           }
-          value={parseSymbols(configDraft.symbolsText)}
+          value={configDraft.management.symbols}
         />
 
         <Stack alignItems="center" direction="row" spacing={0.5} sx={{ pt: 0.5 }}>
@@ -237,17 +223,12 @@ export default function SettingsDialogManagementTab({
               info="Auto-removal based on volatility level in live and sandbox. Example: value 6 removes a coin from Symbols when its latest vpoint reaches level +6 or -6. Existing positions remain managed. Set 0 to disable."
               label="Based on Abs Level"
               onChange={(event) =>
-                setConfigDraft((prev) =>
-                  prev
-                    ? {
-                      ...prev,
-                      autoRemoveSymbolAbsLevel: Math.max(
-                        0,
-                        Math.floor(Number(event.target.value) || 0),
-                      ),
-                    }
-                    : prev,
-                )
+                updateRuntime({
+                  autoRemoveSymbolAbsLevel: Math.max(
+                    0,
+                    Math.floor(Number(event.target.value) || 0),
+                  ),
+                })
               }
               size="small"
               slotProps={{
@@ -258,7 +239,7 @@ export default function SettingsDialogManagementTab({
                 },
               }}
               type="number"
-              value={configDraft.autoRemoveSymbolAbsLevel ?? 0}
+              value={configDraft.runtime.autoRemoveSymbolAbsLevel ?? 0}
             />
           </Grid>
           <Grid size={{ xs: 12, md: 3 }}>
@@ -267,17 +248,12 @@ export default function SettingsDialogManagementTab({
               info="Minimum market price in USDT. Live and sandbox remove a coin from Symbols when its latest valid price is strictly below this value. Existing positions remain managed, while new entries are blocked below the value. Set 0 to disable."
               label="Based on Price (USDT)"
               onChange={(event) =>
-                setConfigDraft((prev) =>
-                  prev
-                    ? {
-                      ...prev,
-                      autoRemoveSymbolMinPrice: Math.max(
-                        0,
-                        Number(event.target.value) || 0,
-                      ),
-                    }
-                    : prev,
-                )
+                updateRuntime({
+                  autoRemoveSymbolMinPrice: Math.max(
+                    0,
+                    Number(event.target.value) || 0,
+                  ),
+                })
               }
               size="small"
               slotProps={{
@@ -288,7 +264,7 @@ export default function SettingsDialogManagementTab({
                 },
               }}
               type="number"
-              value={configDraft.autoRemoveSymbolMinPrice ?? 0}
+              value={configDraft.runtime.autoRemoveSymbolMinPrice ?? 0}
             />
           </Grid>
           <Grid size={{ xs: 12, md: 3 }}>
@@ -297,17 +273,12 @@ export default function SettingsDialogManagementTab({
               info="Minimum market cap in USD. Live and sandbox remove a coin from Symbols when its latest available market cap is strictly below this value. Existing positions remain managed. Market-cap data is cached for 24 hours. Set 0 to disable."
               label="Based on Market Cap (USD)"
               onChange={(event) =>
-                setConfigDraft((prev) =>
-                  prev
-                    ? {
-                      ...prev,
-                      autoRemoveSymbolMinMarketCapUSD: Math.max(
-                        0,
-                        Number(event.target.value) || 0,
-                      ),
-                    }
-                    : prev,
-                )
+                updateRuntime({
+                  autoRemoveSymbolMinMarketCapUSD: Math.max(
+                    0,
+                    Number(event.target.value) || 0,
+                  ),
+                })
               }
               size="small"
               slotProps={{
@@ -318,7 +289,7 @@ export default function SettingsDialogManagementTab({
                 },
               }}
               type="number"
-              value={configDraft.autoRemoveSymbolMinMarketCapUSD ?? 0}
+              value={configDraft.runtime.autoRemoveSymbolMinMarketCapUSD ?? 0}
             />
             {/* PROD:AUTO_REMOVE_MARKET_CAP_INPUT_PREVIEW */}
             <FormHelperText
@@ -329,7 +300,7 @@ export default function SettingsDialogManagementTab({
               }}
             >
               {formatMarketCapPreview(
-                configDraft.autoRemoveSymbolMinMarketCapUSD,
+                configDraft.runtime.autoRemoveSymbolMinMarketCapUSD,
               )}
             </FormHelperText>
           </Grid>
@@ -339,17 +310,12 @@ export default function SettingsDialogManagementTab({
               info="Scans every vPoint in each coin's complete persisted volatility history. Live and sandbox remove a coin when any vPoint movement is greater than or equal to this percentage. TOP and BOTTOM pct values are both positive movement magnitudes. Default 15%. Set 0 to disable."
               label="Based on Any vPoint (%)"
               onChange={(event) =>
-                setConfigDraft((prev) =>
-                  prev
-                    ? {
-                      ...prev,
-                      autoRemoveSymbolMinVPointPct: Math.max(
-                        0,
-                        Number(event.target.value) || 0,
-                      ),
-                    }
-                    : prev,
-                )
+                updateRuntime({
+                  autoRemoveSymbolMinVPointPct: Math.max(
+                    0,
+                    Number(event.target.value) || 0,
+                  ),
+                })
               }
               size="small"
               slotProps={{
@@ -360,7 +326,7 @@ export default function SettingsDialogManagementTab({
                 },
               }}
               type="number"
-              value={configDraft.autoRemoveSymbolMinVPointPct ?? 15}
+              value={configDraft.runtime.autoRemoveSymbolMinVPointPct ?? 15}
             />
           </Grid>
         </Grid>
@@ -371,8 +337,8 @@ export default function SettingsDialogManagementTab({
         title="Safe Haven"
       >
         <SafeHavenScheduleSettings
-          autoEnabled={configDraft.safeHavenAutoEnabled ?? false}
-          schedules={configDraft.safeHavenSchedules ?? []}
+          autoEnabled={configDraft.runtime.safeHaven.autoEnabled}
+          schedules={configDraft.runtime.safeHaven.schedules}
           setConfigDraft={setConfigDraft}
         />
         <Grid container spacing={2}>
@@ -382,13 +348,13 @@ export default function SettingsDialogManagementTab({
               info="Minimum capital that should remain available for trading. Example: value 600 means SLOW avoids moving extra funds into Safe Haven when trading capital would fall below 600 USDT."
               label="Minimal Asset On Trade"
               onChange={(event) =>
-                updateModelConfig({
+                updateManagement({
                   minimalAssetOnTrade: parseNumber(event.target.value),
                 })
               }
               size="small"
               type="number"
-              value={configDraft.modelConfig.minimalAssetOnTrade ?? 0}
+              value={configDraft.management.minimalAssetOnTrade ?? 0}
             />
           </Grid>
         </Grid>

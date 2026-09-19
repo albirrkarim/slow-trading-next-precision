@@ -50,17 +50,23 @@ export default function TradingSettingsPreview({
   configDraft: ConfigDraft;
   dashboardState: DashboardState;
 }) {
+  const accountSlug = configDraft.runtime.exchangeAccountSlug;
+  const selectedAccount = configDraft.accounts.find(
+    (account) => account.slug === accountSlug,
+  );
+  if (!selectedAccount) return null;
+
   const accountDashboardState = selectAccountPreviewState(
     dashboardState,
-    configDraft.exchangeAccountSlug,
+    accountSlug,
   );
 
   return (
     <TradingLivePreview
       allowSpendableAssumption
-      config={configDraft}
+      config={{ ...configDraft.management, ...selectedAccount.trading }}
       dashboardState={accountDashboardState}
-      key={configDraft.exchangeAccountSlug}
+      key={accountSlug}
       sticky
     />
   );

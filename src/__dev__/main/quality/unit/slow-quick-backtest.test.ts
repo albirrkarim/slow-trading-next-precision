@@ -428,10 +428,8 @@ describe("slow quick backtest report helpers", () => {
         LATE: 1_000_000,
       },
       config: {
-        modelConfig: {
-          takeProfitPercent: 5,
-          stopLossPercent: 20,
-        },
+        takeProfitPercent: 5,
+        stopLossPercent: 20,
         startingBalanceUSDT: 100,
         tradingMode: TradingMode.SPOT,
         enableWatchLogic: false,
@@ -506,10 +504,8 @@ describe("slow quick backtest report helpers", () => {
       entryCutoffBufferMs: 0,
       config: {
         minActionableAbsoluteLevel: 4,
-        modelConfig: {
-          takeProfitPercent: 5,
-          stopLossPercent: 20,
-        },
+        takeProfitPercent: 5,
+        stopLossPercent: 20,
         startingBalanceUSDT: 100,
         tradingMode: TradingMode.SPOT,
       },

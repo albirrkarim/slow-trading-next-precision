@@ -1,4 +1,4 @@
-import { ConfigDraft } from "@/components/LiveDashboard/Navbar/navbar-types";
+import { type ConfigDraft } from "@/components/LiveDashboard/Navbar/navbar-types";
 
 export interface BacktestConfig {
   mode: "kline" | "volatility_point";
@@ -23,5 +23,6 @@ export interface BacktestConfig {
   startingBalanceUSDT: number;
 
   // Config
-  modelConfig: ConfigDraft;
+  /** Grouped SLOW settings passed unchanged to the backtest backend. */
+  settings?: ConfigDraft;
 }

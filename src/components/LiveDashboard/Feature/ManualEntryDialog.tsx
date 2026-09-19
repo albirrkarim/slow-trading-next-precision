@@ -49,7 +49,7 @@ export default function ManualEntryDialog({
       ? "SHORT"
       : "LONG";
   const orderType =
-    dashboardState.config.modelConfig.orderType ?? "taker";
+    dashboardState.config.orderType ?? "taker";
 
   return (
     <ButtonDialog

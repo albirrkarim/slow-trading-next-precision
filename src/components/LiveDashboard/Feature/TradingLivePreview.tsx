@@ -839,11 +839,11 @@ export default function TradingLivePreview({
             <ExitThresholdChart
               stopLossPct={preview.stopLossPct}
               stopLossPlusEnabled={Boolean(
-                config.modelConfig.useStopLossPlus,
+                config.useStopLossPlus,
               )}
               takeProfitPct={preview.takeProfitPct}
               targetZoneStopLossPct={preview.targetZoneStopLossPct}
-              triggerPct={config.modelConfig.stopLossPlusTrigger ?? 1}
+              triggerPct={config.stopLossPlusTrigger ?? 1}
             />
             {preview.exitStages.map((stage) => (
               <ExitStagePreview

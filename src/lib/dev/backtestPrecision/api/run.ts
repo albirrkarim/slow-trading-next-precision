@@ -26,7 +26,8 @@ import type { BacktestReturnDynamic, VolatilityPoint } from "@/lib/dynamic";
 import { isDevBacktestEnabled } from "@/lib/env/devBacktest";
 import { runWithExchangeAccount } from "@/lib/exchange/account-context";
 import slowTradingAccountConfig from "@/lib/slowTrading/account-config";
-import slowTradingStorage from "@/lib/slowTrading/storage";
+import type { SlowTradingSettingsConfig } from "@/lib/slowTrading";
+import { DEFAULT_DYNAMIC_TRADE_CONFIG_PRODUCTION } from "@/lib/dynamic";
 import { tradeLog } from "@/lib/trading";
 import fs from "fs-extra";
 import md5 from "md5";
@@ -66,6 +67,9 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
     verbose = true,
     multiAccount = false,
   } = params as DynamicTradeBacktestInput;
+
+  console.log(config);
+  const settingsConfig = config as unknown as SlowTradingSettingsConfig;
 
   let { range, startTime, endTime } = params as DynamicTradeBacktestInput;
 
@@ -120,9 +124,7 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
 
     // B. Dynamic backtest
     const enabledAccounts = multiAccount
-      ? (
-          await slowTradingStorage.data.load({ modeScope: "active" })
-        ).runtime.exchangeAccounts.filter((account) => account.enabled)
+      ? settingsConfig.accounts.filter((account) => account.enabled)
       : [];
     if (multiAccount && enabledAccounts.length === 0) {
       throw new Error("Enable at least one SLOW account before backtesting.");
@@ -159,7 +161,10 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
         for (const account of enabledAccounts) {
           const effectiveConfig = {
             ...slowTradingAccountConfig.trading.toEffectiveConfig(
-              id.config as any,
+              {
+                ...DEFAULT_DYNAMIC_TRADE_CONFIG_PRODUCTION,
+                ...settingsConfig.management,
+              },
               account,
             ),
             startingBalanceUSDT: account.sandbox.initialBalanceUSDT,

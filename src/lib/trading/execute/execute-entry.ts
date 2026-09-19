@@ -8,7 +8,7 @@ import {
 } from "@/lib/exchange";
 import type {
   TradeDecision,
-  TradingModelConfig,
+  TradingConfig,
   TradingModelMemory,
   Position,
   PositionAveragingState,
@@ -37,7 +37,7 @@ interface ExecuteEntryProps {
   investAmount: number;
   entrySignal: EntryRecommendation;
   current?: Kline;
-  modelConfig: TradingModelConfig;
+  tradingConfig: TradingConfig;
   modelMemory: TradingModelMemory;
   exchangeType: ExchangeType;
   tradingMode: TradingMode;
@@ -125,7 +125,7 @@ export async function executeEntry({
   investAmount,
   current, // Current candle (last minute)
   entrySignal,
-  modelConfig, // Strategy configuration,
+  tradingConfig, // Strategy configuration,
   modelMemory,
   exchangeType = "tokocrypto",
   tradingMode = TradingMode.SPOT,
@@ -139,7 +139,7 @@ export async function executeEntry({
   allModelMemories,
   volume24h,
 }: ExecuteEntryProps): Promise<TradingReturn> {
-  const { orderType = "taker", onlyTPFromDate } = modelConfig; // Default to taker orders (market)
+  const { orderType = "taker", onlyTPFromDate } = tradingConfig; // Default to taker orders (market)
 
   if (!modelMemory.positions) {
     // Save buy record, to track the price
@@ -337,12 +337,12 @@ export async function executeEntry({
     }
   }
 
-  modelConfig.balanceUSDT = requestedMarginUsdt;
+  tradingConfig.balanceUSDT = requestedMarginUsdt;
 
   const decision: TradeDecision = await dynamicEntry({
     symbol,
     current,
-    config: modelConfig,
+    config: tradingConfig,
     memory: modelMemory,
     bypass,
     minActionableAbsoluteLevel: dynamicTradeConfig.minActionableAbsoluteLevel,

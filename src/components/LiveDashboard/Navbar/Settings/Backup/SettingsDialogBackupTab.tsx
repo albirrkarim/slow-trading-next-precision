@@ -16,28 +16,9 @@ import {
 import type { ConfigDraft, ConfigDraftSetter } from "../settings-types";
 
 const REQUIRED_CONFIG_KEYS = [
-  "name",
-  "description",
-  "decisionEngineVersion",
-  "exchangeAccountSlug",
-  "exchangeAccounts",
-  "exchangeType",
-  "tradingMode",
-  "symbolsText",
-  "modelConfig",
-  "runnerEnabled",
-  "autoEntryEnabled",
-  "autoExitEnabled",
-  "entrySignalBypass",
-  "autoRemoveSymbolAbsLevel",
-  "pnlHistoryBucketMinutes",
-  "notification",
-  "sandboxEnabled",
-  "sandboxInitialBalanceUSDT",
-  "safeHavenUSDT",
-  "withdrawalAutoEnabled",
-  "withdrawalSchedules",
-  "withdrawalWalletBook",
+  "management",
+  "runtime",
+  "accounts",
 ] as const satisfies ReadonlyArray<keyof ConfigDraft>;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -76,45 +57,16 @@ export function parseConfigBackup(raw: string): ConfigDraft {
   }
 
   if (
-    !Array.isArray(parsed.exchangeAccounts) ||
-    (parsed.safeHavenSchedules !== undefined &&
-      !Array.isArray(parsed.safeHavenSchedules)) ||
-    !Array.isArray(parsed.withdrawalSchedules) ||
-    !Array.isArray(parsed.withdrawalWalletBook) ||
-    !isRecord(parsed.modelConfig) ||
-    !isRecord(parsed.notification)
+    !Array.isArray(parsed.accounts) ||
+    !isRecord(parsed.management) ||
+    !isRecord(parsed.runtime)
   ) {
     throw new Error(
-      "The backup has an invalid accounts, withdrawal, model, or notification structure.",
+      "The backup must contain management, runtime, and accounts groups.",
     );
   }
 
-  const configDraft = parsed as unknown as ConfigDraft;
-
-  return {
-    ...configDraft,
-    autoEntryDailyPnlLimitUSDT: Math.min(
-      0,
-      configDraft.autoEntryDailyPnlLimitUSDT !== undefined &&
-        Number.isFinite(Number(configDraft.autoEntryDailyPnlLimitUSDT))
-        ? Number(configDraft.autoEntryDailyPnlLimitUSDT)
-        : -50,
-    ),
-    autoRemoveSymbolMinMarketCapUSD: Math.max(
-      0,
-      Number(configDraft.autoRemoveSymbolMinMarketCapUSD) || 0,
-    ),
-    autoRemoveSymbolMinPrice: Math.max(
-      0,
-      Number(configDraft.autoRemoveSymbolMinPrice) || 0,
-    ),
-    autoRemoveSymbolMinVPointPct: Math.max(
-      0,
-      Number.isFinite(Number(configDraft.autoRemoveSymbolMinVPointPct))
-        ? Number(configDraft.autoRemoveSymbolMinVPointPct)
-        : 15,
-    ),
-  };
+  return structuredClone(parsed) as unknown as ConfigDraft;
 }
 
 export default function SettingsDialogBackupTab({

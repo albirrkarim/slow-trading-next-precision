@@ -3,10 +3,7 @@ import type { BacktestConfigDynamic } from "@/lib/dynamic";
 
 import type { BacktestConfig } from "./Config";
 
-type BacktestUiRuntimeConfig = {
-  [Key in Exclude<keyof BacktestConfigDynamic, "countLastRecord">]-?:
-    BacktestConfigDynamic[Key];
-};
+type BacktestUiRuntimeConfig = Omit<BacktestConfigDynamic, "countLastRecord">;
 
 type BacktestOuterRequestKey =
   | "algorithm"
@@ -51,8 +48,23 @@ const backtestRequestConfig = {
   config: {
     /** Builds the runtime config sent from the backtest UI to the API. */
     build(config: BacktestConfig): BacktestUiRuntimeConfig {
+      const {
+        algorithm: _algorithm,
+        decisionEngineVersion: _decisionEngineVersion,
+        description: _description,
+        endTime: _endTime,
+        mode: _mode,
+        name: _name,
+        range: _range,
+        startTime: _startTime,
+        symbols: _symbols,
+        upToDateDecisionBacktest: _upToDateDecisionBacktest,
+        upToDateKlines: _upToDateKlines,
+        ...runtimeConfig
+      } = config;
       // BTEST:BACKTEST_ENTRY_CONFIG_FORWARDING
       return {
+        ...runtimeConfig,
         adaptiveAveraging: adaptiveAveraging.config.normalize(
           config.adaptiveAveraging,
           false,
@@ -74,7 +86,6 @@ const backtestRequestConfig = {
         minActionableAbsoluteLevel: normalizeMinActionableLevel(
           config.minActionableAbsoluteLevel,
         ),
-        modelConfig: config.modelConfig,
         startingBalanceUSDT: config.startingBalanceUSDT,
         tradingMode: config.tradingMode,
         watchMaxNextAveragingLevels:

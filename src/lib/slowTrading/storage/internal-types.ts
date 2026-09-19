@@ -1,13 +1,13 @@
 import type { Position } from "@/lib/trading/models";
 import type {
-  SlowTradingPersistedSharedConfig,
+  SlowTradingManagementConfig,
   SlowTradingStorageData,
 } from "../types";
 
 /** Split config file payload stored under the SLOW storage root. */
 export interface SlowTradingConfigFileData {
-  /** Shared strategy configuration persisted once for every account. */
-  config: SlowTradingPersistedSharedConfig;
+  /** Shared management configuration persisted once for every account. */
+  management: SlowTradingManagementConfig;
   /** Runtime controls persisted in the config split file. */
   runtime: Omit<
     SlowTradingStorageData["runtime"],

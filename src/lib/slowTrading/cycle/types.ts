@@ -3,7 +3,7 @@ import type { EntryRecommendation } from "@/lib/brain";
 import type { DynamicTradeMemory, VolatilityPoint } from "@/lib/dynamic";
 import type { ExchangeType, getExchange, TradingMode } from "@/lib/exchange";
 import type {
-  TradingModelConfig,
+  TradingConfig,
   TradingModelMemory,
 } from "@/lib/trading/models";
 import type { TradingReturn } from "@/lib/trading";
@@ -74,7 +74,7 @@ export interface SlowTradingCycleRuntime extends SlowTradingCyclePlan {
   exchangeType: ExchangeType;
   isSandbox: boolean;
   marketType: "SPOT" | "FUTURES";
-  modelConfig: TradingModelConfig;
+  tradingConfig: TradingConfig;
   modelMemoryMap: Record<string, TradingModelMemory>;
   modeState: SlowTradingModeState;
   performanceEntries: SlowTradingCyclePerformanceEntry[];

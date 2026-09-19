@@ -7,19 +7,17 @@ import type { Kline } from "@/lib/exchange/platform/tokocrypto";
 import type { TradingReturn } from "@/lib/trading";
 import type {
   TradeDecisionFunction,
-  TradingModelConfig,
+  TradingConfig,
   TradingModelMemory,
 } from "@/lib/trading/models";
 import type { GlobalMarketData } from "@lib/dynamic/utils/nn/data";
 import { type VolatilityPoint } from "@lib/dynamic/utils/volatility";
 import { type DecisionEngineVersionType } from "./v4/decisions";
 
-export interface DecisionEngineProps {
+export interface DecisionEngineProps extends TradingConfig {
   currentTimeMs: number;
 
   volatilityPointsMap: Record<string, VolatilityPoint[]>;
-
-  modelConfig: TradingModelConfig;
 
   modelMemoryMap: Record<string, TradingModelMemory>;
 
@@ -128,9 +126,9 @@ interface RequiredForTrade {
   modelMemoryMap: Record<string, TradingModelMemory>;
 
   /**
-   * model config is also from google sheet
+   * Trading config is also from Google Sheets.
    */
-  modelConfig: TradingModelConfig;
+  tradingConfig: TradingConfig;
 
   /**
    * Chunked Klines.
@@ -200,7 +198,7 @@ export interface DataBacktestPurpose {
   volatilitySnapshots?: VolatilitySnapshot[];
 
   /**
-   * to determine we should change the model config
+   * to determine whether we should change the trading config
    */
   downTrend?: { timeMs: number; level: number }[];
 

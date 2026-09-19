@@ -177,11 +177,9 @@ describe("backtest canonical position reporting", () => {
         },
         config: {
           marginMode: "ISOLATED",
-          modelConfig: {
-            stopLossPercent: 90,
-            stopLossUSDT: 0,
-            takeProfitPercent: 100,
-          },
+          stopLossPercent: 90,
+          stopLossUSDT: 0,
+          takeProfitPercent: 100,
           tradingMode: TradingMode.FUTURES,
         } as any,
         dynamicTradeMemory,
@@ -269,18 +267,16 @@ describe("backtest canonical position reporting", () => {
       },
       config: {
         marginMode: "ISOLATED",
-        modelConfig: {
-          postAverageRescueExit: { enabled: false, thresholds: [] },
-          postAverageStopLoss: {
-            enabled: true,
-            thresholds: [
-              { minAveragingCount: 2, maxNetPnlPct: -2, maxNetPnlUsdt: 0 },
-            ],
-          },
-          stopLossPercent: 15,
-          stopLossUSDT: 14,
-          takeProfitPercent: 100,
+        postAverageRescueExit: { enabled: false, thresholds: [] },
+        postAverageStopLoss: {
+          enabled: true,
+          thresholds: [
+            { minAveragingCount: 2, maxNetPnlPct: -2, maxNetPnlUsdt: 0 },
+          ],
         },
+        stopLossPercent: 15,
+        stopLossUSDT: 14,
+        takeProfitPercent: 100,
         tradingMode: TradingMode.FUTURES,
       } as any,
       dynamicTradeMemory,

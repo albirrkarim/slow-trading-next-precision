@@ -32,6 +32,7 @@ import {
 import { endpoints } from "@/components/endpoints";
 import type { BlackSwanSavingsBacktestResult } from "@/lib/devBacktest/black-swan";
 import blackSwan from "@/lib/trading/black-swan";
+import { pickTradingConfigFields } from "../helpers";
 import type { ConfigDraft, DashboardState } from "../settings-types";
 import BlackSwanExitReasonChart from "./BlackSwanExitReasonChart";
 import BlackSwanPositionScenarios from "./BlackSwanPositionScenarios";
@@ -52,22 +53,6 @@ function formatUsdt(value: number): string {
     minimumFractionDigits: 2,
     style: "currency",
   }).format(value);
-}
-
-function parseSymbols(value: string): string[] {
-  return Array.from(
-    new Set(
-      value
-        .split(",")
-        .map((symbol) =>
-          symbol
-            .trim()
-            .toUpperCase()
-            .replace(/_USDT$/, ""),
-        )
-        .filter(Boolean),
-    ),
-  );
 }
 
 function SummaryMetric(props: {
@@ -222,10 +207,10 @@ export default function BlackSwanSavingsPreview({
   configDraft: ConfigDraft;
   dashboardState: DashboardState;
 }) {
-  const symbols = useMemo(
-    () => parseSymbols(configDraft.symbolsText),
-    [configDraft.symbolsText],
-  );
+  const symbols = configDraft.management.symbols;
+  const selectedTrading = configDraft.accounts.find(
+    (account) => account.slug === configDraft.runtime.exchangeAccountSlug,
+  )?.trading;
   const [result, setResult] = useState<BlackSwanSavingsBacktestResult | null>(
     null,
   );
@@ -238,7 +223,7 @@ export default function BlackSwanSavingsPreview({
     localInput(DEFAULT_END_T),
   );
   const [useCache, setUseCache] = useState(true);
-  const config = blackSwan.config.normalize(configDraft.blackSwan);
+  const config = blackSwan.config.normalize(configDraft.management.blackSwan);
   const startTime = new Date(startTimeText).getTime();
   const endTime = new Date(endTimeText).getTime();
   const startingBalanceUSDT = Math.max(
@@ -250,41 +235,19 @@ export default function BlackSwanSavingsPreview({
     endTime,
     monitoringConfig: {
       negativePnlThresholdPct:
-        configDraft.speedupStageNegativePnlThresholdPct,
+        configDraft.runtime.speedupStageNegativePnlThresholdPct,
       positivePnlThresholdPct:
-        configDraft.speedupStagePositivePnlThresholdPct,
-      takeProfitOffsetPct: configDraft.speedupStageTakeProfitOffsetPct,
+        configDraft.runtime.speedupStagePositivePnlThresholdPct,
+      takeProfitOffsetPct: configDraft.runtime.speedupStageTakeProfitOffsetPct,
     },
     startTime,
     startingBalanceUSDT,
     symbols,
     tradingConfig: {
-      adaptiveAveraging: configDraft.adaptiveAveraging,
-      averagingRescueProjectionGuardEnabled:
-        configDraft.averagingRescueProjectionGuardEnabled,
-      blackSwan: configDraft.blackSwan,
-      decisionEngineVersion: configDraft.decisionEngineVersion,
-      description: configDraft.description,
-      enableWatchLogic: configDraft.enableWatchLogic,
-      entrySpareBufferEnabled: configDraft.entrySpareBufferEnabled,
-      exactLeverage: configDraft.exactLeverage,
-      exchangeType: configDraft.exchangeType,
-      exitSidewaysToFreeWorkersForStrongCandidates:
-        configDraft.exitSidewaysToFreeWorkersForStrongCandidates,
-      maxEntryBased24HourVolPct: configDraft.maxEntryBased24HourVolPct,
-      maxEntryMargin: configDraft.maxEntryMargin,
-      maxEntryMarginPct: configDraft.maxEntryMarginPct,
-      maxLeverage: configDraft.maxLeverage,
-      maxOpenPositions: configDraft.maxOpenPositions,
-      minActionableAbsoluteLevel: configDraft.minActionableAbsoluteLevel,
-      modelConfig: configDraft.modelConfig,
-      name: configDraft.name,
+      ...configDraft.management,
+      ...(selectedTrading ? pickTradingConfigFields(selectedTrading) : {}),
+      ...selectedTrading,
       symbols,
-      tradingMode: configDraft.tradingMode,
-      watchMaxNextAveragingLevels:
-        configDraft.watchMaxNextAveragingLevels,
-      watchReserveLevels: configDraft.watchReserveLevels,
-      watchReservePctAlloc: configDraft.watchReservePctAlloc,
     },
     useCache,
   });

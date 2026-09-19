@@ -1,6 +1,6 @@
-import type { TradingModelConfig } from "@/lib/trading/models";
+import type { TradingConfig } from "@/lib/trading/models";
 
-interface MonthRangedTradingModelConfig extends TradingModelConfig {
+interface MonthRangedTradingConfig extends TradingConfig {
     startMonth: number;
     endMonth: number;
 }
@@ -48,7 +48,7 @@ export function isMonthInSeason(
  * - throws if overlap detected (two seasons claim same month)
  */
 export function buildMonthToSeasonMap(
-    seasonalConfigs: MonthRangedTradingModelConfig[]
+    seasonalConfigs: MonthRangedTradingConfig[]
 ): MonthToSeasonMap {
     const map: MonthToSeasonMap = Array(13).fill(null); // 0 unused, 1..12 months
     seasonalConfigs.forEach((s, idx) => {
@@ -73,7 +73,7 @@ export function buildMonthToSeasonMap(
  * Returns false or throws depending on preferThrow.
  */
 export function validateSeasonalConfig(
-    seasonalConfigs: MonthRangedTradingModelConfig[],
+    seasonalConfigs: MonthRangedTradingConfig[],
     preferThrow = true
 ): boolean {
     const map = buildMonthToSeasonMap(seasonalConfigs);
@@ -108,10 +108,10 @@ export function findSeasonIndexForMonth(
  */
 export function getSeasonForMs(
     ms: number,
-    seasonalConfigs: MonthRangedTradingModelConfig[],
+    seasonalConfigs: MonthRangedTradingConfig[],
     monthToSeason?: MonthToSeasonMap,
     useUTC = true
-): MonthRangedTradingModelConfig | null {
+): MonthRangedTradingConfig | null {
     const month = monthFromMs(ms, useUTC); // expects 1..12
     const map = monthToSeason ?? buildMonthToSeasonMap(seasonalConfigs);
     const idx = findSeasonIndexForMonth(month, map);

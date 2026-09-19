@@ -126,7 +126,7 @@ function buildMaxProfitUsdtTooltip({
   config: DynamicTradeConfig;
   estimate: SlowSystemCapacityEstimate;
 }) {
-  const takeProfitPct = config.modelConfig?.takeProfitPercent ?? 0;
+  const takeProfitPct = config.takeProfitPercent ?? 0;
 
   return tooltipContent([
     "Total take-profit potential for all captured sequences in this range.",

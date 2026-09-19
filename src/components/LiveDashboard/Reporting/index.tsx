@@ -176,7 +176,7 @@ export default function SlowTradingReporting({
               <MaxUpDistributionChart
                 history={history}
                 takeProfitPct={
-                  dashboardState.config.modelConfig.takeProfitPercent ?? 0
+                  dashboardState.config.takeProfitPercent ?? 0
                 }
               />
             </Grid>

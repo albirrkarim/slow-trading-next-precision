@@ -6,7 +6,7 @@ import { TradingMode } from "@/lib/exchange";
 import { dynamicExit } from "@/lib/trading/execute/models/exit";
 import { TRADE_MESSAGE } from "@/lib/trading/message";
 import type {
-  TradingModelConfig,
+  TradingConfig,
   TradingModelMemory,
 } from "@/lib/trading/models";
 import postAverageRescue from "@/lib/trading/post-average-rescue";
@@ -120,7 +120,7 @@ function createRescueMemory(completedAveragingCount: number) {
   } as TradingModelMemory;
 }
 
-const rescueExitConfig: TradingModelConfig = {
+const rescueExitConfig: TradingConfig = {
   takeProfitPercent: 5,
   stopLossPercent: 90,
   useStopLossPlus: true,
@@ -185,7 +185,7 @@ describe("slow specs exit", () => {
         vb: 1,
         vq: 110,
       },
-      modelConfig: {
+      ...{
         takeProfitPercent: 5,
         stopLossPercent: 20,
         stopLossUSDT: 0,
@@ -283,7 +283,7 @@ describe("slow specs exit", () => {
       currentPrice: 50,
       forceSell: false,
       globalLiquidation: false,
-      modelConfig: {
+      ...{
         takeProfitPercent: 5,
         stopLossPercent: 50,
         stopLossUSDT: 14,
@@ -467,7 +467,7 @@ describe("slow specs exit", () => {
       forceSell: false,
       globalLiquidation: false,
       hasHitTargetZone: false, // not hit target zone
-      modelConfig: {
+      ...{
         takeProfitPercent: 5,
         stopLossPercent: 10,
       },
@@ -482,7 +482,7 @@ describe("slow specs exit", () => {
       forceSell: false,
       globalLiquidation: false,
       hasHitTargetZone: true,
-      modelConfig: {
+      ...{
         takeProfitPercent: 5,
         stopLossPercent: 10,
       },
@@ -497,7 +497,7 @@ describe("slow specs exit", () => {
       currentPrice: 89,
       forceSell: false,
       globalLiquidation: false,
-      modelConfig: {
+      ...{
         takeProfitPercent: 5,
         stopLossPercent: 10,
       },
@@ -516,7 +516,7 @@ describe("slow specs exit", () => {
         leverage: 3,
       },
     };
-    const modelConfig = {
+    const tradingConfig = {
       takeProfitPercent: 5,
       stopLossPercent: 5,
     };
@@ -526,7 +526,7 @@ describe("slow specs exit", () => {
       currentPrice: 102,
       forceSell: false,
       globalLiquidation: false,
-      modelConfig,
+      ...tradingConfig,
     });
 
     // BOTH:TRADITIONAL_TP_SL
@@ -538,7 +538,7 @@ describe("slow specs exit", () => {
       currentPrice: 96,
       forceSell: false,
       globalLiquidation: false,
-      modelConfig,
+      ...tradingConfig,
     });
 
     // BOTH:TRADITIONAL_TP_SL
@@ -550,8 +550,8 @@ describe("slow specs exit", () => {
       currentPrice: 73,
       forceSell: false,
       globalLiquidation: false,
-      modelConfig: {
-        ...modelConfig,
+      ...{
+        ...tradingConfig,
         stopLossPercent: 90,
       },
     });
@@ -575,7 +575,7 @@ describe("slow specs exit", () => {
       currentPrice: 100,
       forceSell: true,
       globalLiquidation: false,
-      modelConfig: {
+      ...{
         takeProfitPercent: 5,
       },
     });
@@ -594,7 +594,7 @@ describe("slow specs exit", () => {
       forceSell: false,
       globalLiquidation: false,
       hasHitTargetZone: true,
-      modelConfig: {
+      ...{
         takeProfitPercent: 5,
         stopLossPercent: 10,
       },
@@ -613,7 +613,7 @@ describe("slow specs exit", () => {
       forceSell: false,
       globalLiquidation: false,
       hasHitTargetZone: false,
-      modelConfig: {
+      ...{
         takeProfitPercent: 5,
         stopLossPercent: 20,
         volatilityTargetStopLossPercent: 2,
@@ -625,7 +625,7 @@ describe("slow specs exit", () => {
       forceSell: false,
       globalLiquidation: false,
       hasHitTargetZone: true,
-      modelConfig: {
+      ...{
         takeProfitPercent: 5,
         stopLossPercent: 20,
         volatilityTargetStopLossPercent: 0,
@@ -637,7 +637,7 @@ describe("slow specs exit", () => {
       forceSell: false,
       globalLiquidation: false,
       hasHitTargetZone: true,
-      modelConfig: {
+      ...{
         takeProfitPercent: 5,
         stopLossPercent: 20,
         volatilityTargetStopLossPercent: 2,
@@ -844,7 +844,7 @@ describe("slow specs exit", () => {
       globalLiquidation: false,
       hasHitTargetZone: false,
       lastVolatilityPrice: 90,
-      modelConfig: {
+      ...{
         takeProfitPercent: 5,
         stopLossPercent: 10,
         postAverageRescueExit: {
@@ -865,7 +865,7 @@ describe("slow specs exit", () => {
       globalLiquidation: false,
       hasHitTargetZone: false,
       lastVolatilityPrice: 90,
-      modelConfig: {
+      ...{
         takeProfitPercent: 5,
         stopLossPercent: 10,
         postAverageRescueExit: {
@@ -919,7 +919,7 @@ describe("slow specs exit", () => {
         globalLiquidation: false,
         hasHitTargetZone: false,
         lastVolatilityPrice: 90,
-        modelConfig: {
+        ...{
           takeProfitPercent: 5,
           stopLossPercent: 10,
         },
@@ -955,7 +955,7 @@ describe("slow specs exit", () => {
   });
 
   it("applies custom post-average rescue thresholds in production", async () => {
-    const config: TradingModelConfig = {
+    const config: TradingConfig = {
       ...rescueExitConfig,
       postAverageRescueExit: {
         enabled: true,
@@ -1004,7 +1004,7 @@ describe("slow specs exit", () => {
         globalLiquidation: false,
         hasHitTargetZone: false,
         lastVolatilityPrice: 90,
-        modelConfig: {
+        ...{
           takeProfitPercent: 5,
           stopLossPercent: 10,
         },
@@ -1051,7 +1051,7 @@ describe("slow specs exit", () => {
       globalLiquidation: false,
       hasHitTargetZone: false,
       lastVolatilityPrice: 95,
-      modelConfig: {
+      ...{
         takeProfitPercent: 3,
         stopLossPercent: 90,
       },
@@ -1063,7 +1063,7 @@ describe("slow specs exit", () => {
 
   it("supports production SL Plus trailing profit protection", async () => {
     const memory = createMemory();
-    const config: TradingModelConfig = {
+    const config: TradingConfig = {
       takeProfitPercent: 5,
       stopLossPercent: 90,
       useStopLossPlus: true,
@@ -1113,7 +1113,7 @@ describe("slow specs exit", () => {
         },
       ],
     };
-    const config: TradingModelConfig = {
+    const config: TradingConfig = {
       takeProfitPercent: 3,
       stopLossPercent: 90,
       useStopLossPlus: true,
@@ -1177,7 +1177,7 @@ describe("slow specs exit", () => {
         reason: "BOTH:EXIT_SIDEWAYS_TO_ENTRY_STRONG_CANDIDATES | free worker",
       },
     };
-    const config: TradingModelConfig = {
+    const config: TradingConfig = {
       takeProfitPercent: 5,
       stopLossPercent: 90,
       orderType: "taker",

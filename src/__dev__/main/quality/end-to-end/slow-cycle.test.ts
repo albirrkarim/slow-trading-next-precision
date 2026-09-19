@@ -406,8 +406,8 @@ describe("slow end-to-end cycle", () => {
 
     storage.config.symbols = ["SUI"];
     storage.config.enableWatchLogic = false;
-    storage.config.modelConfig.takeProfitPercent = 20;
-    storage.config.modelConfig.useStopLossPlus = false;
+    storage.config.takeProfitPercent = 20;
+    storage.config.useStopLossPlus = false;
     storage.runtime.autoEntryEnabled = false;
     storage.runtime.autoExitEnabled = false;
     storage.runtime.runnerEnabled = true;
@@ -462,8 +462,8 @@ describe("slow end-to-end cycle", () => {
 
     storage.config.symbols = ["SUI"];
     storage.config.enableWatchLogic = false;
-    storage.config.modelConfig.takeProfitPercent = 20;
-    storage.config.modelConfig.useStopLossPlus = false;
+    storage.config.takeProfitPercent = 20;
+    storage.config.useStopLossPlus = false;
     storage.runtime.autoEntryEnabled = false;
     storage.runtime.autoExitEnabled = false;
     storage.runtime.runnerEnabled = true;

@@ -30,7 +30,6 @@ import type { SlowTradingAccount } from "@/lib/slowTrading";
 import type { ConfigDraft, ConfigDraftSetter } from "../settings-types";
 import SettingsInfoField from "../Components/SettingsInfoField";
 import { tradeLog } from "@/lib/trading/helper/log";
-import { applyAccountProfileToConfigDraft } from "../helpers";
 
 function maskCredentialValue(value: string): string {
   if (!value) {
@@ -140,7 +139,7 @@ export default function ExchangeAccountManagerDialog({
   setConfigDraft,
 }: ExchangeAccountManagerDialogProps) {
   const [editingExchangeAccountSlug, setEditingExchangeAccountSlug] = useState(
-    configDraft.exchangeAccountSlug,
+    configDraft.runtime.exchangeAccountSlug,
   );
   const [revealedCredentials, setRevealedCredentials] = useState({
     accountId: "",
@@ -152,19 +151,19 @@ export default function ExchangeAccountManagerDialog({
     "idle" | "saving" | "saved" | "error"
   >("idle");
 
-  const effectiveEditingAccountId = configDraft.exchangeAccounts.some(
+  const effectiveEditingAccountId = configDraft.accounts.some(
     (account) => account.slug === editingExchangeAccountSlug,
   )
     ? editingExchangeAccountSlug
-    : (configDraft.exchangeAccounts.find(
-      (account) => account.slug === configDraft.exchangeAccountSlug,
+    : (configDraft.accounts.find(
+      (account) => account.slug === configDraft.runtime.exchangeAccountSlug,
     )?.slug ??
-      configDraft.exchangeAccounts[0]?.slug ??
-      configDraft.exchangeAccountSlug);
+      configDraft.accounts[0]?.slug ??
+      configDraft.runtime.exchangeAccountSlug);
   const editingExchangeAccount =
-    configDraft.exchangeAccounts.find(
+    configDraft.accounts.find(
       (account) => account.slug === effectiveEditingAccountId,
-    ) ?? configDraft.exchangeAccounts[0];
+    ) ?? configDraft.accounts[0];
   const currentRevealedCredentials =
     revealedCredentials.accountId === effectiveEditingAccountId
       ? revealedCredentials
@@ -215,8 +214,11 @@ export default function ExchangeAccountManagerDialog({
         prev
           ? {
             ...prev,
-            exchangeAccounts: savedAccounts,
-            exchangeAccountSlug: savedExchangeAccountSlug,
+            accounts: savedAccounts,
+            runtime: {
+              ...prev.runtime,
+              exchangeAccountSlug: savedExchangeAccountSlug,
+            },
           }
           : prev,
       );
@@ -253,8 +255,8 @@ export default function ExchangeAccountManagerDialog({
 
     if (draftToSave) {
       void persistExchangeAccounts(
-        draftToSave.exchangeAccounts,
-        draftToSave.exchangeAccountSlug,
+        draftToSave.accounts,
+        draftToSave.runtime.exchangeAccountSlug,
       );
     }
   };
@@ -269,13 +271,13 @@ export default function ExchangeAccountManagerDialog({
   ) => {
     applyAccountDraftUpdate((prev) => {
       let selectedAccount: SlowTradingAccount | undefined;
-      const exchangeAccounts = prev.exchangeAccounts.map((account) => {
+      const exchangeAccounts = prev.accounts.map((account) => {
         if (account.slug !== accountId) {
           return account;
         }
 
         const nextAccount = updater(account);
-        if (prev.exchangeAccountSlug === accountId) {
+        if (prev.runtime.exchangeAccountSlug === accountId) {
           selectedAccount = nextAccount;
         }
         return nextAccount;
@@ -283,17 +285,20 @@ export default function ExchangeAccountManagerDialog({
 
       return {
         ...prev,
-        exchangeAccounts,
-        exchangeType: selectedAccount?.type ?? prev.exchangeType,
+        accounts: exchangeAccounts,
+        management: {
+          ...prev.management,
+          exchangeType: selectedAccount?.type ?? prev.management.exchangeType,
+        },
       };
     });
   };
 
   const createExchangeAccountSlug = () => {
-    const name = `Binance ${configDraft.exchangeAccounts.length + 1}`;
+    const name = `Binance ${configDraft.accounts.length + 1}`;
     const base = slugFromName(name);
     const usedSlugs = new Set(
-      configDraft.exchangeAccounts.map((account) => account.slug),
+      configDraft.accounts.map((account) => account.slug),
     );
     let slug = base;
     let suffix = 2;
@@ -307,14 +312,14 @@ export default function ExchangeAccountManagerDialog({
   const addExchangeAccount = () => {
     const now = Date.now();
     const template =
-      configDraft.exchangeAccounts.find(
-        (candidate) => candidate.slug === configDraft.exchangeAccountSlug,
-      ) ?? configDraft.exchangeAccounts[0];
+      configDraft.accounts.find(
+        (candidate) => candidate.slug === configDraft.runtime.exchangeAccountSlug,
+      ) ?? configDraft.accounts[0];
     if (!template) return;
     const account: SlowTradingAccount = {
       slug: createExchangeAccountSlug(),
       type: "binance",
-      name: `Binance ${configDraft.exchangeAccounts.length + 1}`,
+      name: `Binance ${configDraft.accounts.length + 1}`,
       description: "",
       credentials: { apiKey: "", apiSecret: "" },
       enabled: true,
@@ -330,7 +335,7 @@ export default function ExchangeAccountManagerDialog({
     applyAccountDraftUpdate(
       (prev) => ({
         ...prev,
-        exchangeAccounts: [...prev.exchangeAccounts, account],
+        accounts: [...prev.accounts, account],
       }),
       { persist: true },
     );
@@ -338,39 +343,41 @@ export default function ExchangeAccountManagerDialog({
   };
 
   const deleteEditingExchangeAccount = () => {
-    if (!editingExchangeAccount || configDraft.exchangeAccounts.length <= 1) {
+    if (!editingExchangeAccount || configDraft.accounts.length <= 1) {
       return;
     }
 
     applyAccountDraftUpdate(
       (prev) => {
-        const exchangeAccounts = prev.exchangeAccounts.filter(
+        const exchangeAccounts = prev.accounts.filter(
           (account) => account.slug !== editingExchangeAccount.slug,
         );
         const exchangeAccountSlug =
-          prev.exchangeAccountSlug === editingExchangeAccount.slug
-            ? (exchangeAccounts[0]?.slug ?? prev.exchangeAccountSlug)
-            : prev.exchangeAccountSlug;
+          prev.runtime.exchangeAccountSlug === editingExchangeAccount.slug
+            ? (exchangeAccounts[0]?.slug ?? prev.runtime.exchangeAccountSlug)
+            : prev.runtime.exchangeAccountSlug;
         const selectedAccount = exchangeAccounts.find(
           (account) => account.slug === exchangeAccountSlug,
         );
 
         const nextDraft = {
           ...prev,
-          exchangeAccountSlug,
-          exchangeAccounts,
-          exchangeType: selectedAccount?.type ?? prev.exchangeType,
+          accounts: exchangeAccounts,
+          runtime: { ...prev.runtime, exchangeAccountSlug },
+          management: {
+            ...prev.management,
+            exchangeType:
+              selectedAccount?.type ?? prev.management.exchangeType,
+          },
         };
-        return selectedAccount && prev.exchangeAccountSlug !== exchangeAccountSlug
-          ? applyAccountProfileToConfigDraft(nextDraft, selectedAccount)
-          : nextDraft;
+        return nextDraft;
       },
       { persist: true },
     );
     setEditingExchangeAccountSlug(
-      configDraft.exchangeAccounts.find(
+      configDraft.accounts.find(
         (account) => account.slug !== editingExchangeAccount.slug,
-      )?.slug ?? configDraft.exchangeAccountSlug,
+      )?.slug ?? configDraft.runtime.exchangeAccountSlug,
     );
   };
 
@@ -444,7 +451,7 @@ export default function ExchangeAccountManagerDialog({
               </Button>
               <Button
                 color="error"
-                disabled={configDraft.exchangeAccounts.length <= 1}
+                disabled={configDraft.accounts.length <= 1}
                 size="small"
                 variant="outlined"
                 startIcon={<DeleteOutlineIcon />}
@@ -458,7 +465,7 @@ export default function ExchangeAccountManagerDialog({
           <Grid container spacing={2}>
             <Grid size={{ xs: 12, md: 4 }}>
               <Stack gap={1}>
-                {configDraft.exchangeAccounts.map((account) => {
+                {configDraft.accounts.map((account) => {
                   const selected = account.slug === editingExchangeAccount?.slug;
                   return (
                     <Button

@@ -7,81 +7,38 @@ import {
 import type { ConfigDraft } from "@/components/LiveDashboard/Navbar/navbar-types";
 
 const configDraft = {
-  adaptiveAveraging: {
-    enabled: true,
-    maxMultiplier: 5,
-    minProjectedProfitPct: 2,
+  management: {
+    name: "Seasonal Trade",
+    description: "Backup test",
+    symbols: ["AAVE", "ARB"],
+    exchangeType: "binance",
+    tradingMode: "futures",
+    decisionEngineVersion: "decision.v19",
   },
-  autoEntryEnabled: true,
-  autoEntryDailyPnlLimitUSDT: -50,
-  autoExitEnabled: true,
-  autoRemoveSymbolAbsLevel: 6,
-  autoRemoveSymbolMinMarketCapUSD: 100_000_000,
-  autoRemoveSymbolMinPrice: 0.01,
-  autoRemoveSymbolMinVPointPct: 15,
-  decisionEngineVersion: "decision.v19",
-  description: "Backup test",
-  enableWatchLogic: true,
-  entrySignalBypass: false,
-  exactLeverage: 3,
-  exchangeAccountSlug: "account-1",
-  exchangeAccounts: [
+  runtime: {
+    exchangeAccountSlug: "account-1",
+    runnerEnabled: true,
+    autoEntryEnabled: true,
+    autoEntryDailyPnlLimitUSDT: -50,
+    autoExitEnabled: true,
+    entrySignalBypass: false,
+    notification: {
+      email: { enabled: false, types: [] },
+      telegram: { enabled: true, types: [] },
+    },
+    withdrawal: { autoEnabled: false, schedules: [], walletBook: [] },
+    safeHaven: { autoEnabled: false, schedules: [] },
+    mcp: { tokens: [] },
+  },
+  accounts: [
     {
-      id: "account-1",
+      slug: "account-1",
       credentials: {
         apiKey: "secret-key",
         apiSecret: "secret-value",
       },
     },
   ],
-  exchangeType: "binance",
-  exitSidewaysToFreeWorkersForStrongCandidates: true,
-  maxEntryBased24HourVolPct: 0.2,
-  maxEntryMargin: 10,
-  maxEntryMarginPct: 0,
-  maxLeverage: 3,
-  minActionableAbsoluteLevel: 2,
-  modelConfig: {
-    stopLossPercent: 15,
-    takeProfitPercent: 2,
-  },
-  name: "Seasonal Trade",
-  pnlHistoryBucketMinutes: 15,
-  speedupStageIntervalMinutes: 1,
-  speedupStagePositivePnlThresholdPct: 1.5,
-  speedupStageNegativePnlThresholdPct: 1.5,
-  speedupStageTakeProfitOffsetPct: 0.5,
-  standardMonitoringStageIntervalMinutes: 5,
-  managementStageIntervalMinutes: 5,
-  captureEntryStageIntervalMinutes: 5,
-  notification: {
-    email: { enabled: false, types: [] },
-    telegram: {
-      enabled: true,
-      types: [
-        {
-          id: "NOTIF_HIGH_VOLATILITY",
-          params: { level: 4 },
-        },
-        {
-          id: "NOTIF_STALE_POSITION",
-          params: { hour: 1 },
-        },
-      ],
-    },
-  },
-  runnerEnabled: true,
-  safeHavenUSDT: "10",
-  sandboxEnabled: true,
-  sandboxInitialBalanceUSDT: "2000",
-  symbolsText: "AAVE, ARB",
-  tradingMode: "futures",
-  watchMaxNextAveragingLevels: 4,
-  watchReserveLevels: 2,
-  watchReservePctAlloc: 2,
-  withdrawalAutoEnabled: false,
-  withdrawalSchedules: [],
-  withdrawalWalletBook: [],
 } as unknown as ConfigDraft;
 
 describe("settings config backup", () => {
@@ -96,18 +53,14 @@ describe("settings config backup", () => {
     expect(() => parseConfigBackup("not json")).toThrow(
       "The pasted value is not valid JSON.",
     );
-    expect(() => parseConfigBackup('{"name":"incomplete"}')).toThrow(
-      'The backup is missing the required "description" field.',
+    expect(() => parseConfigBackup('{"management":{}}')).toThrow(
+      'The backup is missing the required "runtime" field.',
     );
   });
 
-  it("defaults the daily PnL stop when importing an older backup", () => {
-    const { autoEntryDailyPnlLimitUSDT: _legacyMissingField, ...legacyBackup } =
-      configDraft;
-
-    expect(
-      parseConfigBackup(JSON.stringify(legacyBackup))
-        .autoEntryDailyPnlLimitUSDT,
-    ).toBe(-50);
+  it("does not accept the old flat backup shape", () => {
+    expect(() =>
+      parseConfigBackup(JSON.stringify({ name: "Legacy flat config" })),
+    ).toThrow('The backup is missing the required "management" field.');
   });
 });

@@ -590,7 +590,7 @@ export async function buildSlowTradingEntryDiagnostics(params?: {
       .filter((item) => item.symbol)
       .map((item) => [item.symbol!.toUpperCase(), item]),
   );
-  const modelConfig = slowTradingMarket.modelConfig.pick(storage);
+  const tradingConfig = slowTradingMarket.tradingConfig.pick(storage);
   const marketType = resolveMarketTypeForTradingMode(
     storage.config.tradingMode,
   );
@@ -604,7 +604,7 @@ export async function buildSlowTradingEntryDiagnostics(params?: {
         exchange.getFees().getTotalFeePercent({
           side: "buy",
           currency: "USDT",
-          type: modelConfig.orderType ?? "taker",
+          type: tradingConfig.orderType ?? "taker",
         }) / 100;
       const [entries, volumeSnapshot] = await Promise.all([
         Promise.all(

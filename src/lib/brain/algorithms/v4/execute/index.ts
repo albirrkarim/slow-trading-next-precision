@@ -41,7 +41,7 @@ export async function executeDynamicTrade({
   // From api
   symbols,
   modelMemoryMap,
-  modelConfig,
+  tradingConfig,
   dynamicTradeMemory,
   klinesMap,
   decisionEngineVersion = "decision.v12",
@@ -81,8 +81,8 @@ export async function executeDynamicTrade({
   // A.3 Save Haven Logic
   tradeLog.debug("A.3 Save Haven Logic");
   const needToSafe =
-    modelConfig.safePercentPerMonth !== undefined ||
-    modelConfig.safeUSDTPerMonth !== undefined;
+    tradingConfig.safePercentPerMonth !== undefined ||
+    tradingConfig.safeUSDTPerMonth !== undefined;
 
   if (needToSafe) {
     // A.3.1 When its 1st of the month so request the amount to
@@ -117,7 +117,7 @@ export async function executeDynamicTrade({
 
         scheduleSafeHavenRequest({
           currentTimeMs,
-          config: modelConfig,
+          config: tradingConfig,
           currentAsset: currentBalance.currentAsset,
           memory: dynamicTradeMemory,
         });
@@ -211,7 +211,7 @@ export async function executeDynamicTrade({
   const recommendedPositions = DECISION_ENGINE_MAP[decisionEngineVersion]({
     currentTimeMs,
     volatilityPointsMap,
-    modelConfig,
+    ...tradingConfig,
     dynamicTradeMemory,
     modelMemoryMap,
     minActionableAbsoluteLevel,
@@ -241,7 +241,7 @@ export async function executeDynamicTrade({
         symbol,
         modelMemoryMap,
         dynamicTradeMemory,
-        modelConfig,
+        tradingConfig,
         klinesMap,
         backtest,
       });
@@ -283,7 +283,7 @@ export async function executeDynamicTrade({
       symbol: targetBuySymbol,
       modelMemoryMap,
       dynamicTradeMemory,
-      modelConfig,
+      tradingConfig,
       klinesMap,
       backtest,
     });

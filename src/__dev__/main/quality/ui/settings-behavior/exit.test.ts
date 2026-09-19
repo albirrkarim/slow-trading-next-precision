@@ -113,7 +113,7 @@ describe("settings behavior: exit", () => {
         forceSell: false,
         globalLiquidation: false,
         hasHitTargetZone: true,
-        modelConfig: {
+        ...{
           orderType: "taker",
           stopLossPercent: 20,
           takeProfitPercent: 5,
@@ -132,7 +132,7 @@ describe("settings behavior: exit", () => {
         currentPrice: 80,
         forceSell: false,
         globalLiquidation: false,
-        modelConfig: {
+        ...{
           orderType: "taker",
           stopLossPercent: 0,
           takeProfitPercent: 5,
@@ -146,7 +146,7 @@ describe("settings behavior: exit", () => {
         currentPrice: 80,
         forceSell: false,
         globalLiquidation: false,
-        modelConfig: {
+        ...{
           orderType: "taker",
           stopLossPercent: 20,
           takeProfitPercent: 5,

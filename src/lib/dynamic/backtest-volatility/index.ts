@@ -57,7 +57,7 @@ export async function runBacktestVolatilityDynamic({
   signal?.throwIfAborted();
   symbols.sort();
 
-  const { modelConfig: configuredModelConfig, startingBalanceUSDT } = config;
+  const { startingBalanceUSDT } = config;
   const pureConfig = deepCopy(config);
   // BTEST:BACKTEST_MARKET_TYPE
   const marketType = resolveMarketTypeForTradingMode(config.tradingMode);
@@ -145,8 +145,8 @@ export async function runBacktestVolatilityDynamic({
 
   const cutOffNoMoreEntry = times[times.length - 1] - entryCutoffBufferMs;
 
-  // A.10 Initialize the single all-time model config
-  const modelConfig = deepCopy(configuredModelConfig);
+  // A.10 Initialize the single all-time trading config
+  const tradingConfig = deepCopy(config);
 
   // A.11 initialize first step
   const cropedVMapInit = cropVolatility(
@@ -199,8 +199,8 @@ export async function runBacktestVolatilityDynamic({
     // B.3 Save Haven Logic
     // tradeLog.debug("A.3 Save Haven Logic");
     const needToSafe =
-      modelConfig.safePercentPerMonth !== undefined ||
-      modelConfig.safeUSDTPerMonth !== undefined;
+      tradingConfig.safePercentPerMonth !== undefined ||
+      tradingConfig.safeUSDTPerMonth !== undefined;
 
     if (needToSafe) {
       const currentBalance = countGrowthOvertime({
@@ -213,7 +213,7 @@ export async function runBacktestVolatilityDynamic({
 
       scheduleSafeHavenRequest({
         currentTimeMs,
-        config: modelConfig,
+        config: tradingConfig,
         currentAsset: currentBalance.currentAsset,
         memory: dynamicTradeMemory,
       });
@@ -227,7 +227,7 @@ export async function runBacktestVolatilityDynamic({
       const recommendedPositions = decisionEngine({
         currentTimeMs,
         volatilityPointsMap: deepCopy(cropedVMap),
-        modelConfig,
+        ...tradingConfig,
         modelMemoryMap,
         dynamicTradeMemory,
         backtestPack,
@@ -319,7 +319,7 @@ export async function runBacktestVolatilityDynamic({
       modelMemoryMap,
       backtestPack,
       config,
-      modelConfig,
+      tradingConfig,
       dynamicTradeMemory,
     });
 
@@ -347,7 +347,7 @@ export async function runBacktestVolatilityDynamic({
     forceSell: true,
     backtestPack,
     config,
-    modelConfig,
+    tradingConfig,
     dynamicTradeMemory,
   });
 

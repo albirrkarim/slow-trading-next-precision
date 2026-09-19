@@ -62,7 +62,7 @@ export default function SettingsDialogNotificationTab(props: {
 }) {
   const { configDraft, setConfigDraft } = props;
   const { enqueueSnackbar } = useSnackbar();
-  const notification = configDraft.notification;
+  const notification = configDraft.runtime.notification;
   const [testingChannel, setTestingChannel] =
     useState<NotificationChannel | null>(null);
   const [exampleSelection, setExampleSelection] =
@@ -77,7 +77,10 @@ export default function SettingsDialogNotificationTab(props: {
       prev
         ? {
           ...prev,
-          notification: updater(prev.notification),
+          runtime: {
+            ...prev.runtime,
+            notification: updater(prev.runtime.notification),
+          },
         }
         : prev,
     );

@@ -17,9 +17,7 @@
     "name": "SLOW Trade",
     "description": "",
     "startingBalanceUSDT": 600,
-    "modelConfig": {
-      "takeProfitPercent": 5,
-      "useStopLossPlus": false
-    }
+    "takeProfitPercent": 5,
+    "useStopLossPlus": false
   }
 }

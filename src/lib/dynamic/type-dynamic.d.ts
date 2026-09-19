@@ -1,6 +1,6 @@
 import type { TradingMode } from "../exchange";
 import type { BlackSwanConfig } from "../trading/black-swan";
-import type { TradingModelConfig } from "../trading/models";
+import type { TradingConfig } from "../trading/models";
 
 export interface SafeHavenConfig {
   /**
@@ -35,7 +35,7 @@ export interface SafeHavenConfig {
   minimalAssetOnTrade?: number;
 }
 
-export interface TradingModelConfigDynamic extends SafeHavenConfig {}
+export interface TradingConfigDynamicFields extends SafeHavenConfig {}
 
 export interface AdaptiveAveragingConfig {
   /** Enables searching above the normal watch reserve multiplier. */
@@ -48,7 +48,7 @@ export interface AdaptiveAveragingConfig {
   minProjectedProfitPct: number;
 }
 
-export interface DynamicTradeConfig {
+export interface DynamicTradeConfig extends TradingConfig {
   /**
    * Name of the trading configuration.
    */
@@ -63,11 +63,6 @@ export interface DynamicTradeConfig {
    * List of trading symbols (e.g., ["BTC", "ETH"]) that this config applies to.
    */
   symbols: string[];
-
-  /**
-   * Trading model parameters used for every run.
-   */
-  modelConfig: TradingModelConfig;
 
   /**
    * The version string specifying the decision engine algorithm (e.g., "decision.v14").

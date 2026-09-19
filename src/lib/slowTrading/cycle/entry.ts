@@ -31,7 +31,7 @@ async function execute(runtime: SlowTradingCycleRuntime): Promise<void> {
     forcedEntrySymbols,
     isSandbox,
     marketType,
-    modelConfig,
+    tradingConfig,
     modelMemoryMap,
     modeState,
     profiler,
@@ -290,7 +290,7 @@ async function execute(runtime: SlowTradingCycleRuntime): Promise<void> {
           trading.execution.entry({
             investAmount,
             entrySignal,
-            modelConfig,
+            tradingConfig,
             modelMemory: entryModelMemory,
             exchangeType,
             tradingMode,

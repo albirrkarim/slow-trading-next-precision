@@ -108,7 +108,7 @@ describe("trade history views", () => {
       balances: { startingBalanceUSDT: 100 },
       config: {
         exchangeType: "binance",
-        modelConfig: { takeProfitPercent: 2 },
+        takeProfitPercent: 2,
         watchReservePctAlloc: 2,
       },
       history,

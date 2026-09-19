@@ -2,6 +2,8 @@
 
 import RuleOutlinedIcon from "@mui/icons-material/RuleOutlined";
 import { Box, Grid, Stack, Typography } from "@mui/material";
+import type { Dispatch, SetStateAction } from "react";
+import type { SlowTradingAccountTradingConfig } from "@/lib/slowTrading";
 
 import PostAverageRescueExitSettings from "./PostAverageRescueExitSettings";
 import PostAverageStopLossSettings from "./PostAverageStopLossSettings";
@@ -10,7 +12,6 @@ import ReadMoreDialogButton from "../Components/ReadMoreDialogButton";
 import SettingsCheckbox from "../Components/SettingsCheckbox";
 import SettingsInfoField from "../Components/SettingsInfoField";
 import SettingsRuleAccordion from "../Components/SettingsRuleAccordion";
-import type { ConfigDraft, ConfigDraftSetter } from "../settings-types";
 
 const STOP_LOSS_PLUS_INFO =
   "Trailing profit lock after TP tracking starts. With TP 2% and retrace 1%, the initial exit threshold is 1%. The threshold rises with every higher profit peak.";
@@ -80,45 +81,31 @@ function SidewaysExitDetails() {
 }
 
 export default function ExitStrategyReference({
-  configDraft,
+  tradingConfig,
   defaultAdverseDriftPct,
-  setConfigDraft,
+  setTradingConfig,
 }: {
-  configDraft: ConfigDraft;
+  tradingConfig: SlowTradingAccountTradingConfig;
   defaultAdverseDriftPct: number;
-  setConfigDraft: ConfigDraftSetter;
+  setTradingConfig: Dispatch<SetStateAction<SlowTradingAccountTradingConfig>>;
 }) {
-  const takeProfitPct = configDraft.modelConfig.takeProfitPercent ?? 0;
-  const stopLossPct = configDraft.modelConfig.stopLossPercent;
-  const exitOnVPointAbsLevel =
-    configDraft.modelConfig.exitOnVPointAbsLevel ?? 0;
-  const stopLossUSDT = configDraft.modelConfig.stopLossUSDT ?? 50;
+  const takeProfitPct = tradingConfig.takeProfitPercent ?? 0;
+  const stopLossPct = tradingConfig.stopLossPercent;
+  const exitOnVPointAbsLevel = tradingConfig.exitOnVPointAbsLevel ?? 0;
+  const stopLossUSDT = tradingConfig.stopLossUSDT ?? 50;
   const targetZoneStopLossPct =
-    configDraft.modelConfig.volatilityTargetStopLossPercent ?? 0;
-  const stopLossPlusEnabled = Boolean(configDraft.modelConfig.useStopLossPlus);
-  const stopLossPlusTriggerPct =
-    configDraft.modelConfig.stopLossPlusTrigger ?? 1;
+    tradingConfig.volatilityTargetStopLossPercent ?? 0;
+  const stopLossPlusEnabled = Boolean(tradingConfig.useStopLossPlus);
+  const stopLossPlusTriggerPct = tradingConfig.stopLossPlusTrigger ?? 1;
   const sidewaysEnabled = Boolean(
-    configDraft.exitSidewaysToFreeWorkersForStrongCandidates,
+    tradingConfig.exitSidewaysToFreeWorkersForStrongCandidates,
   );
-  const postAverageRescueExit = configDraft.modelConfig.postAverageRescueExit;
-  const postAverageStopLoss = configDraft.modelConfig.postAverageStopLoss;
+  const postAverageRescueExit = tradingConfig.postAverageRescueExit;
+  const postAverageStopLoss = tradingConfig.postAverageStopLoss;
   const levelBasedPctDriftStopLoss =
-    configDraft.modelConfig.levelBasedPctDriftStopLoss;
-  const updateModelConfig = (
-    patch: Partial<typeof configDraft.modelConfig>,
-  ) => {
-    setConfigDraft((previous) =>
-      previous
-        ? {
-          ...previous,
-          modelConfig: {
-            ...previous.modelConfig,
-            ...patch,
-          },
-        }
-        : previous,
-    );
+    tradingConfig.levelBasedPctDriftStopLoss;
+  const updateTradingConfig = (patch: Partial<SlowTradingAccountTradingConfig>) => {
+    setTradingConfig((previous) => ({ ...previous, ...patch }));
   };
 
   return (
@@ -141,7 +128,7 @@ export default function ExitStrategyReference({
           info="Target profit percentage for automatic exits. Example: long entry at 100 and TP 5 targets about 105 before fees; short entry at 100 targets about 95."
           label="Take Profit %"
           onChange={(event) =>
-            updateModelConfig({
+            updateTradingConfig({
               takeProfitPercent: parseNumber(event.target.value),
             })
           }
@@ -189,7 +176,7 @@ export default function ExitStrategyReference({
               info="When ON, SLOW can close one sideways position for a strong level-4+ candidate when the worker-freeing or aged-sideways rules are met."
               label="Exit Sideways For Strong Candidates"
               onChange={(checked) =>
-                setConfigDraft((previous) =>
+                setTradingConfig((previous) =>
                   previous
                     ? {
                       ...previous,
@@ -217,7 +204,7 @@ export default function ExitStrategyReference({
               info="Exit when the latest vPoint absolute level reaches this value. Example: 6 exits at level -6 or +6. Set 0 to disable."
               label="Exit On Absolute vPoint Level"
               onChange={(event) =>
-                updateModelConfig({
+                updateTradingConfig({
                   exitOnVPointAbsLevel: Math.max(
                     0,
                     Math.floor(parseNumber(event.target.value)),
@@ -249,7 +236,7 @@ export default function ExitStrategyReference({
             <LevelBasedPctDriftStopLossSettings
               defaultAdverseDriftPct={defaultAdverseDriftPct}
               onChange={(nextConfig) =>
-                updateModelConfig({ levelBasedPctDriftStopLoss: nextConfig })
+                updateTradingConfig({ levelBasedPctDriftStopLoss: nextConfig })
               }
               value={levelBasedPctDriftStopLoss}
             />
@@ -267,7 +254,7 @@ export default function ExitStrategyReference({
               info="Maximum fee-adjusted net USDT loss for one open position. Enter 50 to exit at -$50 net PnL. Set 0 to disable."
               label="Stop Loss By Net USDT Loss"
               onChange={(event) =>
-                updateModelConfig({
+                updateTradingConfig({
                   stopLossUSDT: Math.max(0, parseNumber(event.target.value)),
                 })
               }
@@ -296,7 +283,7 @@ export default function ExitStrategyReference({
               info="Hard stop-loss percentage. Example: long entry at 100 and SL 20 exits around 80; short entry at 100 exits around 120. Leave empty or set 0 to disable."
               label="Stop Loss %"
               onChange={(event) =>
-                updateModelConfig({
+                updateTradingConfig({
                   stopLossPercent: Number(event.target.value) || undefined,
                 })
               }
@@ -330,7 +317,7 @@ export default function ExitStrategyReference({
               info="Additional stop loss enabled only after the opposite volatility target zone has been hit. It uses fee-adjusted, unlevered PnL from the weighted entry. Enter 2 to exit at -2%; set 0 to disable."
               label="Target-Zone Stop Loss %"
               onChange={(event) =>
-                updateModelConfig({
+                updateTradingConfig({
                   volatilityTargetStopLossPercent: parseNumber(
                     event.target.value,
                   ),
@@ -361,7 +348,7 @@ export default function ExitStrategyReference({
           >
             <PostAverageRescueExitSettings
               onChange={(nextConfig) =>
-                updateModelConfig({ postAverageRescueExit: nextConfig })
+                updateTradingConfig({ postAverageRescueExit: nextConfig })
               }
               value={postAverageRescueExit}
             />
@@ -376,7 +363,7 @@ export default function ExitStrategyReference({
           >
             <PostAverageStopLossSettings
               onChange={(nextConfig) =>
-                updateModelConfig({ postAverageStopLoss: nextConfig })
+                updateTradingConfig({ postAverageStopLoss: nextConfig })
               }
               value={postAverageStopLoss}
             />
@@ -396,7 +383,7 @@ export default function ExitStrategyReference({
                   info={STOP_LOSS_PLUS_INFO}
                   label="Use StopLoss+"
                   onChange={(checked) =>
-                    updateModelConfig({ useStopLossPlus: checked })
+                    updateTradingConfig({ useStopLossPlus: checked })
                   }
                 />
               </Grid>
@@ -407,7 +394,7 @@ export default function ExitStrategyReference({
                   info="After Take Profit % activates StopLoss+, this net-profit retrace from the recorded peak triggers an exit. Enter 1 for a 1 percentage-point retrace. With TP 2%, the initial minimum threshold is 2% - 1% = 1%, then it rises with higher peaks."
                   label="StopLoss+ Retrace Trigger %"
                   onChange={(event) =>
-                    updateModelConfig({
+                    updateTradingConfig({
                       stopLossPlusTrigger: parseNumber(event.target.value),
                     })
                   }

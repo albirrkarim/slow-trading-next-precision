@@ -1,4 +1,3 @@
-import dynamic from "@/lib/dynamic";
 import type { getExchange } from "@/lib/exchange";
 import { getMarketCapUSDMapForSymbols } from "@/lib/exchange/market-cap";
 import slowTradingShared from "./shared";
@@ -99,13 +98,10 @@ export async function buildLatestMarketCapBySymbol(
 }
 
 /**
- * Select the trading model configuration for the current execution.
+ * Select the trading configuration for the current execution.
  */
-export function pickModelConfig(storage: SlowTradingStorageData) {
-  return slowTradingShared.clone(
-    storage.config.modelConfig ??
-      dynamic.defaults.tradeConfigProduction.modelConfig,
-  );
+export function pickTradingConfig(storage: SlowTradingStorageData) {
+  return slowTradingShared.clone(storage.config);
 }
 
 /**
@@ -118,8 +114,8 @@ const slowTradingMarket = {
   price: {
     buildLatestBySymbol: buildLatestPriceBySymbol,
   },
-  modelConfig: {
-    pick: pickModelConfig,
+  tradingConfig: {
+    pick: pickTradingConfig,
   },
 } as const;
 

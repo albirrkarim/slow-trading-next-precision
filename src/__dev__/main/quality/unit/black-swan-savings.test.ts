@@ -4,7 +4,7 @@ import type { BlackSwanBacktestResult } from "@/lib/devBacktest/black-swan";
 import { TradingMode } from "@/lib/exchange";
 import type { UnifiedKline } from "@/lib/exchange/types";
 import blackSwan, { type BlackSwanConfig } from "@/lib/trading/black-swan";
-import type { Position, TradingModelConfig } from "@/lib/trading/models";
+import type { Position, TradingConfig } from "@/lib/trading/models";
 import { describe, expect, it } from "vitest";
 
 const MINUTE_MS = 60_000;
@@ -171,7 +171,7 @@ function replay(params?: {
     positivePnlThresholdPct?: number;
     takeProfitOffsetPct?: number;
   };
-  modelConfig?: TradingModelConfig;
+  tradingConfig?: TradingConfig;
   positions?: Position[];
 }) {
   const btc = candles(
@@ -197,7 +197,7 @@ function replay(params?: {
     ]),
   );
   const detector = detectorResult(params?.config);
-  const modelConfig = params?.modelConfig ?? {
+  const tradingConfig = params?.tradingConfig ?? {
     postAverageRescueExit: { enabled: false, thresholds: [] },
     stopLossPercent: 20,
     takeProfitPercent: 5,
@@ -220,7 +220,7 @@ function replay(params?: {
       enableWatchLogic: params?.enableWatchLogic ?? false,
       averagingRescueProjectionGuardEnabled: false,
       exchangeType: "binance",
-      modelConfig,
+      ...tradingConfig,
       name: "test",
       symbols: positions.map((item) => item.symbol),
       tradingMode: TradingMode.FUTURES,
@@ -306,7 +306,7 @@ describe("Black Swan savings portfolio replay", () => {
         82,
         80,
       ],
-      modelConfig: {
+      tradingConfig: {
         postAverageRescueExit: { enabled: false, thresholds: [] },
         stopLossPercent: 90,
         takeProfitPercent: 5,
@@ -336,7 +336,7 @@ describe("Black Swan savings portfolio replay", () => {
   it("detects an earlier liquidation from a completed candle low", () => {
     const result = replay({
       candleLows: { 61: 70 },
-      modelConfig: {
+      tradingConfig: {
         postAverageRescueExit: { enabled: false, thresholds: [] },
         stopLossPercent: 90,
         takeProfitPercent: 5,

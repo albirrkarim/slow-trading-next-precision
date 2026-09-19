@@ -51,7 +51,7 @@ async function processSafeHavenQueues(currentTimeMs: number): Promise<number> {
         );
         const minimumTradingCapitalUSDT = Math.max(
           0,
-          Number(storage.config.modelConfig.minimalAssetOnTrade) || 0,
+          Number(storage.config.minimalAssetOnTrade) || 0,
         );
         const currentTradingCapitalUSDT = roundUSDT(
           dashboard.balances.availableQuoteAsset -

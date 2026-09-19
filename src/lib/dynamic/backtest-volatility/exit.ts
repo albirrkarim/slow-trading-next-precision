@@ -9,7 +9,7 @@ import tradingPosition from "@/lib/trading/position";
 import { TRADE_MESSAGE } from "@/lib/trading/message";
 import type {
   PositionCloseReason,
-  TradingModelConfig,
+  TradingConfig,
   TradingModelMemory,
 } from "@/lib/trading/models";
 import type { DataBacktestPurpose } from "@lib/brain/algorithms/type-execute";
@@ -23,7 +23,7 @@ import {
 import { BACKTEST_ONE_SIDE_FEE_RATIO } from "./constants";
 import { applyPositionNetUsdtExtrema } from "@/lib/trading/pnl";
 
-const DEFAULT_BACKTEST_EXIT_MODEL_CONFIG: TradingModelConfig = {
+const DEFAULT_BACKTEST_EXIT_TRADING_CONFIG: TradingConfig = {
   takeProfitPercent: 5,
 };
 
@@ -34,7 +34,7 @@ interface TryToExitProps {
   forceSell?: boolean;
   backtestPack: DataBacktestPurpose;
   config: BacktestConfigDynamic;
-  modelConfig?: TradingModelConfig;
+  tradingConfig?: TradingConfig;
   dynamicTradeMemory: DynamicTradeMemory;
 }
 
@@ -45,14 +45,12 @@ export function tryToExit({
   forceSell = false,
   backtestPack,
   config,
-  modelConfig,
+  tradingConfig,
   dynamicTradeMemory,
 }: TryToExitProps) {
   let totalUSDTRecovered = 0;
-  const exitModelConfig =
-    modelConfig ??
-    config.modelConfig ??
-    DEFAULT_BACKTEST_EXIT_MODEL_CONFIG;
+  const exitTradingConfig =
+    tradingConfig ?? config ?? DEFAULT_BACKTEST_EXIT_TRADING_CONFIG;
 
   // 1. Calculate Global PnL for Cross Margin
   const globalUnrealizedPnL = calculateGlobalUnrealizedPnL({
@@ -101,7 +99,7 @@ export function tryToExit({
         // BOTH:POST_AVERAGE_RESCUE_EXIT
         lastVolatilityPrice: lastVolatility?.p,
         lastVolatilityPoint: lastVolatility,
-        modelConfig: exitModelConfig,
+        ...exitTradingConfig,
         exitFeeRatio: BACKTEST_ONE_SIDE_FEE_RATIO,
       });
 

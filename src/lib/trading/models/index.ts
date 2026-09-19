@@ -14,7 +14,7 @@ export const MODEL_MAP: Record<string, any> = {
 };
 
 
-export const PEPE_MODEL_CONFIG_V1 = {
+export const PEPE_TRADING_CONFIG_V1 = {
   takeProfitPercent: 5,
   stopLossPercent: 90,
   maxHoldMinutes: 60 * 24 * 30 * 12,

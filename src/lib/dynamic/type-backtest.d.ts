@@ -7,7 +7,7 @@ import { type IntervalKlines } from "@/lib/exchange/platform/tokocrypto";
 import type { TradingMode } from "@/lib/exchange/types";
 import type { DynamicTradeAlgorithm } from "../brain/algorithms";
 import type { DataBacktestPurpose, DecisionEngineProps, EntryRecommendation } from "../brain/algorithms/type-execute";
-import type { EventPosition, TradingModelConfig } from "@/lib/trading/models";
+import type { EventPosition, TradingConfig } from "@/lib/trading/models";
 import type {
     AdaptiveAveragingConfig,
     DynamicTradeMemory,
@@ -57,12 +57,7 @@ export interface TradeHistoryVolatility {
 /**
  * Configuration options for running a backtest simulation on historical trading data.
  */
-export interface BacktestConfigDynamic {
-    /**
-     * Model Trading config
-     */
-    modelConfig: TradingModelConfig;
-
+export interface BacktestConfigDynamic extends TradingConfig {
     /**
      * The amount of USDT available at the start of the backtest.
      */

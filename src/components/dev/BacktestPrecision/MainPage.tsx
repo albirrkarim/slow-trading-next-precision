@@ -26,12 +26,12 @@ import DebugSeries from "../DynamicTrade/Debug/Series";
 import { type SavedPayload } from "../DynamicTrade/type-dynamic-report";
 import PrecisionBTestConfig, { DEFAULT_BACKTEST_CONFIG } from "./Config";
 import type { BacktestConfig } from "./types";
+import type { ConfigDraft } from "@/components/LiveDashboard/Navbar/navbar-types";
 
 const BACKTEST_KEY = "dynamic";
 
 type BacktestConfigInput = Partial<BacktestConfig> & {
-    config?: Partial<BacktestConfig>;
-    seasonalModelConfig?: BacktestConfig["modelConfig"][];
+    config?: Partial<BacktestConfig> | ConfigDraft;
 };
 
 type BacktestConfigEnvelope = BacktestConfigInput & {
@@ -48,23 +48,30 @@ export function normalizeBacktestConfig(raw: unknown): BacktestConfig {
 
     const {
         config: nestedRuntimeConfig,
-        seasonalModelConfig,
         ...outerConfig
     } = config;
     const runtimeConfig =
         nestedRuntimeConfig && typeof nestedRuntimeConfig === "object"
             ? nestedRuntimeConfig
             : {};
+    const groupedSettings =
+        "management" in runtimeConfig &&
+        "runtime" in runtimeConfig &&
+        "accounts" in runtimeConfig
+            ? (runtimeConfig as ConfigDraft)
+            : undefined;
 
     return {
         ...DEFAULT_BACKTEST_CONFIG,
         ...outerConfig,
         ...runtimeConfig,
-        modelConfig:
-            runtimeConfig.modelConfig ??
-            outerConfig.modelConfig ??
-            seasonalModelConfig?.[0] ??
-            DEFAULT_BACKTEST_CONFIG.modelConfig,
+        settings:
+            groupedSettings ??
+            ("settings" in runtimeConfig
+                ? runtimeConfig.settings
+                : undefined) ??
+            outerConfig.settings ??
+            DEFAULT_BACKTEST_CONFIG.settings,
     };
 }
 
@@ -186,6 +193,9 @@ export default function DynamicTradeAnalytics() {
                 customConfig ?? backtestConfig,
             );
             const usedConfigBefore = deepCopy(usedConfig);
+            if (!usedConfig.settings) {
+                throw new Error("SLOW settings are still loading.");
+            }
 
 
             // derive start/end time in ms based on selected range
@@ -239,7 +249,9 @@ export default function DynamicTradeAnalytics() {
                 upToDateKlines: usedConfig.upToDateKlines,
                 upToDateDecisionBacktest: usedConfig.upToDateDecisionBacktest,
 
-                config: usedConfig.modelConfig,
+                config: usedConfig.settings,
+                decisionEngineVersion:
+                    usedConfig.settings.management.decisionEngineVersion,
             };
 
             tradeLog.log("Sending payload:", JSON.stringify(payload, null, 2));

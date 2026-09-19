@@ -241,7 +241,7 @@ async function executeSlowTradingAccountCycle(
         }
       }
 
-      const modelConfig = slowTradingMarket.modelConfig.pick(storage);
+      const tradingConfig = slowTradingMarket.tradingConfig.pick(storage);
       const executionModeState = { ...modeState, tradeSettings };
 
       // C. Filter entry signals according to trading mode and open-position safety.
@@ -283,7 +283,7 @@ async function executeSlowTradingAccountCycle(
         exchangeType,
         isSandbox,
         marketType,
-        modelConfig,
+        tradingConfig,
         modelMemoryMap,
         modeState,
         performanceEntries,

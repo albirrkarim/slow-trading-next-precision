@@ -24,6 +24,8 @@ import WithdrawalWalletTable from "./WithdrawalWalletTable";
 
 interface SettingsDialogWithdrawTabProps {
   configDraft: ConfigDraft;
+  safeHavenUSDT: number;
+  setSafeHavenUSDT: (value: number) => void;
   setConfigDraft: ConfigDraftSetter;
   tryWithdrawNow: (scheduleId: string) => Promise<void>;
   tryingWithdraw: boolean;
@@ -31,50 +33,57 @@ interface SettingsDialogWithdrawTabProps {
 
 export default function SettingsDialogWithdrawTab({
   configDraft,
+  safeHavenUSDT,
+  setSafeHavenUSDT,
   setConfigDraft,
   tryWithdrawNow,
   tryingWithdraw,
 }: SettingsDialogWithdrawTabProps) {
-  const addWallet = (wallet: WithdrawalWalletDraft) => {
+  const updateWithdrawal = (
+    updater: (current: ConfigDraft["runtime"]["withdrawal"]) =>
+      ConfigDraft["runtime"]["withdrawal"],
+  ) => {
     setConfigDraft((prev) =>
       prev
         ? {
-          ...prev,
-          withdrawalWalletBook: [...prev.withdrawalWalletBook, wallet],
-        }
+            ...prev,
+            runtime: {
+              ...prev.runtime,
+              withdrawal: updater(prev.runtime.withdrawal),
+            },
+          }
         : prev,
     );
+  };
+
+  const addWallet = (wallet: WithdrawalWalletDraft) => {
+    updateWithdrawal((current) => ({
+      ...current,
+      walletBook: [...current.walletBook, wallet],
+    }));
   };
 
   const updateWallet = (updatedWallet: WithdrawalWalletDraft) => {
-    setConfigDraft((prev) =>
-      prev
-        ? {
-          ...prev,
-          withdrawalWalletBook: prev.withdrawalWalletBook.map((wallet) =>
-            wallet.id === updatedWallet.id ? updatedWallet : wallet,
-          ),
-        }
-        : prev,
-    );
+    updateWithdrawal((current) => ({
+      ...current,
+      walletBook: current.walletBook.map((wallet) =>
+        wallet.id === updatedWallet.id ? updatedWallet : wallet,
+      ),
+    }));
   };
 
   const deleteWallet = (walletId: string) => {
-    setConfigDraft((prev) => {
-      if (!prev) {
-        return prev;
-      }
-
-      const wallet = prev.withdrawalWalletBook.find(
+    updateWithdrawal((current) => {
+      const wallet = current.walletBook.find(
         (candidate) => candidate.id === walletId,
       );
 
       return {
-        ...prev,
-        withdrawalWalletBook: prev.withdrawalWalletBook.filter(
+        ...current,
+        walletBook: current.walletBook.filter(
           (candidate) => candidate.id !== walletId,
         ),
-        withdrawalSchedules: prev.withdrawalSchedules.map((schedule) =>
+        schedules: current.schedules.map((schedule) =>
           schedule.walletId === walletId
             ? {
               ...schedule,
@@ -90,45 +99,28 @@ export default function SettingsDialogWithdrawTab({
   };
 
   const addSchedule = (schedule: WithdrawalScheduleDraft) => {
-    setConfigDraft((prev) =>
-      prev
-        ? {
-          ...prev,
-          withdrawalSchedules: [...prev.withdrawalSchedules, schedule],
-        }
-        : prev,
-    );
+    updateWithdrawal((current) => ({
+      ...current,
+      schedules: [...current.schedules, schedule],
+    }));
   };
 
   const updateSchedule = (updatedSchedule: WithdrawalScheduleDraft) => {
-    setConfigDraft((prev) =>
-      prev
-        ? {
-          ...prev,
-          withdrawalSchedules: prev.withdrawalSchedules.map((schedule) =>
-            schedule.id === updatedSchedule.id
-              ? updatedSchedule
-              : schedule,
-          ),
-        }
-        : prev,
-    );
+    updateWithdrawal((current) => ({
+      ...current,
+      schedules: current.schedules.map((schedule) =>
+        schedule.id === updatedSchedule.id ? updatedSchedule : schedule,
+      ),
+    }));
   };
 
   const deleteSchedule = (scheduleId: string) => {
-    setConfigDraft((prev) => {
-      if (!prev) {
-        return prev;
-      }
-
-      const nextSchedules = prev.withdrawalSchedules.filter(
+    updateWithdrawal((current) => {
+      const nextSchedules = current.schedules.filter(
         (schedule) => schedule.id !== scheduleId,
       );
 
-      return {
-        ...prev,
-        withdrawalSchedules: nextSchedules,
-      };
+      return { ...current, schedules: nextSchedules };
     });
   };
 
@@ -145,11 +137,9 @@ export default function SettingsDialogWithdrawTab({
               type="number"
               size="small"
               fullWidth
-              value={configDraft.safeHavenUSDT}
+              value={safeHavenUSDT}
               onChange={(event) =>
-                setConfigDraft((prev) =>
-                  prev ? { ...prev, safeHavenUSDT: event.target.value } : prev,
-                )
+                setSafeHavenUSDT(Math.max(0, Number(event.target.value) || 0))
               }
               info="This updates the active mode Safe Haven value used by SLOW balance math. It does not send funds on-chain."
             />
@@ -176,15 +166,15 @@ export default function SettingsDialogWithdrawTab({
             >
               <WithdrawalWalletCreateDialog
                 onCreate={addWallet}
-                walletCount={configDraft.withdrawalWalletBook.length}
+                walletCount={configDraft.runtime.withdrawal.walletBook.length}
               />
             </Stack>
 
             <WithdrawalWalletTable
               onDelete={deleteWallet}
               onUpdate={updateWallet}
-              schedules={configDraft.withdrawalSchedules}
-              wallets={configDraft.withdrawalWalletBook}
+              schedules={configDraft.runtime.withdrawal.schedules}
+              wallets={configDraft.runtime.withdrawal.walletBook}
             />
           </Stack>
         </SettingsDialogSection>
@@ -205,23 +195,19 @@ export default function SettingsDialogWithdrawTab({
               <Box>
                 <Stack direction="row" spacing={1} alignItems="center">
                   <Switch
-                    checked={configDraft.withdrawalAutoEnabled}
+                    checked={configDraft.runtime.withdrawal.autoEnabled}
                     onChange={(event) =>
-                      setConfigDraft((prev) =>
-                        prev
-                          ? {
-                            ...prev,
-                            withdrawalAutoEnabled: event.target.checked,
-                          }
-                          : prev,
-                      )
+                      updateWithdrawal((current) => ({
+                        ...current,
+                        autoEnabled: event.target.checked,
+                      }))
                     }
                     color="default"
                     size="small"
                   />
                   <Typography variant="body2" fontWeight="bold">
                     Auto Withdrawal:{" "}
-                    {configDraft.withdrawalAutoEnabled ? "ON" : "OFF"}
+                    {configDraft.runtime.withdrawal.autoEnabled ? "ON" : "OFF"}
                   </Typography>
                 </Stack>
                 <Typography
@@ -236,21 +222,21 @@ export default function SettingsDialogWithdrawTab({
               </Box>
 
               <WithdrawalScheduleCreateDialog
-                accounts={configDraft.exchangeAccounts}
+                accounts={configDraft.accounts}
                 onCreate={addSchedule}
-                scheduleCount={configDraft.withdrawalSchedules.length}
-                walletBook={configDraft.withdrawalWalletBook}
+                scheduleCount={configDraft.runtime.withdrawal.schedules.length}
+                walletBook={configDraft.runtime.withdrawal.walletBook}
               />
             </Stack>
 
             <WithdrawalScheduleTable
-              accounts={configDraft.exchangeAccounts}
+              accounts={configDraft.accounts}
               onDelete={deleteSchedule}
               onTest={tryWithdrawNow}
               onUpdate={updateSchedule}
-              schedules={configDraft.withdrawalSchedules}
+              schedules={configDraft.runtime.withdrawal.schedules}
               testing={tryingWithdraw}
-              walletBook={configDraft.withdrawalWalletBook}
+              walletBook={configDraft.runtime.withdrawal.walletBook}
             />
           </Stack>
         </SettingsDialogSection>

@@ -1,6 +1,6 @@
 import type {
   Position,
-  TradingModelConfig,
+  TradingConfig,
   TradingModelMemory,
   type EventPosition
 } from "@/lib/trading/models";
@@ -8,13 +8,8 @@ import type {
 /**
  * Configuration options for running a backtest simulation on historical trading data.
  */
-export interface BacktestConfig {
+export interface BacktestConfig extends TradingConfig {
   modelMemory: TradingModelMemory;
-
-  /**
-   * Model Trading config
-   */
-  modelConfig: TradingModelConfig;
 
   /**
    * The amount of USDT available at the start of the backtest.

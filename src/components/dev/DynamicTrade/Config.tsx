@@ -4,7 +4,7 @@ import CoinMultiSelect from "@/components/ui/CoinMultiSelect";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { DESCISION_MODELS } from "@/lib/dynamic/constants";
 import { TradingMode } from "@/lib/exchange/types";
-import type { TradingModelConfig } from "@/lib/trading/models";
+import type { TradingConfig } from "@/lib/trading/models";
 import type { AdaptiveAveragingConfig } from "@/lib/dynamic";
 import adaptiveAveraging from "@/lib/trading/adaptive-averaging";
 import postAverageRescue from "@/lib/trading/post-average-rescue";
@@ -30,7 +30,7 @@ import type { Dispatch, SetStateAction } from "react";
 import HeaderMetrics from "../Evaluation/HeaderMetrics";
 import { TIME_RANGE } from "@/components/constants";
 
-export type BacktestConfig = {
+export type BacktestConfig = TradingConfig & {
     mode: "kline" | "volatility_point";
 
     // Data
@@ -51,9 +51,6 @@ export type BacktestConfig = {
 
     // Starting point
     startingBalanceUSDT: number;
-
-    // Config
-    modelConfig: TradingModelConfig;
 
     // Dynamic Algorithm
     algorithm: string;
@@ -82,11 +79,11 @@ export type BacktestConfig = {
     exactLeverage?: number;
 };
 
-// helper to create a default model config
-function makeDefaultModelConfig(
-    overrides?: Partial<TradingModelConfig>
-): TradingModelConfig {
-    const base: TradingModelConfig = {
+// Helper to create a default trading config.
+function makeDefaultTradingConfig(
+    overrides?: Partial<TradingConfig>
+): TradingConfig {
+    const base: TradingConfig = {
         takeProfitPercent: 5,
         stopLossPercent: 90,
         volatilityTargetStopLossPercent: 0,
@@ -120,8 +117,8 @@ export const DEFAULT_BACKTEST_CONFIG: BacktestConfig = {
     // Starting point
     startingBalanceUSDT: 400,
 
-    // Config
-    modelConfig: makeDefaultModelConfig(),
+    // Trading config
+    ...makeDefaultTradingConfig(),
 
     // algorithm
     algorithm: "dynamic.v4",
@@ -213,14 +210,11 @@ export default function DynamicBacktestConfig({
         setBacktestConfig((prev) => ({ ...prev, ...patch }));
     };
 
-    const updateModelConfig = (patch: Partial<TradingModelConfig>) => {
+    const updateTradingConfig = (patch: Partial<TradingConfig>) => {
         setBacktestConfig((prev) => (
             {
                 ...prev,
-                modelConfig: {
-                    ...prev.modelConfig,
-                    ...patch,
-                },
+                ...patch,
             }
         ));
     };
@@ -886,10 +880,10 @@ export default function DynamicBacktestConfig({
                                                         fullWidth
                                                         size="small"
                                                         value={
-                                                            backtestConfig.modelConfig.safeUSDTPerMonth
+                                                            backtestConfig.safeUSDTPerMonth
                                                         }
                                                         onChange={(e) =>
-                                                            updateModelConfig({
+                                                            updateTradingConfig({
                                                                 safeUSDTPerMonth:
                                                                     Number(e.target.value) || 0,
                                                             })
@@ -902,10 +896,10 @@ export default function DynamicBacktestConfig({
                                                         fullWidth
                                                         size="small"
                                                         value={
-                                                            backtestConfig.modelConfig.safePercentPerMonth
+                                                            backtestConfig.safePercentPerMonth
                                                         }
                                                         onChange={(e) =>
-                                                            updateModelConfig({
+                                                            updateTradingConfig({
                                                                 safePercentPerMonth:
                                                                     Number(e.target.value) || 0,
                                                             })
@@ -918,10 +912,10 @@ export default function DynamicBacktestConfig({
                                                         fullWidth
                                                         size="small"
                                                         value={
-                                                            backtestConfig.modelConfig.minimalAssetOnTrade
+                                                            backtestConfig.minimalAssetOnTrade
                                                         }
                                                         onChange={(e) =>
-                                                            updateModelConfig({
+                                                            updateTradingConfig({
                                                                 minimalAssetOnTrade:
                                                                     Number(e.target.value) || 0,
                                                             })
@@ -942,9 +936,9 @@ export default function DynamicBacktestConfig({
                                                 type="number"
                                                 fullWidth
                                                 size="small"
-                                                value={backtestConfig.modelConfig.takeProfitPercent}
+                                                value={backtestConfig.takeProfitPercent}
                                                 onChange={(e) =>
-                                                    updateModelConfig({
+                                                    updateTradingConfig({
                                                         takeProfitPercent: Number(e.target.value) || 0,
                                                     })
                                                 }
@@ -967,13 +961,13 @@ export default function DynamicBacktestConfig({
                                                     },
                                                 }}
                                                 value={
-                                                    backtestConfig.modelConfig.stopLossPercent ?? ""
+                                                    backtestConfig.stopLossPercent ?? ""
                                                 }
                                                 onChange={(e) => {
                                                     const value =
                                                         Number(e.target.value) || undefined;
 
-                                                    updateModelConfig({
+                                                    updateTradingConfig({
                                                         stopLossPercent: value,
                                                     });
                                                 }}
@@ -986,7 +980,7 @@ export default function DynamicBacktestConfig({
                                                 helperText="After target; 0 disables"
                                                 label="Target-Zone SL %"
                                                 onChange={(e) =>
-                                                    updateModelConfig({
+                                                    updateTradingConfig({
                                                         volatilityTargetStopLossPercent:
                                                             Number(e.target.value) || 0,
                                                     })
@@ -1002,7 +996,7 @@ export default function DynamicBacktestConfig({
                                                 }}
                                                 type="number"
                                                 value={
-                                                    backtestConfig.modelConfig
+                                                    backtestConfig
                                                         .volatilityTargetStopLossPercent ?? 0
                                                 }
                                             />
@@ -1013,10 +1007,10 @@ export default function DynamicBacktestConfig({
                                                 control={
                                                     <Checkbox
                                                         checked={Boolean(
-                                                            backtestConfig.modelConfig.useStopLossPlus
+                                                            backtestConfig.useStopLossPlus
                                                         )}
                                                         onChange={(e) =>
-                                                            updateModelConfig({
+                                                            updateTradingConfig({
                                                                 useStopLossPlus: e.target.checked,
                                                             })
                                                         }
@@ -1050,10 +1044,10 @@ export default function DynamicBacktestConfig({
                                         </Typography>
                                         <PostAverageRescueExitSettings
                                             onChange={(postAverageRescueExit) =>
-                                                updateModelConfig({ postAverageRescueExit })
+                                                updateTradingConfig({ postAverageRescueExit })
                                             }
                                             value={
-                                                backtestConfig.modelConfig.postAverageRescueExit
+                                                backtestConfig.postAverageRescueExit
                                             }
                                         />
                                     </Box>
@@ -1072,12 +1066,12 @@ export default function DynamicBacktestConfig({
                                         </Typography>
                                         <PostAverageStopLossSettings
                                             onChange={(nextPostAverageStopLoss) =>
-                                                updateModelConfig({
+                                                updateTradingConfig({
                                                     postAverageStopLoss: nextPostAverageStopLoss,
                                                 })
                                             }
                                             value={
-                                                backtestConfig.modelConfig.postAverageStopLoss
+                                                backtestConfig.postAverageStopLoss
                                             }
                                         />
                                     </Box>

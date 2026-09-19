@@ -60,9 +60,9 @@ describe("slow specs storage", () => {
     expect(loaded.runtime.autoRemoveSymbolMinMarketCapUSD).toBe(0);
     expect(loaded.runtime.autoRemoveSymbolMinVPointPct).toBe(15);
     expect(loaded.config.maxOpenPositions).toBe(0);
-    expect(loaded.config.modelConfig.exitOnVPointAbsLevel).toBe(0);
-    expect(loaded.config.modelConfig.stopLossUSDT).toBe(50);
-    expect(loaded.config.modelConfig.levelBasedPctDriftStopLoss).toEqual({
+    expect(loaded.config.exitOnVPointAbsLevel).toBe(0);
+    expect(loaded.config.stopLossUSDT).toBe(50);
+    expect(loaded.config.levelBasedPctDriftStopLoss).toEqual({
       enabled: false,
       conditions: [],
     });
@@ -195,7 +195,7 @@ describe("slow specs storage", () => {
       .storage;
     const storage = slowTradingStorage.data.createDefault();
     storage.config.maxLeverage = 7;
-    storage.config.modelConfig.takeProfitPercent = 4;
+    storage.config.takeProfitPercent = 4;
     storage.account.trading.notes = "Conservative main-account strategy.";
 
     await slowTradingStorage.data.save(storage);
@@ -204,18 +204,16 @@ describe("slow specs storage", () => {
     const accountsFile = await fs.readJSON(FILES.slow.accounts);
 
     // PROD:MULTI_ACCOUNT_CONFIG_OWNERSHIP
-    expect(configFile.config).not.toHaveProperty("maxLeverage");
-    expect(configFile.config.modelConfig).not.toHaveProperty(
-      "takeProfitPercent",
-    );
-    expect(configFile.config).toMatchObject({
+    expect(configFile.management).not.toHaveProperty("maxLeverage");
+    expect(configFile.management).not.toHaveProperty("takeProfitPercent");
+    expect(configFile.management).toMatchObject({
       name: storage.config.name,
       symbols: storage.config.symbols,
     });
     expect(accountsFile.accounts[0].trading).toMatchObject({
       maxLeverage: 7,
       notes: "Conservative main-account strategy.",
-      modelConfig: { takeProfitPercent: 4 },
+      takeProfitPercent: 4,
     });
 
     const loaded = await slowTradingStorage.data.load();
@@ -225,7 +223,7 @@ describe("slow specs storage", () => {
     );
     expect(loaded.config).not.toHaveProperty("notes");
     expect(loaded.config.maxLeverage).toBe(7);
-    expect(loaded.config.modelConfig.takeProfitPercent).toBe(4);
+    expect(loaded.config.takeProfitPercent).toBe(4);
   });
 
   it("enables the daily PnL notification when migrating a pre-feature config", async () => {

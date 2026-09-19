@@ -17,7 +17,7 @@ async function execute(runtime: SlowTradingCycleRuntime): Promise<void> {
     exchangeType,
     forcedExitSymbols,
     isSandbox,
-    modelConfig,
+    tradingConfig,
     modelMemoryMap,
     modeState,
     profiler,
@@ -74,7 +74,7 @@ async function execute(runtime: SlowTradingCycleRuntime): Promise<void> {
     const report = await profiler.time("cycle.exitExecution", () =>
       trading.execution.exit({
         symbol: trade.symbol ?? "",
-        modelConfig,
+        tradingConfig,
         modelMemory,
         exchangeType,
         tradingMode,
@@ -206,7 +206,7 @@ async function execute(runtime: SlowTradingCycleRuntime): Promise<void> {
         trading.execution.averaging({
           accountSlug: storage.account.slug,
           symbol: trade.symbol ?? "",
-          modelConfig,
+          tradingConfig,
           modelMemory,
           volatilityPoints: volatilityPointsMap[trade.symbol ?? ""] ?? [],
           exchangeType,

@@ -1,4 +1,5 @@
 import type { SlowTradingAccountTradingConfig } from "@/lib/slowTrading";
+import slowTradingAccountConfig from "@/lib/slowTrading/account-config";
 
 const BOOLEAN_KEYS = [
   "averagingRescueProjectionGuardEnabled",
@@ -6,27 +7,40 @@ const BOOLEAN_KEYS = [
   "entrySpareBufferEnabled",
   "exitSidewaysToFreeWorkersForStrongCandidates",
   "lateEntryVPointPriceDriftEnabled",
+  "useStopLossPlus",
 ] as const satisfies ReadonlyArray<keyof SlowTradingAccountTradingConfig>;
 
 const NUMBER_KEYS = [
   "exactLeverage",
+  "balanceUSDT",
+  "confidenceBase",
+  "dcaDipPercent",
+  "dcaMultiplier",
+  "exitOnVPointAbsLevel",
   "maxEntryBased24HourVolPct",
   "maxEntryMargin",
   "maxEntryMarginPct",
+  "maxBuyUSDT",
+  "maxDcaRounds",
+  "maxHoldMinutes",
   "maxLeverage",
   "maxOpenPositions",
+  "maxRiskPercent",
   "minActionableAbsoluteLevel",
+  "stopLossPercent",
+  "stopLossPlusTrigger",
+  "stopLossUSDT",
+  "takeProfitPercent",
+  "volatilityTargetStopLossPercent",
   "watchMaxNextAveragingLevels",
   "watchReserveLevels",
   "watchReservePctAlloc",
 ] as const satisfies ReadonlyArray<keyof SlowTradingAccountTradingConfig>;
 
 const ALLOWED_KEYS = new Set<keyof SlowTradingAccountTradingConfig>([
-  "adaptiveAveraging",
-  ...BOOLEAN_KEYS,
-  ...NUMBER_KEYS,
+  ...slowTradingAccountConfig.trading.keys.dynamic,
+  ...slowTradingAccountConfig.trading.keys.strategy,
   "notes",
-  "modelConfig",
 ]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -71,10 +85,6 @@ function parse(raw: string): SlowTradingAccountTradingConfig {
   if (typeof parsed.notes !== "string") {
     throw new Error('"notes" must be a string.');
   }
-  if (!isRecord(parsed.modelConfig)) {
-    throw new Error('"modelConfig" must be a JSON object.');
-  }
-
   for (const key of BOOLEAN_KEYS) {
     const value = parsed[key];
     if (value !== undefined && typeof value !== "boolean") {
@@ -86,6 +96,32 @@ function parse(raw: string): SlowTradingAccountTradingConfig {
     const value = parsed[key];
     if (value !== undefined) {
       requireFiniteNumber(value, key);
+    }
+  }
+
+  requireFiniteNumber(parsed.takeProfitPercent, "takeProfitPercent");
+
+  if (
+    parsed.orderType !== undefined &&
+    parsed.orderType !== "maker" &&
+    parsed.orderType !== "taker"
+  ) {
+    throw new Error('"orderType" must be "maker" or "taker".');
+  }
+  if (
+    parsed.onlyTPFromDate !== undefined &&
+    typeof parsed.onlyTPFromDate !== "string"
+  ) {
+    throw new Error('"onlyTPFromDate" must be a string.');
+  }
+
+  for (const key of [
+    "levelBasedPctDriftStopLoss",
+    "postAverageRescueExit",
+    "postAverageStopLoss",
+  ] as const) {
+    if (parsed[key] !== undefined && !isRecord(parsed[key])) {
+      throw new Error(`"${key}" must be a JSON object.`);
     }
   }
 

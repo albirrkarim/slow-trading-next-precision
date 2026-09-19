@@ -9,7 +9,7 @@ import {
 } from "@/lib/exchange";
 import { resolveMarketTypeForTradingMode } from "@/lib/exchange/utils";
 import type {
-  TradingModelConfig,
+  TradingConfig,
   TradingModelMemory,
 } from "@/lib/trading/models";
 import slowTradingWatchReserve from "@/lib/slowTrading/watch-reserve";
@@ -25,7 +25,7 @@ interface ExecuteAveragingProps {
   /** Account that consumes the triggering vPoint in production and sandbox. */
   accountSlug?: string;
   symbol: string;
-  modelConfig: TradingModelConfig;
+  tradingConfig: TradingConfig;
   modelMemory: TradingModelMemory;
   volatilityPoints: VolatilityPoint[];
   exchangeType: ExchangeType;
@@ -48,7 +48,7 @@ interface ExecuteAveragingProps {
 export async function executeAveraging({
   accountSlug,
   symbol,
-  modelConfig,
+  tradingConfig,
   modelMemory,
   volatilityPoints,
   exchangeType = "tokocrypto",
@@ -60,7 +60,7 @@ export async function executeAveraging({
   adaptiveAveraging: adaptiveAveragingConfig,
   averagingRescueProjectionGuardEnabled = true,
 }: ExecuteAveragingProps): Promise<TradingReturn> {
-  const { orderType = "taker" } = modelConfig;
+  const { orderType = "taker" } = tradingConfig;
   const resolvedAdaptiveAveraging = adaptiveAveraging.config.normalize(
     adaptiveAveragingConfig,
     false,

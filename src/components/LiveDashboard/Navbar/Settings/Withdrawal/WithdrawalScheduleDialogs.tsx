@@ -38,8 +38,8 @@ function createDefaultSchedule(
     account,
     name: `Schedule ${index + 1}`,
     enabled: true,
-    amountUSDT: "3",
-    dayOfMonth: "1",
+    amountUSDT: 3,
+    dayOfMonth: 1,
     walletId: "",
     targetNetwork: "TRX",
     targetWalletAddress: "",
@@ -136,7 +136,7 @@ function WithdrawalScheduleForm(props: {
             fullWidth
             value={schedule.amountUSDT}
             onChange={(event) =>
-              patchSchedule({ amountUSDT: event.target.value })
+              patchSchedule({ amountUSDT: Number(event.target.value) || 0 })
             }
             slotProps={{ htmlInput: { min: 0.01, step: 0.01 } }}
             info="Automatic withdrawals use this amount. Test is capped at 2 USDT by the server."
@@ -151,7 +151,7 @@ function WithdrawalScheduleForm(props: {
             fullWidth
             value={schedule.dayOfMonth}
             onChange={(event) =>
-              patchSchedule({ dayOfMonth: event.target.value })
+              patchSchedule({ dayOfMonth: Number(event.target.value) || 1 })
             }
             slotProps={{
               htmlInput: {

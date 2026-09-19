@@ -538,8 +538,8 @@ function replayPosition(params: {
         params.monitoringConfig?.positivePnlThresholdPct,
       position: snapshot.position,
       takeProfitOffsetPct: params.monitoringConfig?.takeProfitOffsetPct,
-      takeProfitPercent: params.tradingConfig.modelConfig.takeProfitPercent,
-      useStopLossPlus: params.tradingConfig.modelConfig.useStopLossPlus,
+      takeProfitPercent: params.tradingConfig.takeProfitPercent,
+      useStopLossPlus: params.tradingConfig.useStopLossPlus,
       volatilityPoints: confirmedVPoints,
     });
     const monitoringStageAtExit =
@@ -602,7 +602,7 @@ function replayPosition(params: {
         globalLiquidation: false,
         hasHitTargetZone,
         lastVolatilityPrice,
-        modelConfig: params.tradingConfig.modelConfig,
+        ...params.tradingConfig,
         position: snapshot.position,
       });
       if (!decision.shouldExit) continue;
@@ -681,7 +681,7 @@ function replayPosition(params: {
     globalLiquidation: false,
     hasHitTargetZone,
     lastVolatilityPrice,
-    modelConfig: params.tradingConfig.modelConfig,
+    ...params.tradingConfig,
     position: snapshot.position,
   });
   return finish(exitFromDecision({

@@ -175,7 +175,7 @@ export function NavbarIdentitySection({
               sx={{ fontSize: { xs: "0.95rem", md: "1rem" }, minWidth: 0 }}
             >
               {(
-                configDraft.decisionEngineVersion ||
+                configDraft.management.decisionEngineVersion ||
                 dashboardState.config.decisionEngineVersion ||
                 "decision.v14"
               ).replace("decision.", "")}
@@ -386,7 +386,9 @@ interface NavbarActionsSectionProps {
   runningCycle: boolean;
   saveConfig: (handleClose?: () => void) => Promise<void>;
   savingConfig: boolean;
+  safeHavenUSDT: number;
   setConfigDraft: React.Dispatch<React.SetStateAction<ConfigDraft | null>>;
+  setSafeHavenUSDT: (value: number) => void;
   syncOnlineStorageToLocal: (onlineBaseUrl: string) => Promise<void>;
   syncingOnlineStorage: boolean;
   tryWithdrawNow: (scheduleId: string) => Promise<void>;
@@ -407,7 +409,9 @@ export function NavbarActionsSection({
   runningCycle,
   saveConfig,
   savingConfig,
+  safeHavenUSDT,
   setConfigDraft,
+  setSafeHavenUSDT,
   syncOnlineStorageToLocal,
   syncingOnlineStorage,
   tryWithdrawNow,
@@ -509,7 +513,9 @@ export function NavbarActionsSection({
             resettingSandboxAccount={resettingSandboxAccount}
             saveConfig={saveConfig}
             savingConfig={savingConfig}
+            safeHavenUSDT={safeHavenUSDT}
             setConfigDraft={setConfigDraft}
+            setSafeHavenUSDT={setSafeHavenUSDT}
             syncOnlineStorageToLocal={syncOnlineStorageToLocal}
             syncingOnlineStorage={syncingOnlineStorage}
             tryWithdrawNow={tryWithdrawNow}

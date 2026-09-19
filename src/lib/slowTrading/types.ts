@@ -11,7 +11,7 @@ import type {
 import type {
   Position,
   PositionExecutionMode,
-  TradingModelConfig,
+  TradingConfig,
 } from "@/lib/trading/models";
 import type { BlackSwanState } from "@/lib/trading/black-swan";
 import type { SlowTradingCyclePerformanceSummary } from "./performance";
@@ -55,10 +55,7 @@ export type SlowTradingStageRunStatsMap = Partial<
 /** High-volatility side used for notification dedupe. */
 export type SlowTradingHighVolatilityZone = "POSITIVE" | "NEGATIVE";
 export type SlowTradingHighVolatilityNotificationState = Partial<
-  Record<
-    NotificationChannel,
-    Record<string, SlowTradingHighVolatilityZone>
-  >
+  Record<NotificationChannel, Record<string, SlowTradingHighVolatilityZone>>
 >;
 
 /** Per-channel transition state for the daily PnL automatic-entry stop. */
@@ -413,8 +410,7 @@ export interface SlowTradingQueueItemBase {
 }
 
 /** Pending monthly movement from trading capital into Safe Haven. */
-export interface SlowTradingSafeHavenQueueItem
-  extends SlowTradingQueueItemBase {
+export interface SlowTradingSafeHavenQueueItem extends SlowTradingQueueItemBase {
   /** Queue discriminator. */
   kind: "safe_haven";
   /** Immutable account slug whose mode state owns this queue item. */
@@ -434,8 +430,7 @@ export interface SlowTradingSafeHavenQueueItem
 }
 
 /** Pending scheduled external USDT withdrawal. */
-export interface SlowTradingWithdrawalQueueItem
-  extends SlowTradingQueueItemBase {
+export interface SlowTradingWithdrawalQueueItem extends SlowTradingQueueItemBase {
   /** Queue discriminator. */
   kind: "withdrawal";
   /** Immutable account slug used for execution and retries. */
@@ -482,39 +477,41 @@ export interface SlowTradingQueues {
   withdrawals: SlowTradingWithdrawalQueueItem[];
 }
 
-/** Model settings edited in the Trading tab and isolated per account. */
-export type SlowTradingAccountModelConfig = Omit<
-  DynamicTradeConfig["modelConfig"],
+/** Model settings shared by every account and persisted only in config.json. */
+export type SlowTradingSharedConfigFields = Pick<
+  TradingConfig,
   "minimalAssetOnTrade" | "safePercentPerMonth" | "safeUSDTPerMonth"
 >;
 
-/** Strategy settings edited in the Trading tab and isolated per account. */
-export interface SlowTradingAccountTradingConfig
-  extends Pick<
-    DynamicTradeConfig,
-    | "adaptiveAveraging"
-    | "averagingRescueProjectionGuardEnabled"
-    | "enableWatchLogic"
-    | "entrySpareBufferEnabled"
-    | "exactLeverage"
-    | "exitSidewaysToFreeWorkersForStrongCandidates"
-    | "lateEntryVPointPriceDriftEnabled"
-    | "maxEntryBased24HourVolPct"
-    | "maxEntryMargin"
-    | "maxEntryMarginPct"
-    | "maxLeverage"
-    | "maxOpenPositions"
-    | "minActionableAbsoluteLevel"
-    | "watchMaxNextAveragingLevels"
-    | "watchReserveLevels"
-    | "watchReservePctAlloc"
-  > {
+/**
+ * Flat strategy settings edited in the Trading tab and isolated per account.
+ * This is the canonical account-trading shape used by both server and client.
+ */
+export type SlowTradingAccountTradingConfig = Pick<
+  DynamicTradeConfig,
+  | "adaptiveAveraging"
+  | "averagingRescueProjectionGuardEnabled"
+  | "enableWatchLogic"
+  | "entrySpareBufferEnabled"
+  | "exactLeverage"
+  | "exitSidewaysToFreeWorkersForStrongCandidates"
+  | "lateEntryVPointPriceDriftEnabled"
+  | "maxEntryBased24HourVolPct"
+  | "maxEntryMargin"
+  | "maxEntryMarginPct"
+  | "maxLeverage"
+  | "maxOpenPositions"
+  | "minActionableAbsoluteLevel"
+  | "watchMaxNextAveragingLevels"
+  | "watchReserveLevels"
+  | "watchReservePctAlloc"
+> &
+  Omit<TradingConfig, keyof SlowTradingSharedConfigFields> & {
   /** Whether production entries enforce the vPoint price-drift guard. */
   lateEntryVPointPriceDriftEnabled?: boolean;
   /** User-authored reminder describing this account's trading strategy. */
   notes: string;
-  modelConfig: SlowTradingAccountModelConfig;
-}
+};
 
 /** Sandbox controls edited in the Runtime tab and isolated per account. */
 export interface SlowTradingAccountSandboxConfig {
@@ -522,14 +519,8 @@ export interface SlowTradingAccountSandboxConfig {
   initialBalanceUSDT: number;
 }
 
-/** Model settings shared by every account and persisted only in config.json. */
-export type SlowTradingSharedModelConfig = Pick<
-  TradingModelConfig,
-  "minimalAssetOnTrade" | "safePercentPerMonth" | "safeUSDTPerMonth"
->;
-
 /** Shared strategy fields persisted once in config.json. */
-export type SlowTradingPersistedSharedConfig = Pick<
+export type SlowTradingManagementConfig = Pick<
   DynamicTradeConfig,
   | "blackSwan"
   | "decisionEngineVersion"
@@ -538,9 +529,8 @@ export type SlowTradingPersistedSharedConfig = Pick<
   | "name"
   | "symbols"
   | "tradingMode"
-> & {
-  modelConfig: SlowTradingSharedModelConfig;
-};
+  | keyof SlowTradingSharedConfigFields
+>;
 
 /** Complete persisted SLOW account profile excluding its mode memory. */
 export interface SlowTradingAccount extends ExchangeAccount {
@@ -667,6 +657,22 @@ export type SlowTradingDashboardRuntimeConfig = Omit<
   /** Dashboard-safe MCP token summary. */
   mcp: SlowTradingMcpDashboardConfig;
 };
+
+/** Runtime settings persisted independently from account-owned sandbox data. */
+export type SlowTradingSettingsRuntimeConfig = Omit<
+  SlowTradingDashboardRuntimeConfig,
+  "exchangeAccounts" | "sandboxEnabled" | "sandboxInitialBalanceUSDT"
+>;
+
+/**
+ * Canonical grouped settings boundary shared by persistence, dashboard editing,
+ * and backtest requests.
+ */
+export interface SlowTradingSettingsConfig {
+  management: SlowTradingManagementConfig;
+  runtime: SlowTradingSettingsRuntimeConfig;
+  accounts: SlowTradingAccount[];
+}
 
 /** Closed or open position enriched for SLOW dashboard/history output. */
 export interface SlowTradingHistoryPosition extends Position {

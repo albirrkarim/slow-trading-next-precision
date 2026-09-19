@@ -1,7 +1,12 @@
 "use client";
 
 import SettingsDialog from "@/components/LiveDashboard/Navbar/Settings/SettingsDialog";
-import { type ConfigDraft } from "@/components/LiveDashboard/Navbar/navbar-types";
+import {
+    type ConfigDraftSetter,
+    type DashboardState,
+} from "@/components/LiveDashboard/Navbar/navbar-types";
+import { makeConfigDraft } from "@/components/LiveDashboard/Navbar/Settings/helpers";
+import { endpoints } from "@/components/endpoints";
 import { TIME_RANGE } from "@/components/constants";
 import CoinMultiSelect from "@/components/ui/CoinMultiSelect";
 import {
@@ -12,7 +17,8 @@ import {
     Select,
     TextField,
 } from "@mui/material";
-import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, type Dispatch, type SetStateAction } from "react";
+import axios from "axios";
 import HeaderMetrics from "../Evaluation/HeaderMetrics";
 import type { BacktestConfig } from "./types";
 
@@ -35,7 +41,7 @@ export const DEFAULT_BACKTEST_CONFIG: BacktestConfig = {
     startingBalanceUSDT: 400,
 
     // Config
-    modelConfig: {},
+    settings: undefined,
 };
 
 interface BacktestConfigProps {
@@ -47,8 +53,6 @@ export default function DynamicBacktestConfig({
     backtestConfig,
     setBacktestConfig,
 }: BacktestConfigProps) {
-    const [modelConfig, setModelConfig] = useState<ConfigDraft | null>(null);
-
     // top-level view setters
     const handleChange = (key: keyof BacktestConfig, value: any) => {
         setBacktestConfig((prev) => ({ ...prev, [key]: value }));
@@ -63,21 +67,36 @@ export default function DynamicBacktestConfig({
         setBacktestConfig((prev) => ({ ...prev, ...patch }));
     };
 
-    const updateModelConfig = (patch: ConfigDraft) => {
+    const setTradingConfig: ConfigDraftSetter = (value) => {
         setBacktestConfig((prev) => ({
             ...prev,
-            modelConfig: {
-                ...prev.modelConfig,
-                ...patch,
-            },
+            settings: (() => {
+                const current = prev.settings;
+                if (!current) return current;
+                return typeof value === "function" ? value(current) ?? current : value ?? current;
+            })(),
         }));
     };
 
     useEffect(() => {
-        if (modelConfig) {
-            updateModelConfig(modelConfig);
-        }
-    }, [modelConfig]);
+        if (backtestConfig.settings) return undefined;
+        const controller = new AbortController();
+        void axios
+            .get<DashboardState>(endpoints.slow.prod.storage, {
+                signal: controller.signal,
+            })
+            .then((response) => {
+                setBacktestConfig((current) =>
+                    current.settings
+                        ? current
+                        : {
+                            ...current,
+                            settings: makeConfigDraft(response.data),
+                        },
+                );
+            });
+        return () => controller.abort();
+    }, [backtestConfig.settings, setBacktestConfig]);
 
     return (
         <Box
@@ -149,9 +168,10 @@ export default function DynamicBacktestConfig({
                 </Select>
             </FormControl>
 
-            <SettingsDialog
-                configDraft={backtestConfig.modelConfig}
-                setConfigDraft={setModelConfig}
+            {backtestConfig.settings && (
+                <SettingsDialog
+                    configDraft={backtestConfig.settings}
+                    setConfigDraft={setTradingConfig}
             // dashboardState={dashboardState}
             // onCloseDialog={onSettingsDialogClose}
             // onOpenDialog={onSettingsDialogOpen}
@@ -166,7 +186,8 @@ export default function DynamicBacktestConfig({
             // syncingOnlineStorage={syncingOnlineStorage}
             // tryWithdrawNow={tryWithdrawNow}
             // tryingWithdraw={tryingWithdraw}
-            />
+                />
+            )}
         </Box>
     );
 }

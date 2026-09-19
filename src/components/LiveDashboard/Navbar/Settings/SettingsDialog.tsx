@@ -79,8 +79,10 @@ export default function SettingsDialog(props: {
   reinitializing?: boolean;
   resetSandbox?: (accountSlug: string) => Promise<void>;
   resettingSandboxAccount?: string | null;
+  safeHavenUSDT?: number;
   saveConfig?: (handleClose?: () => void) => Promise<void>;
   savingConfig?: boolean;
+  setSafeHavenUSDT?: (value: number) => void;
   syncOnlineStorageToLocal?: (onlineBaseUrl: string) => Promise<void>;
   syncingOnlineStorage?: boolean;
   tryWithdrawNow?: (scheduleId: string) => Promise<void>;
@@ -97,8 +99,10 @@ export default function SettingsDialog(props: {
     reinitializing,
     resetSandbox,
     resettingSandboxAccount,
+    safeHavenUSDT = 0,
     saveConfig,
     savingConfig,
+    setSafeHavenUSDT = () => undefined,
     syncOnlineStorageToLocal,
     syncingOnlineStorage,
     tryWithdrawNow,
@@ -231,6 +235,8 @@ export default function SettingsDialog(props: {
             {(activeTab === "withdraw" && tryWithdrawNow && tryingWithdraw != undefined) ? (
               <SettingsDialogWithdrawTab
                 configDraft={configDraft}
+                safeHavenUSDT={safeHavenUSDT}
+                setSafeHavenUSDT={setSafeHavenUSDT}
                 setConfigDraft={setConfigDraft}
                 tryWithdrawNow={tryWithdrawNow}
                 tryingWithdraw={tryingWithdraw}

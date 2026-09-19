@@ -2,11 +2,11 @@ import type { DynamicTradeConfig } from "@/lib/dynamic";
 import type {
   SlowTradingAccount,
   SlowTradingAccountTradingConfig,
-  SlowTradingPersistedSharedConfig,
+  SlowTradingManagementConfig,
 } from "./types";
 import { clone } from "./storage/common";
 
-const TRADING_CONFIG_KEYS = [
+const DYNAMIC_CONFIG_KEYS = [
   "adaptiveAveraging",
   "averagingRescueProjectionGuardEnabled",
   "enableWatchLogic",
@@ -25,7 +25,30 @@ const TRADING_CONFIG_KEYS = [
   "watchReservePctAlloc",
 ] as const satisfies ReadonlyArray<keyof SlowTradingAccountTradingConfig>;
 
-const SHARED_MODEL_CONFIG_KEYS = [
+const STRATEGY_FIELD_KEYS = [
+  "balanceUSDT",
+  "confidenceBase",
+  "dcaDipPercent",
+  "dcaMultiplier",
+  "exitOnVPointAbsLevel",
+  "levelBasedPctDriftStopLoss",
+  "maxBuyUSDT",
+  "maxDcaRounds",
+  "maxHoldMinutes",
+  "maxRiskPercent",
+  "onlyTPFromDate",
+  "orderType",
+  "postAverageRescueExit",
+  "postAverageStopLoss",
+  "stopLossPercent",
+  "stopLossPlusTrigger",
+  "stopLossUSDT",
+  "takeProfitPercent",
+  "useStopLossPlus",
+  "volatilityTargetStopLossPercent",
+] as const satisfies ReadonlyArray<keyof SlowTradingAccountTradingConfig>;
+
+const SHARED_STRATEGY_FIELD_KEYS = [
   "minimalAssetOnTrade",
   "safePercentPerMonth",
   "safeUSDTPerMonth",
@@ -50,18 +73,19 @@ function fromEffectiveConfig(
     notes: typeof notes === "string" ? notes : "",
   } as SlowTradingAccountTradingConfig;
 
-  for (const key of TRADING_CONFIG_KEYS) {
+  for (const key of DYNAMIC_CONFIG_KEYS) {
     const value = config[key];
     if (value !== undefined) {
       Object.assign(trading, { [key]: clone(value) });
     }
   }
 
-  const modelConfig = { ...clone(config.modelConfig) };
-  for (const key of SHARED_MODEL_CONFIG_KEYS) {
-    delete modelConfig[key];
+  for (const key of STRATEGY_FIELD_KEYS) {
+    const value = config[key];
+    if (value !== undefined) {
+      Object.assign(trading, { [key]: clone(value) });
+    }
   }
-  trading.modelConfig = modelConfig;
 
   return trading;
 }
@@ -71,18 +95,19 @@ function toEffectiveConfig(
   sharedConfig: DynamicTradeConfig,
   account: Pick<SlowTradingAccount, "trading">,
 ): DynamicTradeConfig {
-  const tradingConfig = clone(account.trading) as Partial<
-    SlowTradingAccountTradingConfig
-  >;
-  delete tradingConfig.notes;
+  const trading = clone(account.trading) as Record<string, unknown>;
+  const accountConfig: Partial<DynamicTradeConfig> = {};
+
+  for (const key of [...DYNAMIC_CONFIG_KEYS, ...STRATEGY_FIELD_KEYS]) {
+    const value = trading[key];
+    if (value !== undefined) {
+      Object.assign(accountConfig, { [key]: clone(value) });
+    }
+  }
 
   return {
     ...clone(sharedConfig),
-    ...tradingConfig,
-    modelConfig: {
-      ...clone(sharedConfig.modelConfig),
-      ...clone(account.trading.modelConfig),
-    },
+    ...accountConfig,
   };
 }
 
@@ -112,12 +137,12 @@ function sharedFromEffectiveConfig(
       Object.assign(next, { [key]: clone(value) });
     }
   }
-  for (const key of SHARED_MODEL_CONFIG_KEYS) {
-    const value = effectiveConfig.modelConfig[key];
+  for (const key of SHARED_STRATEGY_FIELD_KEYS) {
+    const value = effectiveConfig[key];
     if (value === undefined) {
-      delete next.modelConfig[key];
+      delete next[key];
     } else {
-      Object.assign(next.modelConfig, { [key]: clone(value) });
+      Object.assign(next, { [key]: clone(value) });
     }
   }
   return next;
@@ -126,16 +151,14 @@ function sharedFromEffectiveConfig(
 /** Selects only config.json-owned fields from a complete effective config. */
 function toPersistedSharedConfig(
   config: DynamicTradeConfig,
-): SlowTradingPersistedSharedConfig {
-  const persisted: SlowTradingPersistedSharedConfig = {
+): SlowTradingManagementConfig {
+  const persisted: SlowTradingManagementConfig = {
     name: config.name,
     description: config.description,
     symbols: clone(config.symbols),
-    modelConfig: {
-      minimalAssetOnTrade: config.modelConfig.minimalAssetOnTrade,
-      safePercentPerMonth: config.modelConfig.safePercentPerMonth,
-      safeUSDTPerMonth: config.modelConfig.safeUSDTPerMonth,
-    },
+    minimalAssetOnTrade: config.minimalAssetOnTrade,
+    safePercentPerMonth: config.safePercentPerMonth,
+    safeUSDTPerMonth: config.safeUSDTPerMonth,
     exchangeType: config.exchangeType,
     tradingMode: config.tradingMode,
   };
@@ -157,6 +180,10 @@ const slowTradingAccountConfig = {
   },
   trading: {
     fromEffectiveConfig,
+    keys: {
+      dynamic: DYNAMIC_CONFIG_KEYS,
+      strategy: STRATEGY_FIELD_KEYS,
+    },
     toEffectiveConfig,
     withEffectiveConfig,
   },

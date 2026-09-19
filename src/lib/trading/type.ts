@@ -1,7 +1,7 @@
 import { type FetchKlinesFunction } from "@lib/datasets/type";
 import type {
   TradeDecisionFunction,
-  TradingModelConfig,
+  TradingConfig,
   TradingModelMemory,
 } from "@/lib/trading/models";
 import type { Kline } from "@/lib/exchange/platform/tokocrypto";
@@ -24,10 +24,10 @@ export interface InitialBalance {
 /**
  * Configuration for executing a trading cycle.
  */
-export interface TradingConfig {
+export interface TradingExecutionConfig {
   modelMemory: TradingModelMemory;
 
-  modelConfig: TradingModelConfig;
+  tradingConfig: TradingConfig;
 
   /** Trading pair symbol, e.g., "BTC_USDT", "ETH_USDT" */
   symbol: string;

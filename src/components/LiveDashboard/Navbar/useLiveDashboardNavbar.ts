@@ -12,7 +12,6 @@ import {
   computeDayPreview,
   computeOpenPositionSummary,
   makeConfigDraft,
-  parseSymbols,
 } from "./Settings/helpers";
 import type {
   ConfigDraft,
@@ -40,11 +39,12 @@ interface UseLiveDashboardNavbarArgs {
 }
 
 function buildWithdrawalPayload(configDraft: ConfigDraft) {
+  const withdrawal = configDraft.runtime.withdrawal;
   return {
-    autoEnabled: configDraft.withdrawalAutoEnabled,
-    schedules: configDraft.withdrawalSchedules.map((schedule, index) => ({
+    autoEnabled: withdrawal.autoEnabled,
+    schedules: withdrawal.schedules.map((schedule, index) => ({
       id: schedule.id || `schedule-${index + 1}`,
-      account: schedule.account || configDraft.exchangeAccountSlug,
+      account: schedule.account || configDraft.runtime.exchangeAccountSlug,
       name: schedule.name || `Schedule ${index + 1}`,
       enabled: schedule.enabled,
       amountUSDT: Math.max(0, Number(schedule.amountUSDT) || 0),
@@ -60,7 +60,7 @@ function buildWithdrawalPayload(configDraft: ConfigDraft) {
       lastQueuedAt: schedule.lastQueuedAt,
       lastStatus: schedule.lastStatus,
     })),
-    walletBook: configDraft.withdrawalWalletBook.map((wallet, index) => ({
+    walletBook: withdrawal.walletBook.map((wallet, index) => ({
       id: wallet.id || `wallet-${index + 1}`,
       name: wallet.name || `Wallet ${index + 1}`,
       network: wallet.network,
@@ -69,31 +69,12 @@ function buildWithdrawalPayload(configDraft: ConfigDraft) {
   };
 }
 
-function buildSafeHavenPayload(configDraft: ConfigDraft) {
-  return {
-    autoEnabled: Boolean(configDraft.safeHavenAutoEnabled),
-    schedules: (configDraft.safeHavenSchedules ?? []).map(
-      (schedule, index) => ({
-        id: schedule.id || `safe-haven-${index + 1}`,
-        name: schedule.name || `Safe Haven ${index + 1}`,
-        enabled: schedule.enabled,
-        amountUSDT: Math.max(0, Number(schedule.amountUSDT) || 0),
-        pct: Math.min(100, Math.max(0, Number(schedule.pct) || 0)),
-        dayOfMonth: Math.min(
-          31,
-          Math.max(1, Math.floor(Number(schedule.dayOfMonth) || 1)),
-        ),
-        lastQueuedAt: schedule.lastQueuedAt,
-      }),
-    ),
-  };
-}
-
 export function useLiveDashboardNavbar({
   dashboardState,
   onRefresh,
 }: UseLiveDashboardNavbarArgs) {
   const [configDraft, setConfigDraftState] = useState<ConfigDraft | null>(null);
+  const [safeHavenUSDT, setSafeHavenUSDT] = useState(0);
   const [runningCycle, setRunningCycle] = useState(false);
   const [refreshingBalanceAccount, setRefreshingBalanceAccount] = useState<
     string | null
@@ -118,6 +99,7 @@ export function useLiveDashboardNavbar({
     }
 
     setConfigDraftState(makeConfigDraft(dashboardState));
+    setSafeHavenUSDT(dashboardState.balances.safeHaven ?? 0);
   }, [dashboardState, isConfigDraftDirty, isSettingsDialogOpen]);
 
   const setConfigDraft: ConfigDraftSetter = (value) => {
@@ -147,137 +129,22 @@ export function useLiveDashboardNavbar({
 
     setSavingConfig(true);
     try {
-      const symbolsParsed = parseSymbols(configDraft.symbolsText);
-      if (symbolsParsed.length === 0) {
+      if (configDraft.management.symbols.length === 0) {
         alert("Please define at least one symbol");
         return;
       }
 
-      const sandboxInitialBalanceUSDT = Math.max(
-        0,
-        Number(configDraft.sandboxInitialBalanceUSDT) || 0,
-      );
-      const safeHavenUSDT = Math.max(0, Number(configDraft.safeHavenUSDT) || 0);
+      const { mcp: _mcp, ...runtime } = configDraft.runtime;
 
       await axios.put(endpoints.slow.prod.exchangeAccounts, {
-        accounts: configDraft.exchangeAccounts,
-        exchangeAccountSlug: configDraft.exchangeAccountSlug,
+        accounts: configDraft.accounts,
+        exchangeAccountSlug: configDraft.runtime.exchangeAccountSlug,
       });
 
       await axios.put(endpoints.slow.prod.storage, {
-        config: {
-          name: configDraft.name,
-          description: configDraft.description,
-          decisionEngineVersion: configDraft.decisionEngineVersion,
-          exchangeType: configDraft.exchangeType,
-          tradingMode: configDraft.tradingMode,
-          lateEntryVPointPriceDriftEnabled:
-            configDraft.lateEntryVPointPriceDriftEnabled !== false,
-          symbols: symbolsParsed,
-          modelConfig: configDraft.modelConfig,
-          enableWatchLogic: configDraft.enableWatchLogic,
-          entrySpareBufferEnabled: configDraft.entrySpareBufferEnabled,
-          watchReserveLevels: configDraft.watchReserveLevels,
-          watchMaxNextAveragingLevels: configDraft.watchMaxNextAveragingLevels,
-          watchReservePctAlloc: configDraft.watchReservePctAlloc,
-          adaptiveAveraging: configDraft.adaptiveAveraging,
-          averagingRescueProjectionGuardEnabled:
-            configDraft.averagingRescueProjectionGuardEnabled,
-          exitSidewaysToFreeWorkersForStrongCandidates:
-            configDraft.exitSidewaysToFreeWorkersForStrongCandidates,
-          maxEntryBased24HourVolPct: configDraft.maxEntryBased24HourVolPct,
-          maxEntryMarginPct: configDraft.maxEntryMarginPct,
-          maxEntryMargin: configDraft.maxEntryMargin,
-          maxOpenPositions: Math.max(
-            0,
-            Math.floor(Number(configDraft.maxOpenPositions) || 0),
-          ),
-          minActionableAbsoluteLevel: configDraft.minActionableAbsoluteLevel,
-          maxLeverage: configDraft.maxLeverage,
-          exactLeverage: configDraft.exactLeverage,
-          blackSwan: configDraft.blackSwan,
-        },
-        exchangeAccountSlug: configDraft.exchangeAccountSlug,
-        runnerEnabled: configDraft.runnerEnabled,
-        autoEntryEnabled: configDraft.autoEntryEnabled,
-        autoEntryDailyPnlLimitUSDT: Math.min(
-          0,
-          Number.isFinite(Number(configDraft.autoEntryDailyPnlLimitUSDT))
-            ? Number(configDraft.autoEntryDailyPnlLimitUSDT)
-            : -50,
-        ),
-        autoExitEnabled: configDraft.autoExitEnabled,
-        entrySignalBypass: configDraft.entrySignalBypass,
-        autoRemoveSymbolAbsLevel: Math.max(
-          0,
-          Math.floor(Number(configDraft.autoRemoveSymbolAbsLevel) || 0),
-        ),
-        autoRemoveSymbolMinPrice: Math.max(
-          0,
-          Number(configDraft.autoRemoveSymbolMinPrice) || 0,
-        ),
-        autoRemoveSymbolMinMarketCapUSD: Math.max(
-          0,
-          Number(configDraft.autoRemoveSymbolMinMarketCapUSD) || 0,
-        ),
-        autoRemoveSymbolMinVPointPct: Math.max(
-          0,
-          Number(configDraft.autoRemoveSymbolMinVPointPct) || 0,
-        ),
-        pnlHistoryBucketMinutes: Math.max(
-          1,
-          Math.floor(Number(configDraft.pnlHistoryBucketMinutes) || 60),
-        ),
-        blackSwanStageIntervalMinutes: Math.max(
-          1,
-          Math.floor(Number(configDraft.blackSwanStageIntervalMinutes) || 1),
-        ),
-        speedupStageIntervalMinutes: Math.max(
-          1,
-          Math.floor(Number(configDraft.speedupStageIntervalMinutes) || 1),
-        ),
-        speedupStagePositivePnlThresholdPct: Math.max(
-          0,
-          Number.isFinite(
-            Number(configDraft.speedupStagePositivePnlThresholdPct),
-          )
-            ? Number(configDraft.speedupStagePositivePnlThresholdPct)
-            : 1.5,
-        ),
-        speedupStageNegativePnlThresholdPct: Math.max(
-          0,
-          Number.isFinite(
-            Number(configDraft.speedupStageNegativePnlThresholdPct),
-          )
-            ? Number(configDraft.speedupStageNegativePnlThresholdPct)
-            : 1.5,
-        ),
-        speedupStageTakeProfitOffsetPct: Math.max(
-          0,
-          Number.isFinite(Number(configDraft.speedupStageTakeProfitOffsetPct))
-            ? Number(configDraft.speedupStageTakeProfitOffsetPct)
-            : 0.5,
-        ),
-        standardMonitoringStageIntervalMinutes: Math.max(
-          1,
-          Math.floor(
-            Number(configDraft.standardMonitoringStageIntervalMinutes) || 5,
-          ),
-        ),
-        managementStageIntervalMinutes: Math.max(
-          1,
-          Math.floor(Number(configDraft.managementStageIntervalMinutes) || 5),
-        ),
-        captureEntryStageIntervalMinutes: Math.max(
-          1,
-          Math.floor(Number(configDraft.captureEntryStageIntervalMinutes) || 5),
-        ),
-        notification: configDraft.notification,
-        sandboxEnabled: configDraft.sandboxEnabled,
-        sandboxInitialBalanceUSDT,
-        safeHavenUSDT,
-        safeHaven: buildSafeHavenPayload(configDraft),
-        withdrawal: buildWithdrawalPayload(configDraft),
+        config: configDraft.management,
+        ...runtime,
+        safeHavenUSDT: Math.max(0, Number(safeHavenUSDT) || 0),
       });
 
       setIsConfigDraftDirty(false);
@@ -296,7 +163,7 @@ export function useLiveDashboardNavbar({
       return;
     }
 
-    const schedule = configDraft.withdrawalSchedules.find(
+    const schedule = configDraft.runtime.withdrawal.schedules.find(
       (item) => item.id === scheduleId,
     );
     if (!schedule) {
@@ -306,10 +173,8 @@ export function useLiveDashboardNavbar({
 
     setTryingWithdraw(true);
     try {
-      const safeHavenUSDT = Math.max(0, Number(configDraft.safeHavenUSDT) || 0);
-
       await axios.put(endpoints.slow.prod.storage, {
-        safeHavenUSDT,
+        safeHavenUSDT: Math.max(0, Number(safeHavenUSDT) || 0),
         withdrawal: buildWithdrawalPayload(configDraft),
       });
 
@@ -367,7 +232,7 @@ export function useLiveDashboardNavbar({
     if (!configDraft) {
       return;
     }
-    const account = configDraft.exchangeAccounts.find(
+    const account = configDraft.accounts.find(
       (candidate) => candidate.slug === accountSlug,
     );
     if (!account) {
@@ -466,6 +331,7 @@ export function useLiveDashboardNavbar({
     runCycle,
     runningCycle,
     saveConfig,
+    safeHavenUSDT,
     savingConfig,
     syncOnlineStorageToLocal,
     syncingOnlineStorage,
@@ -474,5 +340,6 @@ export function useLiveDashboardNavbar({
     closeSettingsDialog,
     openSettingsDialog,
     setConfigDraft,
+    setSafeHavenUSDT,
   };
 }

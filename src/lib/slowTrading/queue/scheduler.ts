@@ -78,7 +78,7 @@ export async function synchronizeSlowTradingQueues(
   }
 
   const modeState = storage.modes[activeMode];
-  const safeConfig = storage.config.modelConfig;
+  const safeConfig = storage.config;
   const period = getUtcMonthKey(currentTimeMs);
   const queueLoadOptions = {
     legacySafeHavenMode: activeMode,

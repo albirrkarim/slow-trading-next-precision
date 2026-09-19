@@ -51,7 +51,7 @@ function createMemory(): TradingModelMemory {
 }
 
 const currentKline = [1_000, "1", "1", "1", "1", "10"] as any;
-const modelConfig = {
+const tradingConfig = {
   orderType: "taker" as const,
   stopLossPercent: 15,
   takeProfitPercent: 5,
@@ -75,7 +75,7 @@ describe("live exit execution", () => {
     const result = await executeExit({
       symbol: "W",
       current: currentKline,
-      modelConfig,
+      tradingConfig,
       modelMemory: memory,
       exchangeType: "binance",
       tradingMode: TradingMode.FUTURES,
@@ -102,7 +102,7 @@ describe("live exit execution", () => {
     const result = await executeExit({
       symbol: "W",
       current: [1_000, "1", "1", "0.8", "0.8", "10"] as any,
-      modelConfig,
+      tradingConfig,
       modelMemory: memory,
       exchangeType: "binance",
       tradingMode: TradingMode.FUTURES,

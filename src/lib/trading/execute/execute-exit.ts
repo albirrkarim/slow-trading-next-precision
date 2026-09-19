@@ -12,7 +12,7 @@ import {
 import type {
   Position,
   TradeDecision,
-  TradingModelConfig,
+  TradingConfig,
   TradingModelMemory,
 } from "@/lib/trading/models";
 import type { fetchKlinesFunction } from "@lib/datasets"; // Fetch historical/live klines
@@ -33,7 +33,7 @@ interface ExecuteExitProps {
   symbol: string
   current?: Kline
   fetchKlines?: typeof fetchKlinesFunction
-  modelConfig: TradingModelConfig
+  tradingConfig: TradingConfig
   modelMemory: TradingModelMemory
   exchangeType: ExchangeType
   tradingMode: TradingMode
@@ -91,7 +91,7 @@ export async function executeExit({
   symbol,
   current, // Current candle (last minute)
   // fetchKlines = fetchKlinesFunction, // Function to fetch candle data
-  modelConfig, // Strategy configuration,
+  tradingConfig, // Strategy configuration,
   modelMemory,
   exchangeType = "tokocrypto",
   tradingMode = TradingMode.SPOT,
@@ -100,7 +100,7 @@ export async function executeExit({
   balanceOverride,
   notificationTarget,
 }: ExecuteExitProps): Promise<TradingReturn> {
-  const { orderType = "taker", } = modelConfig;
+  const { orderType = "taker", } = tradingConfig;
 
   if (!modelMemory.positions) {
     // Save buy record, to track the price
@@ -176,7 +176,7 @@ export async function executeExit({
   const decision: TradeDecision = await dynamicExit({
     symbol,
     current,
-    config: modelConfig,
+    config: tradingConfig,
     memory: modelMemory,
     tradingMode,
     exchangeType,

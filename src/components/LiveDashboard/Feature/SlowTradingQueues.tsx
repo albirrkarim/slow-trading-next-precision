@@ -228,7 +228,7 @@ function getSuggestedSafeHavenAmountUSDT(
     return 0;
   }
 
-  const modelConfig = dashboardState.config.modelConfig;
+  const tradingConfig = dashboardState.config;
   const schedule = dashboardState.runtime.safeHaven.schedules.find(
     (candidate) => candidate.enabled,
   );
@@ -237,19 +237,19 @@ function getSuggestedSafeHavenAmountUSDT(
     dashboardState.balances.lockedQuoteAsset;
   const fixedUSDT = Math.max(
     0,
-    Number(schedule?.amountUSDT ?? modelConfig.safeUSDTPerMonth) || 0,
+    Number(schedule?.amountUSDT ?? tradingConfig.safeUSDTPerMonth) || 0,
   );
   const percent = Math.max(
     0,
     schedule
       ? (Number(schedule.pct) || 0) / 100
-      : Number(modelConfig.safePercentPerMonth) || 0,
+      : Number(tradingConfig.safePercentPerMonth) || 0,
   );
   const desiredUSDT =
     fixedUSDT > 0 ? fixedUSDT : currentAsset * percent;
   const minimumTradingCapitalUSDT = Math.max(
     0,
-    Number(modelConfig.minimalAssetOnTrade) || 0,
+    Number(tradingConfig.minimalAssetOnTrade) || 0,
   );
 
   return Number(

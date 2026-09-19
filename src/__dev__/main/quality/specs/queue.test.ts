@@ -41,7 +41,7 @@ describe("slow specs persistent queues", () => {
         },
       ],
     };
-    storage.config.modelConfig.minimalAssetOnTrade = undefined;
+    storage.config.minimalAssetOnTrade = undefined;
     storage.modes.live.dynamicTradeMemory.quoteAsset = 100;
     await slowTrading.storage.data.save(storage);
 
@@ -95,7 +95,7 @@ describe("slow specs persistent queues", () => {
         },
       ],
     };
-    storage.config.modelConfig.minimalAssetOnTrade = undefined;
+    storage.config.minimalAssetOnTrade = undefined;
     storage.modes.live.dynamicTradeMemory.quoteAsset = 100;
     await slowTrading.storage.data.save(storage);
 
@@ -134,7 +134,7 @@ describe("slow specs persistent queues", () => {
         },
       ],
     };
-    storage.config.modelConfig.minimalAssetOnTrade = 0;
+    storage.config.minimalAssetOnTrade = 0;
     storage.modes.live.dynamicTradeMemory.quoteAsset = 200;
     await slowTrading.storage.data.save(storage);
 
@@ -185,7 +185,7 @@ describe("slow specs persistent queues", () => {
         },
       ],
     };
-    storage.config.modelConfig.minimalAssetOnTrade = undefined;
+    storage.config.minimalAssetOnTrade = undefined;
     storage.modes.sandbox.dynamicTradeMemory.quoteAsset = 10;
     await slowTrading.storage.data.save(storage);
 
@@ -233,7 +233,7 @@ describe("slow specs persistent queues", () => {
         },
       ],
     };
-    storage.config.modelConfig.minimalAssetOnTrade = undefined;
+    storage.config.minimalAssetOnTrade = undefined;
     storage.modes.live.dynamicTradeMemory.quoteAsset = 100;
     storage.modes.sandbox.dynamicTradeMemory.quoteAsset = 100;
     await slowTrading.storage.data.save(storage);
@@ -260,8 +260,8 @@ describe("slow specs persistent queues", () => {
     storage.runtime.runnerEnabled = true;
     storage.runtime.sandboxEnabled = false;
     storage.config.exchangeType = "binance";
-    storage.config.modelConfig.safeUSDTPerMonth = undefined;
-    storage.config.modelConfig.safePercentPerMonth = undefined;
+    storage.config.safeUSDTPerMonth = undefined;
+    storage.config.safePercentPerMonth = undefined;
     storage.runtime.withdrawal = {
       autoEnabled: true,
       walletBook: [],

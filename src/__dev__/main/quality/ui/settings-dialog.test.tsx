@@ -53,14 +53,12 @@ function dashboardState() {
       minActionableAbsoluteLevel: 3,
       maxLeverage: 0,
       exactLeverage: 0,
-      modelConfig: {
-        orderType: "taker",
-        safePercentPerMonth: 0,
-        safeUSDTPerMonth: 0,
-        stopLossPercent: 20,
-        takeProfitPercent: 5,
-        useStopLossPlus: false,
-      },
+      orderType: "taker",
+      safePercentPerMonth: 0,
+      safeUSDTPerMonth: 0,
+      stopLossPercent: 20,
+      takeProfitPercent: 5,
+      useStopLossPlus: false,
       name: "Main",
       symbols: ["BTC"],
       tradingMode: TradingMode.SPOT,
@@ -86,8 +84,34 @@ function dashboardState() {
             apiSecret: "secret",
           },
           description: "",
-          id: "1",
+          slug: "1",
+          enabled: true,
           name: "Main Account",
+          trading: {
+            adaptiveAveraging: {
+              enabled: false,
+              maxMultiplier: 5,
+              minProjectedProfitPct: 2,
+            },
+            averagingRescueProjectionGuardEnabled: true,
+            enableWatchLogic: false,
+            exactLeverage: 0,
+            exitSidewaysToFreeWorkersForStrongCandidates: false,
+            maxEntryBased24HourVolPct: 0.2,
+            maxEntryMargin: 0,
+            maxEntryMarginPct: 0,
+            maxLeverage: 0,
+            maxOpenPositions: 0,
+            minActionableAbsoluteLevel: 3,
+            notes: "",
+            stopLossPercent: 20,
+            takeProfitPercent: 5,
+            useStopLossPlus: false,
+            watchMaxNextAveragingLevels: 2,
+            watchReserveLevels: 2,
+            watchReservePctAlloc: 2,
+          },
+          sandbox: { enabled: false, initialBalanceUSDT: 1_000 },
           type: "binance",
           updatedAt: 1,
         },
@@ -112,6 +136,7 @@ function dashboardState() {
         schedules: [],
         walletBook: [],
       },
+      safeHaven: { autoEnabled: false, schedules: [] },
     },
     stats: {
       closedTrades: 0,
@@ -135,16 +160,16 @@ function Harness() {
   return (
     <div>
       <div data-testid="auto-remove">
-        {navbar.configDraft.autoRemoveSymbolAbsLevel}
+        {navbar.configDraft.runtime.autoRemoveSymbolAbsLevel}
       </div>
       <div data-testid="auto-remove-price">
-        {navbar.configDraft.autoRemoveSymbolMinPrice}
+        {navbar.configDraft.runtime.autoRemoveSymbolMinPrice}
       </div>
       <div data-testid="auto-remove-market-cap">
-        {navbar.configDraft.autoRemoveSymbolMinMarketCapUSD}
+        {navbar.configDraft.runtime.autoRemoveSymbolMinMarketCapUSD}
       </div>
       <div data-testid="auto-remove-vpoint-pct">
-        {navbar.configDraft.autoRemoveSymbolMinVPointPct}
+        {navbar.configDraft.runtime.autoRemoveSymbolMinVPointPct}
       </div>
       <button
         type="button"
@@ -153,25 +178,20 @@ function Harness() {
             prev
               ? {
                 ...prev,
-                autoEntryEnabled: true,
-                autoExitEnabled: true,
-                autoRemoveSymbolAbsLevel: 6,
-                autoRemoveSymbolMinMarketCapUSD: 100_000_000,
-                autoRemoveSymbolMinPrice: 0.01,
-                autoRemoveSymbolMinVPointPct: 17.5,
-                pnlHistoryBucketMinutes: 15,
-                averagingRescueProjectionGuardEnabled: false,
-                enableWatchLogic: true,
-                exchangeAccountSlug: "1",
-                maxEntryMargin: 20,
-                maxEntryBased24HourVolPct: 0.5,
-                maxEntryMarginPct: 50,
-                maxOpenPositions: 3,
-                minActionableAbsoluteLevel: 4,
-                maxLeverage: 3,
-                exactLeverage: 6,
-                notification: {
-                  ...prev.notification,
+                management: { ...prev.management, symbols: ["SUI", "AAVE"] },
+                runtime: {
+                  ...prev.runtime,
+                  autoEntryEnabled: true,
+                  autoExitEnabled: true,
+                  autoRemoveSymbolAbsLevel: 6,
+                  autoRemoveSymbolMinMarketCapUSD: 100_000_000,
+                  autoRemoveSymbolMinPrice: 0.01,
+                  autoRemoveSymbolMinVPointPct: 17.5,
+                  pnlHistoryBucketMinutes: 15,
+                  exchangeAccountSlug: "1",
+                  runnerEnabled: true,
+                  notification: {
+                  ...prev.runtime.notification,
                   telegram: {
                     enabled: true,
                     types: [
@@ -186,14 +206,25 @@ function Harness() {
                     ],
                   },
                 },
-                modelConfig: {
-                  ...prev.modelConfig,
-                  stopLossPercent: 12,
-                  takeProfitPercent: 7,
-                  useStopLossPlus: true,
                 },
-                runnerEnabled: true,
-                symbolsText: "SUI, AAVE",
+                accounts: prev.accounts.map((account) => ({
+                  ...account,
+                  trading: {
+                    ...account.trading,
+                    averagingRescueProjectionGuardEnabled: false,
+                    enableWatchLogic: true,
+                    maxEntryMargin: 20,
+                    maxEntryBased24HourVolPct: 0.5,
+                    maxEntryMarginPct: 50,
+                    maxOpenPositions: 3,
+                    minActionableAbsoluteLevel: 4,
+                    maxLeverage: 3,
+                    exactLeverage: 6,
+                    stopLossPercent: 12,
+                    takeProfitPercent: 7,
+                    useStopLossPlus: true,
+                  },
+                })),
               }
               : prev,
           )
@@ -289,7 +320,7 @@ describe("settings dialog save payload", () => {
     ).toBeTruthy();
 
     fireEvent.click(screen.getByLabelText("Black Swan Protection: OFF"));
-    expect(nextDraft.blackSwan?.enabled).toBe(true);
+    expect(nextDraft.management.blackSwan?.enabled).toBe(true);
 
     rerender(
       <SettingsDialogBlackSwanTab
@@ -308,15 +339,7 @@ describe("settings dialog save payload", () => {
   });
 
   it("edits the PnL history bucket as whole positive minutes", () => {
-    const draft = {
-      autoEntryEnabled: false,
-      autoExitEnabled: false,
-      entrySignalBypass: false,
-      pnlHistoryBucketMinutes: 60,
-      runnerEnabled: false,
-      sandboxEnabled: false,
-      sandboxInitialBalanceUSDT: "1000",
-    } as any;
+    const draft = makeConfigDraft(dashboardState());
     let nextDraft = draft;
     const setConfigDraft = vi.fn((update) => {
       nextDraft = typeof update === "function" ? update(nextDraft) : update;
@@ -343,26 +366,11 @@ describe("settings dialog save payload", () => {
     expect(input.min).toBe("1");
 
     fireEvent.change(input, { target: { value: "15.8" } });
-    expect(nextDraft.pnlHistoryBucketMinutes).toBe(15);
+    expect(nextDraft.runtime.pnlHistoryBucketMinutes).toBe(15);
   });
 
   it("edits all production stage intervals as positive whole minutes", () => {
-    const draft = {
-      autoEntryEnabled: false,
-      autoExitEnabled: false,
-      captureEntryStageIntervalMinutes: 5,
-      entrySignalBypass: false,
-      pnlHistoryBucketMinutes: 60,
-      runnerEnabled: false,
-      sandboxEnabled: false,
-      sandboxInitialBalanceUSDT: "1000",
-      speedupStageIntervalMinutes: 1,
-      managementStageIntervalMinutes: 5,
-      speedupStagePositivePnlThresholdPct: 1.5,
-      speedupStageNegativePnlThresholdPct: 1.5,
-      speedupStageTakeProfitOffsetPct: 0.5,
-      standardMonitoringStageIntervalMinutes: 5,
-    } as any;
+    const draft = makeConfigDraft(dashboardState());
     let nextDraft = draft;
     const setConfigDraft = vi.fn((update) => {
       nextDraft = typeof update === "function" ? update(nextDraft) : update;
@@ -393,7 +401,7 @@ describe("settings dialog save payload", () => {
       const input = screen.getByLabelText(label) as HTMLInputElement;
       expect(input.min).toBe("1");
       fireEvent.change(input, { target: { value: "2.9" } });
-      expect(nextDraft[field]).toBe(2);
+      expect(nextDraft.runtime[field]).toBe(2);
     }
 
     for (const [label, field, value] of [
@@ -417,7 +425,7 @@ describe("settings dialog save payload", () => {
       expect(input.min).toBe("0");
       expect(input.step).toBe("0.1");
       fireEvent.change(input, { target: { value } });
-      expect(nextDraft[field]).toBe(Number(value));
+      expect(nextDraft.runtime[field]).toBe(Number(value));
     }
 
     expect(screen.getByText("A. Speedup Stage")).toBeTruthy();
@@ -460,12 +468,12 @@ describe("settings dialog save payload", () => {
     expect(input.value).toBe("15");
 
     fireEvent.change(input, { target: { value: "17.5" } });
-    expect(nextDraft.autoRemoveSymbolMinVPointPct).toBe(17.5);
+    expect(nextDraft.runtime.autoRemoveSymbolMinVPointPct).toBe(17.5);
   });
 
   it("previews the market-cap input with readable M and B units", () => {
     const draft = makeConfigDraft(dashboardState());
-    draft.autoRemoveSymbolMinMarketCapUSD = 200_000_000;
+    draft.runtime.autoRemoveSymbolMinMarketCapUSD = 200_000_000;
     let nextDraft = draft;
     const setConfigDraft = vi.fn((update) => {
       nextDraft = typeof update === "function" ? update(nextDraft) : update;
@@ -509,16 +517,7 @@ describe("settings dialog save payload", () => {
 
     render(
       <SettingsDialogRuntimeTab
-        configDraft={
-          {
-            autoEntryEnabled: false,
-            autoExitEnabled: false,
-            entrySignalBypass: false,
-            runnerEnabled: false,
-            sandboxEnabled: false,
-            sandboxInitialBalanceUSDT: "1000",
-          } as any
-        }
+        configDraft={makeConfigDraft(dashboardState())}
         onReinitialize={vi.fn(async () => undefined)}
         reinitializing={false}
         resetSandbox={vi.fn(async () => undefined)}
@@ -600,22 +599,26 @@ describe("settings dialog save payload", () => {
       },
       runnerEnabled: true,
       config: {
-        averagingRescueProjectionGuardEnabled: false,
-        enableWatchLogic: true,
-        maxEntryMargin: 20,
-        maxEntryBased24HourVolPct: 0.5,
-        maxEntryMarginPct: 50,
-        maxOpenPositions: 3,
-        minActionableAbsoluteLevel: 4,
-        maxLeverage: 3,
-        exactLeverage: 6,
         symbols: ["SUI", "AAVE"],
-        modelConfig: {
-          stopLossPercent: 12,
-          takeProfitPercent: 7,
-          useStopLossPlus: true,
-        },
       },
+    });
+
+    const accountsPayload = axiosPut.mock.calls.find(
+      ([url]) => url === endpoints.slow.prod.exchangeAccounts,
+    )?.[1] as any;
+    expect(accountsPayload.accounts[0].trading).toMatchObject({
+      averagingRescueProjectionGuardEnabled: false,
+      enableWatchLogic: true,
+      exactLeverage: 6,
+      maxEntryBased24HourVolPct: 0.5,
+      maxEntryMargin: 20,
+      maxEntryMarginPct: 50,
+      maxLeverage: 3,
+      maxOpenPositions: 3,
+      minActionableAbsoluteLevel: 4,
+      stopLossPercent: 12,
+      takeProfitPercent: 7,
+      useStopLossPlus: true,
     });
   });
 });
