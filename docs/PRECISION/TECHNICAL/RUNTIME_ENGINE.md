@@ -706,10 +706,42 @@ Before implementing this extension, update the schema example in
 `HIGH_LEVEL/BACKTEST.md` so the documents remain consistent.
 
 Store compact JSON under `storage/backtest-dataset`. Dataset file naming must
-be a stable hash of source exchange, market type, symbols, warmup start, start,
-and end. Do not include credentials.
+be a stable hash of:
 
-## 11.1 Dataset validation
+- dataset schema/version;
+- source exchange and market type;
+- normalized, deduplicated, sorted symbols including BTC;
+- effective `warmupStartTime`, `startTime`, and `endTime` after boundary
+  normalization.
+
+Do not include credentials, account identity, trading configuration, or
+`upToDateKlines` in the key. The freshness flag controls whether a matching
+entry may be reused; it does not describe the dataset's identity.
+
+## 11.1 Cache lookup and build behavior
+
+Dataset access is cache-first:
+
+1. Normalize the request and calculate the cache key before any network call.
+2. When `upToDateKlines` is false or absent, open and validate the matching
+   cached dataset.
+3. On a valid hit, return it without fetching any kline interval.
+4. On a miss or invalid/corrupt entry, acquire a per-key build lock, check the
+   cache again, then fetch the independent 1m and 5m series once.
+5. Validate the complete built dataset and publish compact JSON through a
+   temporary file plus atomic rename.
+6. When `upToDateKlines` is true, deliberately rebuild and atomically replace
+   the matching entry instead of returning it. Concurrent forced refreshes for
+   the same key still share one in-flight build.
+
+The per-key lock/single-flight mechanism must work for concurrent requests in
+the server process. The second waiter reads the file produced by the first;
+it must not repeat the download. A different symbol set or effective range has
+a different key and may build independently.
+
+TC: `BTEST:BACKTEST_DATASET_CACHE`
+
+## 11.2 Dataset validation
 
 `validate.ts` must reject:
 
@@ -730,7 +762,7 @@ and end. Do not include credentials.
 One-minute and five-minute candles are fetched and stored independently. Never
 derive 5m candles from the 1m series.
 
-## 11.2 Data unavailable from klines
+## 11.3 Data unavailable from klines
 
 V1 derives rolling 24-hour quote volume from the latest visible 1m candle
 window by summing tuple index `7`.
@@ -1201,7 +1233,9 @@ Update `src/lib/dev/backtestPrecision/api/run.ts`:
 1. Validate `BacktestPrecisionParams`.
 2. Normalize/sort management symbols and include BTC.
 3. Remove account credentials from the child payload.
-4. Build or locate the dataset.
+4. Resolve the range-and-symbol dataset key and load the validated cache by
+   default; build it only on a miss, corruption, or explicit
+   `upToDateKlines: true` refresh.
 5. Create a temp directory with `fs.mkdtemp`.
 6. Create an isolated persistent root and marker inside it.
 7. Spawn Node with `require.resolve("tsx/cli")` and
@@ -1247,6 +1281,7 @@ The current placeholder `console.log("params", params)` must be removed.
 
 TC: `BTEST:BACKTEST_PROCESS_ISOLATION`
 TC: `BTEST:BACKTEST_REPRODUCIBLE`
+TC: `BTEST:BACKTEST_DATASET_CACHE`
 
 # 21. Precision Backtest API and page integration
 
@@ -1349,6 +1384,11 @@ Files:
 Tests:
 
 - dataset validation for every rejection rule;
+- identical normalized symbols/range reuse the cached dataset with zero kline
+  network calls;
+- changed symbols or range resolve to a different cache key;
+- `upToDateKlines: true` refreshes and atomically replaces the same key;
+- concurrent identical cache misses perform only one dataset download/build;
 - 1m/5m independent visibility;
 - warmup behavior;
 - no-future-candle behavior;
@@ -1511,6 +1551,7 @@ Use a dedicated folder such as
 | `BOTH:RUNTIME_ACTION_COMMIT` | successful action commits before next action |
 | `PROD:RUNTIME_FAILURE_ISOLATION` | deferred: future production adapter preserves account isolation after a failure |
 | `BTEST:BACKTEST_REPRODUCIBLE` | normalized results repeat exactly |
+| `BTEST:BACKTEST_DATASET_CACHE` | normalized symbols/range reuse one validated dataset; refresh and concurrent-build behavior do not duplicate downloads |
 | `BOTH:PLUGIN_STRATEGY` | Multi plugin has no storage/exchange effects |
 | `BOTH:RUNTIME_METRICS` | calls/actions/commits/errors are measured |
 | `BOTH:RUNTIME_SAFETY_GUARDS` | backtest/sandbox cannot reach live effects |
