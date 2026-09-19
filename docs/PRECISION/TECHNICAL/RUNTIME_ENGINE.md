@@ -702,8 +702,8 @@ interface BacktestDatasetV1 {
 }
 ```
 
-Before implementing this extension, update the schema example in
-`HIGH_LEVEL/BACKTEST.md` so the documents remain consistent.
+The matching schema example in `HIGH_LEVEL/BACKTEST.md` is authoritative at the
+planning level and must remain consistent with this concrete contract.
 
 Store compact JSON under `storage/backtest-dataset`. Dataset file naming must
 be a stable hash of:
@@ -1296,7 +1296,7 @@ TC: `BTEST:BACKTEST_DATASET_CACHE`
 `BacktestPrecisionParams` continues to receive:
 
 - range or explicit start/end;
-- freshness controls;
+- dataset and completed-result freshness controls;
 - grouped SLOW settings;
 - symbols from `config.management.symbols`;
 - per-account starting balance from each enabled account's sandbox config.

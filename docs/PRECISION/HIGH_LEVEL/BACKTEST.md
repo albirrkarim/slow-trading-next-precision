@@ -1,8 +1,9 @@
 # Backtest — V1
 
-Backtest runs through the shared production runtime in an isolated child
-process (`src/driver/backtest.ts`): a dataset-backed exchange adapter, a
-logical clock, and an isolated `PERSISTENT_STORAGE_ROOT`.
+Backtest runs through the environment-neutral Precision runtime in an isolated
+child process (`src/driver/backtest.ts`): a dataset-backed exchange adapter, a
+logical clock, and an isolated `PERSISTENT_STORAGE_ROOT`. Production will adopt
+the same runtime in a later phase; it is not wired during backtest-first work.
 
 # A. Dataset
 
@@ -18,6 +19,16 @@ interface BacktestDatasetV1 {
   endTime: number;
   symbols: string[]; // always includes BTC
   klines: Record<string, { "1m": Kline[]; "5m": Kline[] }>;
+  executionRules: Record<
+    string,
+    {
+      minQty: number;
+      stepSize: number;
+      tickSize: number;
+      makerFeePct: number;
+      takerFeePct: number;
+    }
+  >;
 }
 ```
 
@@ -41,11 +52,12 @@ controls lookup behavior; it is not part of the cache key.
 
 Klines are raw per-symbol one-minute and five-minute candles kept as
 independent series; five-minute candles are never derived from one-minute
-candles. vPoint formation is reconstructed during the run by the copied
-`detectVolatilityPoints` function over exactly the candles visible at each
-logical time, so the production retrace-then-mark-peak timing is reproduced
-without reinventing detection. Reject gaps, duplicate candle times, reversed
-ranges, or missing coverage.
+candles. vPoint formation is reconstructed during the run by the
+`detectVolatilityPoints` algorithm exposed through the existing detector module
+over exactly the candles visible at each logical time, so the production
+retrace-then-mark-peak timing is reproduced without copying or reinventing
+detection. Reject gaps, duplicate candle times, reversed ranges, or missing
+coverage.
 
 TC: `BTEST:BACKTEST_DATASET`
 
@@ -61,11 +73,12 @@ TC: `BOTH:BACKTEST_CANDLE_VISIBILITY`
 
 # C. Shared runtime
 
-Every tick invokes the due production stages using the cadence and ordering
+Every tick invokes the due shared runtime stages using the cadence and ordering
 in `RUNTIME_ENGINE.md` (risk sentinel, speedup, standard monitoring,
 management, capture entry). Decisions, entry, averaging, exit, quantity, fee,
 PnL, and position calculations are the same functions used by production,
-resolved through the shared exchange factory.
+called through the injected dataset-backed execution adapter. Backtest never
+resolves the global production exchange factory.
 
 TC: `BOTH:SHARED_RUNTIME_ENGINE`
 
