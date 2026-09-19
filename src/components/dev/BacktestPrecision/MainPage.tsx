@@ -151,7 +151,7 @@ export default function DynamicTradeAnalytics() {
                     id,
                     createdAt: Date.now(),
                     backtestConfig: backtest,
-                    label: `${backtest.symbols.join(", ")} · ${backtest.range}`,
+                    label: `${backtest.settings?.management.symbols.join(", ") ?? "No symbols"} · ${backtest.range}`,
                     // backtestResult,
                     leaderboards: backtestResult.leaderboards ?? {},
                 };
@@ -239,7 +239,8 @@ export default function DynamicTradeAnalytics() {
                 multiAccount: true,
                 mode: usedConfig.mode,
 
-                symbols: usedConfig.symbols,
+                // BTEST:BACKTEST_MANAGEMENT_SYMBOLS
+                symbols: usedConfig.settings.management.symbols,
                 range: usedConfig.range,
 
                 startTime,

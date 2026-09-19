@@ -12,6 +12,7 @@ import { describe, expect, it, vi } from "vitest";
 import SettingsDialog from "@/components/LiveDashboard/Navbar/Settings/SettingsDialog";
 import SettingsDialogRuntimeTab from "@/components/LiveDashboard/Navbar/Settings/Runtime/SettingsDialogRuntimeTab";
 import SettingsDialogTradingTab from "@/components/LiveDashboard/Navbar/Settings/Trading/SettingsDialogTradingTab";
+import { buildBacktestDashboardState } from "@/components/dev/BacktestPrecision/backtest-dashboard-state";
 import { NavbarIdentitySection } from "@/components/LiveDashboard/Navbar/NavbarSections";
 import { makeConfigDraft } from "@/components/LiveDashboard/Navbar/Settings/helpers";
 import type {
@@ -448,6 +449,57 @@ describe("multi-account settings UI", () => {
       screen.getByRole("button", { name: "Reset Beta Sandbox" }),
     );
     expect(resetSandbox).toHaveBeenCalledWith("beta");
+  });
+
+  it("keeps account starting balances editable without production reset actions", () => {
+    function Harness() {
+      const [draft, setDraft] = useState<ConfigDraft | null>(createDraft());
+      if (!draft) return null;
+
+      return (
+        <SettingsDialogRuntimeTab
+          configDraft={draft}
+          setConfigDraft={setDraft}
+        />
+      );
+    }
+
+    render(<Harness />);
+
+    expect(
+      (screen.getByLabelText(
+        "Alpha Sandbox Initial Balance (USDT)",
+      ) as HTMLInputElement).value,
+    ).toBe("1000");
+    expect(
+      (screen.getByLabelText(
+        "Beta Sandbox Initial Balance (USDT)",
+      ) as HTMLInputElement).value,
+    ).toBe("2000");
+    expect(screen.queryByRole("button", { name: /Reset .* Sandbox/ })).toBeNull();
+  });
+
+  it("mimics account balances for the backtest settings live preview", () => {
+    const draft = createDraft();
+    draft.management.symbols = ["AAVE", "LINK"];
+
+    const state = buildBacktestDashboardState(draft);
+
+    // BTEST:BACKTEST_SETTINGS_LIVE_PREVIEW
+    expect(state.balances.startingBalanceUSDT).toBe(3_000);
+    expect(state.balances.spendableQuoteAsset).toBe(3_000);
+    expect(state.config.symbols).toEqual(["AAVE", "LINK"]);
+    expect(
+      state.accountSummaries.map((account) => ({
+        enabled: account.enabled,
+        slug: account.slug,
+        startingBalanceUSDT: account.balances.startingBalanceUSDT,
+      })),
+    ).toEqual([
+      { enabled: true, slug: "alpha", startingBalanceUSDT: 1_000 },
+      { enabled: true, slug: "beta", startingBalanceUSDT: 2_000 },
+      { enabled: false, slug: "paused", startingBalanceUSDT: 500 },
+    ]);
   });
 
   it("shows persisted balances with manual refresh only for live accounts", async () => {

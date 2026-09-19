@@ -8,7 +8,6 @@ import {
 import { makeConfigDraft } from "@/components/LiveDashboard/Navbar/Settings/helpers";
 import { endpoints } from "@/components/endpoints";
 import { TIME_RANGE } from "@/components/constants";
-import CoinMultiSelect from "@/components/ui/CoinMultiSelect";
 import {
     Box,
     FormControl,
@@ -17,16 +16,16 @@ import {
     Select,
     TextField,
 } from "@mui/material";
-import { useEffect, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useMemo, type Dispatch, type SetStateAction } from "react";
 import axios from "axios";
 import HeaderMetrics from "../Evaluation/HeaderMetrics";
+import { buildBacktestDashboardState } from "./backtest-dashboard-state";
 import type { BacktestConfig } from "./types";
 
 export const DEFAULT_BACKTEST_CONFIG: BacktestConfig = {
     mode: "volatility_point",
 
     // Data
-    symbols: [],
     range: "1year",
     startTime: undefined,
     endTime: undefined,
@@ -36,9 +35,6 @@ export const DEFAULT_BACKTEST_CONFIG: BacktestConfig = {
     // Info
     name: "Example Name",
     description: "",
-
-    // Starting point
-    startingBalanceUSDT: 400,
 
     // Config
     settings: undefined,
@@ -53,15 +49,6 @@ export default function DynamicBacktestConfig({
     backtestConfig,
     setBacktestConfig,
 }: BacktestConfigProps) {
-    // top-level view setters
-    const handleChange = (key: keyof BacktestConfig, value: any) => {
-        setBacktestConfig((prev) => ({ ...prev, [key]: value }));
-    };
-
-    const handleSymbolsChange = (value: string[]) => {
-        handleChange("symbols", value);
-    };
-
     // backtest patch helpers
     const updateBacktest = (patch: Partial<BacktestConfig>) => {
         setBacktestConfig((prev) => ({ ...prev, ...patch }));
@@ -73,7 +60,9 @@ export default function DynamicBacktestConfig({
             settings: (() => {
                 const current = prev.settings;
                 if (!current) return current;
-                return typeof value === "function" ? value(current) ?? current : value ?? current;
+                return typeof value === "function"
+                    ? value(current) ?? current
+                    : value ?? current;
             })(),
         }));
     };
@@ -97,6 +86,14 @@ export default function DynamicBacktestConfig({
             });
         return () => controller.abort();
     }, [backtestConfig.settings, setBacktestConfig]);
+
+    const dashboardState = useMemo(
+        () =>
+            backtestConfig.settings
+                ? buildBacktestDashboardState(backtestConfig.settings)
+                : undefined,
+        [backtestConfig.settings],
+    );
 
     return (
         <Box
@@ -154,12 +151,6 @@ export default function DynamicBacktestConfig({
                 )}
             </HeaderMetrics>
 
-            <CoinMultiSelect
-                value={backtestConfig.symbols}
-                onChange={handleSymbolsChange}
-                showLength={3}
-            />
-
             <FormControl size="small" sx={{ width: 112 }}>
                 <InputLabel>Range</InputLabel>
                 <Select
@@ -185,21 +176,8 @@ export default function DynamicBacktestConfig({
             {backtestConfig.settings && (
                 <SettingsDialog
                     configDraft={backtestConfig.settings}
+                    dashboardState={dashboardState}
                     setConfigDraft={setTradingConfig}
-            // dashboardState={dashboardState}
-            // onCloseDialog={onSettingsDialogClose}
-            // onOpenDialog={onSettingsDialogOpen}
-            // onReinitialize={onReinitialize}
-            // reinitializing={reinitializing}
-            // resetSandbox={resetSandbox}
-            // resettingSandboxAccount={resettingSandboxAccount}
-            // saveConfig={saveConfig}
-            // savingConfig={savingConfig}
-
-            // syncOnlineStorageToLocal={syncOnlineStorageToLocal}
-            // syncingOnlineStorage={syncingOnlineStorage}
-            // tryWithdrawNow={tryWithdrawNow}
-            // tryingWithdraw={tryingWithdraw}
                 />
             )}
         </Box>

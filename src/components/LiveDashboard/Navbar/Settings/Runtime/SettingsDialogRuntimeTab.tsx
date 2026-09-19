@@ -165,33 +165,32 @@ export default function SettingsDialogRuntimeTab({
       </Grid>
 
       <Grid size={{ xs: 12, md: 6 }}>
-        {resetSandbox && (
-          <SettingsDialogSection
-            title="Sandbox Accounts"
-            description="Each account independently chooses live or sandbox execution and owns its sandbox starting balance."
-          >
-            <Stack spacing={2}>
-              {configDraft.accounts.map((account) => {
-                const resetting = resettingSandboxAccount === account.slug;
-                return (
-                  <Box
-                    key={account.slug}
-                    sx={{
-                      border: 1,
-                      borderColor: "divider",
-                      borderRadius: 1.5,
-                      p: 2,
-                    }}
-                  >
-                    <Stack spacing={2}>
-                      <Box>
-                        <Typography fontWeight={700} variant="subtitle2">
-                          {account.name}
-                        </Typography>
-                        <Typography color="text.secondary" variant="caption">
-                          {account.slug}
-                        </Typography>
-                      </Box>
+        <SettingsDialogSection
+          title="Sandbox Accounts"
+          description="Each account independently chooses live or sandbox execution and owns its sandbox starting balance. Backtests use this balance for every enabled account."
+        >
+          <Stack spacing={2}>
+            {configDraft.accounts.map((account) => {
+              const resetting = resettingSandboxAccount === account.slug;
+              return (
+                <Box
+                  key={account.slug}
+                  sx={{
+                    border: 1,
+                    borderColor: "divider",
+                    borderRadius: 1.5,
+                    p: 2,
+                  }}
+                >
+                  <Stack spacing={2}>
+                    <Box>
+                      <Typography fontWeight={700} variant="subtitle2">
+                        {account.name}
+                      </Typography>
+                      <Typography color="text.secondary" variant="caption">
+                        {account.slug}
+                      </Typography>
+                    </Box>
 
                       <RuntimeToggle
                         checked={account.sandbox.enabled}
@@ -249,41 +248,42 @@ export default function SettingsDialogRuntimeTab({
                         info="Used when this account's sandbox state is initialized or reset."
                       />
 
-                      <Box>
-                        <Button
-                          color="warning"
-                          variant="outlined"
-                          startIcon={<RestartAltIcon />}
-                          onClick={() => {
-                            void resetSandbox(account.slug);
-                          }}
-                          disabled={
-                            resettingSandboxAccount !== null ||
-                            !account.sandbox.enabled
-                          }
-                        >
-                          {resetting
-                            ? "Resetting..."
-                            : `Reset ${account.name} Sandbox`}
-                        </Button>
+                      {resetSandbox && (
+                        <Box>
+                          <Button
+                            color="warning"
+                            variant="outlined"
+                            startIcon={<RestartAltIcon />}
+                            onClick={() => {
+                              void resetSandbox(account.slug);
+                            }}
+                            disabled={
+                              resettingSandboxAccount !== null ||
+                              !account.sandbox.enabled
+                            }
+                          >
+                            {resetting
+                              ? "Resetting..."
+                              : `Reset ${account.name} Sandbox`}
+                          </Button>
 
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          sx={{ display: "block", mt: 1 }}
-                        >
-                          Rebuilds only this account&apos;s sandbox positions
-                          and balance. Its live state and every other account
-                          are not touched.
-                        </Typography>
-                      </Box>
-                    </Stack>
-                  </Box>
-                );
-              })}
-            </Stack>
-          </SettingsDialogSection>
-        )}
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ display: "block", mt: 1 }}
+                          >
+                            Rebuilds only this account&apos;s sandbox positions
+                            and balance. Its live state and every other account
+                            are not touched.
+                          </Typography>
+                        </Box>
+                      )}
+                  </Stack>
+                </Box>
+              );
+            })}
+          </Stack>
+        </SettingsDialogSection>
 
         {onReinitialize && (
           <SettingsDialogSection

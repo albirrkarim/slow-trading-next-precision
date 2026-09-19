@@ -4,7 +4,6 @@ export interface BacktestConfig {
   mode: "kline" | "volatility_point";
 
   // Data
-  symbols: string[]; // multiple symbols selected
   range: string;
   // Optional override: when provided, these will be sent to server
   // and used instead of deriving from `range`.
@@ -18,9 +17,6 @@ export interface BacktestConfig {
   // Info
   name?: string;
   description?: string;
-
-  // Starting point
-  startingBalanceUSDT: number;
 
   // Config
   /** Grouped SLOW settings passed unchanged to the backtest backend. */
