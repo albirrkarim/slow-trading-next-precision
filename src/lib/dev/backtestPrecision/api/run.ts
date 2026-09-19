@@ -5,8 +5,13 @@ import type { SlowTradingSettingsConfig } from "@/lib/slowTrading";
 import { tradeLog } from "@/lib/trading";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { BacktestPrecisionParams } from "./precision-api-types";
-import { precisionRuntime } from "@/lib/precision";
+
 import { fetchKlinesFunction } from "@/lib/datasets";
+import { RuntimeEngine } from "@/lib/precision";
+import {
+  RuntimeEngineAdapter,
+  RuntimeEngineState,
+} from "@/lib/precision/types";
 
 export default async function backtestPrecisionHandler(
   req: NextApiRequest,
@@ -27,17 +32,19 @@ export default async function backtestPrecisionHandler(
 
 async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
   // A. Initialize
-  const params = req.method == "GET" ? req.query : req.body;
+  const params = (req.method == "GET"
+    ? req.query
+    : req.body) as unknown as BacktestPrecisionParams;
   const {
     upToDateKlines = false,
     upToDateDecisionBacktest = false,
     config,
     verbose = true,
-  } = params as BacktestPrecisionParams;
+  } = params;
 
   const settingsConfig = config as unknown as SlowTradingSettingsConfig;
 
-  let { range, startTime, endTime } = params as DynamicTradeBacktestInput;
+  let { range, startTime, endTime } = params;
 
   if (startTime && endTime && range == "custom") {
     range = `${timeMsToReadable(startTime)}_to_${timeMsToReadable(endTime)}`;
@@ -63,15 +70,28 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
   // B. Getting klines to provide the runtime with klines data
   // preparing the klines first save to storage
 
-  // C.
-  // for the times
-  precisionRuntime({
-    mode: "backtest",
-    clock: 0,
+  const state: RuntimeEngineState = {};
+  const adapter: RuntimeEngineAdapter = {
     market: {
       getKlines: fetchKlinesFunction,
     },
-  });
+    exchange: {
+      getBalance() {
+        return 0;
+      },
+    },
+    onStrategy: () => {
+      return true;
+    },
+    onAction: () => {
+      return true;
+    },
+    onNotif: () => {
+      return true;
+    },
+  };
+
+  const backtestRuntimeEngine = new RuntimeEngine(state, adapter);
 
   res.json({
     data: true,

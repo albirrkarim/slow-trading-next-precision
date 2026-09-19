@@ -197,6 +197,7 @@ class RuntimeEngine {
     // other state that need be accessed fast in memory without digging from storage
   }
 
+  adapter = {
   market,
 
 
@@ -216,6 +217,7 @@ class RuntimeEngine {
   onAction,
 
   onNotif
+  }
 
   constructor({ config, market, exchange,onStrategy, onAction, onNotif}){
     this.onStrategy = onStrategy
