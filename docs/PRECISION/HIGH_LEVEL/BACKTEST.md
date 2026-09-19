@@ -22,18 +22,22 @@ interface BacktestDatasetV1 {
 ```
 
 Datasets are cache-first. The cache key is a stable hash of the normalized,
-sorted symbol set (including BTC), effective warmup/start/end range, source
-exchange, market type, and dataset schema. The same symbols and range reuse the
-same validated file without downloading klines again. Changing the symbols or
-any effective range boundary produces a different cache key.
+sorted symbol set (including BTC), canonical range identity, source exchange,
+market type, and dataset schema. A preset range uses its normalized selector
+such as `6month` or `1year`; it must not use a newly calculated `Date.now()` in
+the key. A custom range uses its normalized warmup/start/end boundaries. The
+same symbols and range reuse the same validated file without downloading
+klines again. Changing the symbols, preset range, or a custom-range boundary
+produces a different cache key.
 
 With `upToDateKlines: false` (the default), a valid cache hit performs no kline
 network requests. A cache miss downloads the independent 1m and 5m series once,
 validates the complete dataset, and publishes it atomically. Concurrent builds
 for the same key must share one in-flight build or lock, so they cannot download
 the same dataset twice. With `upToDateKlines: true`, the caller explicitly
-bypasses the cached file, rebuilds it, and atomically replaces that cache entry.
-The freshness flag controls lookup behavior; it is not part of the cache key.
+bypasses the cached file, resolves fresh boundaries for a preset range,
+rebuilds it, and atomically replaces that same cache entry. The freshness flag
+controls lookup behavior; it is not part of the cache key.
 
 Klines are raw per-symbol one-minute and five-minute candles kept as
 independent series; five-minute candles are never derived from one-minute

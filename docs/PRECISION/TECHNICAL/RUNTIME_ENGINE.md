@@ -711,8 +711,16 @@ be a stable hash of:
 - dataset schema/version;
 - source exchange and market type;
 - normalized, deduplicated, sorted symbols including BTC;
-- effective `warmupStartTime`, `startTime`, and `endTime` after boundary
-  normalization.
+- canonical range identity:
+  - a normalized preset token such as `6month` or `1year`; or
+  - normalized `warmupStartTime`, `startTime`, and `endTime` for a custom
+    range.
+
+Do not put the wall-clock time used to resolve a preset range into its cache
+key. Re-running the same preset later with the same symbols must find the same
+cache entry. The dataset file itself records the concrete boundaries used when
+that entry was built. An explicit refresh resolves new concrete boundaries and
+atomically replaces the same preset-range entry.
 
 Do not include credentials, account identity, trading configuration, or
 `upToDateKlines` in the key. The freshness flag controls whether a matching
@@ -736,8 +744,8 @@ Dataset access is cache-first:
 
 The per-key lock/single-flight mechanism must work for concurrent requests in
 the server process. The second waiter reads the file produced by the first;
-it must not repeat the download. A different symbol set or effective range has
-a different key and may build independently.
+it must not repeat the download. A different symbol set, preset range token, or
+custom range boundary has a different key and may build independently.
 
 TC: `BTEST:BACKTEST_DATASET_CACHE`
 
@@ -1386,6 +1394,8 @@ Tests:
 - dataset validation for every rejection rule;
 - identical normalized symbols/range reuse the cached dataset with zero kline
   network calls;
+- repeated preset-range requests keep the same key even when wall time has
+  advanced;
 - changed symbols or range resolve to a different cache key;
 - `upToDateKlines: true` refreshes and atomically replaces the same key;
 - concurrent identical cache misses perform only one dataset download/build;
