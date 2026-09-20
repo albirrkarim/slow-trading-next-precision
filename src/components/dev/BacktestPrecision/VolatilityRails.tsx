@@ -30,7 +30,7 @@ export default function VolatilityRails({
       defaultExpanded
       headerCanBeClicked
       rememberExpand="precision-backtest-volatility-rails"
-      sx={{ mb: 2 }}
+      sx={{ mb: 1 }}
       title={
         <Typography fontWeight={700} variant="body1">
           Volatility Rails
