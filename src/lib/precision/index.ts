@@ -1,12 +1,15 @@
-import type { RuntimeEngineAdapter, RuntimeEngineState } from "./types";
+import { monitoring, runtimeSchedule } from "./monitoring";
+import type {
+  RuntimeContext,
+  RuntimeEngineAdapter,
+  RuntimeEngineState,
+} from "./types";
 
 /**
  * This runtime is used on both in backtest and the production
  * BOTH:SHARED_RUNTIME_ENGINE
  */
 class RuntimeEngine {
-  [key: string]: any;
-
   state: RuntimeEngineState;
 
   adapter: RuntimeEngineAdapter;
@@ -16,64 +19,39 @@ class RuntimeEngine {
     this.adapter = adapter;
   }
 
-  start() {}
+  async start() {
+    const clock = this.adapter.clock;
 
-  standardStages() {
-    // for each position that lastmonitoredis = standard
-    // do monitoring
-    // this.monitoring;
-    // also check criterion so the position might moved to speedup stages
+    while (!(await clock.finished())) {
+      const nextTime = runtimeSchedule.getNextTime(this.state);
+
+      await clock.advanceTo(nextTime);
+
+      this.state.currentTime = clock.now();
+
+      await this.runDueStages();
+    }
   }
 
-  speedupStages() {
-    // for each position that lastmonitoredis = speedup
-    // do monitoring
-    // this.monitoring;
-    // also check criterion so the position might moved to standard stages
+  private async runDueStages() {
+    if (runtimeSchedule.isSpeedupDue(this.state)) {
+      await monitoring.stages.speedup(this.context);
+    }
+
+    if (runtimeSchedule.isStandardDue(this.state)) {
+      await monitoring.stages.standard(this.context);
+    }
+
+    if (runtimeSchedule.isCaptureEntryDue(this.state)) {
+      await monitoring.captureEntry(this.context);
+    }
   }
 
-  monitoring() {
-    // Shared market data. the latest price etc..
-    // then the data Consumed by
-    // this.averaging(data);
-    // this.exit(data);
-    // this.updateBalance;
-  }
-
-  captureEntry() {
-    // trying to entry
-    // updating the volatility points
-    // on strategy feeded with the latest volatility points
-    // const decision = await this.onStrategy(this.state, vpointsMap);
-    // maybe the decision
-    // const result = await this.onAction()
-  }
-
-  averaging() {
-    // trying to do averaging
-    // telling outside todo something, maybe real execution etc
-    // const result = await this.onAction();
-    // from the result we record back to internal runtime engine stage
-    // is success?
-    // is it changing the position data
-    // is it closed the position
-    // is it live mode?
-    // if yes we need to call exchange update balance
-    // if not we do the calculation to update the balance with the current trade result.
-  }
-
-  exit() {
-    // trying to do exit from the open position
-    // using the config and the exit rules/ conditions we decide the exit.
-    // telling outside todo something, maybe real execution etc
-    // const result = await this.onAction();
-    // from the result we record back to internal runtime engine stage
-    // is success?
-    // is it changing the position data
-    // is it closed the position
-    // is it live mode?
-    // if yes we need to call exchange update balance
-    // if not we do the calculation to update the balance with the current trade result.
+  private get context(): RuntimeContext {
+    return {
+      adapter: this.adapter,
+      state: this.state,
+    };
   }
 
   updateBalance() {

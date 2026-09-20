@@ -4,7 +4,12 @@ import type {
   RuntimeEngineState,
 } from "@/lib/precision/types";
 import type { BacktestPrecisionParams } from "../api/precision-api-types";
-import { buildKlinesMap, getDatasetKlines, getEarliestOpenTime } from "./data";
+import {
+  buildKlinesMap,
+  getDatasetKlines,
+  getEarliestOpenTime,
+  getLatestCommonCloseTime,
+} from "./data";
 import { createInitialBalance } from "./utils";
 
 export async function precisionBacktest(
@@ -30,8 +35,22 @@ export async function precisionBacktest(
     mode: "backtest",
     openPositions: [],
   };
+  const datasetEndTime = getLatestCommonCloseTime(klinesMap1m);
+  const endTime = Math.min(params.endTime ?? datasetEndTime, datasetEndTime);
+  let currentTime = state.currentTime;
 
   const adapter: RuntimeEngineAdapter = {
+    clock: {
+      advanceTo(time) {
+        currentTime = Math.min(time, endTime);
+      },
+      finished() {
+        return currentTime >= endTime;
+      },
+      now() {
+        return currentTime;
+      },
+    },
     market: {
       getKlines: (props) => getDatasetKlines(props, maps),
     },
@@ -42,4 +61,5 @@ export async function precisionBacktest(
   };
 
   const engine = new RuntimeEngine(state, adapter);
+  await engine.start();
 }

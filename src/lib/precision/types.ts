@@ -15,6 +15,12 @@ interface ExchangeFunction {
   getBalance?: () => number;
 }
 
+export interface RuntimeClock {
+  advanceTo(time: number): Promise<void> | void;
+  finished(): Promise<boolean> | boolean;
+  now(): number;
+}
+
 export interface RuntimeEngineState {
   /**
    * Global time for the backtest
@@ -40,6 +46,9 @@ export interface RuntimeEngineState {
  * We will have Backend adapter and production adapter
  */
 export interface RuntimeEngineAdapter {
+  /** Environment clock: instant in backtest, real-time in production. */
+  clock: RuntimeClock;
+
   /**
    * Getting the market data
    */
@@ -68,4 +77,9 @@ export interface RuntimeEngineAdapter {
    * To send notification outside
    */
   onNotif: () => boolean;
+}
+
+export interface RuntimeContext {
+  adapter: RuntimeEngineAdapter;
+  state: RuntimeEngineState;
 }

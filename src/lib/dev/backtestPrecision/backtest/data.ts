@@ -137,3 +137,23 @@ export function getEarliestOpenTime(
 
   return earliestOpenTime;
 }
+
+/** Finds the final close boundary shared by every symbol in the dataset. */
+export function getLatestCommonCloseTime(
+  klinesMap: Record<string, Kline[]>,
+): number {
+  let latestCommonCloseTime = Number.POSITIVE_INFINITY;
+
+  for (const symbol in klinesMap) {
+    const closeTime = klinesMap[symbol].at(-1)?.[6];
+    if (closeTime !== undefined && closeTime < latestCommonCloseTime) {
+      latestCommonCloseTime = closeTime;
+    }
+  }
+
+  if (!Number.isFinite(latestCommonCloseTime)) {
+    throw new Error("Precision backtest has no common 1m end time.");
+  }
+
+  return latestCommonCloseTime + 1;
+}
