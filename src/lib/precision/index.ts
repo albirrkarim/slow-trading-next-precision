@@ -41,7 +41,7 @@ class RuntimeEngine {
 
   private async runDueStages() {
     if (monitoring.schedule.isSpeedupDue(this.state)) {
-      await this.updateMarkPrice();
+      await this.updateMarkPrice("1m");
       await this.updateVPointsMap("1m");
       await monitoring.stages.speedup(this.context);
     }
@@ -73,7 +73,7 @@ class RuntimeEngine {
    * in this so later the child will be just accessing the context.state.markPriceMap
    * so letting know the latest price.
    */
-  async updateMarkPrice() {}
+  async updateMarkPrice(interval: "1m" | "5m" = "5m") {}
 
   /**
    * Trying to keep the this.state.vPointsMap updated.
