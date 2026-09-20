@@ -123,7 +123,8 @@ async function averaging(
   context: RuntimeContext,
   position: Position,
 ): Promise<Position | null> {
-  // A. the we decide the default averaging signal
+  // A. Build the shared default averaging decision from the current runtime
+  // snapshot. This does not mutate the open position.
   // context.state.config
   // context.state.markPriceMap
   // context.state.vPointsMap
@@ -132,11 +133,12 @@ async function averaging(
   const decision = await defaultDecision.averaging.find(context, position);
   if (!decision) return null;
 
-  // B. Call the onStrategy for the final confirmation approved to averaging
-  // context.adapter.onStrategy
+  // B. Give the outer strategy an opportunity to approve or reject the
+  // candidate before any position or balance mutation occurs.
   if (!(await context.adapter.onStrategy(decision, context))) return null;
 
-  // C. then the actual averaging
+  // C. Ask the environment adapter to execute the averaging action.
+  // Backtest/sandbox adapters simulate the fill; a live adapter submits it.
   // context.adapter.onAction
   const marginBefore = position.exposure.marginUsdt;
   const feeBefore = position.fees.entryUsdt;
@@ -149,10 +151,14 @@ async function averaging(
     throw new Error("Averaging action returned a closed position.");
   }
 
+  // D. Replace the previous open-position snapshot with the position that
+  // includes the newly executed averaging fill.
   const positionIndex = context.state.openPositions.indexOf(position);
   if (positionIndex < 0) return null;
   context.state.openPositions[positionIndex] = updatedPosition;
 
+  // E. Apply the shared accounting for the incremental margin, fee, and
+  // reserve consumed by this averaging execution.
   const balance = context.helper.getAccountBalance(decision.accountSlug);
   const addedMargin = Math.max(
     0,
@@ -170,6 +176,9 @@ async function averaging(
     balance.available - balance.reserved - balance.safeHaven,
   );
   balance.total = balance.available + balance.locked;
+
+  // F. Mark the averaging volatility point as used only after the action and
+  // accounting have both succeeded.
   slowTrading.watchReserve.volatilityPoint.markAccountUsed({
     accountSlug: decision.accountSlug,
     entrySignal: decision.recommendation,
@@ -183,7 +192,8 @@ async function exit(
   context: RuntimeContext,
   position: Position,
 ): Promise<boolean> {
-  // A. the we decide the default exit signal
+  // A. Build the shared default exit decision from the current runtime
+  // snapshot. This evaluates a clone and does not close the live position.
   // context.state.config
   // context.state.markPriceMap
   // context.state.vPointsMap
@@ -192,12 +202,12 @@ async function exit(
   const decision = await defaultDecision.exit.find(context, position);
   if (!decision) return false;
 
-  // B. Call the onStrategy for the final confirmation approved to exit
-  // context.adapter.onStrategy
+  // B. Give the outer strategy an opportunity to approve or reject the
+  // candidate before any position or balance mutation occurs.
   if (!(await context.adapter.onStrategy(decision, context))) return false;
 
-  // C. then the actual exit
-  // context.adapter.onAction
+  // C. Ask the environment adapter to execute the exit action.
+  // Backtest/sandbox adapters simulate the close; a live adapter submits it.
   const closedPosition = await context.adapter.onAction(decision, context);
   if (!closedPosition) return false;
   assertMatchingPosition(decision, closedPosition);
@@ -205,12 +215,17 @@ async function exit(
     throw new Error("Exit action returned a position without closed details.");
   }
 
+  // D. Persist the closed position outside the runtime engine before removing
+  // it from the open-position collection.
   await context.adapter.onExit(closedPosition, context);
 
+  // E. Remove the successfully closed position from runtime state.
   const positionIndex = context.state.openPositions.indexOf(position);
   if (positionIndex < 0) return false;
   context.state.openPositions.splice(positionIndex, 1);
 
+  // F. Release margin and reserve, then rebuild the account balance summary
+  // from the realized PnL and returned entry margin.
   const balance = context.helper.getAccountBalance(decision.accountSlug);
   const releasedReserve = Math.max(
     0,
