@@ -1,50 +1,50 @@
 import { RuntimeEngine } from "@/lib/precision";
-import {
+import type {
   RuntimeEngineAdapter,
   RuntimeEngineState,
 } from "@/lib/precision/types";
-import { BacktestPrecisionParams } from "../api/precision-api-types";
-import { Kline } from "@/lib/exchange/types";
+import type { BacktestPrecisionParams } from "../api/precision-api-types";
+import { buildKlinesMap, getDatasetKlines } from "./data";
 
-export function precisionBacktest(params: BacktestPrecisionParams) {
-  // B. Getting klines to provide the runtime with klines data
-  // preparing the klines first save to storage
+export async function precisionBacktest(
+  params: BacktestPrecisionParams,
+): Promise<void> {
+  // A. Prepare klines
+  // BTEST:BACKTEST_DATASET
+  const [klinesMap1m, klinesMap5m] = await Promise.all([
+    buildKlinesMap(params, "1m"),
+    buildKlinesMap(params, "5m"),
+  ]);
 
-  // params.config.management.symbols
-  // params.range
+  // B. Prepare state and adapter
+  const state: RuntimeEngineState = {
+    balance: {},
+    config: params.config,
+    currentTime:
+      params.startTime ??
+      Math.min(...Object.values(klinesMap1m).map((klines) => klines[0][0])),
+    mode: "backtest",
+    openPositions: [],
+  };
 
-  const klinesMap1m:Record<string,Kline[]> = 
-
-  const klinesMap5m:Record<string,Kline[]> = 
-
-
-
-
-
-  // C. runing the backtest 
-  const state: RuntimeEngineState = {};
-
-  const klinesMap = {};
+  const maps = {
+    "1m": klinesMap1m,
+    "5m": klinesMap5m,
+  };
 
   const adapter: RuntimeEngineAdapter = {
     market: {
-      getKlines: fetchKlinesFunction,
+      getKlines: (props) => getDatasetKlines(props, maps),
     },
     exchange: {
       getBalance() {
         return 0;
       },
     },
-    onStrategy: () => {
-      return true;
-    },
-    onAction: () => {
-      return true;
-    },
-    onNotif: () => {
-      return true;
-    },
+    onStrategy: () => true,
+    onAction: () => true,
+    onNotif: () => true,
   };
 
-  const backtestRuntimeEngine = new RuntimeEngine(state, adapter);
+  const engine = new RuntimeEngine(state, adapter);
 }

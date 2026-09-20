@@ -1,4 +1,4 @@
-import { SlowTradingSettingsConfig } from "@/lib/slowTrading";
+import type { SlowTradingSettingsConfig } from "@/lib/slowTrading";
 
 export interface BacktestPrecisionParams {
   // BTEST:BACKTEST_MANAGEMENT_SYMBOLS
