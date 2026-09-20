@@ -10,8 +10,8 @@ import {
   getEarliestOpenTime,
   getLatestCommonCloseTime,
 } from "./data";
-import { createInitialBalance } from "./utils";
-import { assignVolatility } from "@/components/api/production/utils";
+import { createInitialBalance, createInitialVPointsMap } from "./utils";
+import { windowsMs } from "@/lib/dynamic/constants-time";
 
 export async function precisionBacktest(
   params: BacktestPrecisionParams,
@@ -29,35 +29,47 @@ export async function precisionBacktest(
   };
 
   // B. Prepare state and adapter
-  const symbols = params.config.management.symbols;
+  const symbols = Object.keys(klinesMap5m);
+  const datasetStartTime =
+    params.startTime ?? getEarliestOpenTime(klinesMap1m);
+  const datasetEndTime = getLatestCommonCloseTime(klinesMap1m);
+  const endTime = Math.min(params.endTime ?? datasetEndTime, datasetEndTime);
 
   // i think we make the backtest forward two month,
   // so we can make the initial vPointsMap first.
-  const vPointsMap = {};
+  const currentTime = datasetStartTime + windowsMs["1m"] * 2;
+  if (currentTime >= endTime) {
+    throw new Error(
+      "Precision backtest requires more than two months of data for volatility warm-up.",
+    );
+  }
+  const vPointsMap = createInitialVPointsMap(
+    symbols,
+    klinesMap5m,
+    currentTime,
+  );
 
   const state: RuntimeEngineState = {
     balance: createInitialBalance(params),
     config: params.config,
-    currentTime: params.startTime ?? getEarliestOpenTime(klinesMap1m),
+    currentTime,
     mode: "backtest",
     openPositions: [],
     markPriceMap: {},
     vPointsMap,
   };
-  const datasetEndTime = getLatestCommonCloseTime(klinesMap1m);
-  const endTime = Math.min(params.endTime ?? datasetEndTime, datasetEndTime);
-  let currentTime = state.currentTime;
+  let clockTime = state.currentTime;
 
   const adapter: RuntimeEngineAdapter = {
     clock: {
       advanceTo(time) {
-        currentTime = Math.min(time, endTime);
+        clockTime = Math.min(time, endTime);
       },
       finished() {
-        return currentTime >= endTime;
+        return clockTime >= endTime;
       },
       now() {
-        return currentTime;
+        return clockTime;
       },
     },
     market: {

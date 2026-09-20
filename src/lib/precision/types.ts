@@ -3,7 +3,7 @@ import type { FetchKlinesFunction } from "../datasets/type";
 import type { SlowTradingSettingsConfig } from "../slowTrading";
 import type { Position } from "../trading/models";
 import type { RuntimeHelper } from "./helper/types";
-import { VolatilityPoint } from "../dynamic";
+import type { VolatilityPoint } from "../dynamic";
 
 // Pack of market function
 interface MarketFunction {

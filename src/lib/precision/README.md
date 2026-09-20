@@ -17,7 +17,7 @@ simulate trades.
 precision/
   index.ts                 RuntimeEngine and the shared clock loop
   types.ts                 State, adapter, clock, and context contracts
-  helper/                  State-bound account/config/balance helpers
+  helper/                  State-bound account/config/balance/market helpers
   monitoring/
     index.ts               Grouped monitoring API
     schedule.ts            Stage timing and Speedup activation
