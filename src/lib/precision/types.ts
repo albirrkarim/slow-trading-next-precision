@@ -3,6 +3,7 @@ import type { FetchKlinesFunction } from "../datasets/type";
 import type { SlowTradingSettingsConfig } from "../slowTrading";
 import type { Position } from "../trading/models";
 import type { RuntimeHelper } from "./helper/types";
+import { VolatilityPoint } from "../dynamic";
 
 // Pack of market function
 interface MarketFunction {
@@ -28,6 +29,10 @@ export interface RuntimeEngineState {
    */
   currentTime: number;
 
+  /**
+   * Production: live/sandbox
+   * Backtest: precision backtest
+   */
   mode: "live" | "sandbox" | "backtest";
 
   openPositions: Position[];
@@ -41,7 +46,35 @@ export interface RuntimeEngineState {
    * Balance info per account slug
    */
   balance: Record<string, BalanceSummary>;
+
+  /**
+   * {
+   *    "SUI": []
+   *    "BTC": []
+   * }
+   */
+  vPointsMap: Record<string, VolatilityPoint[]>;
+
+  /**
+   * {
+   *    "SUI":{
+   *     lastUpdated:0,
+   *      price:0
+   *    }
+   * }
+   */
+  markPriceMap: Record<
+    string,
+    {
+      // unix
+      lastUpdated: number;
+      // coing price
+      price: number;
+    }
+  >;
 }
+
+type ActionType = "entry" | "averaging" | "exit";
 
 /**
  * We will have Backend adapter and production adapter
@@ -70,18 +103,19 @@ export interface RuntimeEngineAdapter {
    * common entry signal by default runtime engine and current config
    * then approved by this onStrategy function.
    *
-   * Its the final gate wether can entry, averaging, exit
+   * Its the final gate wether can actually entry, averaging, exit
    */
-  onStrategy: (context: RuntimeContext) => boolean;
+  onStrategy: (action: ActionType, context: RuntimeContext) => boolean;
 
   /**
    * Telling outside runtime engine initiate. some action
    * For entry, averaging, exit
    */
-  onAction: (context: RuntimeContext) => boolean;
+  onAction: (action: ActionType, context: RuntimeContext) => boolean;
 
   /**
    * To send notification outside
+   * Unused in backtest
    */
   onNotif: () => boolean;
 }

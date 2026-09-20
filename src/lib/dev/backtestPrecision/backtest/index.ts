@@ -11,6 +11,7 @@ import {
   getLatestCommonCloseTime,
 } from "./data";
 import { createInitialBalance } from "./utils";
+import { assignVolatility } from "@/components/api/production/utils";
 
 export async function precisionBacktest(
   params: BacktestPrecisionParams,
@@ -28,12 +29,16 @@ export async function precisionBacktest(
   };
 
   // B. Prepare state and adapter
+  const symbols = params.config.management.symbols;
+
   const state: RuntimeEngineState = {
     balance: createInitialBalance(params),
     config: params.config,
     currentTime: params.startTime ?? getEarliestOpenTime(klinesMap1m),
     mode: "backtest",
     openPositions: [],
+    markPriceMap: {},
+    vPointsMap: {},
   };
   const datasetEndTime = getLatestCommonCloseTime(klinesMap1m);
   const endTime = Math.min(params.endTime ?? datasetEndTime, datasetEndTime);
