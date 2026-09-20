@@ -11,6 +11,7 @@ import {
   createProgressLogger,
 } from "./utils";
 import { windowsMs } from "@/lib/dynamic/constants-time";
+import simulatedAction from "@/lib/precision/action/simulated";
 import type { BacktestPrecisionResult } from "./backtest-precision-types";
 
 export async function precisionBacktest(
@@ -72,7 +73,7 @@ export async function precisionBacktest(
     },
     exchange: {},
     onStrategy: async () => true,
-    onAction: async () => null,
+    onAction: simulatedAction.execute,
     onExit: async (position) => {
       history.push(position);
     },
