@@ -9,6 +9,9 @@ interface MarketFunction {
 }
 
 interface ExchangeFunction {
+  /**
+   * Not needed in backtest
+   */
   getBalance?: () => number;
 }
 
@@ -62,7 +65,7 @@ export interface RuntimeEngineAdapter {
   onAction: () => boolean;
 
   /**
-   *
+   * To send notification outside
    */
   onNotif: () => boolean;
 }
