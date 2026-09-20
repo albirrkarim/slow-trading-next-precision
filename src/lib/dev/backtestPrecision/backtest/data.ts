@@ -51,27 +51,27 @@ export async function buildKlinesMap(
   );
   const rangeProps = buildRangeProps(params);
 
-  const entries = await Promise.all(
-    symbols.map(async (symbol) => {
-      const klines = await fetchKlinesFunction({
-        ...rangeProps,
-        exchangeType: params.config.management.exchangeType,
-        folder: `${DATASET_FOLDER}/${interval}`,
-        interval,
-        marketType,
-        saveToFile: true,
-        symbol: `${symbol}_USDT`,
-        useCache: !params.upToDateKlines,
-        verbose: Boolean(params.verbose),
-      });
+  const entries: Array<readonly [string, Kline[]]> = [];
 
-      if (klines.length === 0) {
-        throw new Error(`No ${interval} klines found for ${symbol}.`);
-      }
+  for (const symbol of symbols) {
+    const klines = await fetchKlinesFunction({
+      ...rangeProps,
+      exchangeType: params.config.management.exchangeType,
+      folder: `${DATASET_FOLDER}/${interval}`,
+      interval,
+      marketType,
+      saveToFile: true,
+      symbol: `${symbol}_USDT`,
+      useCache: !params.upToDateKlines,
+      verbose: Boolean(params.verbose),
+    });
 
-      return [symbol, klines] as const;
-    }),
-  );
+    if (klines.length === 0) {
+      throw new Error(`No ${interval} klines found for ${symbol}.`);
+    }
+
+    entries.push([symbol, klines]);
+  }
 
   return Object.fromEntries(entries);
 }

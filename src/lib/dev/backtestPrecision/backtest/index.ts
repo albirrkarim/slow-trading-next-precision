@@ -12,17 +12,15 @@ import {
 } from "./data";
 import { createInitialBalance, createInitialVPointsMap } from "./utils";
 import { windowsMs } from "@/lib/dynamic/constants-time";
-import { BacktestPrecisionResult } from "./backtest-precision-types";
+import type { BacktestPrecisionResult } from "./backtest-precision-types";
 
 export async function precisionBacktest(
   params: BacktestPrecisionParams,
 ): Promise<BacktestPrecisionResult> {
   // A. Prepare klines
   // BTEST:BACKTEST_DATASET
-  const [klinesMap1m, klinesMap5m] = await Promise.all([
-    buildKlinesMap(params, "1m"),
-    buildKlinesMap(params, "5m"),
-  ]);
+  const klinesMap1m = await buildKlinesMap(params, "1m");
+  const klinesMap5m = await buildKlinesMap(params, "5m");
 
   const maps = {
     "1m": klinesMap1m,
