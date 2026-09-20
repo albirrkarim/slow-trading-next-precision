@@ -24,6 +24,8 @@ class RuntimeEngine {
   }
 
   async start() {
+    await this.updateMarkPrice();
+
     const clock = this.adapter.clock;
 
     while (!(await clock.finished())) {
@@ -39,14 +41,20 @@ class RuntimeEngine {
 
   private async runDueStages() {
     if (monitoring.schedule.isSpeedupDue(this.state)) {
+      await this.updateMarkPrice();
+      await this.updateVPointsMap("1m");
       await monitoring.stages.speedup(this.context);
     }
 
     if (monitoring.schedule.isStandardDue(this.state)) {
+      await this.updateMarkPrice();
+      await this.updateVPointsMap();
       await monitoring.stages.standard(this.context);
     }
 
     if (monitoring.schedule.isCaptureEntryDue(this.state)) {
+      await this.updateMarkPrice();
+      await this.updateVPointsMap();
       await monitoring.entry.capture(this.context);
     }
   }
@@ -58,6 +66,22 @@ class RuntimeEngine {
       state: this.state,
     };
   }
+
+  /**
+   * We will update the this.state.markPriceMap
+   *
+   * in this so later the child will be just accessing the context.state.markPriceMap
+   * so letting know the latest price.
+   */
+  async updateMarkPrice() {}
+
+  /**
+   * Trying to keep the this.state.vPointsMap updated.
+   *
+   *  when speedup stage we use the 1m klines
+   *  when usual condition we use the 5m klines
+   */
+  async updateVPointsMap(interval: "1m" | "5m" = "5m") {}
 
   updateBalance() {
     // foreach accounts

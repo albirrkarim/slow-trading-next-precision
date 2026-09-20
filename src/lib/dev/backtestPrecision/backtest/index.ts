@@ -31,6 +31,10 @@ export async function precisionBacktest(
   // B. Prepare state and adapter
   const symbols = params.config.management.symbols;
 
+  // i think we make the backtest forward two month,
+  // so we can make the initial vPointsMap first.
+  const vPointsMap = {};
+
   const state: RuntimeEngineState = {
     balance: createInitialBalance(params),
     config: params.config,
@@ -38,7 +42,7 @@ export async function precisionBacktest(
     mode: "backtest",
     openPositions: [],
     markPriceMap: {},
-    vPointsMap: {},
+    vPointsMap,
   };
   const datasetEndTime = getLatestCommonCloseTime(klinesMap1m);
   const endTime = Math.min(params.endTime ?? datasetEndTime, datasetEndTime);
