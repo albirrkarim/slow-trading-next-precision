@@ -236,10 +236,7 @@ function buildEntryPosition(
     context,
     `ENTRY ${position.symbol} ${position.direction} ` +
       `${timeMsToReadable(position.opened.t)} | ` +
-      `price:${position.opened.price.toFixed(8)} | ` +
       `margin:${position.exposure.marginUsdt.toFixed(2)} | ` +
-      `notional:${position.exposure.notionalUsdt.toFixed(2)} | ` +
-      `fee:${position.fees.entryUsdt.toFixed(4)} | ` +
       `vPoint:${position.opened.vPoint.id}`,
   );
 
@@ -366,13 +363,16 @@ function executeExit(
   const position = structuredClone(closedPosition);
   const closed = position.closed;
   if (!closed) return null;
+  const netUsdt = position.pnl.netUsdt ?? 0;
+  const netPct = position.pnl.netPct ?? 0;
+  const outcome = netUsdt >= 0 ? "PROFIT" : "LOSS";
+  const signedUsdt = `${netUsdt >= 0 ? "+" : ""}${netUsdt.toFixed(2)}`;
+  const signedPct = `${netPct >= 0 ? "+" : ""}${netPct.toFixed(2)}`;
   logBacktestAction(
     context,
     `EXIT ${position.symbol} ${position.direction} ` +
       `${timeMsToReadable(closed.t)} | ` +
-      `price:${closed.price.toFixed(8)} | ` +
-      `pnl:${(position.pnl.netUsdt ?? 0).toFixed(2)} USDT ` +
-      `(${(position.pnl.netPct ?? 0).toFixed(2)}%) | ` +
+      `${outcome} | pnl:${signedUsdt} USDT (${signedPct}%) | ` +
       `reason:${closed.reason}`,
   );
 
