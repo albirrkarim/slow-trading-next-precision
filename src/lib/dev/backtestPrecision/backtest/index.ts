@@ -1,10 +1,11 @@
 import { RuntimeEngine } from "@/lib/precision";
+import type { Kline } from "@/lib/exchange/types";
 import type {
   RuntimeEngineAdapter,
   RuntimeEngineState,
 } from "@/lib/precision/types";
 import type { BacktestPrecisionParams } from "../api/precision-api-types";
-import { buildKlinesMap, getDatasetKlines } from "./data";
+import { buildKlinesMap, getDatasetKlines, getEarliestOpenTime } from "./data";
 
 export async function precisionBacktest(
   params: BacktestPrecisionParams,
@@ -20,9 +21,7 @@ export async function precisionBacktest(
   const state: RuntimeEngineState = {
     balance: {},
     config: params.config,
-    currentTime:
-      params.startTime ??
-      Math.min(...Object.values(klinesMap1m).map((klines) => klines[0][0])),
+    currentTime: params.startTime ?? getEarliestOpenTime(klinesMap1m),
     mode: "backtest",
     openPositions: [],
   };

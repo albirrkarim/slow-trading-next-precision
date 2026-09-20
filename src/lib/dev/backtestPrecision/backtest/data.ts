@@ -117,3 +117,23 @@ export async function getDatasetKlines(
 
   return klines;
 }
+
+/** Finds the earliest candle without allocating or spreading intermediate arrays. */
+export function getEarliestOpenTime(
+  klinesMap: Record<string, Kline[]>,
+): number {
+  let earliestOpenTime = Number.POSITIVE_INFINITY;
+
+  for (const symbol in klinesMap) {
+    const openTime = klinesMap[symbol][0]?.[0];
+    if (openTime !== undefined && openTime < earliestOpenTime) {
+      earliestOpenTime = openTime;
+    }
+  }
+
+  if (!Number.isFinite(earliestOpenTime)) {
+    throw new Error("Precision backtest has no 1m klines.");
+  }
+
+  return earliestOpenTime;
+}
