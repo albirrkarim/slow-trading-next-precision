@@ -15,10 +15,7 @@ export default function VPointsResult({
     <Box sx={{ p: 0.5 }}>
       <VolatilityRails volatilityMap={result.vPointsMap} />
       <Grid container spacing={2}>
-        <Grid size={{ md: 8 }}>
-
-
-        </Grid>
+        <Grid size={{ md: 8 }} />
 
         <Grid size={{ md: 4 }}>
           <VPointsFrequency volatilityMap={result.vPointsMap} />

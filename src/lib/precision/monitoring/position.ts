@@ -24,30 +24,29 @@ async function monitorPosition(context: RuntimeContext, position: Position) {
 }
 
 async function averaging(context: RuntimeContext, position: Position) {
-  // trying to do averaging
-  // telling outside todo something, maybe real execution etc
-  // const result = await this.onAction();
-  // from the result we record back to internal runtime engine stage
-  // is success?
-  // is it changing the position data
-  // is it closed the position
-  // is it live mode?
-  // if yes we need to call exchange update balance
-  // if not we do the calculation to update the balance with the current trade result.
+  // A. the we decide the default averaging signal
+  // context.state.config
+  // context.state.markPriceMap
+  // context.state.vPointsMap
+  // find existing function that doing that or maybe we create it inside the
+  // src/lib/precision/defaultDecision
+  // B. Call the onStrategy for the final confirmation approved to averaging
+  // context.adapter.onStrategy
+  // C. then the actual averaging
+  // context.adapter.onAction
 }
 
 async function exit(context: RuntimeContext, position: Position) {
-  // trying to do exit from the open position
-  // using the config and the exit rules/ conditions we decide the exit.
-  // telling outside todo something, maybe real execution etc
-  // const result = await this.onAction();
-  // from the result we record back to internal runtime engine stage
-  // is success?
-  // is it changing the position data
-  // is it closed the position
-  // is it live mode?
-  // if yes we need to call exchange update balance
-  // if not we do the calculation to update the balance with the current trade result.
+  // A. the we decide the default averaging signal
+  // context.state.config
+  // context.state.markPriceMap
+  // context.state.vPointsMap
+  // find existing function that doing that or maybe we create it inside the
+  // src/lib/precision/defaultDecision
+  // B. Call the onStrategy for the final confirmation approved to averaging
+  // context.adapter.onStrategy
+  // C. then the actual averaging
+  // context.adapter.onAction
 }
 
 const position = {

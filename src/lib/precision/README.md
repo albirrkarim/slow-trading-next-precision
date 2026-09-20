@@ -5,11 +5,10 @@ trading. The engine always follows the same scheduling path. The injected
 adapter decides how time advances, where market data comes from, and how an
 action is performed.
 
-This directory currently provides the clock loop and monitoring schedule. The
-functions in `monitoring/entry.ts`, `monitoring/position.ts`, and
-`monitoring/stages.ts` are still comment-only implementation guides. They must
-be connected to the shared trading functions before the runtime can place or
-simulate trades.
+This directory currently provides the clock loop, monitoring schedule, and
+shared entry-decision pipeline. Position monitoring in
+`monitoring/position.ts` and the stage handlers in `monitoring/stages.ts` still
+need to be connected to the shared trading functions.
 
 ## Directory structure
 
@@ -17,6 +16,7 @@ simulate trades.
 precision/
   index.ts                 RuntimeEngine and the shared clock loop
   types.ts                 State, adapter, clock, and context contracts
+  defaultDecision/         Shared decisions backed by production algorithms
   helper/                  State-bound account/config/balance/market helpers
   monitoring/
     index.ts               Grouped monitoring API
@@ -148,8 +148,9 @@ const adapter: RuntimeEngineAdapter = {
     getKlines: dataset.getKlines,
   },
   exchange: {},
-  onStrategy: () => true,
-  onAction: () => true,
+  onStrategy: async () => true,
+  onAction: async (decision, context) =>
+    simulateEntry(decision, context),
   onNotif: () => true,
 };
 
@@ -232,8 +233,10 @@ const adapter: RuntimeEngineAdapter = {
   exchange: {
     getBalance: () => latestCachedBalance,
   },
-  onStrategy: () => true,
-  onAction: () => true,
+  onStrategy: async (decision, context) =>
+    approveStrategy(decision, context),
+  onAction: async (decision, context) =>
+    executeLiveEntry(decision, context),
   onNotif: () => true,
 };
 
@@ -298,14 +301,22 @@ the injected adapter instead:
 
 ```ts
 const klines = await context.adapter.market.getKlines(request);
-const decision = context.adapter.onStrategy();
-const executed = decision && context.adapter.onAction();
+const decisions = await defaultDecision.entry.find(context);
+for (const decision of decisions) {
+  const approved = await context.adapter.onStrategy(decision, context);
+  if (!approved) continue;
+
+  const position = await context.adapter.onAction(decision, context);
+  if (!position) continue;
+
+  context.state.openPositions.push(position);
+}
 ```
 
-As the action contract becomes richer, replace the current boolean result with
-verified execution facts such as fill price, quantity, fee, order identifier,
-and execution time. Keep that result shape identical for simulated and live
-execution so position accounting remains shared.
+`onAction` returns a canonical `Position` only after execution succeeds. The
+shared entry monitor then records that position, updates the account balance,
+and marks the source vPoint as used for that account. Simulated and live
+adapters must therefore return the same position shape.
 
 ## What stays shared and what changes
 

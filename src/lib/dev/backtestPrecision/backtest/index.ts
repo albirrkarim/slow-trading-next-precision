@@ -70,8 +70,8 @@ export async function precisionBacktest(
       getKlines: dataset.getKlines,
     },
     exchange: {},
-    onStrategy: () => true,
-    onAction: () => true,
+    onStrategy: async () => true,
+    onAction: async () => null,
     onNotif: () => true,
   };
 

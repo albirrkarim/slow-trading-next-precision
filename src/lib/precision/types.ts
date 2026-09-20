@@ -1,9 +1,10 @@
 import type { BalanceSummary } from "@/components/LiveDashboard/Navbar/Settings/settings-types";
 import type { FetchKlinesFunction } from "../datasets/type";
 import type { SlowTradingSettingsConfig } from "../slowTrading";
-import type { Position } from "../trading/models";
+import type { Position, PositionDirection } from "../trading/models";
 import type { RuntimeHelper } from "./helper/types";
 import type { VolatilityPoint } from "../dynamic";
+import type { EntryRecommendation } from "../brain";
 
 // Pack of market function
 interface MarketFunction {
@@ -74,7 +75,16 @@ export interface RuntimeEngineState {
   >;
 }
 
-type ActionType = "entry" | "averaging" | "exit";
+export interface RuntimeEntryDecision {
+  type: "entry";
+  accountSlug: string;
+  direction: PositionDirection;
+  entrySignal: EntryRecommendation;
+  message: string;
+  symbol: string;
+}
+
+export type RuntimeDecision = RuntimeEntryDecision;
 
 /**
  * We will have Backend adapter and production adapter
@@ -105,13 +115,19 @@ export interface RuntimeEngineAdapter {
    *
    * Its the final gate wether can actually entry, averaging, exit
    */
-  onStrategy: (action: ActionType, context: RuntimeContext) => boolean;
+  onStrategy: (
+    decision: RuntimeDecision,
+    context: RuntimeContext,
+  ) => Promise<boolean>;
 
   /**
    * Telling outside runtime engine initiate. some action
    * For entry, averaging, exit
    */
-  onAction: (action: ActionType, context: RuntimeContext) => boolean;
+  onAction: (
+    decision: RuntimeDecision,
+    context: RuntimeContext,
+  ) => Promise<Position | null>;
 
   /**
    * To send notification outside
