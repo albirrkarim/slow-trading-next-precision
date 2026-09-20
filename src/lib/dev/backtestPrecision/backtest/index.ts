@@ -82,6 +82,6 @@ export async function precisionBacktest(
 
   return {
     vPointsMap,
-    positions: [],
+    positions: state.openPositions,
   };
 }

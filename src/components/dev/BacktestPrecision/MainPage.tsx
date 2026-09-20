@@ -1,14 +1,15 @@
 "use client";
 
-import type { DynamicTradeBacktestReturn } from "@/components/api/dynamic/api-dynamic-type";
 import type { ConfigDraft } from "@/components/LiveDashboard/Navbar/navbar-types";
 import SidebarButton from "@/components/ui/SidebarButton";
+import type { BacktestPrecisionParams } from "@/lib/dev/backtestPrecision/api/precision-api-types";
+import type { BacktestPrecisionResult } from "@/lib/dev/backtestPrecision/backtest/backtest-precision-types";
 import { tradeLog } from "@/lib/trading/helper/log";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import {
+    Alert,
     Box,
     CircularProgress,
-    Divider,
     IconButton,
     Typography
 } from "@mui/material";
@@ -16,13 +17,9 @@ import axios from "axios";
 import { useEffect, useState } from "react";
 import { delayExecution } from "../../client/utils";
 import { endpoints } from "../../endpoints";
-import BacktestDailyPnlCalendar from "../DynamicTrade/BacktestDailyPnlCalendar";
-import DebugEvaluation from "../DynamicTrade/Debug/Evaluation";
-import DebugKlines from "../DynamicTrade/Debug/Klines";
-import DebugSeries from "../DynamicTrade/Debug/Series";
 import PrecisionBTestConfig, { DEFAULT_BACKTEST_CONFIG } from "./Config";
 import type { BacktestConfig } from "./types";
-import type { BacktestPrecisionParams } from "@/lib/dev/backtestPrecision/api/precision-api-types";
+import VPointsResult from "./VPointsResult";
 
 const BACKTEST_KEY = "precision";
 
@@ -75,7 +72,8 @@ export default function DynamicTradeAnalytics() {
             : DEFAULT_BACKTEST_CONFIG,
     );
 
-    const [data, setData] = useState<DynamicTradeBacktestReturn | null>(null); // adapt type to your backend
+    const [data, setData] = useState<BacktestPrecisionResult | null>(null);
+    const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
     // persist view config to localStorage (existing behavior)
@@ -94,6 +92,7 @@ export default function DynamicTradeAnalytics() {
         setLoading(true);
         try {
             setData(null);
+            setError(null);
 
             const usedConfig = normalizeBacktestConfig(
                 customConfig ?? backtestConfig,
@@ -153,17 +152,23 @@ export default function DynamicTradeAnalytics() {
 
             tradeLog.log("Sending payload:", JSON.stringify(payload, null, 2));
 
-            const resp = await axios.post<DynamicTradeBacktestReturn>(
+            const resp = await axios.post<BacktestPrecisionResult>(
                 endpoints.dev.backtestPrecision.backtest,
                 payload,
             );
 
-            // setData(resp.data);
+            setData(resp.data);
 
             tradeLog.log("VolatilityMap response:", resp.data);
         } catch (e) {
             tradeLog.error(e);
-            alert("Execution failed");
+            setError(
+                axios.isAxiosError(e)
+                    ? (e.response?.data?.error ?? e.message)
+                    : e instanceof Error
+                        ? e.message
+                        : "Execution failed",
+            );
         } finally {
             setLoading(false);
         }
@@ -230,10 +235,6 @@ export default function DynamicTradeAnalytics() {
                             alignItems: "center",
                         }}
                     >
-                        <BacktestDailyPnlCalendar data={data} />
-
-                        <Divider orientation="vertical" flexItem />
-
                         {/* regular execute */}
                         <IconButton
                             onClick={() => execute()}
@@ -258,19 +259,9 @@ export default function DynamicTradeAnalytics() {
                 </Box>
             </Box>
 
-            {data && (
-                <>
-                    <DebugSeries data={data} />
+            {error && <Alert severity="error" sx={{ m: 2 }}>{error}</Alert>}
 
-                    <Divider sx={{ my: 2 }} />
-
-                    <DebugEvaluation data={data} />
-
-                    <Divider sx={{ my: 2 }} />
-
-                    <DebugKlines data={data} />
-                </>
-            )}
+            {data && <VPointsResult result={data} />}
         </Box>
     );
 }

@@ -59,7 +59,7 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
       throw new Error("Enable at least one SLOW account before backtesting.");
     }
 
-    await precisionBacktest({
+    const result = await precisionBacktest({
       ...params,
       endTime,
       range,
@@ -69,9 +69,7 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
       verbose: Boolean(verbose),
     });
 
-    res.json({
-      data: true,
-    });
+    res.json(result);
   } finally {
     tradeLog.endSession(tradeLogSession);
   }

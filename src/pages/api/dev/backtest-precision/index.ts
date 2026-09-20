@@ -13,5 +13,5 @@ export default async function handler(
   const { default: backtestPrecisionHandler } =
     await import("@/lib/dev/backtestPrecision/api/run");
 
-  backtestPrecisionHandler(req, res);
+  await backtestPrecisionHandler(req, res);
 }
