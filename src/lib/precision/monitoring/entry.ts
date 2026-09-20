@@ -1,12 +1,16 @@
 import type { RuntimeContext } from "../types";
 
 function captureEntry(context: RuntimeContext) {
-  // trying to entry
-  // updating the volatility points
-  // on strategy feeded with the latest volatility points
-  // const decision = await this.onStrategy(this.state, vpointsMap);
-  // maybe the decision
-  // const result = await this.onAction()
+  // A. the we decide the default entry signal
+  // context.state.config
+  // context.state.markPriceMap
+  // context.state.vPointsMap
+  // find existing function that doing that or maybe we create it inside the
+  // src/lib/precision/defaultDecision
+  // B. Call the onStrategy for the final confirmation approved to entry
+  // context.adapter.onStrategy
+  // C. then the actual entry
+  // context.adapter.onAction
 }
 
 const entry = {
