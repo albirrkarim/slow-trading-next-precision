@@ -1,6 +1,6 @@
 import type { RuntimeContext } from "../types";
 
-function captureEntry(_context: RuntimeContext) {
+function captureEntry(context: RuntimeContext) {
   // trying to entry
   // updating the volatility points
   // on strategy feeded with the latest volatility points

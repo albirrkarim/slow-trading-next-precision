@@ -6,18 +6,24 @@ import type { RuntimeContext } from "../types";
  * @param context
  * @param position
  */
-function monitorPosition(context: RuntimeContext, position: Position) {
-  // Shared market data. the latest price etc..
-  // then the data Consumed by
+async function monitorPosition(context: RuntimeContext, position: Position) {
+  // A. Update historical pnl of the position
+
+  // B. Averaging
   const accountConfig = context.helper.getAccountConfig(position.account);
   if (accountConfig.enableWatchLogic) {
-    averaging(context, position);
+    await averaging(context, position);
   }
 
-  exit(context, position);
+  // C. Exit
+  if (context.state.config.runtime.autoExitEnabled) {
+    await exit(context, position);
+  }
+
+  // D. Decide goes to speedup stage or back to standard stage vice versa
 }
 
-async function averaging(_context: RuntimeContext, _position: Position) {
+async function averaging(context: RuntimeContext, position: Position) {
   // trying to do averaging
   // telling outside todo something, maybe real execution etc
   // const result = await this.onAction();
@@ -30,7 +36,7 @@ async function averaging(_context: RuntimeContext, _position: Position) {
   // if not we do the calculation to update the balance with the current trade result.
 }
 
-async function exit(_context: RuntimeContext, _position: Position) {
+async function exit(context: RuntimeContext, position: Position) {
   // trying to do exit from the open position
   // using the config and the exit rules/ conditions we decide the exit.
   // telling outside todo something, maybe real execution etc
@@ -45,8 +51,6 @@ async function exit(_context: RuntimeContext, _position: Position) {
 }
 
 const position = {
-  averaging,
-  exit,
   monitor: monitorPosition,
 } as const;
 

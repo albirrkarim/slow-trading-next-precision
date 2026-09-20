@@ -63,16 +63,22 @@ export interface RuntimeEngineAdapter {
 
   /**
    * with the strategy outside we can doing manythings
-   * adapt to our 3 instance.
+   * adapt to our 3 instance (multi, hedge, both)
    *
-   * multi,
+   * so the sequence will be like
+   *
+   * common entry signal by default runtime engine and current config
+   * then approved by this onStrategy function.
+   *
+   * Its the final gate wether can entry, averaging, exit
    */
-  onStrategy: () => boolean;
+  onStrategy: (context: RuntimeContext) => boolean;
 
   /**
-   * For entry, averaging exit
+   * Telling outside runtime engine initiate. some action
+   * For entry, averaging, exit
    */
-  onAction: () => boolean;
+  onAction: (context: RuntimeContext) => boolean;
 
   /**
    * To send notification outside
