@@ -9,15 +9,15 @@ import type { RuntimeContext } from "../types";
 async function monitorPosition(context: RuntimeContext, position: Position) {
   // A. Update historical pnl of the position
 
-  // B. Averaging
+  // B. Exit
+  if (context.state.config.runtime.autoExitEnabled) {
+    await exit(context, position);
+  }
+
+  // C. Averaging
   const accountConfig = context.helper.getAccountConfig(position.account);
   if (accountConfig.enableWatchLogic) {
     await averaging(context, position);
-  }
-
-  // C. Exit
-  if (context.state.config.runtime.autoExitEnabled) {
-    await exit(context, position);
   }
 
   // D. Decide goes to speedup stage or back to standard stage vice versa
