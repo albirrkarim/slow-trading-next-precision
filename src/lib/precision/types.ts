@@ -2,6 +2,7 @@ import type { BalanceSummary } from "@/components/LiveDashboard/Navbar/Settings/
 import type { FetchKlinesFunction } from "../datasets/type";
 import type { SlowTradingSettingsConfig } from "../slowTrading";
 import type { Position } from "../trading/models";
+import type { RuntimeHelper } from "./helper/types";
 
 // Pack of market function
 interface MarketFunction {
@@ -81,5 +82,6 @@ export interface RuntimeEngineAdapter {
 
 export interface RuntimeContext {
   adapter: RuntimeEngineAdapter;
+  helper: RuntimeHelper;
   state: RuntimeEngineState;
 }

@@ -1,14 +1,23 @@
+import { type Position } from "@/lib/trading/models";
 import type { RuntimeContext } from "../types";
 
-function monitorPosition(_context: RuntimeContext) {
+/**
+ * Doing the averaging and exit
+ * @param context
+ * @param position
+ */
+function monitorPosition(context: RuntimeContext, position: Position) {
   // Shared market data. the latest price etc..
   // then the data Consumed by
-  // this.averaging(data);
-  // this.exit(data);
-  // this.updateBalance;
+  const accountConfig = context.helper.getAccountConfig(position.account);
+  if (accountConfig.enableWatchLogic) {
+    averaging(context, position);
+  }
+
+  exit(context, position);
 }
 
-function averaging(_context: RuntimeContext) {
+async function averaging(_context: RuntimeContext, _position: Position) {
   // trying to do averaging
   // telling outside todo something, maybe real execution etc
   // const result = await this.onAction();
@@ -21,7 +30,7 @@ function averaging(_context: RuntimeContext) {
   // if not we do the calculation to update the balance with the current trade result.
 }
 
-function exit(_context: RuntimeContext) {
+async function exit(_context: RuntimeContext, _position: Position) {
   // trying to do exit from the open position
   // using the config and the exit rules/ conditions we decide the exit.
   // telling outside todo something, maybe real execution etc

@@ -1,3 +1,4 @@
+import { createRuntimeHelper, type RuntimeHelper } from "./helper";
 import monitoring from "./monitoring";
 import type {
   RuntimeContext,
@@ -14,9 +15,12 @@ class RuntimeEngine {
 
   adapter: RuntimeEngineAdapter;
 
+  helper: RuntimeHelper;
+
   constructor(state: RuntimeEngineState, adapter: RuntimeEngineAdapter) {
     this.state = state;
     this.adapter = adapter;
+    this.helper = createRuntimeHelper(state);
   }
 
   async start() {
@@ -50,6 +54,7 @@ class RuntimeEngine {
   private get context(): RuntimeContext {
     return {
       adapter: this.adapter,
+      helper: this.helper,
       state: this.state,
     };
   }

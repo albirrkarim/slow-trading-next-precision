@@ -1,17 +1,28 @@
 import type { RuntimeContext } from "../types";
+import positionMonitoring from "./position";
 
-function standardStages(_context: RuntimeContext) {
+async function standardStages(context: RuntimeContext) {
   // for each position that lastmonitoredis = standard
   // do monitoring
   // this.monitoring;
   // also check criterion so the position might moved to speedup stages
+  for (const position of context.state.openPositions) {
+    if (position.lastMonitoringStage?.stage === "speedup") continue;
+
+    await positionMonitoring.monitor(context, position);
+  }
 }
 
-function speedupStages(_context: RuntimeContext) {
+async function speedupStages(context: RuntimeContext) {
   // for each position that lastmonitoredis = speedup
   // do monitoring
   // this.monitoring;
   // also check criterion so the position might moved to standard stages
+  for (const position of context.state.openPositions) {
+    if (position.lastMonitoringStage?.stage === "standard") continue;
+
+    await positionMonitoring.monitor(context, position);
+  }
 }
 
 const stages = {

@@ -17,6 +17,7 @@ simulate trades.
 precision/
   index.ts                 RuntimeEngine and the shared clock loop
   types.ts                 State, adapter, clock, and context contracts
+  helper/                  State-bound account/config/balance helpers
   monitoring/
     index.ts               Grouped monitoring API
     schedule.ts            Stage timing and Speedup activation
@@ -250,9 +251,24 @@ every environment:
 ```ts
 interface RuntimeContext {
   adapter: RuntimeEngineAdapter;
+  helper: RuntimeHelper;
   state: RuntimeEngineState;
 }
 ```
+
+The engine registers the helper pack once. Monitoring code can access account
+data without repeating state traversal:
+
+```ts
+const accountConfig = context.helper.getAccountConfig(position.account);
+const accountBalance = context.helper.getAccountBalance(position.account);
+
+accountBalance.available -= usedMarginUSDT;
+```
+
+The returned balance is the same mutable object stored in
+`context.state.balance`. Helper implementations live under `helper/`, keeping
+the main engine class focused on orchestration.
 
 Implementation belongs in the grouped monitoring modules:
 
