@@ -1,10 +1,14 @@
 import type { BalanceSummary } from "@/components/LiveDashboard/Navbar/Settings/settings-types";
+import type { AveragingRecommendation, EntryRecommendation } from "../brain";
 import type { FetchKlinesFunction } from "../datasets/type";
-import type { SlowTradingSettingsConfig } from "../slowTrading";
-import type { Position, PositionDirection } from "../trading/models";
-import type { RuntimeHelper } from "./helper/types";
 import type { VolatilityPoint } from "../dynamic";
-import type { EntryRecommendation } from "../brain";
+import type { SlowTradingSettingsConfig } from "../slowTrading";
+import type {
+  Position,
+  PositionDirection,
+  TradeDecision,
+} from "../trading/models";
+import type { RuntimeHelper } from "./helper/types";
 
 // Pack of market function
 interface MarketFunction {
@@ -84,7 +88,28 @@ export interface RuntimeEntryDecision {
   symbol: string;
 }
 
-export type RuntimeDecision = RuntimeEntryDecision;
+export interface RuntimeAveragingDecision {
+  type: "averaging";
+  accountSlug: string;
+  message: string;
+  position: Position;
+  recommendation: AveragingRecommendation;
+  symbol: string;
+}
+
+export interface RuntimeExitDecision {
+  type: "exit";
+  accountSlug: string;
+  message: string;
+  position: Position;
+  symbol: string;
+  tradeDecision: TradeDecision;
+}
+
+export type RuntimeDecision =
+  | RuntimeEntryDecision
+  | RuntimeAveragingDecision
+  | RuntimeExitDecision;
 
 /**
  * We will have Backend adapter and production adapter
@@ -128,6 +153,9 @@ export interface RuntimeEngineAdapter {
     decision: RuntimeDecision,
     context: RuntimeContext,
   ) => Promise<Position | null>;
+
+  /** Persists one successfully closed position outside the runtime engine. */
+  onExit: (position: Position, context: RuntimeContext) => Promise<void>;
 
   /**
    * To send notification outside

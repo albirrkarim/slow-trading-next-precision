@@ -518,6 +518,7 @@ const slowTradingReporting = {
     normalizePoints: normalizeSlowTradingHistoryPoints,
   },
   pnl: {
+    applyObservation,
     applyFloatingMetrics: applyFloatingSlowTradingPositionMetrics,
     computePercent: computeSlowTradingPnlPercent,
   },

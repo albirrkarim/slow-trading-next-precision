@@ -50,6 +50,7 @@ export async function precisionBacktest(
     vPointsMap,
   };
   let clockTime = state.currentTime;
+  const history: RuntimeEngineState["openPositions"] = [];
   const logProgress = createProgressLogger(clockTime, endTime);
   logProgress(clockTime);
 
@@ -72,6 +73,9 @@ export async function precisionBacktest(
     exchange: {},
     onStrategy: async () => true,
     onAction: async () => null,
+    onExit: async (position) => {
+      history.push(position);
+    },
     onNotif: () => true,
   };
 
@@ -80,6 +84,6 @@ export async function precisionBacktest(
 
   return {
     vPointsMap,
-    positions: state.openPositions,
+    positions: [...history, ...state.openPositions],
   };
 }

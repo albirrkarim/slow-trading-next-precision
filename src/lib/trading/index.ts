@@ -5,6 +5,7 @@ import {
 import type { executeAveraging as executeAveragingType } from "./execute/execute-averaging";
 import type { executeEntry as executeEntryType } from "./execute/execute-entry";
 import type { executeExit as executeExitType } from "./execute/execute-exit";
+import type { dynamicExit as dynamicExitType } from "./execute/models/exit";
 import { tradeLog } from "./helper/log";
 import { notif } from "./helper/notification";
 import position from "./position";
@@ -29,6 +30,11 @@ const executeExitLazy: typeof executeExitType = async (...args) => {
   return executeExit(...args);
 };
 
+const decideExitLazy: typeof dynamicExitType = async (...args) => {
+  const { dynamicExit } = await import("./execute/models/exit");
+  return dynamicExit(...args);
+};
+
 /**
  * Grouped trading API for callers that need related execution, notification,
  * and config helpers without importing many standalone functions.
@@ -37,6 +43,9 @@ const trading = {
   constants: {
     MINIMAL_USDT_TO_TRADE,
     MINIMAL_USDT_TO_TRADE_BYPASS,
+  },
+  decision: {
+    exit: decideExitLazy,
   },
   execution: {
     averaging: executeAveragingLazy,

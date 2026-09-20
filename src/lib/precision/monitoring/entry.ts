@@ -42,6 +42,7 @@ function recordEntryBalance(
   decision: RuntimeEntryDecision,
   marginUsdt: number,
   entryFeeUsdt: number,
+  reservedMarginUsdt: number,
 ): void {
   const balance = context.helper.getAccountBalance(decision.accountSlug);
   balance.available = Math.max(
@@ -49,6 +50,7 @@ function recordEntryBalance(
     balance.available - marginUsdt - entryFeeUsdt,
   );
   balance.locked += marginUsdt;
+  balance.reserved += Math.max(0, reservedMarginUsdt);
   balance.spendable = Math.max(
     0,
     balance.available - balance.reserved - balance.safeHaven,
@@ -91,6 +93,7 @@ async function captureEntry(context: RuntimeContext): Promise<void> {
       decision,
       position.exposure.marginUsdt,
       position.fees.entryUsdt,
+      position.strategy.averaging.reservedRemainingMarginUsdt,
     );
     slowTradingWatchReserve.volatilityPoint.markAccountUsed({
       accountSlug: decision.accountSlug,

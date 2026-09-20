@@ -82,6 +82,7 @@ const adapter: RuntimeEngineAdapter = {
   exchange,
   onStrategy,
   onAction,
+  onExit,
   onNotif,
 };
 ```
@@ -93,6 +94,7 @@ const adapter: RuntimeEngineAdapter = {
 | `exchange` | Usually empty or simulated | Exposes production exchange operations |
 | `onStrategy` | Shared strategy | The same shared strategy |
 | `onAction` | Simulates an accepted action | Submits sandbox or live execution |
+| `onExit` | Collects closed backtest history | Persists closed-position history |
 | `onNotif` | Disabled/no-op | Delivers configured notifications |
 
 The environment adapter supplies capabilities. It must not contain a second
@@ -150,7 +152,10 @@ const adapter: RuntimeEngineAdapter = {
   exchange: {},
   onStrategy: async () => true,
   onAction: async (decision, context) =>
-    simulateEntry(decision, context),
+    simulateAction(decision, context),
+  onExit: async (position) => {
+    history.push(position);
+  },
   onNotif: () => true,
 };
 
@@ -236,7 +241,9 @@ const adapter: RuntimeEngineAdapter = {
   onStrategy: async (decision, context) =>
     approveStrategy(decision, context),
   onAction: async (decision, context) =>
-    executeLiveEntry(decision, context),
+    executeLiveAction(decision, context),
+  onExit: async (position, context) =>
+    persistClosedPosition(position, context),
   onNotif: () => true,
 };
 

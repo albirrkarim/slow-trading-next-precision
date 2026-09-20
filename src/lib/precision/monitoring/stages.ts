@@ -6,7 +6,10 @@ async function standardStages(context: RuntimeContext) {
   // do monitoring
   // this.monitoring;
   // also check criterion so the position might moved to speedup stages
-  for (const position of context.state.openPositions) {
+  for (const position of [...context.state.openPositions]) {
+    if (position.lastMonitoringStage?.lastUpdated === context.state.currentTime) {
+      continue;
+    }
     if (position.lastMonitoringStage?.stage === "speedup") continue;
 
     await positionMonitoring.monitor(context, position);
@@ -18,7 +21,10 @@ async function speedupStages(context: RuntimeContext) {
   // do monitoring
   // this.monitoring;
   // also check criterion so the position might moved to standard stages
-  for (const position of context.state.openPositions) {
+  for (const position of [...context.state.openPositions]) {
+    if (position.lastMonitoringStage?.lastUpdated === context.state.currentTime) {
+      continue;
+    }
     if (position.lastMonitoringStage?.stage === "standard") continue;
 
     await positionMonitoring.monitor(context, position);
