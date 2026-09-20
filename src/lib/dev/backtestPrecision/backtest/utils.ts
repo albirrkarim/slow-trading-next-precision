@@ -3,6 +3,32 @@ import type { FetchKlinesFunction } from "@/lib/datasets/type";
 import type { RuntimeEngineState } from "@/lib/precision/types";
 import type { BacktestPrecisionParams } from "../api/precision-api-types";
 
+/** Logs logical backtest progress once per UTC day and once at completion. */
+export function createProgressLogger(
+  startTime: number,
+  endTime: number,
+): (currentTime: number) => void {
+  let completed = false;
+  let lastDay = "";
+  const duration = Math.max(1, endTime - startTime);
+
+  return (currentTime) => {
+    const boundedTime = Math.min(Math.max(currentTime, startTime), endTime);
+    const day = new Date(boundedTime).toISOString().slice(0, 10);
+    const finished = boundedTime >= endTime;
+
+    if (day === lastDay && (!finished || completed)) return;
+
+    const progress = finished
+      ? 100
+      : ((boundedTime - startTime) / duration) * 100;
+    console.log(`[Precision Backtest] ${day} | ${progress.toFixed(1)}%`);
+
+    lastDay = day;
+    completed = finished;
+  };
+}
+
 /** Creates the initial backtest balance for every enabled account. */
 export function createInitialBalance(
   params: BacktestPrecisionParams,

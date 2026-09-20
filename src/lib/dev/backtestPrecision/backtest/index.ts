@@ -5,7 +5,11 @@ import type {
 } from "@/lib/precision/types";
 import type { BacktestPrecisionParams } from "../api/precision-api-types";
 import { preparePrecisionDataset } from "./data";
-import { createInitialBalance, createInitialVPointsMap } from "./utils";
+import {
+  createInitialBalance,
+  createInitialVPointsMap,
+  createProgressLogger,
+} from "./utils";
 import { windowsMs } from "@/lib/dynamic/constants-time";
 import type { BacktestPrecisionResult } from "./backtest-precision-types";
 
@@ -46,11 +50,14 @@ export async function precisionBacktest(
     vPointsMap,
   };
   let clockTime = state.currentTime;
+  const logProgress = createProgressLogger(clockTime, endTime);
+  logProgress(clockTime);
 
   const adapter: RuntimeEngineAdapter = {
     clock: {
       advanceTo(time) {
         clockTime = Math.min(time, endTime);
+        logProgress(clockTime);
       },
       finished() {
         return clockTime >= endTime;
