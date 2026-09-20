@@ -50,10 +50,7 @@ function getEffectiveConfig(
   };
 }
 
-function getFeeRate(
-  config: DynamicTradeConfig,
-  side: "buy" | "sell",
-): number {
+function getFeeRate(config: DynamicTradeConfig, side: "buy" | "sell"): number {
   const feePercent = getFeeCalculator(config.exchangeType).getTotalFeePercent({
     currency: "USDT",
     side,
@@ -75,9 +72,7 @@ function getSpendableBalance(context: RuntimeContext, accountSlug: string) {
   };
 }
 
-function createEmptyAveragingState(
-  entryLevel: number,
-): PositionAveragingState {
+function createEmptyAveragingState(entryLevel: number): PositionAveragingState {
   return {
     entryLevel,
     lastHandledLevel: entryLevel,
@@ -94,7 +89,7 @@ function cloneValue<T>(value: T): T {
 /** Logs successful simulated actions for precision backtest runs. */
 function logBacktestAction(context: RuntimeContext, message: string): void {
   if (context.state.mode === "backtest") {
-    tradeLog.log(`[Precision Backtest] ${message}`);
+    tradeLog.log(`${message}`);
   }
 }
 
@@ -146,16 +141,12 @@ function buildEntryPosition(
     tradingMode: config.tradingMode,
   });
   const feeRate = getFeeRate(config, "buy");
-  const requestedMarginUsdt = resolveRequestedEntryMargin(
-    decision,
-    spendable,
-  );
+  const requestedMarginUsdt = resolveRequestedEntryMargin(decision, spendable);
   if (requestedMarginUsdt <= 0) return null;
 
   const direction = decision.direction;
   const activePositions = context.state.openPositions.filter(
-    (position) =>
-      position.account === decision.accountSlug && !position.closed,
+    (position) => position.account === decision.accountSlug && !position.closed,
   );
   const fundingPlan = entryFunding.plan.calculate({
     activePositions,
@@ -174,8 +165,8 @@ function buildEntryPosition(
     fundingPlan.blockCode ||
     fundingPlan.estimatedMarginUsdt < MINIMAL_USDT_TO_TRADE ||
     fundingPlan.estimatedMarginUsdt +
-        fundingPlan.estimatedFeeUsdt +
-        fundingPlan.reserveBudgetUsdt >
+      fundingPlan.estimatedFeeUsdt +
+      fundingPlan.reserveBudgetUsdt >
       fundingPlan.spendableUsdt
   ) {
     return null;
@@ -236,8 +227,8 @@ function buildEntryPosition(
     context,
     `ENTRY ${position.symbol} ${position.direction} ` +
       `${timeMsToReadable(position.opened.t)} | ` +
-      `margin:${position.exposure.marginUsdt.toFixed(2)} | ` +
-      `vPoint:${position.opened.vPoint.id}`,
+      `margin $${position.exposure.marginUsdt.toFixed(2)} | ` +
+      `${position.opened.vPoint.id}`,
   );
 
   return position;
@@ -297,7 +288,9 @@ function executeAveraging(
 
   const leverage = Math.max(1, position.exposure.leverage || 1);
   const notionalUsdt =
-    config.tradingMode === TradingMode.SPOT ? marginUsdt : marginUsdt * leverage;
+    config.tradingMode === TradingMode.SPOT
+      ? marginUsdt
+      : marginUsdt * leverage;
   const quantity = notionalUsdt / mark.price;
   if (!Number.isFinite(quantity) || quantity <= 0) return null;
 
@@ -365,15 +358,14 @@ function executeExit(
   if (!closed) return null;
   const netUsdt = position.pnl.netUsdt ?? 0;
   const netPct = position.pnl.netPct ?? 0;
-  const outcome = netUsdt >= 0 ? "PROFIT" : "LOSS";
   const signedUsdt = `${netUsdt >= 0 ? "+" : ""}${netUsdt.toFixed(2)}`;
   const signedPct = `${netPct >= 0 ? "+" : ""}${netPct.toFixed(2)}`;
   logBacktestAction(
     context,
-    `EXIT ${position.symbol} ${position.direction} ` +
+    `EXIT  ${position.symbol} ${position.direction} ` +
       `${timeMsToReadable(closed.t)} | ` +
-      `${outcome} | pnl:${signedUsdt} USDT (${signedPct}%) | ` +
-      `reason:${closed.reason}`,
+      `$${signedUsdt} (${signedPct}%) | ` +
+      `${closed.reason}`,
   );
 
   return position;
@@ -384,9 +376,7 @@ async function execute(
   context: RuntimeContext,
 ): Promise<Position | null> {
   if (context.state.mode === "live") {
-    throw new Error(
-      "The simulated action adapter cannot execute live orders.",
-    );
+    throw new Error("The simulated action adapter cannot execute live orders.");
   }
 
   switch (decision.type) {
