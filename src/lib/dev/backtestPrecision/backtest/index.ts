@@ -99,6 +99,7 @@ export async function precisionBacktest(
   await engine.start();
 
   return {
+    exchangeType: params.config.management.exchangeType,
     vPointsMap,
     positions: [...history, ...state.openPositions],
   };

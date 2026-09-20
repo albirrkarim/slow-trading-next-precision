@@ -1,8 +1,9 @@
 "use client";
 
 import VPointsFrequency from "@/components/LiveDashboard/Feature/VPointsFrequency";
+import { TradesTableSection } from "@/components/LiveDashboard/Reporting/TradesTableSection";
 import type { BacktestPrecisionResult } from "@/lib/dev/backtestPrecision/backtest/backtest-precision-types";
-import { Box, Grid } from "@mui/material";
+import { Box, Grid, Typography } from "@mui/material";
 
 import VolatilityRails from "./VolatilityRails";
 
@@ -11,13 +12,28 @@ export default function VPointsResult({
 }: {
   result: BacktestPrecisionResult;
 }) {
+  const tradeHistory = result.positions
+    .filter((position) => position.closed)
+    .map((position) => ({ ...position, mode: "sandbox" as const }));
+
   return (
     <Box sx={{ p: 0.5 }}>
       <VolatilityRails volatilityMap={result.vPointsMap} />
       <Grid container spacing={2}>
-        <Grid size={{ md: 8 }} />
+        <Grid size={{ xs: 12, md: 8 }}>
+          <Typography variant="h6" sx={{ mb: 1 }}>
+            Trade History ({tradeHistory.length})
+          </Typography>
+          <TradesTableSection
+            exchangeType={result.exchangeType}
+            history={tradeHistory}
+            mode="sandbox"
+            onHistoryChange={() => undefined}
+            readOnly
+          />
+        </Grid>
 
-        <Grid size={{ md: 4 }}>
+        <Grid size={{ xs: 12, md: 4 }}>
           <VPointsFrequency volatilityMap={result.vPointsMap} />
         </Grid>
       </Grid>
