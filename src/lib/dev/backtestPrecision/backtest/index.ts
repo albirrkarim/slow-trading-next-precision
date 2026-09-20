@@ -12,10 +12,11 @@ import {
 } from "./data";
 import { createInitialBalance, createInitialVPointsMap } from "./utils";
 import { windowsMs } from "@/lib/dynamic/constants-time";
+import { BacktestPrecisionResult } from "./backtest-precision-types";
 
 export async function precisionBacktest(
   params: BacktestPrecisionParams,
-): Promise<void> {
+): Promise<BacktestPrecisionResult> {
   // A. Prepare klines
   // BTEST:BACKTEST_DATASET
   const [klinesMap1m, klinesMap5m] = await Promise.all([
@@ -30,8 +31,7 @@ export async function precisionBacktest(
 
   // B. Prepare state and adapter
   const symbols = Object.keys(klinesMap5m);
-  const datasetStartTime =
-    params.startTime ?? getEarliestOpenTime(klinesMap1m);
+  const datasetStartTime = params.startTime ?? getEarliestOpenTime(klinesMap1m);
   const datasetEndTime = getLatestCommonCloseTime(klinesMap1m);
   const endTime = Math.min(params.endTime ?? datasetEndTime, datasetEndTime);
 
@@ -43,11 +43,7 @@ export async function precisionBacktest(
       "Precision backtest requires more than two months of data for volatility warm-up.",
     );
   }
-  const vPointsMap = createInitialVPointsMap(
-    symbols,
-    klinesMap5m,
-    currentTime,
-  );
+  const vPointsMap = createInitialVPointsMap(symbols, klinesMap5m, currentTime);
 
   const state: RuntimeEngineState = {
     balance: createInitialBalance(params),
@@ -83,4 +79,9 @@ export async function precisionBacktest(
 
   const engine = new RuntimeEngine(state, adapter);
   await engine.start();
+
+  return {
+    vPointsMap,
+    positions: [],
+  };
 }
