@@ -1,7 +1,7 @@
 import type { Kline } from "@/lib/exchange/platform/tokocrypto";
 import type { IntervalKlines } from "@/lib/exchange/platform/tokocrypto/market/klines";
 
-export type { IntervalKlines };
+export type { IntervalKlines, Kline };
 
 /**
  * Supported exchange types

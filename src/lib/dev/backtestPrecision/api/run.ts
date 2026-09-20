@@ -12,6 +12,7 @@ import {
   RuntimeEngineAdapter,
   RuntimeEngineState,
 } from "@/lib/precision/types";
+import { precisionBacktest } from "../backtest";
 
 export default async function backtestPrecisionHandler(
   req: NextApiRequest,
@@ -67,31 +68,7 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
 
   console.log("params", params);
 
-  // B. Getting klines to provide the runtime with klines data
-  // preparing the klines first save to storage
-
-  const state: RuntimeEngineState = {};
-  const adapter: RuntimeEngineAdapter = {
-    market: {
-      getKlines: fetchKlinesFunction,
-    },
-    exchange: {
-      getBalance() {
-        return 0;
-      },
-    },
-    onStrategy: () => {
-      return true;
-    },
-    onAction: () => {
-      return true;
-    },
-    onNotif: () => {
-      return true;
-    },
-  };
-
-  const backtestRuntimeEngine = new RuntimeEngine(state, adapter);
+  precisionBacktest(params);
 
   res.json({
     data: true,
