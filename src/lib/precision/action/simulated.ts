@@ -1,9 +1,11 @@
 import { TradingMode } from "@/lib/exchange";
 import { getFeeCalculator } from "@/lib/exchange/fees";
+import { timeMsToReadable } from "@/lib/datasets/utils";
 import type { DynamicTradeConfig } from "@/lib/dynamic";
 import slowTradingWatchReserve from "@/lib/slowTrading/watch-reserve";
 import entryFunding from "@/lib/trading/execute/entry-funding";
 import { resolveEntryLeverage } from "@/lib/trading/execute/entry-leverage";
+import { tradeLog } from "@/lib/trading/helper/log";
 import type {
   Position,
   PositionAveragingState,
@@ -87,6 +89,13 @@ function createEmptyAveragingState(
 
 function cloneValue<T>(value: T): T {
   return value === undefined ? value : structuredClone(value);
+}
+
+/** Logs successful simulated actions for precision backtest runs. */
+function logBacktestAction(context: RuntimeContext, message: string): void {
+  if (context.state.mode === "backtest") {
+    tradeLog.log(`[Precision Backtest] ${message}`);
+  }
 }
 
 function resolveRequestedEntryMargin(
@@ -178,7 +187,7 @@ function buildEntryPosition(
     fundingPlan.projectedWatchState ??
     createEmptyAveragingState(signal.lvl ?? 0);
 
-  return {
+  const position: Position = {
     account: decision.accountSlug,
     symbol,
     executionMode: "sandbox",
@@ -222,6 +231,19 @@ function buildEntryPosition(
       netUsdt: 0,
     },
   };
+
+  logBacktestAction(
+    context,
+    `ENTRY ${position.symbol} ${position.direction} ` +
+      `${timeMsToReadable(position.opened.t)} | ` +
+      `price:${position.opened.price.toFixed(8)} | ` +
+      `margin:${position.exposure.marginUsdt.toFixed(2)} | ` +
+      `notional:${position.exposure.notionalUsdt.toFixed(2)} | ` +
+      `fee:${position.fees.entryUsdt.toFixed(4)} | ` +
+      `vPoint:${position.opened.vPoint.id}`,
+  );
+
+  return position;
 }
 
 function executeAveraging(
@@ -334,11 +356,27 @@ function executeAveraging(
   return nextPosition;
 }
 
-function executeExit(decision: RuntimeExitDecision): Position | null {
+function executeExit(
+  context: RuntimeContext,
+  decision: RuntimeExitDecision,
+): Position | null {
   const closedPosition = decision.tradeDecision.position;
   if (!closedPosition?.closed) return null;
 
-  return structuredClone(closedPosition);
+  const position = structuredClone(closedPosition);
+  const closed = position.closed;
+  if (!closed) return null;
+  logBacktestAction(
+    context,
+    `EXIT ${position.symbol} ${position.direction} ` +
+      `${timeMsToReadable(closed.t)} | ` +
+      `price:${closed.price.toFixed(8)} | ` +
+      `pnl:${(position.pnl.netUsdt ?? 0).toFixed(2)} USDT ` +
+      `(${(position.pnl.netPct ?? 0).toFixed(2)}%) | ` +
+      `reason:${closed.reason}`,
+  );
+
+  return position;
 }
 
 async function execute(
@@ -357,7 +395,7 @@ async function execute(
     case "averaging":
       return executeAveraging(context, decision);
     case "exit":
-      return executeExit(decision);
+      return executeExit(context, decision);
     default:
       throw new Error("Unsupported runtime action.");
   }
