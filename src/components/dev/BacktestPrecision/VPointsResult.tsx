@@ -18,6 +18,8 @@ import {
 } from "@mui/material";
 import { useMemo } from "react";
 
+import VolatilityRails from "./VolatilityRails";
+
 interface LatestVPointRow {
   count: number;
   point: VolatilityPoint;
@@ -61,6 +63,8 @@ export default function VPointsResult({
           {totalPoints.toLocaleString()} vPoints across {rows.length} symbols
         </Typography>
       </Paper>
+
+      <VolatilityRails volatilityMap={result.vPointsMap} />
 
       <VPointsFrequency volatilityMap={result.vPointsMap} />
 
