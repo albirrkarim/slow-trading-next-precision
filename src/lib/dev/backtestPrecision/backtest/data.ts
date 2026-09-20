@@ -208,6 +208,32 @@ function aggregateFiveMinuteKlines(klines: Kline[]): Kline[] {
   return result;
 }
 
+/** Selects completed candles from a sorted day without scanning the whole file. */
+function sliceClosedKlines(
+  klines: Kline[],
+  startTime: number,
+  endTime: number,
+): Kline[] {
+  let low = 0;
+  let high = klines.length;
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    if (klines[middle][0] < startTime) low = middle + 1;
+    else high = middle;
+  }
+  const startIndex = low;
+
+  low = startIndex;
+  high = klines.length;
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    if (klines[middle][6] <= endTime) low = middle + 1;
+    else high = middle;
+  }
+
+  return klines.slice(startIndex, low);
+}
+
 function resolveRequestRange(props: FetchKlinesFunctionProps): {
   endTime: number;
   startTime: number;
@@ -222,13 +248,13 @@ function resolveRequestRange(props: FetchKlinesFunctionProps): {
   throw new Error("Precision dataset requests require minutes or startTime.");
 }
 
-/** Creates a disk-backed dataset that caches at most one day per symbol. */
+/** Creates a disk-backed dataset that caches the current day and day boundary. */
 function createDatasetReader(symbols: string[]): Pick<
   PrecisionDataset,
   "getKlines"
 > {
   const cache = new Map<string, Kline[]>();
-  const maxCachedDays = Math.max(4, symbols.length);
+  const maxCachedDays = Math.max(4, symbols.length * 2);
 
   const readDay = async (symbol: string, dayStart: number) => {
     const key = `${symbol}:${dayStart}`;
@@ -268,6 +294,8 @@ function createDatasetReader(symbols: string[]): Pick<
       }
       const { endTime, startTime } = resolveRequestRange(props);
       const result: Kline[] = [];
+      const firstFiveMinuteBucketStart =
+        Math.floor(startTime / FIVE_MINUTES_MS) * FIVE_MINUTES_MS;
 
       for (
         let dayStart = getDayStart(startTime);
@@ -275,15 +303,18 @@ function createDatasetReader(symbols: string[]): Pick<
         dayStart += DAY_MS
       ) {
         const oneMinuteKlines = await readDay(symbol, dayStart);
+        const visibleOneMinuteKlines = sliceClosedKlines(
+          oneMinuteKlines,
+          interval === "1m" ? startTime : firstFiveMinuteBucketStart,
+          endTime,
+        );
         const intervalKlines =
           interval === "1m"
-            ? oneMinuteKlines
-            : aggregateFiveMinuteKlines(oneMinuteKlines);
+            ? visibleOneMinuteKlines
+            : aggregateFiveMinuteKlines(visibleOneMinuteKlines);
 
         for (const kline of intervalKlines) {
-          if (kline[0] >= startTime && kline[0] <= endTime) {
-            result.push(kline);
-          }
+          if (kline[0] >= startTime) result.push(kline);
         }
       }
 

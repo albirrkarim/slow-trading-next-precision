@@ -42,7 +42,10 @@ function create(
   const markPriceUpdatedAt: Partial<Record<RuntimeMarketInterval, number>> = {};
   const vPointsUpdatedAt: Partial<Record<RuntimeMarketInterval, number>> = {};
   const volatilityCursors: Partial<
-    Record<RuntimeMarketInterval, Record<string, VolatilityCursor>>
+    Record<
+      RuntimeMarketInterval,
+      Record<string, VolatilityCursor | undefined>
+    >
   > = {};
   const getSymbols = () =>
     slowTradingShared.symbols.buildExecution(state.config.management.symbols);

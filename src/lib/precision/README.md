@@ -111,32 +111,41 @@ import type {
   RuntimeEngineState,
 } from "@/lib/precision/types";
 
+const dataset = await preparePrecisionDataset(params);
+const currentTime = dataset.startTime + windowsMs["1m"] * 2;
+const vPointsMap = await createInitialVPointsMap(
+  dataset.symbols,
+  dataset.getKlines,
+  dataset.startTime,
+  currentTime,
+);
+
 const state: RuntimeEngineState = {
   balance: createInitialBalance(params),
   config: params.config,
-  currentTime: params.startTime ?? getEarliestOpenTime(klinesMap1m),
+  currentTime,
+  markPriceMap: {},
   mode: "backtest",
   openPositions: [],
+  vPointsMap,
 };
 
-const datasetEndTime = getLatestCommonCloseTime(klinesMap1m);
-const endTime = Math.min(params.endTime ?? datasetEndTime, datasetEndTime);
 let logicalTime = state.currentTime;
 
 const adapter: RuntimeEngineAdapter = {
   clock: {
     advanceTo(nextTime) {
-      logicalTime = Math.min(nextTime, endTime);
+      logicalTime = Math.min(nextTime, dataset.endTime);
     },
     finished() {
-      return logicalTime >= endTime;
+      return logicalTime >= dataset.endTime;
     },
     now() {
       return logicalTime;
     },
   },
   market: {
-    getKlines: (request) => getDatasetKlines(request, maps),
+    getKlines: dataset.getKlines,
   },
   exchange: {},
   onStrategy: () => true,
@@ -158,9 +167,11 @@ await engine.start();
 - Simulated fills must use information visible at `state.currentTime`.
 - Backtest must not submit real exchange orders or deliver notifications.
 
-The current dataset adapter is still being built. Before strategy logic is
-enabled, ensure `getDatasetKlines()` caps every result at the logical clock.
-Otherwise, a backtest could accidentally see future candles.
+The backtest downloads only one-minute candles into compact daily files under
+`storage/datasets/PRECISION_BACKTEST/1m/<symbol>/`. The adapter keeps only a
+bounded set of current day files in memory and derives complete UTC-aligned
+five-minute candles locally. It never exposes a candle whose close is later
+than the logical clock.
 
 ## Production usage
 
