@@ -14,6 +14,8 @@ import { windowsMs } from "@/lib/dynamic/constants-time";
 import simulatedAction from "@/lib/precision/action/simulated";
 import type { BacktestPrecisionResult } from "./backtest-precision-types";
 
+const BACKTEST_ENTRY_CUTOFF_MS = 4 * 24 * 60 * 60 * 1000;
+
 export async function precisionBacktest(
   params: BacktestPrecisionParams,
 ): Promise<BacktestPrecisionResult> {
@@ -25,6 +27,7 @@ export async function precisionBacktest(
   const { symbols } = dataset;
   const datasetStartTime = dataset.startTime;
   const endTime = dataset.endTime;
+  const entryCutoffTime = endTime - BACKTEST_ENTRY_CUTOFF_MS;
 
   // i think we make the backtest forward two month,
   // so we can make the initial vPointsMap first.
@@ -72,7 +75,19 @@ export async function precisionBacktest(
       getKlines: dataset.getKlines,
     },
     exchange: {},
-    onStrategy: async () => true,
+    onStrategy: async (decision, context) => {
+      // BTEST:STOP_AUTO_ENTRY_BEFORE_END
+      // Keep monitoring existing positions during the final four days, but do
+      // not open new positions that cannot complete their lifecycle in-range.
+      if (
+        decision.type === "entry" &&
+        context.state.currentTime >= entryCutoffTime
+      ) {
+        return false;
+      }
+
+      return true;
+    },
     onAction: simulatedAction.execute,
     onExit: async (position) => {
       history.push(position);
