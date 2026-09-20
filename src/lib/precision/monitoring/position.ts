@@ -37,15 +37,15 @@ async function averaging(context: RuntimeContext, position: Position) {
 }
 
 async function exit(context: RuntimeContext, position: Position) {
-  // A. the we decide the default averaging signal
+  // A. the we decide the default exit signal
   // context.state.config
   // context.state.markPriceMap
   // context.state.vPointsMap
   // find existing function that doing that or maybe we create it inside the
   // src/lib/precision/defaultDecision
-  // B. Call the onStrategy for the final confirmation approved to averaging
+  // B. Call the onStrategy for the final confirmation approved to exit
   // context.adapter.onStrategy
-  // C. then the actual averaging
+  // C. then the actual exit
   // context.adapter.onAction
 }
 
