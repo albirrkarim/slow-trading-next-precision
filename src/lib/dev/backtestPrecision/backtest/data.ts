@@ -46,7 +46,10 @@ function resolveBacktestRange(params: BacktestPrecisionParams): {
   startTime: number;
 } {
   if (params.startTime !== undefined && params.endTime !== undefined) {
-    return { endTime: params.endTime, startTime: params.startTime };
+    return {
+      endTime: Math.floor(params.endTime / MINUTE_MS) * MINUTE_MS,
+      startTime: params.startTime,
+    };
   }
 
   const match = params.range.match(
@@ -66,27 +69,17 @@ function resolveBacktestRange(params: BacktestPrecisionParams): {
     week: 10_080,
     year: 525_600,
   };
-  const endTime = Date.now();
+  const endTime = Math.floor(Date.now() / MINUTE_MS) * MINUTE_MS;
   const minutes = Number(match[1]) * unitMinutes[match[2]];
 
   return { endTime, startTime: endTime - minutes * MINUTE_MS };
 }
 
-function hasRequestedCoverage(
-  klines: Kline[],
-  startTime: number,
-  endTime: number,
-): boolean {
-  if (klines.length === 0) return true;
-
-  const expectedFirstOpenTime = Math.ceil(startTime / MINUTE_MS) * MINUTE_MS;
-  const expectedLastOpenTime =
-    Math.floor((endTime - 1) / MINUTE_MS) * MINUTE_MS;
-
-  return (
-    klines[0][0] <= expectedFirstOpenTime &&
-    (klines.at(-1)?.[0] ?? 0) >= expectedLastOpenTime
-  );
+function mergeKlines(cached: Kline[], downloaded: Kline[]): Kline[] {
+  const byOpenTime = new Map<number, Kline>();
+  for (const kline of cached) byOpenTime.set(kline[0], kline);
+  for (const kline of downloaded) byOpenTime.set(kline[0], kline);
+  return [...byOpenTime.values()].sort((left, right) => left[0] - right[0]);
 }
 
 /** Downloads missing daily 1m files for one symbol without retaining its range. */
@@ -110,27 +103,32 @@ async function prepareSymbolDays(
     const requestStartTime = dayStart;
     const requestEndTime = Math.min(dayStart + DAY_MS, endTime);
     const file = getDayFile(symbol, dayStart);
-    let klines: Kline[] | undefined;
+    const fileExists = await fs.pathExists(file);
+    let klines = fileExists ? ((await fs.readJson(file)) as Kline[]) : [];
+    const expectedLastOpenTime =
+      Math.floor((requestEndTime - 1) / MINUTE_MS) * MINUTE_MS;
+    const cachedLastOpenTime = klines.at(-1)?.[0];
+    const isCurrentDay = dayStart === getDayStart(Date.now());
+    const needsDownload =
+      !fileExists ||
+      (cachedLastOpenTime !== undefined &&
+        cachedLastOpenTime < expectedLastOpenTime) ||
+      (klines.length === 0 && isCurrentDay) ||
+      (isCurrentDay && params.upToDateKlines);
 
-    if (!params.upToDateKlines && (await fs.pathExists(file))) {
-      const cached = (await fs.readJson(file)) as Kline[];
-      if (hasRequestedCoverage(cached, requestStartTime, requestEndTime)) {
-        klines = cached;
-      }
-    }
-
-    if (!klines) {
-      klines = await fetchKlinesFunction({
+    if (needsDownload) {
+      const downloaded = await fetchKlinesFunction({
         endTime: requestEndTime - 1,
         exactDate: true,
         exchangeType: params.config.management.exchangeType,
         interval: "1m",
         marketType,
         saveToFile: false,
-        startTime: requestStartTime,
+        startTime: cachedLastOpenTime ?? requestStartTime,
         symbol: `${symbol}_USDT`,
         verbose: Boolean(params.verbose),
       });
+      klines = mergeKlines(klines, downloaded);
 
       await fs.ensureDir(path.dirname(file));
       await fs.writeJson(file, klines);
