@@ -9,7 +9,7 @@ interface MarketFunction {
 }
 
 interface ExchangeFunction {
-  getBalance: () => number;
+  getBalance?: () => number;
 }
 
 export interface RuntimeEngineState {

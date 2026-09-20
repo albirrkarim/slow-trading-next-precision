@@ -1,11 +1,11 @@
 import { RuntimeEngine } from "@/lib/precision";
-import type { Kline } from "@/lib/exchange/types";
 import type {
   RuntimeEngineAdapter,
   RuntimeEngineState,
 } from "@/lib/precision/types";
 import type { BacktestPrecisionParams } from "../api/precision-api-types";
 import { buildKlinesMap, getDatasetKlines, getEarliestOpenTime } from "./data";
+import { createInitialBalance } from "./utils";
 
 export async function precisionBacktest(
   params: BacktestPrecisionParams,
@@ -17,29 +17,25 @@ export async function precisionBacktest(
     buildKlinesMap(params, "5m"),
   ]);
 
+  const maps = {
+    "1m": klinesMap1m,
+    "5m": klinesMap5m,
+  };
+
   // B. Prepare state and adapter
   const state: RuntimeEngineState = {
-    balance: {},
+    balance: createInitialBalance(params),
     config: params.config,
     currentTime: params.startTime ?? getEarliestOpenTime(klinesMap1m),
     mode: "backtest",
     openPositions: [],
   };
 
-  const maps = {
-    "1m": klinesMap1m,
-    "5m": klinesMap5m,
-  };
-
   const adapter: RuntimeEngineAdapter = {
     market: {
       getKlines: (props) => getDatasetKlines(props, maps),
     },
-    exchange: {
-      getBalance() {
-        return 0;
-      },
-    },
+    exchange: {},
     onStrategy: () => true,
     onAction: () => true,
     onNotif: () => true,
