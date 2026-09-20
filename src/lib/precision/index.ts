@@ -1,4 +1,4 @@
-import { monitoring, runtimeSchedule } from "./monitoring";
+import monitoring from "./monitoring";
 import type {
   RuntimeContext,
   RuntimeEngineAdapter,
@@ -23,7 +23,7 @@ class RuntimeEngine {
     const clock = this.adapter.clock;
 
     while (!(await clock.finished())) {
-      const nextTime = runtimeSchedule.getNextTime(this.state);
+      const nextTime = monitoring.schedule.getNextTime(this.state);
 
       await clock.advanceTo(nextTime);
 
@@ -34,16 +34,16 @@ class RuntimeEngine {
   }
 
   private async runDueStages() {
-    if (runtimeSchedule.isSpeedupDue(this.state)) {
+    if (monitoring.schedule.isSpeedupDue(this.state)) {
       await monitoring.stages.speedup(this.context);
     }
 
-    if (runtimeSchedule.isStandardDue(this.state)) {
+    if (monitoring.schedule.isStandardDue(this.state)) {
       await monitoring.stages.standard(this.context);
     }
 
-    if (runtimeSchedule.isCaptureEntryDue(this.state)) {
-      await monitoring.captureEntry(this.context);
+    if (monitoring.schedule.isCaptureEntryDue(this.state)) {
+      await monitoring.entry.capture(this.context);
     }
   }
 
