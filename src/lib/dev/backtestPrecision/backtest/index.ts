@@ -4,12 +4,7 @@ import type {
   RuntimeEngineState,
 } from "@/lib/precision/types";
 import type { BacktestPrecisionParams } from "../api/precision-api-types";
-import {
-  buildKlinesMap,
-  getDatasetKlines,
-  getEarliestOpenTime,
-  getLatestCommonCloseTime,
-} from "./data";
+import { preparePrecisionDataset } from "./data";
 import { createInitialBalance, createInitialVPointsMap } from "./utils";
 import { windowsMs } from "@/lib/dynamic/constants-time";
 import type { BacktestPrecisionResult } from "./backtest-precision-types";
@@ -19,19 +14,12 @@ export async function precisionBacktest(
 ): Promise<BacktestPrecisionResult> {
   // A. Prepare klines
   // BTEST:BACKTEST_DATASET
-  const klinesMap1m = await buildKlinesMap(params, "1m");
-  const klinesMap5m = await buildKlinesMap(params, "5m");
-
-  const maps = {
-    "1m": klinesMap1m,
-    "5m": klinesMap5m,
-  };
+  const dataset = await preparePrecisionDataset(params);
 
   // B. Prepare state and adapter
-  const symbols = Object.keys(klinesMap5m);
-  const datasetStartTime = params.startTime ?? getEarliestOpenTime(klinesMap1m);
-  const datasetEndTime = getLatestCommonCloseTime(klinesMap1m);
-  const endTime = Math.min(params.endTime ?? datasetEndTime, datasetEndTime);
+  const { symbols } = dataset;
+  const datasetStartTime = dataset.startTime;
+  const endTime = dataset.endTime;
 
   // i think we make the backtest forward two month,
   // so we can make the initial vPointsMap first.
@@ -41,7 +29,12 @@ export async function precisionBacktest(
       "Precision backtest requires more than two months of data for volatility warm-up.",
     );
   }
-  const vPointsMap = createInitialVPointsMap(symbols, klinesMap5m, currentTime);
+  const vPointsMap = await createInitialVPointsMap(
+    symbols,
+    dataset.getKlines,
+    datasetStartTime,
+    currentTime,
+  );
 
   const state: RuntimeEngineState = {
     balance: createInitialBalance(params),
@@ -67,7 +60,7 @@ export async function precisionBacktest(
       },
     },
     market: {
-      getKlines: (props) => getDatasetKlines(props, maps),
+      getKlines: dataset.getKlines,
     },
     exchange: {},
     onStrategy: () => true,

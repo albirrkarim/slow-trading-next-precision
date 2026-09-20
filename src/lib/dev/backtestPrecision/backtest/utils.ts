@@ -1,5 +1,5 @@
 import { detectVolatilityPoints } from "@/lib/dynamic";
-import type { Kline } from "@/lib/exchange/types";
+import type { FetchKlinesFunction } from "@/lib/datasets/type";
 import type { RuntimeEngineState } from "@/lib/precision/types";
 import type { BacktestPrecisionParams } from "../api/precision-api-types";
 
@@ -32,20 +32,27 @@ export function createInitialBalance(
 }
 
 /** Creates volatility history using only candles closed by the runtime start. */
-export function createInitialVPointsMap(
+export async function createInitialVPointsMap(
   symbols: string[],
-  klinesMap: Record<string, Kline[]>,
+  getKlines: FetchKlinesFunction,
+  startTime: number,
   currentTime: number,
-): RuntimeEngineState["vPointsMap"] {
-  return Object.fromEntries(
-    symbols.map((symbol) => [
+): Promise<RuntimeEngineState["vPointsMap"]> {
+  const vPointsMap: RuntimeEngineState["vPointsMap"] = {};
+
+  for (const symbol of symbols) {
+    const klines = await getKlines({
+      endTime: currentTime,
+      exactDate: true,
+      interval: "5m",
+      startTime,
+      symbol: `${symbol}_USDT`,
+    });
+    vPointsMap[symbol] = detectVolatilityPoints({
+      klines: klines.filter((kline) => kline[6] <= currentTime),
       symbol,
-      detectVolatilityPoints({
-        klines: (klinesMap[symbol] ?? []).filter(
-          (kline) => kline[6] <= currentTime,
-        ),
-        symbol,
-      }),
-    ]),
-  );
+    });
+  }
+
+  return vPointsMap;
 }

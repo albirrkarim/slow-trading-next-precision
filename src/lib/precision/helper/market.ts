@@ -1,10 +1,38 @@
-import { detectVolatilityPoints } from "@/lib/dynamic";
+import {
+  createPredictorMemory,
+  predictor,
+  type PredictorMemory,
+  type VolatilityPoint,
+} from "@/lib/dynamic";
 import slowTradingShared from "@/lib/slowTrading/shared";
 import type { RuntimeEngineAdapter, RuntimeEngineState } from "../types";
 import type { RuntimeMarketHelper, RuntimeMarketInterval } from "./types";
 
 const MARK_PRICE_LOOKBACK_MINUTES = 30;
 const VPOINT_INITIAL_LOOKBACK_MINUTES = 60 * 24 * 30 * 2;
+
+interface VolatilityCursor {
+  lastKnownPointId?: string;
+  lastProcessedOpenTime: number;
+  memory: PredictorMemory;
+}
+
+function assignNextLevel(
+  point: VolatilityPoint,
+  previousPoint?: VolatilityPoint,
+): void {
+  if (!previousPoint) {
+    point.lvl = point.l === "T" ? 1 : -1;
+    return;
+  }
+
+  if (previousPoint.l !== point.l) {
+    point.lvl = previousPoint.lvl === 0 ? (point.l === "T" ? 1 : -1) : 0;
+    return;
+  }
+
+  point.lvl = previousPoint.lvl + (point.l === "T" ? 1 : -1);
+}
 
 /** Binds reusable market-state updates to one runtime state and adapter. */
 function create(
@@ -13,6 +41,9 @@ function create(
 ): RuntimeMarketHelper {
   const markPriceUpdatedAt: Partial<Record<RuntimeMarketInterval, number>> = {};
   const vPointsUpdatedAt: Partial<Record<RuntimeMarketInterval, number>> = {};
+  const volatilityCursors: Partial<
+    Record<RuntimeMarketInterval, Record<string, VolatilityCursor>>
+  > = {};
   const getSymbols = () =>
     slowTradingShared.symbols.buildExecution(state.config.management.symbols);
 
@@ -27,37 +58,39 @@ function create(
       const currentTime = state.currentTime;
       if (markPriceUpdatedAt[interval] === currentTime) return;
 
-      const entries = await Promise.all(
-        getSymbols().map(async (symbol) => {
-          const klines = await adapter.market.getKlines({
-            endTime: currentTime,
-            interval,
-            minutes: MARK_PRICE_LOOKBACK_MINUTES,
-            symbol: `${symbol}_USDT`,
-          });
-          const latestClosedKline = klines.findLast(
-            (kline) => kline[6] <= currentTime,
+      const entries: Array<
+        readonly [string, { lastUpdated: number; price: number }]
+      > = [];
+
+      for (const symbol of getSymbols()) {
+        const klines = await adapter.market.getKlines({
+          endTime: currentTime,
+          interval,
+          minutes: MARK_PRICE_LOOKBACK_MINUTES,
+          symbol: `${symbol}_USDT`,
+        });
+        const latestClosedKline = klines.findLast(
+          (kline) => kline[6] <= currentTime,
+        );
+
+        if (!latestClosedKline) {
+          throw new Error(
+            `No closed ${interval} kline found for ${symbol} at ${currentTime}.`,
           );
+        }
 
-          if (!latestClosedKline) {
-            throw new Error(
-              `No closed ${interval} kline found for ${symbol} at ${currentTime}.`,
-            );
-          }
+        const price = Number(latestClosedKline[4]);
+        if (!Number.isFinite(price)) {
+          throw new Error(
+            `Invalid ${interval} mark price for ${symbol} at ${currentTime}.`,
+          );
+        }
 
-          const price = Number(latestClosedKline[4]);
-          if (!Number.isFinite(price)) {
-            throw new Error(
-              `Invalid ${interval} mark price for ${symbol} at ${currentTime}.`,
-            );
-          }
-
-          return [
-            symbol,
-            { lastUpdated: latestClosedKline[6], price },
-          ] as const;
-        }),
-      );
+        entries.push([
+          symbol,
+          { lastUpdated: latestClosedKline[6], price },
+        ]);
+      }
 
       Object.assign(state.markPriceMap, Object.fromEntries(entries));
       markPriceUpdatedAt[interval] = currentTime;
@@ -73,34 +106,61 @@ function create(
       const currentTime = state.currentTime;
       if (vPointsUpdatedAt[interval] === currentTime) return;
 
-      const entries = await Promise.all(
-        getSymbols().map(async (symbol) => {
-          const previousPoints = state.vPointsMap[symbol] ?? [];
-          const previousPoint = previousPoints.at(-1);
-          const startTime =
-            previousPoint?.t ??
-            currentTime - VPOINT_INITIAL_LOOKBACK_MINUTES * 60_000;
-          const klines = await adapter.market.getKlines({
-            endTime: currentTime,
-            exactDate: true,
-            interval,
-            startTime,
-            symbol: `${symbol}_USDT`,
-          });
-          const closedKlines = klines.filter(
-            (kline) => kline[6] <= currentTime,
+      const intervalCursors = (volatilityCursors[interval] ??= {});
+
+      for (const symbol of getSymbols()) {
+        const points = state.vPointsMap[symbol] ?? [];
+        let previousPoint = points.at(-1);
+        let cursor = intervalCursors[symbol];
+
+        if (cursor?.lastKnownPointId !== previousPoint?.id) {
+          cursor = undefined;
+          delete intervalCursors[symbol];
+        }
+
+        const intervalMs = interval === "1m" ? 60_000 : 5 * 60_000;
+        const startTime = cursor
+          ? cursor.lastProcessedOpenTime + intervalMs
+          : (previousPoint?.t ??
+            currentTime - VPOINT_INITIAL_LOOKBACK_MINUTES * 60_000);
+        const klines = await adapter.market.getKlines({
+          endTime: currentTime,
+          exactDate: true,
+          interval,
+          startTime,
+          symbol: `${symbol}_USDT`,
+        });
+        const closedKlines = klines.filter(
+          (kline) => kline[6] <= currentTime,
+        );
+        if (closedKlines.length === 0) continue;
+
+        let memory =
+          cursor?.memory ??
+          createPredictorMemory(
+            previousPoint?.p ?? Number(closedKlines[0][4]),
+            previousPoint?.t ?? closedKlines[0][0],
           );
-          const newPoints = detectVolatilityPoints({
-            klines: closedKlines,
-            symbol,
-            vPointBefore: previousPoint,
-          }).filter((point) => !previousPoint || point.t > previousPoint.t);
+        const firstIndex = cursor ? 0 : 1;
 
-          return [symbol, [...previousPoints, ...newPoints]] as const;
-        }),
-      );
+        for (let index = firstIndex; index < closedKlines.length; index++) {
+          const predicted = predictor(closedKlines[index], memory, symbol);
+          memory = predicted.memory;
+          if (!predicted.point) continue;
 
-      Object.assign(state.vPointsMap, Object.fromEntries(entries));
+          assignNextLevel(predicted.point, previousPoint);
+          points.push(predicted.point);
+          previousPoint = predicted.point;
+        }
+
+        intervalCursors[symbol] = {
+          lastKnownPointId: previousPoint?.id,
+          lastProcessedOpenTime: closedKlines.at(-1)?.[0] ?? startTime,
+          memory,
+        };
+        state.vPointsMap[symbol] = points;
+      }
+
       vPointsUpdatedAt[interval] = currentTime;
     },
   };
