@@ -5,7 +5,6 @@ import type { SlowTradingSettingsConfig } from "@/lib/slowTrading";
  * Exact production runtime snapshot used to replay a precision test case.
  */
 export interface BacktestPrecisionInitialState {
-  t: number;
   balance: RuntimeEngineState["balance"];
   openPositions: RuntimeEngineState["openPositions"];
   vPointsMap: RuntimeEngineState["vPointsMap"];

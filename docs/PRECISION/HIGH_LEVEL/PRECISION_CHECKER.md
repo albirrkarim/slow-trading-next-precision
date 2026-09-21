@@ -30,9 +30,10 @@ import type {
 
 interface PrecisionTestCase extends BacktestTestCase {
   /**
-   * Exact runtime snapshot taken when the recording started: the snapshot
-   * time, balances per account, still-open positions, and bounded vPoints
-   * (latest 10 per symbol plus every point an open position still needs).
+   * Exact runtime snapshot taken when the recording started: balances per
+   * account, still-open positions, and bounded vPoints (latest 10 per symbol
+   * plus every point an open position still needs). The enclosing `startTime`
+   * is the canonical snapshot and replay time.
    */
   initialState: BacktestPrecisionInitialState;
   tradeHistory: Position[];

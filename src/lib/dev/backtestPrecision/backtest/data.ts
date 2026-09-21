@@ -332,8 +332,13 @@ function resolveInitialStateDataStart(
   if (!initialState) {
     return undefined;
   }
+  if (!Number.isFinite(params.startTime)) {
+    throw new Error(
+      "Precision checker replay requires a finite startTime to prepare captured initial state data.",
+    );
+  }
 
-  let start = initialState.t - 30 * 60_000;
+  let start = (params.startTime as number) - 30 * 60_000;
   for (const points of Object.values(initialState.vPointsMap)) {
     for (const point of points) {
       if (Number.isFinite(point.t)) {

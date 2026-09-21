@@ -51,7 +51,6 @@ function hasValidInitialState(testCase: PrecisionTestCase): boolean {
   return Boolean(
     initialState &&
       typeof initialState === "object" &&
-      Number.isFinite(initialState.t) &&
       initialState.balance &&
       typeof initialState.balance === "object" &&
       !Array.isArray(initialState.balance) &&

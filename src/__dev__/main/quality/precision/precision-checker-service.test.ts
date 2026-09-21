@@ -44,12 +44,11 @@ function balanceSummary(total: number) {
   };
 }
 
-function initialState(t: number): PrecisionTestCase["initialState"] {
+function initialState(): PrecisionTestCase["initialState"] {
   return {
-    t,
     balance: { "acc-1": balanceSummary(100) },
     openPositions: [],
-    vPointsMap: { SUI: [{ id: "p1", t: t - 60_000, lvl: -2 }] },
+    vPointsMap: { SUI: [{ id: "p1", t: 0, lvl: -2 }] },
   } as unknown as PrecisionTestCase["initialState"];
 }
 
@@ -62,7 +61,7 @@ function completedCase(endTime: number, tradeCount = 1): PrecisionTestCase {
   const startTime = endTime - 60_000;
   return {
     config: testConfig(),
-    initialState: initialState(startTime),
+    initialState: initialState(),
     startTime,
     endTime,
     tradeHistory: Array.from({ length: tradeCount }, () =>
@@ -158,7 +157,6 @@ describe("precision checker service", () => {
     await writeCase(fileName, {
       config: testConfig(),
       initialState: {
-        t: 1,
         balance: [],
         openPositions: [],
         vPointsMap: [],
@@ -182,7 +180,7 @@ describe("precision checker service", () => {
       closed: { t: 2, price: 11, feeUsdt: 0, reason: "TAKE_PROFIT" },
     });
     const openProduction = createTestPosition({ symbol: "OPEN-PROD" });
-    const snapshot = initialState(1);
+    const snapshot = initialState();
     await writeCase(fileName, {
       config: testConfig(),
       initialState: snapshot,

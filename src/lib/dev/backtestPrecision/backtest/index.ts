@@ -32,6 +32,14 @@ export async function precisionBacktest(
       "Precision checker replay requires a captured initial runtime state.",
     );
   }
+  if (
+    isPrecisionChecker &&
+    (!Number.isFinite(params.startTime) || !Number.isFinite(params.endTime))
+  ) {
+    throw new Error(
+      "Precision checker replay requires finite startTime and endTime.",
+    );
+  }
 
   // A. Prepare klines
   // BTEST:BACKTEST_DATASET
@@ -49,8 +57,9 @@ export async function precisionBacktest(
 
   // i think we make the backtest forward two month,
   // so we can make the initial vPointsMap first.
-  const currentTime =
-    initialState?.t ?? datasetStartTime + windowsMs["1m"] * 2;
+  const currentTime = isPrecisionChecker
+    ? (params.startTime as number)
+    : datasetStartTime + windowsMs["1m"] * 2;
   if (!isPrecisionChecker && currentTime >= endTime) {
     throw new Error(
       "Precision backtest requires more than two months of data for volatility warm-up.",

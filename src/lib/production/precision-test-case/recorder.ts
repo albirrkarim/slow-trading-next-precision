@@ -217,7 +217,6 @@ async function start(
   const testCase: PrecisionTestCase = {
     config: cloneConfigWithoutCredentials(state.config),
     initialState: {
-      t: startTime,
       balance: clone(state.balance),
       openPositions: clone(state.openPositions),
       vPointsMap: snapshotVPoints(state.vPointsMap, state.openPositions),

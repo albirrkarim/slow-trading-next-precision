@@ -78,9 +78,26 @@ describe("precision backtest initial state", () => {
     ).rejects.toThrow(/requires a captured initial runtime state/);
   });
 
+  it("fails clearly in checker mode without finite start and end times", async () => {
+    const initialState = {
+      balance: {},
+      openPositions: [],
+      vPointsMap: {},
+    } as unknown as PrecisionTestCase["initialState"];
+
+    await expect(
+      precisionBacktest(
+        params({
+          initialState,
+          mode: "precision-checker",
+          startTime: undefined,
+        }) as any,
+      ),
+    ).rejects.toThrow(/requires finite startTime and endTime/);
+  });
+
   it("restores snapshot time, balance, open positions, and vPoints for checker replays", async () => {
     const initialState = {
-      t: 5_000,
       balance: { "acc-1": { availableQuoteAsset: 42 } },
       openPositions: [createTestPosition({ symbol: "SUI" })],
       vPointsMap: { SUI: [{ id: "p1", lvl: -2, t: 1 }] },
@@ -90,7 +107,7 @@ describe("precision backtest initial state", () => {
       params({ initialState, mode: "precision-checker" }) as any,
     );
 
-    expect(mocks.engineState.currentTime).toBe(5_000);
+    expect(mocks.engineState.currentTime).toBe(4_000);
     expect(mocks.engineState.balance).toEqual(initialState.balance);
     expect(mocks.engineState.balance).not.toBe(initialState.balance);
     expect(mocks.engineState.openPositions).toEqual(
@@ -114,7 +131,6 @@ describe("precision backtest initial state", () => {
 
   it("ignores an accidental initialState and keeps ordinary generated state", async () => {
     const accidentalInitialState = {
-      t: 123,
       balance: { "acc-1": { available: 7 } },
       openPositions: [createTestPosition({ symbol: "SUI" })],
       vPointsMap: { SUI: [{ id: "px", lvl: -1, t: 1 }] },

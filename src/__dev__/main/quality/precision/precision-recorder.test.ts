@@ -139,7 +139,7 @@ describe("precision test-case recorder start", () => {
     expect(written).not.toHaveProperty("initialVPointsMap");
     expect(written.initialState).not.toHaveProperty("markPriceMap");
 
-    expect(written.initialState.t).toBe(state.currentTime);
+    expect(written.initialState).not.toHaveProperty("t");
     expect(written.initialState.balance).toEqual(state.balance);
     expect(written.initialState.balance).not.toBe(state.balance);
     expect(written.initialState.openPositions).toEqual(state.openPositions);
