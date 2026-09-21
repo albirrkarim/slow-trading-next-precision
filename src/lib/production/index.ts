@@ -26,6 +26,7 @@ export type {
 export type {
   PrecisionTestCase,
   PrecisionTestCaseMode,
+  PrecisionTestCaseRecordingState,
   PrecisionTestCaseResult,
   PrecisionTestCaseStatus,
 } from "./precision-test-case";

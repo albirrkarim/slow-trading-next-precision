@@ -19,6 +19,14 @@ export interface PrecisionTestCaseStatus {
   fileName?: string;
 }
 
+/** Durable marker describing the currently active production recording. */
+export interface PrecisionTestCaseRecordingState {
+  recording: boolean;
+  mode?: PrecisionTestCaseMode;
+  startTime?: number;
+  fileName?: string;
+}
+
 export interface PrecisionTestCaseResult {
   fileName: string;
   path: string;

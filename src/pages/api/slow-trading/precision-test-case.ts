@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import production from "@/lib/production";
 
 type ResponseData =
-  | ReturnType<typeof production.precisionTestCase.getStatus>
+  | Awaited<ReturnType<typeof production.precisionTestCase.getStatus>>
   | { fileName: string; path: string };
 
 export default async function handler(
@@ -11,7 +11,8 @@ export default async function handler(
   res: NextApiResponse<ResponseData | { error: string }>,
 ) {
   if (req.method === "GET") {
-    res.status(200).json(production.precisionTestCase.getStatus());
+    const state = production.runtime.get().getState();
+    res.status(200).json(await production.precisionTestCase.getStatus(state));
     return;
   }
 
@@ -31,7 +32,7 @@ export default async function handler(
   try {
     // PROD:PRODUCTION_TEST_CASE_CAPTURE_CONTROLS
     if (req.body?.action === "start") {
-      res.status(200).json(production.precisionTestCase.start(state));
+      res.status(200).json(await production.precisionTestCase.start(state));
       return;
     }
 

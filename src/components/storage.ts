@@ -42,6 +42,7 @@ const SLOW_FILES = {
   marketCapCache: `${SLOW_TRADING_DIR}/marketcap_cache.json`,
   ip: `${SLOW_TRADING_DIR}/ip.json`,
   notificationDedupe: `${SLOW_TRADING_DIR}/notification-dedupe.json`,
+  precisionTestCase: `${SLOW_TRADING_DIR}/precision-test-case.json`,
   queue: `${SLOW_TRADING_DIR}/queue.json`,
   logs: {
     binanceCooldowns: `${SLOW_TRADING_DIR}/logs/binance_cooldowns.json`,
