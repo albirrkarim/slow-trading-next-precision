@@ -405,9 +405,10 @@ describe("slow specs runtime", () => {
 
     // PROD:RUNNER_BOOTSTRAP_ON_SERVER_START
     expect(source).toContain("PROD:RUNNER_BOOTSTRAP_ON_SERVER_START");
-    expect(source).toContain("@/lib/slowTrading/singleton");
-    expect(source).toContain("getSlowTradingRunner()");
-    expect(source).not.toContain('import("@/lib/slowTrading")');
+    expect(source).toContain("@/lib/production");
+    expect(source).toContain("production.factory.create()");
+    expect(source).toContain("runtime.start(");
+    expect(source).not.toContain('import("@/lib/slowTrading/singleton")');
   });
 
   it("keeps Quick Backtest out of the shared production runtime facade", async () => {

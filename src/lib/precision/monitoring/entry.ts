@@ -100,6 +100,7 @@ async function captureEntry(context: RuntimeContext): Promise<void> {
       entrySignal: decision.entrySignal,
       volatilityPoints: context.state.vPointsMap[decision.symbol],
     });
+    await context.adapter.onStateChange?.(context);
   }
 }
 

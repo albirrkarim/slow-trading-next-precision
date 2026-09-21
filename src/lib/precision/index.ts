@@ -24,6 +24,10 @@ class RuntimeEngine {
   }
 
   async start() {
+    if (!this.state.config.runtime.runnerEnabled) {
+      return;
+    }
+
     await this.helper.market.updateMarkPrice();
     await this.helper.market.updateVPointsMap();
 

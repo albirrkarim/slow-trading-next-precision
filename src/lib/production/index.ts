@@ -1,5 +1,6 @@
 import adapter from "./adapter";
 import clock from "./clock";
+import factory from "./factory";
 import singleton from "./singleton";
 import state from "./state";
 
@@ -7,6 +8,7 @@ import state from "./state";
 const production = {
   adapter,
   clock,
+  factory,
   runtime: singleton,
   state,
 };

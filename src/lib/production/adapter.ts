@@ -128,6 +128,7 @@ function create(options: ProductionAdapterOptions): RuntimeEngineAdapter {
     market: createMarket(options),
     onAction: options.onAction,
     onExit: options.onExit,
+    onStateChange: options.onStateChange,
     onNotif: options.onNotif ?? (() => true),
     onStrategy: options.onStrategy,
   };

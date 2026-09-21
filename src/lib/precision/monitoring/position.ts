@@ -185,6 +185,8 @@ async function averaging(
     volatilityPoints: context.state.vPointsMap[decision.symbol],
   });
 
+  await context.adapter.onStateChange?.(context);
+
   return updatedPosition;
 }
 
@@ -215,16 +217,12 @@ async function exit(
     throw new Error("Exit action returned a position without closed details.");
   }
 
-  // D. Persist the closed position outside the runtime engine before removing
-  // it from the open-position collection.
-  await context.adapter.onExit(closedPosition, context);
-
-  // E. Remove the successfully closed position from runtime state.
+  // D. Remove the successfully closed position from runtime state.
   const positionIndex = context.state.openPositions.indexOf(position);
   if (positionIndex < 0) return false;
   context.state.openPositions.splice(positionIndex, 1);
 
-  // F. Release margin and reserve, then rebuild the account balance summary
+  // E. Release margin and reserve, then rebuild the account balance summary
   // from the realized PnL and returned entry margin.
   const balance = context.helper.getAccountBalance(decision.accountSlug);
   const releasedReserve = Math.max(
@@ -248,6 +246,9 @@ async function exit(
     balance.available - balance.reserved - balance.safeHaven,
   );
   balance.total = balance.available + balance.locked;
+
+  // F. Persist the closed position after the shared state is fully updated.
+  await context.adapter.onExit(closedPosition, context);
 
   return true;
 }

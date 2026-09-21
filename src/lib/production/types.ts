@@ -18,8 +18,10 @@ export interface ProductionAdapterOptions {
   onStrategy: RuntimeEngineAdapter["onStrategy"];
   /** Submits or simulates an approved production action. */
   onAction: RuntimeEngineAdapter["onAction"];
-  /** Persists a position after the shared runtime confirms an exit. */
+  /** Persists a closed position after the shared runtime confirms an exit. */
   onExit: RuntimeEngineAdapter["onExit"];
+  /** Persists account state after the shared runtime updates balances. */
+  onStateChange?: RuntimeEngineAdapter["onStateChange"];
   /** Optional notification delivery hook. */
   onNotif?: RuntimeEngineAdapter["onNotif"];
   /** Optional account-aware balance reader used by runtime refreshes. */

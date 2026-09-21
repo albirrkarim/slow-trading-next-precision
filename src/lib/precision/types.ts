@@ -156,8 +156,28 @@ export interface RuntimeEngineAdapter {
     context: RuntimeContext,
   ) => Promise<Position | null>;
 
-  /** Persists one successfully closed position outside the runtime engine. */
+  /** Persists a closed position after the shared runtime updates its state. */
   onExit: (position: Position, context: RuntimeContext) => Promise<void>;
+
+  /**
+   * Persists the environment's account state after a successful action.
+   *
+   * The runtime invokes this hook only after `onAction` has returned a
+   * position and the shared monitoring code has applied its own mutation:
+   *
+   * 1. `onAction` executes or simulates the order.
+   * 2. The runtime updates `state.openPositions` and `state.balance`.
+   * 3. This hook persists that now-consistent state.
+   *
+   * Entry and averaging actions use this hook. Exit persistence is handled by
+   * `onExit`, which is called after the closed position has been removed from
+   * `state.openPositions` and its margin has been released. Backtest adapters
+   * can omit this hook because their result is already retained in memory.
+   *
+   * @param context - The shared runtime context containing the updated state,
+   * adapter, and helper operations.
+   */
+  onStateChange?: (context: RuntimeContext) => Promise<void>;
 
   /**
    * To send notification outside
