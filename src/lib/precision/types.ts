@@ -24,9 +24,18 @@ interface ExchangeFunction {
   ) => number | Promise<number>;
 }
 
+/**
+ * Environment clock used by the shared runtime scheduler.
+ *
+ * Backtests advance logical time immediately, while production waits for the
+ * requested wall-clock boundary.
+ */
 export interface RuntimeClock {
+  /** Advances or waits until the requested Unix timestamp in milliseconds. */
   advanceTo(time: number): Promise<void> | void;
+  /** Reports whether the runtime should stop scheduling additional stages. */
   finished(): Promise<boolean> | boolean;
+  /** Returns the clock's current canonical Unix timestamp in milliseconds. */
   now(): number;
 }
 
@@ -81,6 +90,9 @@ export interface RuntimeEngineState {
   >;
 }
 
+/**
+ * Approved entry candidate produced by the shared decision pipeline.
+ */
 export interface RuntimeEntryDecision {
   type: "entry";
   accountSlug: string;
@@ -90,6 +102,9 @@ export interface RuntimeEntryDecision {
   symbol: string;
 }
 
+/**
+ * Averaging candidate for an existing open position.
+ */
 export interface RuntimeAveragingDecision {
   type: "averaging";
   accountSlug: string;
@@ -99,6 +114,9 @@ export interface RuntimeAveragingDecision {
   symbol: string;
 }
 
+/**
+ * Exit candidate for an existing open position.
+ */
 export interface RuntimeExitDecision {
   type: "exit";
   accountSlug: string;
@@ -186,8 +204,12 @@ export interface RuntimeEngineAdapter {
   onNotif: () => boolean;
 }
 
+/** Shared dependencies and mutable state supplied to every runtime operation. */
 export interface RuntimeContext {
+  /** Environment-specific clock, market, exchange, execution, and output hooks. */
   adapter: RuntimeEngineAdapter;
+  /** State-bound account, balance, configuration, and market helpers. */
   helper: RuntimeHelper;
+  /** Canonical mutable runtime state shared by backtest and production flows. */
   state: RuntimeEngineState;
 }
