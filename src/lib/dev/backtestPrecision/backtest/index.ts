@@ -45,8 +45,10 @@ export async function precisionBacktest(
 
   // i think we make the backtest forward two month,
   // so we can make the initial vPointsMap first.
-  const currentTime = datasetStartTime + windowsMs["1m"] * 2;
-  if (currentTime >= endTime) {
+  const currentTime = isPrecisionChecker
+    ? datasetStartTime
+    : datasetStartTime + windowsMs["1m"] * 2;
+  if (!isPrecisionChecker && currentTime >= endTime) {
     throw new Error(
       "Precision backtest requires more than two months of data for volatility warm-up.",
     );

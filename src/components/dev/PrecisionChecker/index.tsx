@@ -58,7 +58,7 @@ function RunResultView({ result }: { result: PrecisionCheckerRunResult }) {
 
             <Grid container spacing={2} sx={{ mt: 1 }}>
                 {panels.map((panel) => (
-                    <Grid key={panel.title} size={{ xs: 12, xl: 6 }}>
+                    <Grid key={panel.title} size={{ xs: 12, md: 6 }}>
                         <Typography variant="h6" sx={{ mb: 1 }}>
                             {panel.title} ({panel.history.length})
                         </Typography>
@@ -250,7 +250,7 @@ export default function PrecisionChecker() {
             {listLoading && (
                 <Grid container spacing={2} sx={{ p: 2 }}>
                     {[0, 1].map((index) => (
-                        <Grid key={index} size={{ xs: 12, xl: 6 }}>
+                        <Grid key={index} size={{ xs: 12, md: 6 }}>
                             <Skeleton variant="text" width={220} height={32} />
                             <Skeleton variant="rounded" height={360} />
                         </Grid>
