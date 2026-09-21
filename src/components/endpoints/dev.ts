@@ -12,4 +12,5 @@ export const devEndpoints = {
     backtest: `${DEV_UI_API}/backtest-precision`,
     leaderboards: `${DEV_UI_API}/backtest-precision/leaderboards`,
   },
+  precisionChecker: `${DEV_UI_API}/precision-checker`,
 } as const;
