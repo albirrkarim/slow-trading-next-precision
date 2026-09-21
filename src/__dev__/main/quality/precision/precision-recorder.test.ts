@@ -82,7 +82,7 @@ async function readPendingCase(): Promise<Record<string, any>> {
   return fs.readJSON(path.join(directory, files[0]));
 }
 
-describe("precision test-case recorder start", () => {
+describe("precision test-case recorder", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     await fs.remove(mocks.root);
@@ -137,6 +137,7 @@ describe("precision test-case recorder start", () => {
     expect(written.startTime).toBe(state.currentTime);
     expect(written.tradeHistory).toEqual([]);
     expect(written).not.toHaveProperty("initialVPointsMap");
+    expect(written).not.toHaveProperty("endState");
     expect(written.initialState).not.toHaveProperty("markPriceMap");
 
     expect(written.initialState).not.toHaveProperty("t");
@@ -170,5 +171,61 @@ describe("precision test-case recorder start", () => {
       apiSecret: "",
     });
     expect(state.balance["acc-1"].available).toBe(42);
+  });
+
+  it("writes an endState snapshot with cloned balance, open positions, and a vPoints delta", async () => {
+    const state = runtimeState();
+    await recorder.start(state);
+
+    const endTime = state.currentTime + 60_000;
+    const end = runtimeState({ currentTime: endTime });
+    end.balance["acc-1"].available = 30;
+    end.openPositions = [
+      createTestPosition({ account: "acc-1", symbol: "SUI" }),
+    ];
+    end.vPointsMap.SUI = end.vPointsMap.SUI.slice(5);
+    (end.vPointsMap.SUI[9] as unknown as Record<string, unknown>).usedByAcc1 =
+      true;
+    (end.vPointsMap.SUI as unknown[]).push(vPoint("p16", 16));
+
+    const result = await recorder.end(end);
+
+    const files = await fs.readdir(directory);
+    expect(files).toEqual([result.fileName]);
+    expect(files[0]).not.toContain("undefined");
+    const written = await fs.readJSON(
+      path.join(directory, result.fileName),
+    );
+
+    expect(written.endTime).toBe(endTime);
+    expect(written.endState.balance).toEqual(end.balance);
+    expect(written.endState.balance).not.toBe(end.balance);
+    expect(written.endState.openPositions).toEqual(end.openPositions);
+    expect(written.endState.openPositions).not.toBe(end.openPositions);
+    expect(
+      written.endState.vPointsMap.SUI.map(
+        (point: { id: string }) => point.id,
+      ),
+    ).toEqual(["p15", "p16"]);
+    expect(written.endState.vPointsMap.SUI[0].usedByAcc1).toBe(true);
+    expect(written.endState.vPointsMap).not.toHaveProperty("BTC");
+  });
+
+  it("lists only completed files carrying an endState", async () => {
+    await recorder.start(runtimeState());
+    const result = await recorder.end(
+      runtimeState({ currentTime: Date.UTC(2024, 0, 2, 13, 0) }),
+    );
+    await fs.writeJSON(
+      path.join(
+        directory,
+        "live-01-01-2024-00-00-02-01-2024-00-00.json",
+      ),
+      { startTime: 1, endTime: 2, tradeHistory: [] },
+    );
+
+    const list = await recorder.files.list();
+
+    expect(list.map((file) => file.fileName)).toEqual([result.fileName]);
   });
 });

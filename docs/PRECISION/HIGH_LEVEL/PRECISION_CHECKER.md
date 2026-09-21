@@ -24,18 +24,26 @@ so the tescase will be like
 
 ```ts
 import type {
-  BacktestPrecisionInitialState,
   BacktestTestCase,
+  PrecisionRuntimeSnapshot,
 } from "src/lib/dev/backtestPrecision/api/precision-api-types.ts";
 
 interface PrecisionTestCase extends BacktestTestCase {
+  /**
+   * Runtime state captured when the recording ends; absent in the pending
+   * file. Unlike `initialState`, `vPointsMap` here is a delta: per symbol,
+   * the vPoints newly detected during the recording window plus pre-existing
+   * points whose content changed while recording. Reconstruct the full map
+   * as `initialState.vPointsMap` overlaid with this delta.
+   */
+  endState?: PrecisionRuntimeSnapshot;
   /**
    * Exact runtime snapshot taken when the recording started: balances per
    * account, still-open positions, and bounded vPoints (latest 10 per symbol
    * plus every point an open position still needs). The enclosing `startTime`
    * is the canonical snapshot and replay time.
    */
-  initialState: BacktestPrecisionInitialState;
+  initialState: PrecisionRuntimeSnapshot;
   tradeHistory: Position[];
 }
 ```

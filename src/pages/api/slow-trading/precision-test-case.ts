@@ -84,7 +84,9 @@ export default async function handler(
     }
 
     if (req.body?.action === "end") {
-      const result = await production.precisionTestCase.end(state);
+      const result = await production.precisionTestCase.end(
+        runtime.captureState(),
+      );
       res.status(200).json({ fileName: result.fileName, path: result.path });
       return;
     }

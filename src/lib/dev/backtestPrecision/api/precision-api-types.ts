@@ -2,9 +2,12 @@ import type { RuntimeEngineState } from "@/lib/precision/types";
 import type { SlowTradingSettingsConfig } from "@/lib/slowTrading";
 
 /**
- * Exact production runtime snapshot used to replay a precision test case.
+ * Exact production runtime snapshot used to replay or compare a precision
+ * test case. Captures the engine state at one point in time: at recording
+ * start it is the replay input, at recording end it is the comparison
+ * target.
  */
-export interface BacktestPrecisionInitialState {
+export interface PrecisionRuntimeSnapshot {
   balance: RuntimeEngineState["balance"];
   openPositions: RuntimeEngineState["openPositions"];
   vPointsMap: RuntimeEngineState["vPointsMap"];
@@ -31,5 +34,5 @@ export interface BacktestPrecisionParams extends BacktestTestCase {
    * Captured production starting state for precision-checker replays. Normal
    * backtests leave it undefined.
    */
-  initialState?: BacktestPrecisionInitialState;
+  initialState?: PrecisionRuntimeSnapshot;
 }

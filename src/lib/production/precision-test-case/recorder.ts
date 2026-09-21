@@ -92,6 +92,34 @@ function snapshotVPoints(
   );
 }
 
+/**
+ * Computes the vPoint delta between the initial snapshot and the end state:
+ * points whose id is absent from the initial map, plus points present under
+ * the same id whose serialized content changed (e.g. usage markers gained
+ * during the window). Symbols with no delta are omitted. Order preserved.
+ */
+function diffVPoints(
+  initial: RuntimeEngineState["vPointsMap"],
+  endMap: RuntimeEngineState["vPointsMap"],
+): RuntimeEngineState["vPointsMap"] {
+  return Object.fromEntries(
+    Object.entries(endMap)
+      .map(([symbol, points]) => {
+        const beforeById = new Map(
+          (initial[symbol] ?? []).map((point) => [point.id, point]),
+        );
+        const delta = points.filter((point) => {
+          const before = beforeById.get(point.id);
+          return (
+            !before || JSON.stringify(before) !== JSON.stringify(point)
+          );
+        });
+        return [symbol, clone(delta)] as const;
+      })
+      .filter(([, delta]) => delta.length > 0),
+  );
+}
+
 function pad(value: number): string {
   return String(value).padStart(2, "0");
 }
@@ -153,14 +181,20 @@ async function listFiles(): Promise<PrecisionTestCaseFileSummary[]> {
             return null;
           }
           const value = (await fs.readJSON(filePath)) as Partial<
-            Pick<PrecisionTestCase, "startTime" | "endTime" | "tradeHistory">
+            Pick<
+              PrecisionTestCase,
+              "endState" | "endTime" | "startTime" | "tradeHistory"
+            >
           > | null;
           if (
             !value ||
             typeof value !== "object" ||
             !Number.isFinite(value.startTime) ||
             !Number.isFinite(value.endTime) ||
-            !Array.isArray(value.tradeHistory)
+            !Array.isArray(value.tradeHistory) ||
+            !value.endState ||
+            typeof value.endState !== "object" ||
+            Array.isArray(value.endState)
           ) {
             return null;
           }
@@ -357,6 +391,14 @@ async function end(state: RuntimeEngineState): Promise<PrecisionTestCaseResult> 
   });
   const testCase: PrecisionTestCase = {
     ...initialTestCase,
+    endState: {
+      balance: clone(state.balance),
+      openPositions: clone(state.openPositions),
+      vPointsMap: diffVPoints(
+        initialTestCase.initialState.vPointsMap,
+        state.vPointsMap,
+      ),
+    },
     endTime,
     tradeHistory: clone(tradeHistory),
   };

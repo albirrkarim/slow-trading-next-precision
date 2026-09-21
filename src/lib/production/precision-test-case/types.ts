@@ -1,13 +1,23 @@
-import type { Position } from "@/lib/trading/models";
 import type {
-  BacktestPrecisionInitialState,
   BacktestTestCase,
+  PrecisionRuntimeSnapshot,
 } from "@/lib/dev/backtestPrecision/api/precision-api-types";
+import type { Position } from "@/lib/trading/models";
 
 /** A production recording that can later be supplied to the precision checker. */
 export interface PrecisionTestCase extends BacktestTestCase {
+  /**
+   * Runtime state captured when the recording ends; absent in the pending
+   * file. Unlike `initialState`, `vPointsMap` here is a delta: per symbol,
+   * the vPoints newly detected during the recording window plus pre-existing
+   * points whose content changed while recording (e.g. `usedBy*` markers
+   * gained through entry/averaging). Reconstruct the full map as
+   * `initialState.vPointsMap` overlaid with this delta; symbols with no
+   * delta are omitted.
+   */
+  endState?: PrecisionRuntimeSnapshot;
   /** Exact runtime snapshot taken when the recording started. */
-  initialState: BacktestPrecisionInitialState;
+  initialState: PrecisionRuntimeSnapshot;
   tradeHistory: Position[];
 }
 
