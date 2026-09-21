@@ -19,7 +19,9 @@ interface ExchangeFunction {
   /**
    * Not needed in backtest
    */
-  getBalance?: () => number;
+  getBalance?: (
+    accountSlug?: string,
+  ) => number | Promise<number>;
 }
 
 export interface RuntimeClock {
