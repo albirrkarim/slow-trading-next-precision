@@ -23,7 +23,7 @@ describe("SLOW multi-account specs", () => {
   it("creates immutable unique slugs and never reuses a retired slug", async () => {
     const slowTrading = (await import("@/lib/slowTrading")).default;
     const defaults = slowTrading.storage.data.createDefault();
-    const template = defaults.runtime.exchangeAccounts[0];
+    const template = defaults.accounts[0];
     const first = {
       ...template,
       slug: "main-account",
@@ -57,7 +57,7 @@ describe("SLOW multi-account specs", () => {
   it("defaults and persists per-account entry guards", async () => {
     const slowTrading = (await import("@/lib/slowTrading")).default;
     const defaults = slowTrading.storage.data.createDefault();
-    const template = defaults.runtime.exchangeAccounts[0];
+    const template = defaults.accounts[0];
 
     expect(template.trading.lateEntryVPointPriceDriftEnabled).toBe(true);
     expect(template.trading.entrySpareBufferEnabled).toBe(true);
@@ -87,7 +87,7 @@ describe("SLOW multi-account specs", () => {
   it("keeps live and sandbox memory isolated by account slug", async () => {
     const slowTrading = (await import("@/lib/slowTrading")).default;
     const defaults = slowTrading.storage.data.createDefault();
-    const template = defaults.runtime.exchangeAccounts[0];
+    const template = defaults.accounts[0];
     await slowTrading.storage.data.save(defaults);
     await slowTrading.storage.account.saveAccounts(
       [
@@ -143,7 +143,7 @@ describe("SLOW multi-account specs", () => {
   it("deduplicates and hydrates shared history by account owner", async () => {
     const slowTrading = (await import("@/lib/slowTrading")).default;
     const defaults = slowTrading.storage.data.createDefault();
-    const template = defaults.runtime.exchangeAccounts[0];
+    const template = defaults.accounts[0];
     await slowTrading.storage.data.save(defaults);
     await slowTrading.storage.account.saveAccounts(
       [
@@ -191,7 +191,7 @@ describe("SLOW multi-account specs", () => {
     const slowTrading = (await import("@/lib/slowTrading")).default;
     const defaults = slowTrading.storage.data.createDefault();
     defaults.runtime.sandboxEnabled = true;
-    const template = defaults.runtime.exchangeAccounts[0];
+    const template = defaults.accounts[0];
     await slowTrading.storage.data.save(defaults);
     await slowTrading.storage.account.saveAccounts(
       [
@@ -242,7 +242,7 @@ describe("SLOW multi-account specs", () => {
     const slowTrading = (await import("@/lib/slowTrading")).default;
     const defaults = slowTrading.storage.data.createDefault();
     defaults.runtime.sandboxEnabled = true;
-    const template = defaults.runtime.exchangeAccounts[0];
+    const template = defaults.accounts[0];
     await slowTrading.storage.data.save(defaults);
     await slowTrading.storage.account.saveAccounts(
       [
@@ -322,7 +322,7 @@ describe("SLOW multi-account specs", () => {
   it("aggregates every enabled account in the MCP balance and excludes disabled accounts", async () => {
     const slowTrading = (await import("@/lib/slowTrading")).default;
     const defaults = slowTrading.storage.data.createDefault();
-    const template = defaults.runtime.exchangeAccounts[0];
+    const template = defaults.accounts[0];
     await slowTrading.storage.data.save(defaults);
     await slowTrading.storage.account.saveAccounts(
       [
@@ -402,7 +402,7 @@ describe("SLOW multi-account specs", () => {
   it("aggregates MCP history and finance data across enabled accounts", async () => {
     const slowTrading = (await import("@/lib/slowTrading")).default;
     const defaults = slowTrading.storage.data.createDefault();
-    const template = defaults.runtime.exchangeAccounts[0];
+    const template = defaults.accounts[0];
     await slowTrading.storage.data.save(defaults);
     await slowTrading.storage.account.saveAccounts(
       [

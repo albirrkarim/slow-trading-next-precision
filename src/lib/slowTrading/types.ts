@@ -543,10 +543,6 @@ export interface SlowTradingAccount extends ExchangeAccount {
 
 /** Runtime controls shared by live and sandbox modes. */
 export interface SlowTradingRuntimeConfig {
-  /** Account selected for settings editing and account-scoped API actions. */
-  exchangeAccountSlug: ExchangeAccountSlug;
-  /** Saved account profiles available to SLOW runtime and backtests. */
-  exchangeAccounts: SlowTradingAccount[];
   /** Enables the background SLOW runner loop. */
   runnerEnabled: boolean;
   /** Enables automatic entry execution. */
@@ -634,6 +630,8 @@ export interface SlowTradingModeState {
 export interface SlowTradingStorageData {
   /** Account whose effective config and mode state are projected below. */
   account: SlowTradingAccount;
+  /** Every saved account profile; `account` is the one projected into `config`/`modes`. */
+  accounts: SlowTradingAccount[];
   /** Shared Management and Black-Swan configuration before account overlay. */
   sharedConfig: DynamicTradeConfig;
   /** Strategy configuration shared by live and sandbox modes. */
@@ -656,10 +654,8 @@ export type SlowTradingDashboardRuntimeConfig = Omit<
 };
 
 /** Runtime settings persisted independently from account-owned sandbox data. */
-export type SlowTradingSettingsRuntimeConfig = Omit<
-  SlowTradingDashboardRuntimeConfig,
-  "exchangeAccounts"
->;
+export type SlowTradingSettingsRuntimeConfig =
+  SlowTradingDashboardRuntimeConfig;
 
 /**
  * Canonical grouped settings boundary shared by persistence, dashboard editing,
@@ -702,6 +698,8 @@ export interface SlowTradingDashboardState {
   };
   /** Null for the default combined dashboard, otherwise the filtered account. */
   accountFilter: ExchangeAccountSlug | null;
+  /** Every saved account profile, exposed for client-side account selection. */
+  accounts: SlowTradingAccount[];
   /** Per-account balances retained even when the default view is combined. */
   accountSummaries: SlowTradingDashboardAccountSummary[];
   /** Currently selected SLOW mode. */
@@ -801,8 +799,8 @@ export interface SlowTradingStorageUpdateInput {
   captureEntryStageIntervalMinutes?: number;
   /** Runtime update for dashboard notification config. */
   notification?: DashboardNotificationConfig;
-  /** Runtime update for the account selected in settings and dashboard actions. */
-  exchangeAccountSlug?: ExchangeAccountSlug;
+  /** Account whose mode state receives account-scoped updates such as safeHavenUSDT. */
+  account?: ExchangeAccountSlug;
   /** Legacy shortcut update for exchange type. */
   exchangeType?: DynamicTradeConfig["exchangeType"];
   /** Runtime update for global sandbox execution mode. */

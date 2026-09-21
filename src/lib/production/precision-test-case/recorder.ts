@@ -45,13 +45,7 @@ function cloneConfigWithoutCredentials(
     credentials: { apiKey: "", apiSecret: "" },
   }));
 
-  // The production factory projects the full runtime object through a narrow
-  // type, so these persisted-only fields may still be present at runtime.
-  const runtime = safeConfig.runtime as typeof safeConfig.runtime & {
-    exchangeAccounts?: unknown;
-  };
-  delete runtime.exchangeAccounts;
-  runtime.mcp = { tokens: [] };
+  safeConfig.runtime.mcp = { tokens: [] };
 
   return safeConfig;
 }

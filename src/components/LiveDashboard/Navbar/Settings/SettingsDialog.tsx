@@ -83,7 +83,9 @@ export default function SettingsDialog(props: {
   safeHavenUSDT?: number;
   saveConfig?: (handleClose?: () => void) => Promise<void>;
   savingConfig?: boolean;
+  selectedAccountSlug?: string;
   setSafeHavenUSDT?: (value: number) => void;
+  setSelectedAccountSlug?: (slug: string) => void;
   syncOnlineStorageToLocal?: (onlineBaseUrl: string) => Promise<void>;
   syncingOnlineStorage?: boolean;
   tryWithdrawNow?: (scheduleId: string) => Promise<void>;
@@ -104,7 +106,9 @@ export default function SettingsDialog(props: {
     safeHavenUSDT = 0,
     saveConfig,
     savingConfig,
+    selectedAccountSlug,
     setSafeHavenUSDT = () => undefined,
+    setSelectedAccountSlug,
     syncOnlineStorageToLocal,
     syncingOnlineStorage,
     tryWithdrawNow,
@@ -189,13 +193,16 @@ export default function SettingsDialog(props: {
               <SettingsDialogTradingTab
                 configDraft={configDraft}
                 dashboardState={dashboardState}
+                selectedAccountSlug={selectedAccountSlug}
                 setConfigDraft={setConfigDraft}
+                setSelectedAccountSlug={setSelectedAccountSlug}
               />
             ) : null}
 
             {activeTab === "runtime" ? (
               <SettingsDialogRuntimeTab
                 configDraft={configDraft}
+                selectedAccountSlug={selectedAccountSlug}
                 setConfigDraft={setConfigDraft}
 
                 onReinitialize={onReinitialize}
@@ -210,7 +217,9 @@ export default function SettingsDialog(props: {
             {activeTab === "management" ? (
               <SettingsDialogManagementTab
                 configDraft={configDraft}
+                selectedAccountSlug={selectedAccountSlug}
                 setConfigDraft={setConfigDraft}
+                setSelectedAccountSlug={setSelectedAccountSlug}
               />
             ) : null}
 
@@ -218,6 +227,7 @@ export default function SettingsDialog(props: {
               <SettingsDialogBlackSwanTab
                 configDraft={configDraft}
                 dashboardState={dashboardState}
+                selectedAccountSlug={selectedAccountSlug}
                 setConfigDraft={setConfigDraft}
               />
             ) : null}

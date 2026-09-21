@@ -171,7 +171,7 @@ async function execute(params: {
     const loadedSlugs = new Set(
       reportingScopes.map((scope) => scope.storage.account.slug),
     );
-    for (const account of catalog.runtime.exchangeAccounts) {
+    for (const account of catalog.accounts) {
       if (!account.enabled || loadedSlugs.has(account.slug)) continue;
       try {
         reportingScopes.push({

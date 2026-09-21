@@ -12,7 +12,7 @@ describe("SLOW MCP monitoring snapshot", () => {
   // PROD:MCP_MONITORING_EFFECTIVE_CONFIG
   it("normalizes every account and omits credentials from config, automation, and logs", async () => {
     const storage = slowTradingStorage.data.createDefault();
-    const account = storage.runtime.exchangeAccounts[0]!;
+    const account = storage.accounts[0]!;
     account.credentials.apiKey = "secret-api-key";
     account.credentials.apiSecret = "secret-api-secret";
     storage.sharedConfig.name = "Seasonal Trade";

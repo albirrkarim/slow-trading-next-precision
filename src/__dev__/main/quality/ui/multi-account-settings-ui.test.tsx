@@ -141,9 +141,8 @@ function createState(): DashboardState {
         accounts[0],
       ),
     },
+    accounts,
     runtime: {
-      exchangeAccountSlug: "alpha",
-      exchangeAccounts: accounts,
       runnerEnabled: false,
       autoEntryEnabled: false,
       autoEntryDailyPnlLimitUSDT: -50,
@@ -352,9 +351,9 @@ describe("multi-account settings UI", () => {
   it("keeps the late-entry drift guard isolated per account", async () => {
     const user = userEvent.setup();
     const state = createState();
-    state.runtime.exchangeAccounts[0].trading.lateEntryVPointPriceDriftEnabled =
+    state.accounts[0].trading.lateEntryVPointPriceDriftEnabled =
       true;
-    state.runtime.exchangeAccounts[1].trading.lateEntryVPointPriceDriftEnabled =
+    state.accounts[1].trading.lateEntryVPointPriceDriftEnabled =
       false;
 
     function Harness() {

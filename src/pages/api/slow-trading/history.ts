@@ -10,7 +10,7 @@ function parseMode(value: unknown): SlowTradingMode | null {
 async function loadCombinedDashboardState() {
   const catalog = await slowTrading.storage.data.load({ modeScope: "active" });
   const storages = [];
-  for (const account of catalog.runtime.exchangeAccounts) {
+  for (const account of catalog.accounts) {
     storages.push(
       await slowTrading.storage.data.load({
         account: account.slug,

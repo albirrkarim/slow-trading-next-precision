@@ -41,7 +41,7 @@ export default async function handler(
     const catalog = await slowTrading.storage.data.load({
       modeScope: "active",
     });
-    const enabledAccounts = catalog.runtime.exchangeAccounts.filter(
+    const enabledAccounts = catalog.accounts.filter(
       (account) => account.enabled,
     );
     const logs = await slowTrading.storage.logs.load();

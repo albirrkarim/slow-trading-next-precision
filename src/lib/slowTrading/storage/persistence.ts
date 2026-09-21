@@ -17,18 +17,13 @@ import {
 import slowTradingAccountConfig from "../account-config";
 import { clone, uniqueSymbols } from "./common";
 import {
-  DEFAULT_EXCHANGE_ACCOUNT_SLUG,
   DEFAULT_SAFE_HAVEN_CONFIG,
   DEFAULT_WITHDRAWAL_CONFIG,
 } from "./constants";
 import slowTradingJsonFile from "./json-file";
 import {
   hydrateSlowTradingHistoryFromFiles,
-  migrateInlineClosedPositionsToHistoryFiles,
-  migrateLegacyHistoryRoot,
   persistClosedPositionsToHistoryFiles,
-  stripClosedPositionsFromModeMemory,
-  stripClosedPositionsFromMemory,
 } from "./history-files";
 import type {
   SlowTradingConfigFileData,
@@ -40,7 +35,9 @@ import {
   createDefaultModeStates,
   createModeState,
   ensureTradeSettings,
+  fromPersistedModeState,
   getActiveSlowTradingMode,
+  toPersistedModeState,
 } from "./mode";
 import { normalizeWithdrawalConfig } from "./withdrawal-config";
 import { normalizeSafeHavenConfig } from "./safe-haven-config";
@@ -55,6 +52,54 @@ import slowTradingStages from "../stages";
 import slowTradingDailyPnlLimit from "../daily-pnl-limit";
 
 const DEFAULT_AUTO_REMOVE_SYMBOL_MIN_VPOINT_PCT = 15;
+
+const RUNTIME_KEYS = [
+  "autoEntryDailyPnlLimitUSDT",
+  "autoEntryEnabled",
+  "autoExitEnabled",
+  "autoRemoveSymbolAbsLevel",
+  "autoRemoveSymbolMinMarketCapUSD",
+  "autoRemoveSymbolMinPrice",
+  "autoRemoveSymbolMinVPointPct",
+  "blackSwanStageIntervalMinutes",
+  "captureEntryStageIntervalMinutes",
+  "entrySignalBypass",
+  "managementStageIntervalMinutes",
+  "mcp",
+  "notification",
+  "pnlHistoryBucketMinutes",
+  "runnerEnabled",
+  "safeHaven",
+  "sandboxEnabled",
+  "speedupStageIntervalMinutes",
+  "speedupStageNegativePnlThresholdPct",
+  "speedupStagePositivePnlThresholdPct",
+  "speedupStageTakeProfitOffsetPct",
+  "standardMonitoringStageIntervalMinutes",
+  "withdrawal",
+] as const satisfies ReadonlyArray<
+  keyof SlowTradingStorageData["runtime"]
+>;
+
+/**
+ * Copies only known runtime keys from persisted JSON; unknown persisted keys
+ * are intentionally dropped so they disappear on the next save.
+ */
+function pickPersistedRuntime(
+  raw: Partial<SlowTradingConfigFileData["runtime"]> | undefined,
+  baseRuntime: SlowTradingStorageData["runtime"],
+): SlowTradingStorageData["runtime"] {
+  const runtime: Record<keyof SlowTradingStorageData["runtime"], unknown> = {
+    ...baseRuntime,
+  };
+  for (const key of RUNTIME_KEYS) {
+    const value = raw?.[key];
+    if (value !== undefined) {
+      runtime[key] = value;
+    }
+  }
+  return runtime as SlowTradingStorageData["runtime"];
+}
 
 /** Enables the new daily-PnL notification once for configs predating its threshold field. */
 function normalizeRuntimeNotification(
@@ -111,13 +156,7 @@ function createDefaultSlowTradingConfig(): SlowTradingStorageData["config"] {
  * Create the default SLOW runtime config without allocating mode memory.
  */
 function createDefaultSlowTradingRuntime(): SlowTradingStorageData["runtime"] {
-  const exchangeAccounts = createDefaultSlowTradingAccounts(
-    createDefaultSlowTradingConfig(),
-  );
-  const account = exchangeAccounts[0];
   return {
-    exchangeAccountSlug: account?.slug ?? DEFAULT_EXCHANGE_ACCOUNT_SLUG,
-    exchangeAccounts,
     runnerEnabled: false,
     autoEntryEnabled: false,
     autoEntryDailyPnlLimitUSDT:
@@ -152,26 +191,6 @@ function createDefaultSlowTradingRuntime(): SlowTradingStorageData["runtime"] {
     withdrawal: clone(DEFAULT_WITHDRAWAL_CONFIG),
     safeHaven: clone(DEFAULT_SAFE_HAVEN_CONFIG),
     mcp: clone(DEFAULT_MCP_CONFIG),
-  };
-}
-
-/**
- * Ensures the selected exchange account slug exists in the saved account list.
- */
-function ensureExchangeAccountSelection(
-  runtime: SlowTradingStorageData["runtime"],
-): SlowTradingStorageData["runtime"] {
-  const accountExists = runtime.exchangeAccounts.some(
-    (account) => account.slug === runtime.exchangeAccountSlug,
-  );
-  if (accountExists) {
-    return runtime;
-  }
-
-  return {
-    ...runtime,
-    exchangeAccountSlug:
-      runtime.exchangeAccounts[0]?.slug ?? DEFAULT_EXCHANGE_ACCOUNT_SLUG,
   };
 }
 
@@ -285,7 +304,8 @@ function normalizeStageRuntimeConfig(
 export function createDefaultSlowTradingStorage(): SlowTradingStorageData {
   const sharedConfig = createDefaultSlowTradingConfig();
   const runtime = createDefaultSlowTradingRuntime();
-  const account = runtime.exchangeAccounts[0];
+  const accounts = createDefaultSlowTradingAccounts(sharedConfig);
+  const account = accounts[0];
   if (!account) {
     throw new Error("SLOW requires at least one exchange account");
   }
@@ -296,6 +316,7 @@ export function createDefaultSlowTradingStorage(): SlowTradingStorageData {
 
   return {
     account,
+    accounts,
     sharedConfig,
     config,
     runtime,
@@ -305,6 +326,29 @@ export function createDefaultSlowTradingStorage(): SlowTradingStorageData {
     ),
     updatedAt: Date.now(),
   };
+}
+
+/**
+ * Rejects pre-flat memory.json shapes instead of silently losing their
+ * positions. Only existing account/mode entries are checked.
+ */
+function assertPersistedMemoryShape(
+  memoryRaw: Partial<SlowTradingMemoryFileData>,
+): void {
+  for (const [slug, modes] of Object.entries(memoryRaw.accounts ?? {})) {
+    for (const mode of ["live", "sandbox"] as const) {
+      const state = modes?.[mode];
+      if (state === undefined || state === null) continue;
+      if (
+        !Array.isArray(state.positions) ||
+        Object.prototype.hasOwnProperty.call(state, "tradeSettings")
+      ) {
+        throw new Error(
+          `Unsupported memory.json mode shape for ${slug}/${mode}; expected flat positions.`,
+        );
+      }
+    }
+  }
 }
 
 /**
@@ -328,11 +372,11 @@ function loadModeStateForScope(params: {
     return createModeState(initialBalanceUSDT);
   }
 
-  return ensureTradeSettings(
+  const base = toPersistedModeState(createModeState(initialBalanceUSDT));
+  return fromPersistedModeState(
     {
-      ...createModeState(initialBalanceUSDT),
+      ...base,
       ...(params.memoryRaw.accounts?.[params.accountSlug]?.[params.mode] ??
-        params.memoryRaw.modes?.[params.mode] ??
         {}),
     },
     params.symbols,
@@ -349,7 +393,7 @@ function splitSlowTradingStorage(
   storage: SlowTradingStorageData,
   memoryRaw: Partial<SlowTradingMemoryFileData> = {},
 ): {
-  accounts: SlowTradingStorageData["runtime"]["exchangeAccounts"];
+  accounts: SlowTradingStorageData["accounts"];
   configFile: SlowTradingConfigFileData;
   memoryFile: SlowTradingMemoryFileData;
 } {
@@ -361,11 +405,8 @@ function splitSlowTradingStorage(
     storage.account,
     storage.config,
   );
-  const accounts = storage.runtime.exchangeAccounts.map((candidate) =>
+  const accounts = storage.accounts.map((candidate) =>
     candidate.slug === account.slug ? account : candidate,
-  );
-  const { exchangeAccounts: _exchangeAccounts, ...runtime } = clone(
-    storage.runtime,
   );
 
   return {
@@ -374,13 +415,16 @@ function splitSlowTradingStorage(
       // PROD:MULTI_ACCOUNT_CONFIG_OWNERSHIP
       management:
         slowTradingAccountConfig.shared.toPersistedConfig(sharedConfig),
-      runtime,
+      runtime: clone(storage.runtime),
       updatedAt: storage.updatedAt,
     },
     memoryFile: {
       accounts: {
         ...(memoryRaw.accounts ?? {}),
-        [account.slug]: stripClosedPositionsFromMemory(storage.modes),
+        [account.slug]: {
+          live: toPersistedModeState(storage.modes.live),
+          sandbox: toPersistedModeState(storage.modes.sandbox),
+        },
       },
       updatedAt: storage.updatedAt,
     },
@@ -405,6 +449,7 @@ async function saveSplitSlowTradingStorage(
         FILES.slow.memory,
       )) as Partial<SlowTradingMemoryFileData>)
     : {};
+  assertPersistedMemoryShape(memoryRaw);
   const { accounts, configFile, memoryFile } = splitSlowTradingStorage(
     normalized,
     memoryRaw,
@@ -420,6 +465,7 @@ async function saveSplitSlowTradingStorage(
  */
 async function loadSlowTradingConfigFile(accountSlug?: string): Promise<{
   account: SlowTradingStorageData["account"];
+  accounts: SlowTradingStorageData["accounts"];
   config: SlowTradingStorageData["config"];
   sharedConfig: SlowTradingStorageData["sharedConfig"];
   runtime: SlowTradingStorageData["runtime"];
@@ -459,32 +505,23 @@ async function loadSlowTradingConfigFile(accountSlug?: string): Promise<{
   const exchangeAccounts = await loadSlowTradingExchangeAccounts(
     sharedConfig,
   );
-  const runtime = ensureExchangeAccountSelection({
-    ...baseRuntime,
-    ...(configRaw.runtime ?? {}),
-    exchangeAccounts,
-    exchangeAccountSlug: normalizeExchangeAccountSlug(
-      accountSlug ??
-        configRaw.runtime?.exchangeAccountSlug ??
-        baseRuntime.exchangeAccountSlug,
-    ),
-    notification: normalizeRuntimeNotification(
-      configRaw.runtime?.notification ?? baseRuntime.notification,
-      configRaw.runtime?.autoEntryDailyPnlLimitUSDT === undefined,
-    ),
-    withdrawal: normalizeWithdrawalConfig(configRaw.runtime?.withdrawal),
-    safeHaven: normalizeSafeHavenConfig(
-      configRaw.runtime?.safeHaven,
-      sharedConfig,
-    ),
-    mcp: normalizeMcpConfig(configRaw.runtime?.mcp),
-  });
+  const runtime = pickPersistedRuntime(configRaw.runtime, baseRuntime);
+  runtime.notification = normalizeRuntimeNotification(
+    runtime.notification,
+    configRaw.runtime?.autoEntryDailyPnlLimitUSDT === undefined,
+  );
+  runtime.withdrawal = normalizeWithdrawalConfig(runtime.withdrawal);
+  runtime.safeHaven = normalizeSafeHavenConfig(
+    runtime.safeHaven,
+    sharedConfig,
+  );
+  runtime.mcp = normalizeMcpConfig(runtime.mcp);
+  const requestedSlug = normalizeExchangeAccountSlug(accountSlug);
   const account =
     exchangeAccounts.find(
-      (candidate) => candidate.slug === runtime.exchangeAccountSlug,
+      (candidate) => candidate.slug === requestedSlug,
     ) ?? exchangeAccounts[0];
   if (!account) throw new Error("SLOW requires at least one exchange account");
-  runtime.exchangeAccountSlug = account.slug;
   runtime.sandboxEnabled = runtime.sandboxEnabled === true;
   const config = slowTradingAccountConfig.trading.toEffectiveConfig(
     sharedConfig,
@@ -517,104 +554,12 @@ async function loadSlowTradingConfigFile(accountSlug?: string): Promise<{
 
   return {
     account,
+    accounts: exchangeAccounts,
     config,
     sharedConfig,
     runtime,
     updatedAt: configRaw.updatedAt ?? Date.now(),
   };
-}
-
-/**
- * Migrate the legacy single-file slow-trading state into the split-file format.
- *
- * @returns Migrated storage state when legacy data exists, otherwise null.
- */
-async function migrateLegacySlowTradingState(): Promise<SlowTradingStorageData | null> {
-  if (!(await fs.pathExists(FILES.slow.legacyState))) {
-    return null;
-  }
-
-  const raw = (await fs.readJSON(
-    FILES.slow.legacyState,
-  )) as Partial<SlowTradingStorageData>;
-  const base = createDefaultSlowTradingStorage();
-  const config = {
-    ...base.config,
-    ...(raw.config ?? {}),
-    blackSwan: blackSwan.config.normalize(
-      raw.config?.blackSwan ?? base.config.blackSwan,
-    ),
-    maxOpenPositions: normalizeMaxOpenPositions(
-      raw.config?.maxOpenPositions ?? base.config.maxOpenPositions,
-    ),
-    symbols: uniqueSymbols(raw.config?.symbols ?? base.config.symbols),
-  };
-  const sharedConfig = slowTradingAccountConfig.shared.fromEffectiveConfig(
-    base.sharedConfig,
-    config,
-  );
-  const loadedAccounts = await loadSlowTradingExchangeAccounts(config);
-  const account = slowTradingAccountConfig.trading.withEffectiveConfig(
-    loadedAccounts[0] ?? base.account,
-    config,
-  );
-  const runtime = ensureExchangeAccountSelection({
-    ...base.runtime,
-    ...(raw.runtime ?? {}),
-    exchangeAccounts: [
-      account,
-      ...loadedAccounts.filter((candidate) => candidate.slug !== account.slug),
-    ],
-    exchangeAccountSlug: account.slug,
-    sandboxEnabled: raw.runtime?.sandboxEnabled === true,
-    notification: normalizeRuntimeNotification(
-      raw.runtime?.notification ?? base.runtime.notification,
-      raw.runtime?.autoEntryDailyPnlLimitUSDT === undefined,
-    ),
-    withdrawal: normalizeWithdrawalConfig(raw.runtime?.withdrawal),
-    safeHaven: normalizeSafeHavenConfig(raw.runtime?.safeHaven, config),
-    mcp: normalizeMcpConfig(raw.runtime?.mcp),
-  });
-
-  const storage: SlowTradingStorageData = {
-    ...base,
-    account,
-    sharedConfig,
-    config,
-    runtime,
-    modes: {
-      live: ensureTradeSettings(
-        {
-          ...base.modes.live,
-          ...(raw.modes?.live ?? {}),
-        },
-        raw.config?.symbols ?? base.config.symbols,
-      ),
-      sandbox: ensureTradeSettings(
-        {
-          ...base.modes.sandbox,
-          ...(raw.modes?.sandbox ?? {}),
-        },
-        raw.config?.symbols ?? base.config.symbols,
-      ),
-    },
-    updatedAt: raw.updatedAt ?? base.updatedAt,
-  };
-  storage.runtime.pnlHistoryBucketMinutes =
-    slowTradingPnlHistory.bucket.normalizeMinutes(
-      storage.runtime.pnlHistoryBucketMinutes,
-    );
-  storage.runtime.autoEntryDailyPnlLimitUSDT =
-    slowTradingDailyPnlLimit.config.normalizeThresholdUsdt(
-      storage.runtime.autoEntryDailyPnlLimitUSDT,
-    );
-  normalizeStageRuntimeConfig(storage.runtime);
-
-  await saveSplitSlowTradingStorage(storage);
-  await fs.remove(FILES.slow.legacyState);
-  await migrateInlineClosedPositionsToHistoryFiles(storage);
-
-  return storage;
 }
 
 /**
@@ -626,18 +571,10 @@ async function migrateLegacySlowTradingState(): Promise<SlowTradingStorageData |
 export async function loadSlowTradingStorage(
   options: LoadSlowTradingStorageOptions = {},
 ): Promise<SlowTradingStorageData> {
-  await migrateLegacyHistoryRoot();
-
-  // A. Migrate the legacy single-file state when it still exists.
-  const migrated = await migrateLegacySlowTradingState();
-  if (migrated) {
-    return loadSlowTradingStorage(options);
-  }
-
   const hasConfigFile = await fs.pathExists(FILES.slow.config);
   const hasMemoryFile = await fs.pathExists(FILES.slow.memory);
 
-  // B. Create brand-new split files only when both files are still missing.
+  // A. Create brand-new split files only when both files are still missing.
   if (!hasConfigFile && !hasMemoryFile) {
     const initial = createDefaultSlowTradingStorage();
     await saveSlowTradingStorage(initial);
@@ -647,15 +584,17 @@ export async function loadSlowTradingStorage(
     return initial;
   }
 
-  // C. Merge persisted split-file data on top of the latest defaults.
-  // C.1 Support partial migrations by reading whichever file already exists.
+  // B. Merge persisted split-file data on top of the latest defaults.
+  // B.1 Read whichever file already exists when only part of the pair is present.
   const memoryRaw = hasMemoryFile
     ? ((await fs.readJSON(
         FILES.slow.memory,
       )) as Partial<SlowTradingMemoryFileData>)
     : {};
+  assertPersistedMemoryShape(memoryRaw);
   const {
     account,
+    accounts,
     config,
     sharedConfig,
     runtime,
@@ -673,6 +612,7 @@ export async function loadSlowTradingStorage(
 
   const storage: SlowTradingStorageData = {
     account,
+    accounts,
     sharedConfig,
     config,
     runtime,
@@ -699,7 +639,7 @@ export async function loadSlowTradingStorage(
     updatedAt: configUpdatedAt ?? memoryRaw.updatedAt ?? Date.now(),
   };
 
-  // C.2 Seed sandbox balance when this is an old file with no initialized memory yet.
+  // B.2 Seed sandbox balance when this is an old file with no initialized memory yet.
   if (
     effectiveModeScope === "all" &&
     !storage.modes.sandbox.dynamicTradeMemory.startingBalanceUSDT &&
@@ -715,13 +655,10 @@ export async function loadSlowTradingStorage(
       sandboxInitialBalanceUSDT;
   }
 
-  const migratedInlineHistory =
-    await migrateInlineClosedPositionsToHistoryFiles(storage);
-
-  // C.3 Heal partial split storage by re-saving the fully normalized pair.
+  // B.3 Heal partial split storage by re-saving the fully normalized pair.
   if (
     effectiveModeScope === "all" &&
-    (!hasConfigFile || !hasMemoryFile || migratedInlineHistory)
+    (!hasConfigFile || !hasMemoryFile)
   ) {
     await saveSlowTradingStorage(storage);
   }
@@ -753,6 +690,7 @@ export async function deleteSlowTradingAccountState(
   const memory = (await fs.readJSON(
     FILES.slow.memory,
   )) as Partial<SlowTradingMemoryFileData>;
+  assertPersistedMemoryShape(memory);
   if (!memory.accounts?.[accountSlug]) return;
   const accounts = { ...memory.accounts };
   delete accounts[accountSlug];
@@ -777,13 +715,7 @@ export async function saveSlowTradingModeState(
   modeState: SlowTradingStorageData["modes"]["live"],
   options: { account?: string } = {},
 ): Promise<SlowTradingStorageData> {
-  await migrateLegacyHistoryRoot();
-  const migrated = await migrateLegacySlowTradingState();
-  if (migrated) {
-    return saveSlowTradingModeState(mode, modeState, options);
-  }
-
-  const { account, config, sharedConfig, runtime, updatedAt } =
+  const { account, accounts, config, sharedConfig, runtime, updatedAt } =
     await loadSlowTradingConfigFile(options.account);
   const hasMemoryFile = await fs.pathExists(FILES.slow.memory);
   const memoryRaw = hasMemoryFile
@@ -791,14 +723,14 @@ export async function saveSlowTradingModeState(
         FILES.slow.memory,
       )) as Partial<SlowTradingMemoryFileData>)
     : {};
+  assertPersistedMemoryShape(memoryRaw);
   const sandboxInitialBalanceUSDT = account.sandbox.initialBalanceUSDT;
   const targetModeState = ensureTradeSettings(modeState, config.symbols);
   await persistClosedPositionsToHistoryFiles(mode, targetModeState);
 
-  const fallbackModes = memoryRaw.accounts?.[account.slug] ??
-    memoryRaw.modes ?? {
-    live: createModeState(0),
-    sandbox: createModeState(sandboxInitialBalanceUSDT),
+  const fallbackModes = memoryRaw.accounts?.[account.slug] ?? {
+    live: toPersistedModeState(createModeState(0)),
+    sandbox: toPersistedModeState(createModeState(sandboxInitialBalanceUSDT)),
   };
   // PROD:MULTI_ACCOUNT_STATE_ISOLATION
   const nextMemory: SlowTradingMemoryFileData = {
@@ -807,13 +739,13 @@ export async function saveSlowTradingModeState(
       [account.slug]: {
         live:
           mode === "live"
-            ? stripClosedPositionsFromModeMemory(targetModeState)
-            : fallbackModes.live ?? createModeState(0),
+            ? toPersistedModeState(targetModeState)
+            : fallbackModes.live ?? toPersistedModeState(createModeState(0)),
         sandbox:
           mode === "sandbox"
-            ? stripClosedPositionsFromModeMemory(targetModeState)
+            ? toPersistedModeState(targetModeState)
             : fallbackModes.sandbox ??
-              createModeState(sandboxInitialBalanceUSDT),
+              toPersistedModeState(createModeState(sandboxInitialBalanceUSDT)),
       },
     },
     updatedAt: Date.now(),
@@ -823,6 +755,7 @@ export async function saveSlowTradingModeState(
 
   return {
     account,
+    accounts,
     config,
     sharedConfig,
     runtime,
@@ -866,7 +799,7 @@ export async function updateSlowTradingStorage(
   update: SlowTradingStorageUpdateInput,
 ): Promise<SlowTradingStorageData> {
   const requestedAccount = normalizeExchangeAccountSlug(
-    update.exchangeAccountSlug,
+    update.account,
   );
   const storage = await loadSlowTradingStorage({
     account: requestedAccount || undefined,
@@ -1032,16 +965,11 @@ export async function updateSlowTradingStorage(
     );
   }
 
-  if (requestedAccount) {
-    storage.runtime.exchangeAccountSlug = storage.account.slug;
-  }
-  storage.runtime = ensureExchangeAccountSelection(storage.runtime);
-
   storage.account = {
     ...storage.account,
     updatedAt: Date.now(),
   };
-  storage.runtime.exchangeAccounts = storage.runtime.exchangeAccounts.map(
+  storage.accounts = storage.accounts.map(
     (account) =>
       account.slug === storage.account.slug ? storage.account : account,
   );
@@ -1135,7 +1063,7 @@ export async function resetSandboxSlowTrading(params?: {
       sandbox: { initialBalanceUSDT },
       updatedAt: Date.now(),
     };
-    storage.runtime.exchangeAccounts = storage.runtime.exchangeAccounts.map(
+    storage.accounts = storage.accounts.map(
       (candidate) =>
         candidate.slug === storage.account.slug ? storage.account : candidate,
     );

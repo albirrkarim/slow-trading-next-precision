@@ -83,16 +83,11 @@ function getAllModelMemories(runtime: AccountRuntime): TradingModelMemory[] {
 function buildPrecisionRuntimeConfig(
   runtime: SlowTradingStorageData["runtime"],
 ): PrecisionRuntimeState["config"]["runtime"] {
-  const {
-    exchangeAccounts: _exchangeAccounts,
-    mcp: _mcp,
-    ...runtimeConfig
-  } = runtime;
+  const { mcp: _mcp, ...runtimeConfig } = runtime;
 
   // PROD:RUNTIME_CONFIG_ACCOUNT_SOURCE
-  // Precision uses config.accounts as the single account source. The SLOW
-  // dashboard runtime object contains those accounts for its own UI, but they
-  // must not be duplicated inside the shared runtime config.
+  // Precision uses config.accounts as the single account source; runtime MCP
+  // tokens are stripped so secrets never reach the engine config.
   return {
     ...runtimeConfig,
     mcp: { tokens: [] },
@@ -356,7 +351,7 @@ function createProductionFactory(): ProductionRuntimeFactory {
     const vPointsMap: PrecisionRuntimeState["vPointsMap"] = {};
 
     // PROD:RUNTIME_ACCOUNT_STATE_LOAD
-    for (const account of catalog.runtime.exchangeAccounts) {
+    for (const account of catalog.accounts) {
       try {
         const storage = await slowTradingStorage.data.load({
           account: account.slug,
@@ -422,7 +417,7 @@ function createProductionFactory(): ProductionRuntimeFactory {
     const runtimeState = state.create({
       balance,
       config: {
-        accounts: catalog.runtime.exchangeAccounts,
+        accounts: catalog.accounts,
         management: catalog.sharedConfig,
         runtime: buildPrecisionRuntimeConfig(catalog.runtime),
       },

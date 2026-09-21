@@ -131,15 +131,21 @@ function CredentialSettingsField({
 
 interface ExchangeAccountManagerDialogProps {
   configDraft: ConfigDraft;
+  selectedAccountSlug?: string;
   setConfigDraft: ConfigDraftSetter;
+  setSelectedAccountSlug?: (slug: string) => void;
 }
 
 export default function ExchangeAccountManagerDialog({
   configDraft,
+  selectedAccountSlug,
   setConfigDraft,
+  setSelectedAccountSlug,
 }: ExchangeAccountManagerDialogProps) {
+  const selectedSlug =
+    selectedAccountSlug ?? configDraft.accounts[0]?.slug;
   const [editingExchangeAccountSlug, setEditingExchangeAccountSlug] = useState(
-    configDraft.runtime.exchangeAccountSlug,
+    selectedSlug,
   );
   const [revealedCredentials, setRevealedCredentials] = useState({
     accountId: "",
@@ -156,10 +162,8 @@ export default function ExchangeAccountManagerDialog({
   )
     ? editingExchangeAccountSlug
     : (configDraft.accounts.find(
-      (account) => account.slug === configDraft.runtime.exchangeAccountSlug,
-    )?.slug ??
-      configDraft.accounts[0]?.slug ??
-      configDraft.runtime.exchangeAccountSlug);
+      (account) => account.slug === selectedSlug,
+    )?.slug ?? configDraft.accounts[0]?.slug);
   const editingExchangeAccount =
     configDraft.accounts.find(
       (account) => account.slug === effectiveEditingAccountId,
@@ -190,42 +194,33 @@ export default function ExchangeAccountManagerDialog({
     }));
   };
 
-  const persistExchangeAccounts = async (
-    accounts: SlowTradingAccount[],
-    exchangeAccountSlug: string,
-  ) => {
+  const persistExchangeAccounts = async (accounts: SlowTradingAccount[]) => {
     setSaveStatus("saving");
     try {
       const response = await axios.put<{
         accounts: SlowTradingAccount[];
-        exchangeAccountSlug: string;
-      }>(endpoints.slow.prod.exchangeAccounts, {
-        accounts,
-        exchangeAccountSlug,
-      });
+      }>(endpoints.slow.prod.exchangeAccounts, { accounts });
       const savedAccounts = Array.isArray(response.data?.accounts)
         ? response.data.accounts
         : accounts;
-      const savedExchangeAccountSlug =
-        typeof response.data?.exchangeAccountSlug === "string"
-          ? response.data.exchangeAccountSlug
-          : exchangeAccountSlug;
       setConfigDraft((prev) =>
         prev
           ? {
             ...prev,
             accounts: savedAccounts,
-            runtime: {
-              ...prev.runtime,
-              exchangeAccountSlug: savedExchangeAccountSlug,
-            },
           }
           : prev,
       );
+      if (
+        selectedSlug &&
+        !savedAccounts.some((account) => account.slug === selectedSlug)
+      ) {
+        setSelectedAccountSlug?.(savedAccounts[0]?.slug ?? "");
+      }
       setEditingExchangeAccountSlug((current) =>
         savedAccounts.some((account) => account.slug === current)
           ? current
-          : (savedAccounts.at(-1)?.slug ?? savedExchangeAccountSlug),
+          : (savedAccounts.at(-1)?.slug ?? savedAccounts[0]?.slug ?? ""),
       );
       setSaveStatus("saved");
     } catch (error) {
@@ -254,10 +249,7 @@ export default function ExchangeAccountManagerDialog({
     }
 
     if (draftToSave) {
-      void persistExchangeAccounts(
-        draftToSave.accounts,
-        draftToSave.runtime.exchangeAccountSlug,
-      );
+      void persistExchangeAccounts(draftToSave.accounts);
     }
   };
 
@@ -277,7 +269,7 @@ export default function ExchangeAccountManagerDialog({
         }
 
         const nextAccount = updater(account);
-        if (prev.runtime.exchangeAccountSlug === accountId) {
+        if (selectedSlug === accountId) {
           selectedAccount = nextAccount;
         }
         return nextAccount;
@@ -313,7 +305,7 @@ export default function ExchangeAccountManagerDialog({
     const now = Date.now();
     const template =
       configDraft.accounts.find(
-        (candidate) => candidate.slug === configDraft.runtime.exchangeAccountSlug,
+        (candidate) => candidate.slug === selectedSlug,
       ) ?? configDraft.accounts[0];
     if (!template) return;
     const account: SlowTradingAccount = {
@@ -346,23 +338,25 @@ export default function ExchangeAccountManagerDialog({
       return;
     }
 
+    const nextSelectedSlug =
+      selectedSlug === editingExchangeAccount.slug
+        ? configDraft.accounts.find(
+          (account) => account.slug !== editingExchangeAccount.slug,
+        )?.slug
+        : selectedSlug;
+
     applyAccountDraftUpdate(
       (prev) => {
         const exchangeAccounts = prev.accounts.filter(
           (account) => account.slug !== editingExchangeAccount.slug,
         );
-        const exchangeAccountSlug =
-          prev.runtime.exchangeAccountSlug === editingExchangeAccount.slug
-            ? (exchangeAccounts[0]?.slug ?? prev.runtime.exchangeAccountSlug)
-            : prev.runtime.exchangeAccountSlug;
         const selectedAccount = exchangeAccounts.find(
-          (account) => account.slug === exchangeAccountSlug,
+          (account) => account.slug === nextSelectedSlug,
         );
 
         const nextDraft = {
           ...prev,
           accounts: exchangeAccounts,
-          runtime: { ...prev.runtime, exchangeAccountSlug },
           management: {
             ...prev.management,
             exchangeType:
@@ -373,10 +367,13 @@ export default function ExchangeAccountManagerDialog({
       },
       { persist: true },
     );
+    if (nextSelectedSlug && nextSelectedSlug !== selectedSlug) {
+      setSelectedAccountSlug?.(nextSelectedSlug);
+    }
     setEditingExchangeAccountSlug(
       configDraft.accounts.find(
         (account) => account.slug !== editingExchangeAccount.slug,
-      )?.slug ?? configDraft.runtime.exchangeAccountSlug,
+      )?.slug ?? "",
     );
   };
 

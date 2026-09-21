@@ -16,7 +16,6 @@ const configDraft = {
     decisionEngineVersion: "decision.v19",
   },
   runtime: {
-    exchangeAccountSlug: "account-1",
     runnerEnabled: true,
     autoEntryEnabled: true,
     autoEntryDailyPnlLimitUSDT: -50,

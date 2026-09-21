@@ -59,10 +59,14 @@ function formatMarketCapPreview(value: unknown): string {
 
 export default function SettingsDialogManagementTab({
   configDraft,
+  selectedAccountSlug,
   setConfigDraft,
+  setSelectedAccountSlug,
 }: {
   configDraft: ConfigDraft;
+  selectedAccountSlug?: string;
   setConfigDraft: ConfigDraftSetter;
+  setSelectedAccountSlug?: (slug: string) => void;
 }) {
   const updateManagement = (patch: Partial<ConfigDraft["management"]>) => {
     setConfigDraft((prev) =>
@@ -131,7 +135,9 @@ export default function SettingsDialogManagementTab({
                 </Box>
                 <ExchangeAccountManagerDialog
                   configDraft={configDraft}
+                  selectedAccountSlug={selectedAccountSlug}
                   setConfigDraft={setConfigDraft}
+                  setSelectedAccountSlug={setSelectedAccountSlug}
                 />
               </Stack>
 

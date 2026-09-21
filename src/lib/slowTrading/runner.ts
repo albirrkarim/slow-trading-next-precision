@@ -157,7 +157,7 @@ export class SlowTradingRunner {
       // PROD:BLACK_SWAN_SHARED_EVIDENCE
       const evidence = await slowTradingBlackSwan.evidence.capture({ storage });
       // PROD:MULTI_ACCOUNT_SEQUENTIAL_CYCLE
-      for (const account of storage.runtime.exchangeAccounts) {
+      for (const account of storage.accounts) {
         try {
           // PROD:BLACK_SWAN_ACCOUNT_STATE_FAN_OUT
           const result = await slowTradingBlackSwan.account.apply({
@@ -210,7 +210,7 @@ export class SlowTradingRunner {
     }
 
     if (stage === "capture-entry") {
-      for (const account of storage.runtime.exchangeAccounts) {
+      for (const account of storage.accounts) {
         try {
           await slowTradingQueue.scheduler.synchronize(
             Date.now(),

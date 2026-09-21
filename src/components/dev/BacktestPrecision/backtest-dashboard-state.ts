@@ -14,10 +14,11 @@ function normalizeStartingBalance(value: number): number {
 /** Builds an empty portfolio snapshot for previews in the backtest settings dialog. */
 export function buildBacktestDashboardState(
   configDraft: ConfigDraft,
+  selectedAccountSlug?: string,
 ): DashboardState {
   const selectedAccount =
     configDraft.accounts.find(
-      (account) => account.slug === configDraft.runtime.exchangeAccountSlug,
+      (account) => account.slug === selectedAccountSlug,
     ) ??
     configDraft.accounts.find((account) => account.enabled) ??
     configDraft.accounts[0];
@@ -32,7 +33,8 @@ export function buildBacktestDashboardState(
 
   // BTEST:BACKTEST_SETTINGS_LIVE_PREVIEW
   return {
-    accountFilter: null,
+    accountFilter: selectedAccount?.slug ?? null,
+    accounts: structuredClone(configDraft.accounts),
     accountSummaries: configDraft.accounts.map((account) => {
       const startingBalanceUSDT = normalizeStartingBalance(
         account.sandbox.initialBalanceUSDT,
@@ -77,10 +79,7 @@ export function buildBacktestDashboardState(
     globalConfig: { volatilityThresholdPct: VOLATILITY_THRESHOLD },
     history: [],
     openPositions: [],
-    runtime: {
-      ...configDraft.runtime,
-      exchangeAccounts: structuredClone(configDraft.accounts),
-    },
+    runtime: { ...configDraft.runtime },
     stats: {
       closedTrades: 0,
       openPositions: 0,

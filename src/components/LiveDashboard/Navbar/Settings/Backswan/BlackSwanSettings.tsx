@@ -103,10 +103,12 @@ function statusColor(status: BlackSwanStatus): ChipProps["color"] {
 export default function BlackSwanSettings({
   configDraft,
   dashboardState,
+  selectedAccountSlug,
   setConfigDraft,
 }: {
   configDraft: ConfigDraft;
   dashboardState: DashboardState;
+  selectedAccountSlug?: string;
   setConfigDraft: ConfigDraftSetter;
 }) {
   const update = (blackSwan: BlackSwanConfig) =>
@@ -570,6 +572,7 @@ export default function BlackSwanSettings({
             <BlackSwanSavingsPreview
               configDraft={configDraft}
               dashboardState={dashboardState}
+              selectedAccountSlug={selectedAccountSlug}
             />
           ) : (
             <Alert severity="info">

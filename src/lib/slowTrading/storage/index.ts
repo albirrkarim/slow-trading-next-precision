@@ -43,7 +43,9 @@ import {
   applySlowTradingSafeHavenUpdate,
   createModeState,
   ensureTradeSettings,
+  fromPersistedModeState,
   getActiveSlowTradingMode,
+  toPersistedModeState,
 } from "./mode";
 import {
   createDefaultSlowTradingStorage,
@@ -81,8 +83,10 @@ const slowTradingStorage = {
   mode: {
     createState: createModeState,
     ensureTradeSettings,
+    fromPersisted: fromPersistedModeState,
     getActive: getActiveSlowTradingMode,
     saveState: saveSlowTradingModeState,
+    toPersisted: toPersistedModeState,
   },
   data: {
     createDefault: createDefaultSlowTradingStorage,

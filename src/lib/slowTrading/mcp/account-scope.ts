@@ -23,7 +23,7 @@ async function resolve(params: {
     requestedMode === "live" || requestedMode === "sandbox"
       ? requestedMode
       : activeMode;
-  const accounts = catalog.runtime.exchangeAccounts.filter(
+  const accounts = catalog.accounts.filter(
     (account) => account.enabled,
   );
 

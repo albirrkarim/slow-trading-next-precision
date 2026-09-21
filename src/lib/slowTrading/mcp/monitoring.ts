@@ -34,7 +34,7 @@ function requestedSections(value: unknown): Set<MonitoringSection> {
 }
 
 function secretValues(storage: SlowTradingStorageData): string[] {
-  return storage.runtime.exchangeAccounts.flatMap((account) =>
+  return storage.accounts.flatMap((account) =>
     Object.values(account.credentials).filter(
       (value): value is string => typeof value === "string" && value.length > 0,
     ),
@@ -125,7 +125,7 @@ async function read(
   const requestedMode =
     input.mode === "live" || input.mode === "sandbox" ? input.mode : "active";
   const resolvedMode = requestedMode === "active" ? activeMode : requestedMode;
-  const accounts = catalog.runtime.exchangeAccounts;
+  const accounts = catalog.accounts;
   const secrets = secretValues(catalog);
   const issues: Array<{ section: string; code: string; message: string }> = [];
   const effectiveResults = sections.has("config")

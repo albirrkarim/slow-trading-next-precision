@@ -68,6 +68,46 @@ function dashboardState() {
     },
     history: [],
     openPositions: [],
+    accounts: [
+      {
+        createdAt: 1,
+        credentials: {
+          apiKey: "key",
+          apiSecret: "secret",
+        },
+        description: "",
+        slug: "1",
+        enabled: true,
+        name: "Main Account",
+        trading: {
+          adaptiveAveraging: {
+            enabled: false,
+            maxMultiplier: 5,
+            minProjectedProfitPct: 2,
+          },
+          averagingRescueProjectionGuardEnabled: true,
+          enableWatchLogic: false,
+          exactLeverage: 0,
+          exitSidewaysToFreeWorkersForStrongCandidates: false,
+          maxEntryBased24HourVolPct: 0.2,
+          maxEntryMargin: 0,
+          maxEntryMarginPct: 0,
+          maxLeverage: 0,
+          maxOpenPositions: 0,
+          minActionableAbsoluteLevel: 3,
+          notes: "",
+          stopLossPercent: 20,
+          takeProfitPercent: 5,
+          useStopLossPlus: false,
+          watchMaxNextAveragingLevels: 2,
+          watchReserveLevels: 2,
+          watchReservePctAlloc: 2,
+        },
+        sandbox: { initialBalanceUSDT: 1_000 },
+        type: "binance",
+        updatedAt: 1,
+      },
+    ],
     runtime: {
       autoEntryEnabled: false,
       autoExitEnabled: false,
@@ -75,47 +115,6 @@ function dashboardState() {
       autoRemoveSymbolMinMarketCapUSD: 0,
       autoRemoveSymbolMinPrice: 0,
       entrySignalBypass: false,
-      exchangeAccountSlug: "1",
-      exchangeAccounts: [
-        {
-          createdAt: 1,
-          credentials: {
-            apiKey: "key",
-            apiSecret: "secret",
-          },
-          description: "",
-          slug: "1",
-          enabled: true,
-          name: "Main Account",
-          trading: {
-            adaptiveAveraging: {
-              enabled: false,
-              maxMultiplier: 5,
-              minProjectedProfitPct: 2,
-            },
-            averagingRescueProjectionGuardEnabled: true,
-            enableWatchLogic: false,
-            exactLeverage: 0,
-            exitSidewaysToFreeWorkersForStrongCandidates: false,
-            maxEntryBased24HourVolPct: 0.2,
-            maxEntryMargin: 0,
-            maxEntryMarginPct: 0,
-            maxLeverage: 0,
-            maxOpenPositions: 0,
-            minActionableAbsoluteLevel: 3,
-            notes: "",
-            stopLossPercent: 20,
-            takeProfitPercent: 5,
-            useStopLossPlus: false,
-            watchMaxNextAveragingLevels: 2,
-            watchReserveLevels: 2,
-            watchReservePctAlloc: 2,
-          },
-          sandbox: { initialBalanceUSDT: 1_000 },
-          type: "binance",
-          updatedAt: 1,
-        },
-      ],
       mcp: { tokens: [] },
       notification: {
         email: {
@@ -150,6 +149,8 @@ function Harness() {
   const navbar = useLiveDashboardNavbar({
     dashboardState: BASE_DASHBOARD_STATE,
     onRefresh: vi.fn(async () => undefined),
+    selectedAccountSlug: "1",
+    setSelectedAccountSlug: vi.fn(),
   });
 
   if (!navbar.configDraft) {
@@ -187,7 +188,6 @@ function Harness() {
                   autoRemoveSymbolMinPrice: 0.01,
                   autoRemoveSymbolMinVPointPct: 17.5,
                   pnlHistoryBucketMinutes: 15,
-                  exchangeAccountSlug: "1",
                   runnerEnabled: true,
                   notification: {
                   ...prev.runtime.notification,
@@ -580,7 +580,7 @@ describe("settings dialog save payload", () => {
       autoRemoveSymbolMinPrice: 0.01,
       autoRemoveSymbolMinVPointPct: 17.5,
       pnlHistoryBucketMinutes: 15,
-      exchangeAccountSlug: "1",
+      account: "1",
       notification: {
         telegram: {
           enabled: true,

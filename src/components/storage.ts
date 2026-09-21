@@ -37,8 +37,6 @@ const SLOW_FILES = {
   config: `${SLOW_TRADING_DIR}/config.json`,
   leaderboards: `${SLOW_TRADING_DIR}/leaderboards.json`,
   memory: `${SLOW_TRADING_DIR}/memory.json`,
-  legacyState: `${SLOW_TRADING_DIR}/state.json`,
-  legacyHistoryRoot: `${SLOW_TRADING_DIR}/history`,
   marketCapCache: `${SLOW_TRADING_DIR}/marketcap_cache.json`,
   ip: `${SLOW_TRADING_DIR}/ip.json`,
   notificationDedupe: `${SLOW_TRADING_DIR}/notification-dedupe.json`,

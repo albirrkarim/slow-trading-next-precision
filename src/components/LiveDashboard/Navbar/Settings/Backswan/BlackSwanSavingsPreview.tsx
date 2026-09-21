@@ -203,13 +203,17 @@ function ProtectionPnlChart({
 export default function BlackSwanSavingsPreview({
   configDraft,
   dashboardState,
+  selectedAccountSlug,
 }: {
   configDraft: ConfigDraft;
   dashboardState: DashboardState;
+  selectedAccountSlug?: string;
 }) {
   const symbols = configDraft.management.symbols;
   const selectedTrading = configDraft.accounts.find(
-    (account) => account.slug === configDraft.runtime.exchangeAccountSlug,
+    (account) =>
+      account.slug ===
+      (selectedAccountSlug ?? configDraft.accounts[0]?.slug),
   )?.trading;
   const [result, setResult] = useState<BlackSwanSavingsBacktestResult | null>(
     null,

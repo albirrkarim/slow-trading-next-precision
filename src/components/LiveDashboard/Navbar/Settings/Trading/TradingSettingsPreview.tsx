@@ -31,10 +31,7 @@ function selectAccountPreviewState(
     balances: account.balances,
     history,
     openPositions,
-    runtime: {
-      ...dashboardState.runtime,
-      exchangeAccountSlug: account.slug,
-    },
+    runtime: dashboardState.runtime,
     stats: {
       ...dashboardState.stats,
       closedTrades: history.length,
@@ -46,11 +43,14 @@ function selectAccountPreviewState(
 export default function TradingSettingsPreview({
   configDraft,
   dashboardState,
+  selectedAccountSlug,
 }: {
   configDraft: ConfigDraft;
   dashboardState: DashboardState;
+  selectedAccountSlug?: string;
 }) {
-  const accountSlug = configDraft.runtime.exchangeAccountSlug;
+  const accountSlug =
+    selectedAccountSlug ?? configDraft.accounts[0]?.slug;
   const selectedAccount = configDraft.accounts.find(
     (account) => account.slug === accountSlug,
   );

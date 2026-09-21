@@ -9,7 +9,7 @@ async function loadDashboardState() {
   const catalog = await slowTrading.storage.data.load({ modeScope: "active" });
   const orderedAccounts = [
     catalog.account,
-    ...catalog.runtime.exchangeAccounts.filter(
+    ...catalog.accounts.filter(
       (accountItem) => accountItem.slug !== catalog.account.slug,
     ),
   ];

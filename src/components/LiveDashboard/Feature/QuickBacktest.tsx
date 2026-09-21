@@ -200,10 +200,10 @@ export default function QuickBacktest({
   const { enqueueSnackbar } = useSnackbar();
   const enabledAccounts = useMemo(
     () =>
-      dashboardState.runtime.exchangeAccounts.filter(
+      dashboardState.accounts.filter(
         (account) => account.enabled,
       ),
-    [dashboardState.runtime.exchangeAccounts],
+    [dashboardState.accounts],
   );
   const [startAmounts, setStartAmounts] = useState<Record<string, number>>({});
   const [result, setResult] = useState<SlowQuickBacktestResult | null>(null);

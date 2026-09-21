@@ -2,9 +2,10 @@ import {
   DEFAULT_DYNAMIC_TRADE_CONFIG_PRODUCTION,
   DEFAULT_DYNAMIC_TRADING_MEMORY,
 } from "@/lib/dynamic";
-import type { TradingModelMemory } from "@/lib/trading/models";
+import type { Position, TradingModelMemory } from "@/lib/trading/models";
 import blackSwan from "@/lib/trading/black-swan";
 import { clone, normalizeSymbol, uniqueSymbols } from "./common";
+import type { SlowTradingPersistedModeState } from "./internal-types";
 import { DEFAULT_SANDBOX_INITIAL_BALANCE } from "./constants";
 import type {
   SlowTradingMode,
@@ -237,8 +238,11 @@ export function ensureTradeSettings(
     };
   });
 
-  return {
-    ...state,
+  /**
+   * The mode state is rebuilt from its known keys only so unknown persisted
+   * fields are intentionally dropped on the next save.
+   */
+  const next: SlowTradingModeState = {
     tradeSettings,
     dynamicTradeMemory: {
       ...clone(DEFAULT_DYNAMIC_TRADING_MEMORY),
@@ -256,11 +260,85 @@ export function ensureTradeSettings(
       normalizeDailyPnlLimitNotificationState(
         state.dailyPnlLimitNotificationState,
       ),
-    dailyPnlLimitState: normalizeDailyPnlLimitState(
-      state.dailyPnlLimitState,
-    ),
     blackSwan: blackSwan.state.normalize(state.blackSwan),
   };
+
+  const dailyPnlLimitState = normalizeDailyPnlLimitState(
+    state.dailyPnlLimitState,
+  );
+  if (dailyPnlLimitState !== undefined) {
+    next.dailyPnlLimitState = dailyPnlLimitState;
+  }
+  if (state.lastRunAt !== undefined) next.lastRunAt = state.lastRunAt;
+  if (state.lastRunDurationMs !== undefined) {
+    next.lastRunDurationMs = state.lastRunDurationMs;
+  }
+  if (state.lastRunSummary !== undefined) {
+    next.lastRunSummary = state.lastRunSummary;
+  }
+  if (state.lastRunPerformance !== undefined) {
+    next.lastRunPerformance = state.lastRunPerformance;
+  }
+  if (state.stageRuns !== undefined) next.stageRuns = state.stageRuns;
+
+  return next;
+}
+
+/**
+ * Converts the in-memory mode state into the persisted memory shape. Only
+ * open positions survive; per-symbol tradeSettings and transient model_memory
+ * fields (positionsSell, justBuy, forceSell, onlySell, quoteAssetToTrade,
+ * volatility, ...) are rebuilt from the symbol list at load and are never
+ * persisted.
+ */
+export function toPersistedModeState(
+  state: SlowTradingModeState,
+): SlowTradingPersistedModeState {
+  const { tradeSettings: _tradeSettings, ...rest } = state;
+
+  return {
+    ...rest,
+    positions: state.tradeSettings.flatMap((tradeSetting) =>
+      (tradeSetting.model_memory.positions ?? [])
+        .filter((position) => !position.closed)
+        .map((position) => clone(position)),
+    ),
+  };
+}
+
+/**
+ * Rebuilds the in-memory mode state from the persisted flat-positions shape,
+ * recreating one trade setting per configured or position-owning symbol, then
+ * normalizing the remaining keys through `ensureTradeSettings`.
+ */
+export function fromPersistedModeState(
+  persisted: Partial<SlowTradingPersistedModeState> | undefined,
+  symbols: string[],
+): SlowTradingModeState {
+  const { positions, ...rest } = persisted ?? {};
+  const positionsBySymbol = new Map<string, Position[]>();
+
+  for (const position of positions ?? []) {
+    const symbol = normalizeSymbol(position.symbol);
+    if (!symbol) continue;
+    const list = positionsBySymbol.get(symbol) ?? [];
+    list.push(clone(position));
+    positionsBySymbol.set(symbol, list);
+  }
+
+  const allSymbols = uniqueSymbols([...symbols, ...positionsBySymbol.keys()]);
+
+  return ensureTradeSettings(
+    {
+      ...rest,
+      tradeSettings: allSymbols.map((symbol) => {
+        const model_memory = createEmptyModelMemory();
+        model_memory.positions = positionsBySymbol.get(symbol) ?? [];
+        return { symbol, model_memory };
+      }),
+    } as SlowTradingModeState,
+    symbols,
+  );
 }
 
 /**

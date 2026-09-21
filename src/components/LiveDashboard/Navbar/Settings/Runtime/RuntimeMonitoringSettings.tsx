@@ -50,13 +50,17 @@ function updateWholeMinutes(
 
 export default function RuntimeMonitoringSettings({
   configDraft,
+  selectedAccountSlug,
   setConfigDraft,
 }: {
   configDraft: ConfigDraft;
+  selectedAccountSlug?: string;
   setConfigDraft: ConfigDraftSetter;
 }) {
   const selectedTrading = configDraft.accounts.find(
-    (account) => account.slug === configDraft.runtime.exchangeAccountSlug,
+    (account) =>
+      account.slug ===
+      (selectedAccountSlug ?? configDraft.accounts[0]?.slug),
   )?.trading;
   const takeProfitPct = selectedTrading?.takeProfitPercent ?? 0;
   const stopLossPlusEnabled = Boolean(selectedTrading?.useStopLossPlus);

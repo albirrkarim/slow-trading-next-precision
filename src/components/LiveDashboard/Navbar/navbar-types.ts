@@ -32,4 +32,6 @@ export interface LiveDashboardNavbarProps {
   onRefresh: () => Promise<void>;
   onReinitialize: () => Promise<void>;
   reinitializing: boolean;
+  selectedAccountSlug?: string;
+  setSelectedAccountSlug: (slug: string) => void;
 }

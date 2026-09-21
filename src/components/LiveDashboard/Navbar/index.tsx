@@ -19,6 +19,8 @@ export default function LiveDashboardNavbar({
   onRefresh,
   onReinitialize,
   reinitializing,
+  selectedAccountSlug,
+  setSelectedAccountSlug,
 }: LiveDashboardNavbarProps) {
   const {
     configDraft,
@@ -45,6 +47,8 @@ export default function LiveDashboardNavbar({
   } = useLiveDashboardNavbar({
     dashboardState,
     onRefresh,
+    selectedAccountSlug,
+    setSelectedAccountSlug,
   });
   const theme = useTheme();
   const navbarBackgroundColor = getNavbarBackgroundColor(theme, isActive);
@@ -113,8 +117,10 @@ export default function LiveDashboardNavbar({
         saveConfig={saveConfig}
         savingConfig={savingConfig}
         safeHavenUSDT={safeHavenUSDT}
+        selectedAccountSlug={selectedAccountSlug}
         setConfigDraft={setConfigDraft}
         setSafeHavenUSDT={setSafeHavenUSDT}
+        setSelectedAccountSlug={setSelectedAccountSlug}
         syncOnlineStorageToLocal={syncOnlineStorageToLocal}
         syncingOnlineStorage={syncingOnlineStorage}
         tryWithdrawNow={tryWithdrawNow}

@@ -263,7 +263,7 @@ export async function executeSlowTradingWithdrawalSchedule(params: {
 
     await slowTradingStorage.data.update({
       // PROD:MULTI_ACCOUNT_WITHDRAWAL_OWNER
-      exchangeAccountSlug: storage.account.slug,
+      account: storage.account.slug,
       safeHavenUSDT: nextSafeHavenUSDT,
       safeHavenLogReason: `Withdrawal schedule "${schedule.name}" executed`,
       safeHavenLogSource: "withdrawal",

@@ -36,15 +36,23 @@ interface SlowTradingWithdrawTryResponse {
 interface UseLiveDashboardNavbarArgs {
   dashboardState: DashboardState | null;
   onRefresh: LiveDashboardNavbarProps["onRefresh"];
+  selectedAccountSlug?: string;
+  setSelectedAccountSlug?: (slug: string) => void;
 }
 
-function buildWithdrawalPayload(configDraft: ConfigDraft) {
+function buildWithdrawalPayload(
+  configDraft: ConfigDraft,
+  selectedAccountSlug?: string,
+) {
   const withdrawal = configDraft.runtime.withdrawal;
   return {
     autoEnabled: withdrawal.autoEnabled,
     schedules: withdrawal.schedules.map((schedule, index) => ({
       id: schedule.id || `schedule-${index + 1}`,
-      account: schedule.account || configDraft.runtime.exchangeAccountSlug,
+      account:
+        schedule.account ||
+        selectedAccountSlug ||
+        configDraft.accounts[0]?.slug,
       name: schedule.name || `Schedule ${index + 1}`,
       enabled: schedule.enabled,
       amountUSDT: Math.max(0, Number(schedule.amountUSDT) || 0),
@@ -72,6 +80,8 @@ function buildWithdrawalPayload(configDraft: ConfigDraft) {
 export function useLiveDashboardNavbar({
   dashboardState,
   onRefresh,
+  selectedAccountSlug,
+  setSelectedAccountSlug,
 }: UseLiveDashboardNavbarArgs) {
   const [configDraft, setConfigDraftState] = useState<ConfigDraft | null>(null);
   const [safeHavenUSDT, setSafeHavenUSDT] = useState(0);
@@ -138,12 +148,12 @@ export function useLiveDashboardNavbar({
 
       await axios.put(endpoints.slow.prod.exchangeAccounts, {
         accounts: configDraft.accounts,
-        exchangeAccountSlug: configDraft.runtime.exchangeAccountSlug,
       });
 
       await axios.put(endpoints.slow.prod.storage, {
         config: configDraft.management,
         ...runtime,
+        account: selectedAccountSlug,
         safeHavenUSDT: Math.max(0, Number(safeHavenUSDT) || 0),
       });
 
@@ -174,8 +184,9 @@ export function useLiveDashboardNavbar({
     setTryingWithdraw(true);
     try {
       await axios.put(endpoints.slow.prod.storage, {
+        account: selectedAccountSlug,
         safeHavenUSDT: Math.max(0, Number(safeHavenUSDT) || 0),
-        withdrawal: buildWithdrawalPayload(configDraft),
+        withdrawal: buildWithdrawalPayload(configDraft, selectedAccountSlug),
       });
 
       const response = await axios.post<SlowTradingWithdrawTryResponse>(
@@ -333,6 +344,8 @@ export function useLiveDashboardNavbar({
     saveConfig,
     safeHavenUSDT,
     savingConfig,
+    selectedAccountSlug,
+    setSelectedAccountSlug,
     syncOnlineStorageToLocal,
     syncingOnlineStorage,
     tryWithdrawNow,

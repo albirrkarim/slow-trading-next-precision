@@ -178,6 +178,26 @@ export default function DynamicTradeHistoryPage({
   >({});
   const [dashboardState, setDashboardState] =
     useState<SlowTradingDashboardState | null>(null);
+  const [storedAccountSlug, setStoredAccountSlug] = useState<string | null>(
+    null,
+  );
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem("slow-selected-account");
+    if (stored) setStoredAccountSlug(stored);
+  }, []);
+
+  const dashboardAccounts = dashboardState?.accounts ?? [];
+  const selectedAccountSlug =
+    storedAccountSlug &&
+    dashboardAccounts.some((account) => account.slug === storedAccountSlug)
+      ? storedAccountSlug
+      : dashboardAccounts[0]?.slug;
+
+  const setSelectedAccountSlug = (slug: string) => {
+    setStoredAccountSlug(slug);
+    window.localStorage.setItem("slow-selected-account", slug);
+  };
   const [quickSimulationSeries, setQuickSimulationSeries] =
     useState<QuickBacktestSimulationSeries>({
       names: [],
@@ -555,7 +575,7 @@ export default function DynamicTradeHistoryPage({
         executed?: boolean;
         message?: string;
       }>(endpoints.slow.prod.entry, {
-        account: dashboardState?.runtime.exchangeAccountSlug,
+        account: selectedAccountSlug,
         symbol,
       });
 
@@ -843,6 +863,8 @@ export default function DynamicTradeHistoryPage({
         onRefresh={execute}
         onReinitialize={() => execute(true)}
         reinitializing={reinitializing}
+        selectedAccountSlug={selectedAccountSlug}
+        setSelectedAccountSlug={setSelectedAccountSlug}
       />
       {(loading || reinitializing) && (
         <LinearProgress
@@ -857,7 +879,7 @@ export default function DynamicTradeHistoryPage({
       <Box sx={{ m: 1 }}>
         {dashboardState && (
           <SystemAccountSummary
-            accounts={dashboardState.runtime.exchangeAccounts}
+            accounts={dashboardState.accounts}
             description={dashboardState.config.description}
           />
         )}

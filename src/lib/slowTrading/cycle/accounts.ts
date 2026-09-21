@@ -20,7 +20,7 @@ async function loadEligible(request?: RunSlowTradingCycleParams): Promise<{
   const catalog = await slowTradingStorage.data.load({ modeScope: "active" });
   const accountSlugs = request?.account
     ? [request.account]
-    : catalog.runtime.exchangeAccounts.map((account) => account.slug);
+    : catalog.accounts.map((account) => account.slug);
   const scopes: SlowTradingCycleAccountScope[] = [];
 
   // PROD:MULTI_ACCOUNT_SEQUENTIAL_CYCLE

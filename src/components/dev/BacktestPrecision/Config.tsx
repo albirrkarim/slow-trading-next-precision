@@ -90,7 +90,10 @@ export default function DynamicBacktestConfig({
     const dashboardState = useMemo(
         () =>
             backtestConfig.settings
-                ? buildBacktestDashboardState(backtestConfig.settings)
+                ? buildBacktestDashboardState(
+                        backtestConfig.settings,
+                        backtestConfig.settings.accounts[0]?.slug,
+                    )
                 : undefined,
         [backtestConfig.settings],
     );

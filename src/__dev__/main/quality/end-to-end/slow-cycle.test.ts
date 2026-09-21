@@ -312,7 +312,7 @@ describe("slow end-to-end cycle", () => {
     const slowTradingStorage = slowTrading.storage;
     const { TradingMode } = await import("@/lib/exchange");
     const storage = slowTradingStorage.data.createDefault();
-    const template = storage.runtime.exchangeAccounts[0];
+    const template = storage.accounts[0];
 
     storage.config.symbols = ["SUI"];
     storage.config.exchangeType = "binance";
@@ -500,7 +500,7 @@ describe("slow end-to-end cycle", () => {
     const slowTrading = (await import("@/lib/slowTrading")).default;
     const slowTradingStorage = slowTrading.storage;
     const storage = slowTradingStorage.data.createDefault();
-    const template = storage.runtime.exchangeAccounts[0];
+    const template = storage.accounts[0];
 
     storage.config.symbols = ["SUI"];
     storage.runtime.runnerEnabled = true;

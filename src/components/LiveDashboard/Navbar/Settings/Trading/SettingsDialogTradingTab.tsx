@@ -25,24 +25,35 @@ import TradingSettingsPreview from "./TradingSettingsPreview";
 interface SettingsDialogTradingTabProps {
   configDraft: ConfigDraft;
   dashboardState?: DashboardState;
+  selectedAccountSlug?: string;
   setConfigDraft: ConfigDraftSetter;
+  setSelectedAccountSlug?: (slug: string) => void;
 }
 
 export default function SettingsDialogTradingTab({
   configDraft,
   dashboardState,
+  selectedAccountSlug,
   setConfigDraft,
+  setSelectedAccountSlug,
 }: SettingsDialogTradingTabProps) {
   const [editorMode, setEditorMode] = useState<"json" | "ui">("ui");
+  const [editingAccountSlug, setEditingAccountSlug] = useState(
+    () => selectedAccountSlug ?? configDraft.accounts[0]?.slug,
+  );
+  const accountSlug = configDraft.accounts.some(
+    (account) => account.slug === editingAccountSlug,
+  )
+    ? editingAccountSlug
+    : (selectedAccountSlug ?? configDraft.accounts[0]?.slug);
   const selectedAccount = configDraft.accounts.find(
-    (account) => account.slug === configDraft.runtime.exchangeAccountSlug,
+    (account) => account.slug === accountSlug,
   );
   const setSelectedAccountTrading: Dispatch<
     SetStateAction<SlowTradingAccountTradingConfig>
   > = (value) => {
     setConfigDraft((current) => {
       if (!current) return current;
-      const accountSlug = current.runtime.exchangeAccountSlug;
       return {
         ...current,
         accounts: current.accounts.map((account) =>
@@ -68,7 +79,7 @@ export default function SettingsDialogTradingTab({
       if (!current) return current;
 
       const account = current.accounts.find(
-        (candidate) => candidate.slug === current.runtime.exchangeAccountSlug,
+        (candidate) => candidate.slug === accountSlug,
       );
       if (!account) return current;
 
@@ -136,25 +147,13 @@ export default function SettingsDialogTradingTab({
                 info="Chooses which account's Trading configuration is shown in this editor. It does not control which accounts execute."
                 label="Editing Account"
                 onChange={(event) => {
-                  const account = configDraft.accounts.find(
-                    (candidate) => candidate.slug === event.target.value,
-                  );
-                  setConfigDraft((current) =>
-                    current && account
-                      ? {
-                          ...current,
-                          runtime: {
-                            ...current.runtime,
-                            exchangeAccountSlug: account.slug,
-                          },
-                        }
-                      : current,
-                  );
+                  setEditingAccountSlug(event.target.value);
+                  setSelectedAccountSlug?.(event.target.value);
                 }}
                 select
                 size="small"
                 sx={{ width: { xs: "100%", sm: 240 } }}
-                value={configDraft.runtime.exchangeAccountSlug}
+                value={accountSlug ?? ""}
               >
                 {configDraft.accounts.map((account) => (
                   <MenuItem key={account.slug} value={account.slug}>
@@ -187,6 +186,7 @@ export default function SettingsDialogTradingTab({
           <TradingSettingsPreview
             configDraft={configDraft}
             dashboardState={dashboardState}
+            selectedAccountSlug={accountSlug}
           />
         )}
       </Grid>

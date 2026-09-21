@@ -12,21 +12,16 @@ export default async function handler(
 
     if (req.method === "GET") {
       const accounts = await slowTrading.storage.account.loadAccounts();
-      const storage = await slowTrading.storage.data.load();
-      res.status(200).json({
-        accounts,
-        exchangeAccountSlug: storage.runtime.exchangeAccountSlug,
-      });
+      res.status(200).json({ accounts });
       return;
     }
 
     if (req.method === "PUT") {
       const body = (req.body ?? {}) as {
         accounts?: unknown;
-        exchangeAccountSlug?: unknown;
       };
       const storage = await slowTrading.storage.data.load();
-      const currentAccounts = storage.runtime.exchangeAccounts;
+      const currentAccounts = storage.accounts;
       const requestedSlugs = new Set(
         (Array.isArray(body.accounts) ? body.accounts : [])
           .map((account) =>
@@ -77,25 +72,8 @@ export default async function handler(
       for (const removed of removedAccounts) {
         await slowTrading.storage.account.deleteState(removed.slug);
       }
-      const requestedAccountId =
-        body.exchangeAccountSlug !== undefined
-          ? normalizeExchangeAccountSlug(body.exchangeAccountSlug)
-          : storage.runtime.exchangeAccountSlug;
-      const accountExists = accounts.some(
-        (account) => account.slug === requestedAccountId,
-      );
-      const exchangeAccountSlug = accountExists
-        ? requestedAccountId
-        : (accounts[0]?.slug ?? storage.runtime.exchangeAccountSlug);
 
-      if (exchangeAccountSlug !== storage.runtime.exchangeAccountSlug) {
-        await slowTrading.storage.data.update({ exchangeAccountSlug });
-      }
-
-      res.status(200).json({
-        accounts,
-        exchangeAccountSlug,
-      });
+      res.status(200).json({ accounts });
       return;
     }
 

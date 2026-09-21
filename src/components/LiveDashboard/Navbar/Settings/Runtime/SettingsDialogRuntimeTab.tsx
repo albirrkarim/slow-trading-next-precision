@@ -30,6 +30,7 @@ interface SettingsDialogRuntimeTabProps {
   reinitializing?: boolean;
   resetSandbox?: (accountSlug: string) => Promise<void>;
   resettingSandboxAccount?: string | null;
+  selectedAccountSlug?: string;
   syncOnlineStorageToLocal?: (onlineBaseUrl: string) => Promise<void>;
   syncingOnlineStorage?: boolean;
 }
@@ -72,6 +73,7 @@ export default function SettingsDialogRuntimeTab({
   reinitializing,
   resetSandbox,
   resettingSandboxAccount,
+  selectedAccountSlug,
   setConfigDraft,
   syncOnlineStorageToLocal,
   syncingOnlineStorage,
@@ -159,6 +161,7 @@ export default function SettingsDialogRuntimeTab({
         >
           <RuntimeMonitoringSettings
             configDraft={configDraft}
+            selectedAccountSlug={selectedAccountSlug}
             setConfigDraft={setConfigDraft}
           />
         </SettingsDialogSection>

@@ -286,7 +286,7 @@ export async function synchronizeSlowTradingQueues(
       account: storage.account.slug,
     });
     await slowTradingStorage.data.update({
-      exchangeAccountSlug: storage.account.slug,
+      account: storage.account.slug,
       safeHaven: {
         schedules: storage.runtime.safeHaven.schedules.map((schedule) => ({
           ...schedule,
@@ -306,7 +306,7 @@ export async function synchronizeSlowTradingQueues(
 
   if (Object.keys(synchronization.withdrawalQueuedAt).length > 0) {
     await slowTradingStorage.data.update({
-      exchangeAccountSlug: storage.account.slug,
+      account: storage.account.slug,
       withdrawal: {
         schedules: storage.runtime.withdrawal.schedules.map((schedule) => ({
           ...schedule,

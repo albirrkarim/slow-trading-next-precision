@@ -111,11 +111,10 @@ describe("trade history views", () => {
         takeProfitPercent: 2,
         watchReservePctAlloc: 2,
       },
+      accounts: [],
       history,
-      runtime: {
-        exchangeAccounts: [],
-      } as unknown as SlowTradingDashboardState["runtime"],
-    } as SlowTradingDashboardState;
+      runtime: {} as unknown as SlowTradingDashboardState["runtime"],
+    } as unknown as SlowTradingDashboardState;
 
     render(
       <SnackbarProvider>

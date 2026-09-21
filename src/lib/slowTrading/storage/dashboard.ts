@@ -339,6 +339,7 @@ export function buildSlowTradingDashboardState(
 
   return {
     accountFilter: storage.account.slug,
+    accounts: clone(storage.accounts),
     accountSummaries: [
       {
         slug: storage.account.slug,

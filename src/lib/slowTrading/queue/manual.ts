@@ -149,7 +149,7 @@ export async function createManualSlowTradingQueueItem(
   );
 
   await slowTradingStorage.data.update({
-    exchangeAccountSlug: schedule.account,
+    account: schedule.account,
     withdrawal: {
       schedules: storage.runtime.withdrawal.schedules.map((candidate) =>
         candidate.id === schedule.id

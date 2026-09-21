@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       requestedMode === "sandbox" || requestedMode === "live"
         ? requestedMode
         : slowTrading.storage.mode.getActive(storage);
-    const enabledAccounts = storage.runtime.exchangeAccounts
+    const enabledAccounts = storage.accounts
       .filter((account) => account.enabled)
       .map((account) => account.slug);
     const snapshots =

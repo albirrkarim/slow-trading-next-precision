@@ -5,13 +5,12 @@ const mocks = vi.hoisted(() => ({
   appendError: vi.fn(async () => undefined),
   getActive: vi.fn(() => "live" as const),
   load: vi.fn(async () => ({
-    runtime: {
-      exchangeAccounts: [
-        { enabled: true, slug: "main" },
-        { enabled: false, slug: "paused" },
-        { enabled: true, slug: "second" },
-      ],
-    },
+    accounts: [
+      { enabled: true, slug: "main" },
+      { enabled: false, slug: "paused" },
+      { enabled: true, slug: "second" },
+    ],
+    runtime: {},
   })),
   readCombined: vi.fn(async () => []),
 }));

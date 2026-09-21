@@ -173,8 +173,7 @@ describe("slow specs storage", () => {
     const { FILES } = await import("@/components/storage");
     const slowTradingStorage = (await import("@/lib/slowTrading")).default
       .storage;
-    const accounts = slowTradingStorage.data.createDefault().runtime
-      .exchangeAccounts;
+    const accounts = slowTradingStorage.data.createDefault().accounts;
 
     await fs.outputJSON(FILES.slow.accounts, {
       accounts,

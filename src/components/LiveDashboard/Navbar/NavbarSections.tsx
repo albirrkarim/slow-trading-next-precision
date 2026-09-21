@@ -114,12 +114,16 @@ export function NavbarIdentitySection({
   const accountSummaries = dashboardState
     ? (dashboardState.accountSummaries ?? [
       {
-        slug: dashboardState.runtime.exchangeAccountSlug,
+        slug:
+          dashboardState.accountFilter ??
+          dashboardState.accounts[0]?.slug ??
+          "",
         name:
-          dashboardState.runtime.exchangeAccounts.find(
-            (account) =>
-              account.slug === dashboardState.runtime.exchangeAccountSlug,
-          )?.name ?? dashboardState.runtime.exchangeAccountSlug,
+          dashboardState.accounts.find(
+            (account) => account.slug === dashboardState.accountFilter,
+          )?.name ??
+          dashboardState.accountFilter ??
+          "",
         enabled: true,
         activeMode: dashboardState.activeMode,
         balances: dashboardState.balances,
@@ -387,8 +391,10 @@ interface NavbarActionsSectionProps {
   saveConfig: (handleClose?: () => void) => Promise<void>;
   savingConfig: boolean;
   safeHavenUSDT: number;
+  selectedAccountSlug?: string;
   setConfigDraft: React.Dispatch<React.SetStateAction<ConfigDraft | null>>;
   setSafeHavenUSDT: (value: number) => void;
+  setSelectedAccountSlug?: (slug: string) => void;
   syncOnlineStorageToLocal: (onlineBaseUrl: string) => Promise<void>;
   syncingOnlineStorage: boolean;
   tryWithdrawNow: (scheduleId: string) => Promise<void>;
@@ -410,8 +416,10 @@ export function NavbarActionsSection({
   saveConfig,
   savingConfig,
   safeHavenUSDT,
+  selectedAccountSlug,
   setConfigDraft,
   setSafeHavenUSDT,
+  setSelectedAccountSlug,
   syncOnlineStorageToLocal,
   syncingOnlineStorage,
   tryWithdrawNow,
@@ -514,8 +522,10 @@ export function NavbarActionsSection({
             saveConfig={saveConfig}
             savingConfig={savingConfig}
             safeHavenUSDT={safeHavenUSDT}
+            selectedAccountSlug={selectedAccountSlug}
             setConfigDraft={setConfigDraft}
             setSafeHavenUSDT={setSafeHavenUSDT}
+            setSelectedAccountSlug={setSelectedAccountSlug}
             syncOnlineStorageToLocal={syncOnlineStorageToLocal}
             syncingOnlineStorage={syncingOnlineStorage}
             tryWithdrawNow={tryWithdrawNow}

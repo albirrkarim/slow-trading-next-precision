@@ -77,9 +77,9 @@ describe("entry diagnostics Binance cooldown", () => {
       { enabled: false, name: "Disabled", slug: "3" },
     ];
     const catalog = {
+      accounts,
       runtime: {
         autoEntryEnabled: true,
-        exchangeAccounts: accounts,
         runnerEnabled: true,
       },
     };

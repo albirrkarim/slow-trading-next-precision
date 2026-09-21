@@ -6,16 +6,19 @@ import type { ConfigDraft, ConfigDraftSetter, DashboardState } from "../settings
 export default function SettingsDialogBlackSwanTab({
   configDraft,
   dashboardState,
+  selectedAccountSlug,
   setConfigDraft,
 }: {
   configDraft: ConfigDraft;
   dashboardState: DashboardState;
+  selectedAccountSlug?: string;
   setConfigDraft: ConfigDraftSetter;
 }) {
   return (
     <BlackSwanSettings
       configDraft={configDraft}
       dashboardState={dashboardState}
+      selectedAccountSlug={selectedAccountSlug}
       setConfigDraft={setConfigDraft}
     />
   );

@@ -86,7 +86,7 @@ export function pickTradingConfigFields(
 }
 
 export function makeConfigDraft(state: DashboardState): ConfigDraft {
-  const { exchangeAccounts, ...runtime } = structuredClone(state.runtime);
+  const runtime = structuredClone(state.runtime);
 
   return {
     management: {
@@ -102,7 +102,7 @@ export function makeConfigDraft(state: DashboardState): ConfigDraft {
       blackSwan: structuredClone(state.config.blackSwan),
     },
     runtime,
-    accounts: exchangeAccounts.map((account) => structuredClone(account)),
+    accounts: state.accounts.map((account) => structuredClone(account)),
   };
 }
 

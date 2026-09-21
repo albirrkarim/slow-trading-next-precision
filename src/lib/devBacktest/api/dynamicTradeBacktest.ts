@@ -122,7 +122,7 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
     const enabledAccounts = multiAccount
       ? (
           await slowTradingStorage.data.load({ modeScope: "active" })
-        ).runtime.exchangeAccounts.filter((account) => account.enabled)
+        ).accounts.filter((account) => account.enabled)
       : [];
     if (multiAccount && enabledAccounts.length === 0) {
       throw new Error("Enable at least one SLOW account before backtesting.");

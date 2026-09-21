@@ -204,7 +204,7 @@ export default function SlowTradingReporting({
       )}
 
       <TradesTableSection
-        accounts={dashboardState.runtime.exchangeAccounts}
+        accounts={dashboardState.accounts}
         exchangeType={dashboardState.config.exchangeType}
         history={visibleHistory}
         mode={activeMode}
