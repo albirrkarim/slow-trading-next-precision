@@ -50,6 +50,7 @@ import VPointsFrequency from "./Feature/VPointsFrequency";
 import WorkerEntrySequenceMetrics from "./Feature/WorkerEntrySequenceMetrics";
 import WorkerNeededEstimation from "./Feature/WorkerNeededEstimation";
 import LiveDashboardNavbar from "./Navbar";
+import PrecisionTestCaseControls from "./Navbar/PrecisionTestCaseControls";
 import DateSelectionDialog from "./Navbar/Settings/Components/DateSelectionDialog";
 import {
   computeDayPreview,
@@ -877,6 +878,9 @@ export default function DynamicTradeHistoryPage({
                   onReset={applyBinanceHealth}
                   state={dashboardState}
                 />
+                <PrecisionTestCaseControls
+                  activeMode={dashboardState.activeMode}
+                />
 
                 <OpenPositions
                   availableTags={coinMetadata.tags.map((tag) => tag.text)}
@@ -943,6 +947,9 @@ export default function DynamicTradeHistoryPage({
                     <BinanceCooldownStatusSection
                       onReset={applyBinanceHealth}
                       state={dashboardState}
+                    />
+                    <PrecisionTestCaseControls
+                      activeMode={dashboardState.activeMode}
                     />
                   </Stack>
                 </Grid>

@@ -34,7 +34,6 @@ import NavbarBalanceRefreshButton from "./NavbarBalanceRefreshButton";
 import NavbarInstanceIp from "./NavbarInstanceIp";
 import NavbarStageRuns from "./NavbarStageRuns";
 import NavbarVolatilityThreshold from "./NavbarVolatilityThreshold";
-import PrecisionTestCaseControls from "./PrecisionTestCaseControls";
 import SettingsDialog from "./Settings/SettingsDialog";
 import type {
   ConfigDraft,
@@ -141,7 +140,7 @@ export function NavbarIdentitySection({
         display: "flex",
         alignItems: "center",
         gap: { xs: 0.75, md: 1 },
-        flexWrap: { xs: "wrap", md: "nowrap" },
+        flexWrap: { xs: "wrap", md: "wrap", xl: "nowrap" },
         gridArea: "identity",
         minWidth: 0,
       }}
@@ -268,7 +267,7 @@ export function NavbarDayPreviewSection({
         flexWrap: "wrap",
         alignItems: "center",
         gridArea: "pnl",
-        justifySelf: { xs: "start", md: "center" },
+        justifySelf: { xs: "start", xl: "center" },
         minWidth: 0,
       }}
     >
@@ -465,8 +464,6 @@ export function NavbarActionsSection({
               )
             }
           </ButtonDialog>
-
-          <PrecisionTestCaseControls activeMode={dashboardState.activeMode} />
 
           <ButtonDialog
             title="Daily PnL Calendar"
