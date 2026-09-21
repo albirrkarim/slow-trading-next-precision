@@ -3,9 +3,9 @@ import path from "path";
 import fs from "fs-extra";
 
 import { FILES } from "@/components/storage";
-import { windowsMs } from "@/lib/dynamic/constants-time";
 import { resolvePersistentStorageRoot } from "@/lib/persistent-storage-root";
 import type { RuntimeEngineState } from "@/lib/precision/types";
+import slowTradingShared from "@/lib/slowTrading/shared";
 import slowTradingStorage from "@/lib/slowTrading/storage";
 import jsonFile from "@/lib/slowTrading/storage/json-file";
 
@@ -55,21 +55,40 @@ function cloneConfigWithoutCredentials(
   return safeConfig;
 }
 
-function cropInitialVPoints(
+/**
+ * Bounds each symbol's persisted vPoints to the latest 10 points while keeping
+ * every point an open position still depends on: points at or after the
+ * earliest open entry time and points referenced by entry or intermediate
+ * vPoint refs. Chronological source order is preserved.
+ */
+function snapshotVPoints(
   vPointsMap: RuntimeEngineState["vPointsMap"],
-  startTime: number,
-): NonNullable<PrecisionTestCase["initialVPointsMap"]> {
-  const minimumTime = startTime - windowsMs["1m"] * 2;
-
+  openPositions: RuntimeEngineState["openPositions"],
+): RuntimeEngineState["vPointsMap"] {
   return Object.fromEntries(
-    Object.entries(vPointsMap).map(([symbol, points]) => [
-      symbol,
-      clone(
-        points.filter(
-          (point) => point.t >= minimumTime && point.t <= startTime,
-        ),
-      ),
-    ]),
+    Object.entries(vPointsMap).map(([symbol, points]) => {
+      const positions = openPositions.filter(
+        (position) =>
+          !position.closed &&
+          position.symbol.toUpperCase() === symbol.toUpperCase(),
+      );
+      const earliestOpenT = positions.length
+        ? Math.min(...positions.map((position) => position.opened.t))
+        : undefined;
+      const referencedIds = new Set(
+        positions.flatMap((position) => [
+          position.opened.vPoint.id,
+          ...(position.vPoints ?? []).map((point) => point.id),
+        ]),
+      );
+      const retained = points.filter(
+        (point, index) =>
+          index >= Math.max(0, points.length - 10) ||
+          (earliestOpenT !== undefined && point.t >= earliestOpenT) ||
+          referencedIds.has(point.id),
+      );
+      return [symbol, clone(retained)];
+    }),
   );
 }
 
@@ -165,11 +184,44 @@ async function start(
     );
   }
 
-  const startTime = finiteTime(state.currentTime);
+  if (!Number.isFinite(state.currentTime)) {
+    throw new Error(
+      "Production runtime is not ready for a precision test case: currentTime is not finite.",
+    );
+  }
+
+  const symbols = slowTradingShared.symbols.buildExecution(
+    state.config.management.symbols,
+  );
+  const missingVPoints = symbols.filter(
+    (symbol) => !Object.hasOwn(state.vPointsMap, symbol),
+  );
+  const missingMarkPrice = symbols.filter((symbol) => {
+    const price = state.markPriceMap[symbol]?.price;
+    return !Number.isFinite(price) || price <= 0;
+  });
+  if (missingVPoints.length > 0 || missingMarkPrice.length > 0) {
+    throw new Error(
+      "Production runtime is not ready for a precision test case." +
+        (missingVPoints.length > 0
+          ? ` Missing vPoints: ${missingVPoints.join(", ")}.`
+          : "") +
+        (missingMarkPrice.length > 0
+          ? ` Missing mark price: ${missingMarkPrice.join(", ")}.`
+          : ""),
+    );
+  }
+
+  const startTime = state.currentTime;
   const fileName = getFileName(state.mode, startTime, undefined);
   const testCase: PrecisionTestCase = {
     config: cloneConfigWithoutCredentials(state.config),
-    initialVPointsMap: cropInitialVPoints(state.vPointsMap, startTime),
+    initialState: {
+      t: startTime,
+      balance: clone(state.balance),
+      openPositions: clone(state.openPositions),
+      vPointsMap: snapshotVPoints(state.vPointsMap, state.openPositions),
+    },
     startTime,
     tradeHistory: [],
   };

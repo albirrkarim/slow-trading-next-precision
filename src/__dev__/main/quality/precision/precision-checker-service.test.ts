@@ -32,18 +32,43 @@ function testConfig(overrides: Record<string, unknown> = {}) {
   } as unknown as PrecisionTestCase["config"];
 }
 
+function balanceSummary(total: number) {
+  return {
+    available: total,
+    locked: 0,
+    reserved: 0,
+    safeHaven: 0,
+    spendable: total,
+    startingBalance: total,
+    total,
+  };
+}
+
+function initialState(t: number): PrecisionTestCase["initialState"] {
+  return {
+    t,
+    balance: { "acc-1": balanceSummary(100) },
+    openPositions: [],
+    vPointsMap: { SUI: [{ id: "p1", t: t - 60_000, lvl: -2 }] },
+  } as unknown as PrecisionTestCase["initialState"];
+}
+
 async function writeCase(fileName: string, testCase: unknown) {
   await fs.ensureDir(directory);
   await fs.writeJSON(path.join(directory, fileName), testCase);
 }
 
 function completedCase(endTime: number, tradeCount = 1): PrecisionTestCase {
+  const startTime = endTime - 60_000;
   return {
     config: testConfig(),
-    startTime: endTime - 60_000,
+    initialState: initialState(startTime),
+    startTime,
     endTime,
     tradeHistory: Array.from({ length: tradeCount }, () =>
-      createTestPosition({ closed: { t: endTime, price: 11, feeUsdt: 0, reason: "TAKE_PROFIT" } }),
+      createTestPosition({
+        closed: { t: endTime, price: 11, feeUsdt: 0, reason: "TAKE_PROFIT" },
+      }),
     ),
   };
 }
@@ -62,7 +87,7 @@ describe("precision checker service", () => {
     await expect(precisionChecker.testCases.list()).resolves.toEqual([]);
   });
 
-  it("lists only completed captures, newest endTime first", async () => {
+  it("lists only completed valid captures, newest endTime first", async () => {
     await writeCase(
       "sandbox-01-01-2024-00-00-03-01-2024-00-00.json",
       completedCase(3, 2),
@@ -76,6 +101,13 @@ describe("precision checker service", () => {
       completedCase(9),
     );
     await writeCase("notes.txt", completedCase(8));
+    await writeCase("live-01-01-2024-00-00-07-01-2024-00-00.json", {
+      config: testConfig(),
+      startTime: 6,
+      endTime: 7,
+      initialVPointsMap: { SUI: [] },
+      tradeHistory: [],
+    });
 
     const list = await precisionChecker.testCases.list();
 
@@ -106,6 +138,43 @@ describe("precision checker service", () => {
     ).rejects.toThrow(/Invalid precision test case file name/);
   });
 
+  it("rejects a completed-name capture without a valid initialState", async () => {
+    const fileName = "live-01-01-2024-00-00-02-01-2024-00-00.json";
+    await writeCase(fileName, {
+      config: testConfig(),
+      startTime: 1,
+      endTime: 2,
+      tradeHistory: [],
+    });
+
+    await expect(precisionChecker.run(fileName)).rejects.toThrow(
+      `Invalid precision test case: ${fileName}`,
+    );
+    expect(mocks.precisionBacktest).not.toHaveBeenCalled();
+  });
+
+  it("rejects captures whose initialState maps are arrays", async () => {
+    const fileName = "sandbox-02-01-2024-00-00-03-01-2024-00-00.json";
+    await writeCase(fileName, {
+      config: testConfig(),
+      initialState: {
+        t: 1,
+        balance: [],
+        openPositions: [],
+        vPointsMap: [],
+      },
+      startTime: 1,
+      endTime: 2,
+      tradeHistory: [],
+    });
+
+    await expect(precisionChecker.testCases.list()).resolves.toEqual([]);
+    await expect(precisionChecker.run(fileName)).rejects.toThrow(
+      `Invalid precision test case: ${fileName}`,
+    );
+    expect(mocks.precisionBacktest).not.toHaveBeenCalled();
+  });
+
   it("replays a capture with exact precision-checker params and closed-only histories", async () => {
     const fileName = "sandbox-01-01-2024-00-00-02-01-2024-00-00.json";
     const closedProduction = createTestPosition({
@@ -113,11 +182,12 @@ describe("precision checker service", () => {
       closed: { t: 2, price: 11, feeUsdt: 0, reason: "TAKE_PROFIT" },
     });
     const openProduction = createTestPosition({ symbol: "OPEN-PROD" });
+    const snapshot = initialState(1);
     await writeCase(fileName, {
       config: testConfig(),
+      initialState: snapshot,
       startTime: 1,
       endTime: 2,
-      initialVPointsMap: { SUI: [{ t: 1, lvl: -2 }] },
       tradeHistory: [closedProduction, openProduction],
     });
 
@@ -142,7 +212,7 @@ describe("precision checker service", () => {
       startTime: 1,
       endTime: 2,
       range: "custom",
-      initialVPointsMap: { SUI: [{ t: 1, lvl: -2 }] },
+      initialState: snapshot,
       mode: "precision-checker",
       upToDateDecisionBacktest: false,
       upToDateKlines: false,

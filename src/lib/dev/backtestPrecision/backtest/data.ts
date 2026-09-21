@@ -321,6 +321,29 @@ function createDatasetReader(symbols: string[]): Pick<
   };
 }
 
+/**
+ * Earliest disk-preparation time needed to rebuild a captured runtime state:
+ * the mark-price lookback plus every retained initial vPoint.
+ */
+function resolveInitialStateDataStart(
+  params: BacktestPrecisionParams,
+): number | undefined {
+  const initialState = params.initialState;
+  if (!initialState) {
+    return undefined;
+  }
+
+  let start = initialState.t - 30 * 60_000;
+  for (const points of Object.values(initialState.vPointsMap)) {
+    for (const point of points) {
+      if (Number.isFinite(point.t)) {
+        start = Math.min(start, point.t);
+      }
+    }
+  }
+  return start;
+}
+
 /** Downloads only daily 1m files and returns their disk-backed adapter. */
 export async function preparePrecisionDataset(
   params: BacktestPrecisionParams,
@@ -329,6 +352,10 @@ export async function preparePrecisionDataset(
     params.config.management.symbols,
   );
   const requestedRange = resolveBacktestRange(params);
+  const preparationStartTime = Math.min(
+    requestedRange.startTime,
+    resolveInitialStateDataStart(params) ?? requestedRange.startTime,
+  );
   let startTime = requestedRange.startTime;
   let endTime = requestedRange.endTime;
 
@@ -336,7 +363,7 @@ export async function preparePrecisionDataset(
     const bounds = await prepareSymbolDays(
       params,
       symbol,
-      requestedRange.startTime,
+      preparationStartTime,
       requestedRange.endTime,
     );
     startTime = Math.max(startTime, bounds.startTime);

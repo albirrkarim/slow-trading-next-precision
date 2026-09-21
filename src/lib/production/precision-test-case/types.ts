@@ -1,12 +1,14 @@
-import type { VolatilityPoint } from "@/lib/dynamic";
 import type { Position } from "@/lib/trading/models";
-import type { BacktestTestCase } from "@/lib/dev/backtestPrecision/api/precision-api-types";
+import type {
+  BacktestPrecisionInitialState,
+  BacktestTestCase,
+} from "@/lib/dev/backtestPrecision/api/precision-api-types";
 
 /** A production recording that can later be supplied to the precision checker. */
 export interface PrecisionTestCase extends BacktestTestCase {
+  /** Exact runtime snapshot taken when the recording started. */
+  initialState: BacktestPrecisionInitialState;
   tradeHistory: Position[];
-  /** Volatility points available when the recording started. */
-  initialVPointsMap?: Record<string, VolatilityPoint[]>;
 }
 
 export type PrecisionTestCaseMode = "live" | "sandbox";

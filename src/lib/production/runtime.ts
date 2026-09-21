@@ -11,6 +11,7 @@ class ProductionRuntime {
   private controller?: AbortController;
   private runPromise?: Promise<void>;
   private state?: RuntimeEngineState;
+  private engine?: RuntimeEngine;
 
   /** Starts the engine once; repeated calls share the same in-flight run. */
   start(factory: ProductionRuntimeFactory): Promise<void> {
@@ -29,11 +30,14 @@ class ProductionRuntime {
       if (controller.signal.aborted) return;
 
       try {
-        await new RuntimeEngine(state, adapter).start();
+        const engine = new RuntimeEngine(state, adapter);
+        this.engine = engine;
+        await engine.start();
       } catch (error) {
         if (!isAbortError(error)) throw error;
       }
     })().finally(() => {
+      this.engine = undefined;
       this.controller = undefined;
       this.runPromise = undefined;
     });
@@ -54,6 +58,24 @@ class ProductionRuntime {
   /** Returns the mutable state owned by the currently loaded runtime. */
   getState(): RuntimeEngineState | undefined {
     return this.state;
+  }
+
+  /**
+   * Synchronously clones the live engine state for a precision test case.
+   * The checks and the clone cannot interleave with a trading stage.
+   */
+  captureState(): RuntimeEngineState {
+    if (!this.state || !this.engine?.isReady()) {
+      throw new Error(
+        "Production runtime is not ready for a precision snapshot.",
+      );
+    }
+    if (this.engine.isProcessing()) {
+      throw new Error(
+        "Production runtime is processing a trading stage. Try again after the stage completes.",
+      );
+    }
+    return structuredClone(this.state);
   }
 }
 

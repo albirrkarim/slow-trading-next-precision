@@ -46,6 +46,22 @@ async function readTestCase(
   }
 }
 
+function hasValidInitialState(testCase: PrecisionTestCase): boolean {
+  const initialState = testCase.initialState;
+  return Boolean(
+    initialState &&
+      typeof initialState === "object" &&
+      Number.isFinite(initialState.t) &&
+      initialState.balance &&
+      typeof initialState.balance === "object" &&
+      !Array.isArray(initialState.balance) &&
+      Array.isArray(initialState.openPositions) &&
+      initialState.vPointsMap &&
+      typeof initialState.vPointsMap === "object" &&
+      !Array.isArray(initialState.vPointsMap),
+  );
+}
+
 function summarize(
   fileName: string,
   testCase: PrecisionTestCase,
@@ -54,7 +70,8 @@ function summarize(
     !testCase.config ||
     !Number.isFinite(testCase.startTime) ||
     !Number.isFinite(testCase.endTime) ||
-    !Array.isArray(testCase.tradeHistory)
+    !Array.isArray(testCase.tradeHistory) ||
+    !hasValidInitialState(testCase)
   ) {
     return null;
   }
@@ -102,9 +119,12 @@ async function run(fileName: string): Promise<PrecisionCheckerRunResult> {
 
   const filePath = path.join(testCaseDirectory(), fileName);
   const testCase = await readTestCase(filePath);
-  const testCaseSummary = testCase && summarize(fileName, testCase);
-  if (!testCase || !testCaseSummary) {
+  if (!testCase) {
     throw new Error(`Precision test case not found: ${fileName}`);
+  }
+  const testCaseSummary = summarize(fileName, testCase);
+  if (!testCaseSummary) {
+    throw new Error(`Invalid precision test case: ${fileName}`);
   }
 
   const result = await precisionBacktest({
@@ -112,7 +132,7 @@ async function run(fileName: string): Promise<PrecisionCheckerRunResult> {
     startTime: testCase.startTime as number,
     endTime: testCase.endTime as number,
     range: "custom",
-    initialVPointsMap: testCase.initialVPointsMap,
+    initialState: testCase.initialState,
     mode: "precision-checker",
     upToDateDecisionBacktest: false,
     upToDateKlines: false,

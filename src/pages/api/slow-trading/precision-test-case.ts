@@ -32,7 +32,11 @@ export default async function handler(
   try {
     // PROD:PRODUCTION_TEST_CASE_CAPTURE_CONTROLS
     if (req.body?.action === "start") {
-      res.status(200).json(await production.precisionTestCase.start(state));
+      res
+        .status(200)
+        .json(
+          await production.precisionTestCase.start(runtime.captureState()),
+        );
       return;
     }
 

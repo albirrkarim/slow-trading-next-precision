@@ -13,41 +13,44 @@ import {
 import { windowsMs } from "@/lib/dynamic/constants-time";
 import simulatedAction from "@/lib/precision/action/simulated";
 import type { BacktestPrecisionResult } from "./backtest-precision-types";
-import { VolatilityPoint } from "@/lib/dynamic";
 
 const BACKTEST_ENTRY_CUTOFF_MS = 4 * 24 * 60 * 60 * 1000;
 
 interface PrecisionBacktestParams extends BacktestPrecisionParams {
   mode?: "backtest" | "precision-checker";
-  /**
-   * Used in precision checker test case
-   */
-  initialVPointsMap?: Record<string, VolatilityPoint<any>[]>;
 }
 
 export async function precisionBacktest(
   params: PrecisionBacktestParams,
 ): Promise<BacktestPrecisionResult> {
+  // Precision checker replays a recorded production window, so entries must
+  // be allowed all the way to the end to match what production did.
+  const isPrecisionChecker = params.mode === "precision-checker";
+  const initialState = isPrecisionChecker ? params.initialState : undefined;
+  if (isPrecisionChecker && !initialState) {
+    throw new Error(
+      "Precision checker replay requires a captured initial runtime state.",
+    );
+  }
+
   // A. Prepare klines
   // BTEST:BACKTEST_DATASET
-  const dataset = await preparePrecisionDataset(params);
+  const dataset = await preparePrecisionDataset(
+    isPrecisionChecker ? params : { ...params, initialState: undefined },
+  );
 
   // B. Prepare state and adapter
   const { symbols } = dataset;
   const datasetStartTime = dataset.startTime;
   const endTime = dataset.endTime;
-  // Precision checker replays a recorded production window, so entries must
-  // be allowed all the way to the end to match what production did.
-  const isPrecisionChecker = params.mode === "precision-checker";
   const entryCutoffTime = isPrecisionChecker
     ? Number.POSITIVE_INFINITY
     : endTime - BACKTEST_ENTRY_CUTOFF_MS;
 
   // i think we make the backtest forward two month,
   // so we can make the initial vPointsMap first.
-  const currentTime = isPrecisionChecker
-    ? datasetStartTime
-    : datasetStartTime + windowsMs["1m"] * 2;
+  const currentTime =
+    initialState?.t ?? datasetStartTime + windowsMs["1m"] * 2;
   if (!isPrecisionChecker && currentTime >= endTime) {
     throw new Error(
       "Precision backtest requires more than two months of data for volatility warm-up.",
@@ -55,20 +58,27 @@ export async function precisionBacktest(
   }
 
   const vPointsMap =
-    params.initialVPointsMap ??
-    (await createInitialVPointsMap(
-      symbols,
-      dataset.getKlines,
-      datasetStartTime,
-      currentTime,
-    ));
+    initialState !== undefined
+      ? structuredClone(initialState.vPointsMap)
+      : await createInitialVPointsMap(
+          symbols,
+          dataset.getKlines,
+          datasetStartTime,
+          currentTime,
+        );
 
   const state: RuntimeEngineState = {
-    balance: createInitialBalance(params),
+    balance:
+      initialState !== undefined
+        ? structuredClone(initialState.balance)
+        : createInitialBalance(params),
     config: params.config,
     currentTime,
     mode: "backtest",
-    openPositions: [],
+    openPositions:
+      initialState !== undefined
+        ? structuredClone(initialState.openPositions)
+        : [],
     markPriceMap: {},
     vPointsMap,
   };

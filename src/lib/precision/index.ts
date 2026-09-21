@@ -18,10 +18,22 @@ class RuntimeEngine {
 
   helper: RuntimeHelper;
 
+  private ready = false;
+
+  private processing = false;
+
   constructor(state: RuntimeEngineState, adapter: RuntimeEngineAdapter) {
     this.state = state;
     this.adapter = adapter;
     this.helper = createRuntimeHelper(state, adapter);
+  }
+
+  isReady(): boolean {
+    return this.ready;
+  }
+
+  isProcessing(): boolean {
+    return this.processing;
   }
 
   async start() {
@@ -31,39 +43,50 @@ class RuntimeEngine {
 
     tradeLog.log("RUNTIME ENGINE STARTED");
 
-    await this.helper.market.updateMarkPrice();
-    await this.helper.market.updateVPointsMap();
+    try {
+      await this.helper.market.updateMarkPrice();
+      await this.helper.market.updateVPointsMap();
+      this.ready = true;
 
-    const clock = this.adapter.clock;
+      const clock = this.adapter.clock;
 
-    while (!(await clock.finished())) {
-      const nextTime = monitoring.schedule.getNextTime(this.state);
+      while (!(await clock.finished())) {
+        const nextTime = monitoring.schedule.getNextTime(this.state);
 
-      await clock.advanceTo(nextTime);
+        await clock.advanceTo(nextTime);
 
-      this.state.currentTime = clock.now();
+        this.state.currentTime = clock.now();
 
-      await this.runDueStages();
+        await this.runDueStages();
+      }
+    } finally {
+      this.ready = false;
+      this.processing = false;
     }
   }
 
   private async runDueStages() {
-    if (monitoring.schedule.isSpeedupDue(this.state)) {
-      await this.helper.market.updateMarkPrice("1m");
-      await this.helper.market.updateVPointsMap("1m");
-      await monitoring.stages.speedup(this.context);
-    }
+    this.processing = true;
+    try {
+      if (monitoring.schedule.isSpeedupDue(this.state)) {
+        await this.helper.market.updateMarkPrice("1m");
+        await this.helper.market.updateVPointsMap("1m");
+        await monitoring.stages.speedup(this.context);
+      }
 
-    if (monitoring.schedule.isStandardDue(this.state)) {
-      await this.helper.market.updateMarkPrice();
-      await this.helper.market.updateVPointsMap();
-      await monitoring.stages.standard(this.context);
-    }
+      if (monitoring.schedule.isStandardDue(this.state)) {
+        await this.helper.market.updateMarkPrice();
+        await this.helper.market.updateVPointsMap();
+        await monitoring.stages.standard(this.context);
+      }
 
-    if (monitoring.schedule.isCaptureEntryDue(this.state)) {
-      await this.helper.market.updateMarkPrice();
-      await this.helper.market.updateVPointsMap();
-      await monitoring.entry.capture(this.context);
+      if (monitoring.schedule.isCaptureEntryDue(this.state)) {
+        await this.helper.market.updateMarkPrice();
+        await this.helper.market.updateVPointsMap();
+        await monitoring.entry.capture(this.context);
+      }
+    } finally {
+      this.processing = false;
     }
   }
 

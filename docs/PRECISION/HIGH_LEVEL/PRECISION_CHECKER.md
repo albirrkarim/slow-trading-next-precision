@@ -18,19 +18,24 @@ i need to have record of the initial
 vPointsMap
 ```
 
-crop it about 2 month back.
+keep the latest 10 vPoints per symbol, plus every vPoint still required by an open position: points at or after the earliest open entry time and every vPoint referenced by an open position's entry or intermediate vPoint refs.
 
 so the tescase will be like
 
 ```ts
-import type { BacktestTestCase } from "src/lib/dev/backtestPrecision/api/precision-api-types.ts";
+import type {
+  BacktestPrecisionInitialState,
+  BacktestTestCase,
+} from "src/lib/dev/backtestPrecision/api/precision-api-types.ts";
 
 interface PrecisionTestCase extends BacktestTestCase {
-  tradeHistory: Position[];
   /**
-   * Used in precision checker test case
+   * Exact runtime snapshot taken when the recording started: the snapshot
+   * time, balances per account, still-open positions, and bounded vPoints
+   * (latest 10 per symbol plus every point an open position still needs).
    */
-  initialVPointsMap?: Record<string, VolatilityPoint<any>[]>;
+  initialState: BacktestPrecisionInitialState;
+  tradeHistory: Position[];
 }
 ```
 
