@@ -51,10 +51,15 @@ function cloneConfigWithoutCredentials(
 }
 
 /**
- * Bounds each symbol's persisted vPoints to the latest 10 points while keeping
- * every point an open position still depends on: points at or after the
- * earliest open entry time and points referenced by entry or intermediate
- * vPoint refs. Chronological source order is preserved.
+ * Bounds each symbol's persisted vPoints while preserving replay dependencies.
+ *
+ * A point is retained when it is among the latest 10 points, occurred at or
+ * after the earliest open position's entry time, or is explicitly referenced
+ * by an open position's entry/intermediate vPoints:
+ *
+ * `keep = latest10 || point.t >= earliestOpenPositionTime || openPositionReferencesPoint`
+ *
+ * Chronological source order is preserved.
  */
 function snapshotVPoints(
   vPointsMap: RuntimeEngineState["vPointsMap"],
