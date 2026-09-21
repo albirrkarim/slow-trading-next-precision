@@ -4,6 +4,7 @@ import {
   type PredictorMemory,
   type VolatilityPoint,
 } from "@/lib/dynamic";
+import { resolveMarketTypeForTradingMode } from "@/lib/exchange/utils";
 import slowTradingShared from "@/lib/slowTrading/shared";
 import type { RuntimeEngineAdapter, RuntimeEngineState } from "../types";
 import type { RuntimeMarketHelper, RuntimeMarketInterval } from "./types";
@@ -49,6 +50,9 @@ function create(
   > = {};
   const getSymbols = () =>
     slowTradingShared.symbols.buildExecution(state.config.management.symbols);
+  const marketType = resolveMarketTypeForTradingMode(
+    state.config.management.tradingMode,
+  );
 
   return {
     /**
@@ -69,6 +73,7 @@ function create(
         const klines = await adapter.market.getKlines({
           endTime: currentTime,
           interval,
+          marketType,
           minutes: MARK_PRICE_LOOKBACK_MINUTES,
           symbol: `${symbol}_USDT`,
         });
@@ -130,6 +135,7 @@ function create(
           endTime: currentTime,
           exactDate: true,
           interval,
+          marketType,
           startTime,
           symbol: `${symbol}_USDT`,
         });

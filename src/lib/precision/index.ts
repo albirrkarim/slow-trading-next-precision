@@ -1,3 +1,4 @@
+import { tradeLog } from "../trading";
 import { createRuntimeHelper, type RuntimeHelper } from "./helper";
 import monitoring from "./monitoring";
 import type {
@@ -27,6 +28,8 @@ class RuntimeEngine {
     if (!this.state.config.runtime.runnerEnabled) {
       return;
     }
+
+    tradeLog.log("RUNTIME ENGINE STARTED");
 
     await this.helper.market.updateMarkPrice();
     await this.helper.market.updateVPointsMap();
