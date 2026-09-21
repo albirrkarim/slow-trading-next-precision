@@ -1,11 +1,16 @@
 "use client";
 
 import type { MultiLinePair } from "@/components/api/dynamic";
+import {
+  convertVolatilityToLeveledMarkers,
+  convertVolatilityToMarkers,
+} from "@/components/LiveDashboard/converter";
 import { endpoints } from "@/components/endpoints";
 import type { Marker } from "@/components/LiveDashboard/converter";
 import MultiLineTimelined from "@/components/ui/Chart/MultiLineTimelined";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import type { IntervalKlines } from "@/lib/exchange";
+import type { VolatilityPoint } from "@/lib/dynamic";
 import { tradeLog } from "@/lib/trading/helper/log";
 import type { Position } from "@/lib/trading/models";
 import {
@@ -85,6 +90,7 @@ export default function TradeChartBase({
   startTimeMs,
   endTimeMs,
   volatilitySource = "storage",
+  customVolatilityPoints,
 }: {
   activePosition?: TradeChartPosition;
   symbol: string;
@@ -105,6 +111,7 @@ export default function TradeChartBase({
   startTimeMs?: number;
   endTimeMs?: number;
   volatilitySource?: TradeChartVolatilitySource;
+  customVolatilityPoints?: VolatilityPoint[];
 }) {
   const [klines, setKlines] = useState<any[]>([]);
   const [apiMarkers, setApiMarkers] = useState<Marker[]>([]);
@@ -147,7 +154,7 @@ export default function TradeChartBase({
                 range: getRangeForInterval(interval),
               }),
             upToDateKlines: true,
-            volatility: true,
+            volatility: customVolatilityPoints === undefined,
             volatilitySource,
             tradeHistory: includeTradeHistory,
           },
@@ -167,10 +174,40 @@ export default function TradeChartBase({
         setKlines(formattedData);
       }
 
-      const nextMarkers = (res.data?.markers ?? []) as Marker[];
+      const visibleCustomVolatilityPoints =
+        customVolatilityPoints === undefined
+          ? undefined
+          : (() => {
+              const firstTime = Number(rawData[0]?.[0]);
+              const lastTime = Number(rawData.at(-1)?.[0]);
+              if (!Number.isFinite(firstTime) || !Number.isFinite(lastTime)) {
+                return [];
+              }
+
+              return customVolatilityPoints.filter(
+                (point) => point.t >= firstTime && point.t <= lastTime,
+              );
+            })();
+
+      const nextMarkers = [
+        ...((res.data?.markers ?? []) as Marker[]),
+        ...(visibleCustomVolatilityPoints
+          ? convertVolatilityToMarkers(visibleCustomVolatilityPoints)
+          : []),
+      ];
       setApiMarkers(Array.isArray(nextMarkers) ? nextMarkers : []);
 
-      if (res.data.vPointsSeries?.series?.length) {
+      if (visibleCustomVolatilityPoints) {
+        setVPointsSeries({
+          names: [symbol],
+          series: [
+            convertVolatilityToLeveledMarkers(
+              symbol,
+              visibleCustomVolatilityPoints,
+            ),
+          ],
+        });
+      } else if (res.data.vPointsSeries?.series?.length) {
         setVPointsSeries(res.data.vPointsSeries);
       } else {
         setVPointsSeries(undefined);
@@ -196,6 +233,7 @@ export default function TradeChartBase({
     startTimeMs,
     symbol,
     volatilitySource,
+    customVolatilityPoints,
   ]);
 
   useEffect(() => {

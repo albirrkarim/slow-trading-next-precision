@@ -32,6 +32,7 @@ import PositionLevelSequence, {
 import { EXCHANGE_COLOR_MAP } from "@/components/LiveDashboard/Shared/constants";
 import { buildTradeMarkersFromHistory } from "@/components/LiveDashboard/Shared/trade-chart-markers";
 import type { ExchangeType } from "@/lib/exchange";
+import type { VolatilityPoint } from "@/lib/dynamic";
 import type {
   SlowTradingAccount,
   SlowTradingDashboardState,
@@ -247,10 +248,12 @@ function buildTradeChartPosition(row: SlowTradingReportRow) {
 
 function TradeChartDialog({
   exchangeType,
+  getVolatilityPoints,
   history,
   row,
 }: {
   exchangeType: ExchangeType;
+  getVolatilityPoints?: (symbol: string) => VolatilityPoint[] | undefined;
   history: SlowTradingReportRow[];
   row: SlowTradingReportRow;
 }) {
@@ -282,6 +285,7 @@ function TradeChartDialog({
             }
             markers={buildTradeMarkersFromHistory(history, row.symbol)}
             volatilitySource="storage"
+            customVolatilityPoints={getVolatilityPoints?.(row.symbol)}
             header={
               <>
                 <Typography variant="body2">
@@ -360,6 +364,7 @@ function FeatureCell({ row }: { row: SlowTradingReportRow }) {
 export function TradesTableSection({
   accounts = [],
   exchangeType,
+  getVolatilityPoints,
   history,
   mode,
   onHistoryChange,
@@ -368,6 +373,7 @@ export function TradesTableSection({
 }: {
   accounts?: TradeHistoryAccount[];
   exchangeType: ExchangeType;
+  getVolatilityPoints?: (symbol: string) => VolatilityPoint[] | undefined;
   history: SlowTradingReportRow[];
   mode: SlowTradingMode;
   onHistoryChange: (
@@ -887,6 +893,7 @@ export function TradesTableSection({
                     )}
                     <TradeChartDialog
                       exchangeType={exchangeType}
+                      getVolatilityPoints={getVolatilityPoints}
                       history={history}
                       row={row}
                     />

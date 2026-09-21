@@ -26,6 +26,9 @@ export default function VPointsResult({
           </Typography>
           <TradesTableSection
             exchangeType={result.exchangeType}
+            getVolatilityPoints={(symbol) =>
+              result.vPointsMap[symbol.toUpperCase().replace(/_USDT$/, "")] ?? []
+            }
             history={tradeHistory}
             mode="sandbox"
             onHistoryChange={() => undefined}
