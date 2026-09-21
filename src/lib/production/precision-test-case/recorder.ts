@@ -8,6 +8,7 @@ import type { RuntimeEngineState } from "@/lib/precision/types";
 import slowTradingShared from "@/lib/slowTrading/shared";
 import slowTradingStorage from "@/lib/slowTrading/storage";
 import jsonFile from "@/lib/slowTrading/storage/json-file";
+import vpoints from "../vpoints";
 
 import type {
   PrecisionTestCase,
@@ -52,43 +53,25 @@ function cloneConfigWithoutCredentials(
 
 /**
  * Bounds each symbol's persisted vPoints while preserving replay dependencies.
- *
- * A point is retained when it is among the latest 10 points, occurred at or
- * after the earliest open position's entry time, or is explicitly referenced
- * by an open position's entry/intermediate vPoints:
- *
- * `keep = latest10 || point.t >= earliestOpenPositionTime || openPositionReferencesPoint`
- *
- * Chronological source order is preserved.
+ * Uses the shared retention rule (latest 10 ∪ points since the earliest open
+ * position ∪ position-referenced points) — see `vpoints.retainRecent`.
  */
 function snapshotVPoints(
   vPointsMap: RuntimeEngineState["vPointsMap"],
   openPositions: RuntimeEngineState["openPositions"],
 ): RuntimeEngineState["vPointsMap"] {
   return Object.fromEntries(
-    Object.entries(vPointsMap).map(([symbol, points]) => {
-      const positions = openPositions.filter(
-        (position) =>
-          !position.closed &&
-          position.symbol.toUpperCase() === symbol.toUpperCase(),
-      );
-      const earliestOpenT = positions.length
-        ? Math.min(...positions.map((position) => position.opened.t))
-        : undefined;
-      const referencedIds = new Set(
-        positions.flatMap((position) => [
-          position.opened.vPoint.id,
-          ...(position.vPoints ?? []).map((point) => point.id),
-        ]),
-      );
-      const retained = points.filter(
-        (point, index) =>
-          index >= Math.max(0, points.length - 10) ||
-          (earliestOpenT !== undefined && point.t >= earliestOpenT) ||
-          referencedIds.has(point.id),
-      );
-      return [symbol, clone(retained)];
-    }),
+    Object.entries(vPointsMap).map(([symbol, points]) => [
+      symbol,
+      clone(
+        vpoints.retainRecent({
+          symbol,
+          points,
+          positions: openPositions,
+          recent: 10,
+        }),
+      ),
+    ]),
   );
 }
 

@@ -1,5 +1,6 @@
 import type { BalanceSummary } from "@/components/LiveDashboard/Navbar/Settings/settings-types";
-import { getExchange, type IExchange } from "@/lib/exchange";
+import { FILES } from "@/components/storage";
+import { getExchange, type ExchangeType, type IExchange } from "@/lib/exchange";
 import type { Kline } from "@/lib/exchange/platform/tokocrypto";
 import slowTradingBalance from "@/lib/slowTrading/balance";
 import slowTradingStorage from "@/lib/slowTrading/storage";
@@ -22,6 +23,7 @@ import type {
 import clock from "./clock";
 import adapter from "./adapter";
 import state from "./state";
+import vpoints from "./vpoints";
 import type { ProductionRuntimeFactory } from "./types";
 
 interface AccountRuntime {
@@ -338,6 +340,9 @@ function createActionHandlers(
   return { onAction, onExit, onStateChange, onStrategy };
 }
 
+/** Recent vPoints seeded per symbol when production boots. */
+const BOOTSTRAP_VPOINT_COUNT = 7;
+
 function createProductionFactory(): ProductionRuntimeFactory {
   const accountRuntimes: AccountRuntimes = new Map();
   let latestState: PrecisionRuntimeState | undefined;
@@ -349,6 +354,10 @@ function createProductionFactory(): ProductionRuntimeFactory {
     const openPositions: Position[] = [];
     const balance: Record<string, BalanceSummary> = {};
     const vPointsMap: PrecisionRuntimeState["vPointsMap"] = {};
+    const vPointSources = new Map<
+      string,
+      { exchangeType: ExchangeType; symbol: string }
+    >();
 
     // PROD:RUNTIME_ACCOUNT_STATE_LOAD
     for (const account of catalog.accounts) {
@@ -396,11 +405,11 @@ function createProductionFactory(): ProductionRuntimeFactory {
         openPositions.push(...getOpenPositions(modeState));
 
         for (const setting of modeState.tradeSettings) {
-          const points = setting.model_memory.volatility?.lastVolatility;
           const symbol = setting.symbol.toUpperCase();
-          if (points && (!vPointsMap[symbol] || points.length > vPointsMap[symbol].length)) {
-            vPointsMap[symbol] = structuredClone(points);
-          }
+          vPointSources.set(`${storage.config.exchangeType}:${symbol}`, {
+            exchangeType: storage.config.exchangeType,
+            symbol,
+          });
         }
       } catch (error) {
         tradeLog.error(
@@ -412,6 +421,30 @@ function createProductionFactory(): ProductionRuntimeFactory {
 
     if (accountRuntimes.size === 0) {
       throw new Error("Precision production runtime has no loadable accounts.");
+    }
+
+    // PROD:VPOINTS_BOOTSTRAP_FROM_STORAGE
+    // Seeds vPointsMap from the persisted per-symbol volatility files instead
+    // of transient model memory: each file keeps the full detected point list
+    // including `usedBy<accountSlug>` markers, so a restart does not re-consume
+    // entry signals. The latest 5 points are injected, expanded by the shared
+    // retention rule so open positions keep their referenced/post-entry
+    // vPoints. Runtime market updates merge new points on top of this seed.
+    for (const source of vPointSources.values()) {
+      const points = await FILES.slow.volatilityPoints.get(
+        source.exchangeType,
+        source.symbol,
+      );
+      if (!points?.length) continue;
+      const retained = vpoints.retainRecent({
+        symbol: source.symbol,
+        points,
+        positions: openPositions,
+        recent: BOOTSTRAP_VPOINT_COUNT,
+      });
+      if (retained.length > (vPointsMap[source.symbol]?.length ?? 0)) {
+        vPointsMap[source.symbol] = retained;
+      }
     }
 
     const runtimeState = state.create({
