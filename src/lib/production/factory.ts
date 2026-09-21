@@ -427,7 +427,7 @@ function createProductionFactory(): ProductionRuntimeFactory {
     // Seeds vPointsMap from the persisted per-symbol volatility files instead
     // of transient model memory: each file keeps the full detected point list
     // including `usedBy<accountSlug>` markers, so a restart does not re-consume
-    // entry signals. The latest 5 points are injected, expanded by the shared
+    // entry signals. The latest 7 points are injected, expanded by the shared
     // retention rule so open positions keep their referenced/post-entry
     // vPoints. Runtime market updates merge new points on top of this seed.
     for (const source of vPointSources.values()) {
