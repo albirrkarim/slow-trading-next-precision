@@ -9,10 +9,7 @@ export interface SlowTradingConfigFileData {
   /** Shared management configuration persisted once for every account. */
   management: SlowTradingManagementConfig;
   /** Runtime controls persisted in the config split file. */
-  runtime: Omit<
-    SlowTradingStorageData["runtime"],
-    "exchangeAccounts" | "sandboxEnabled" | "sandboxInitialBalanceUSDT"
-  >;
+  runtime: Omit<SlowTradingStorageData["runtime"], "exchangeAccounts">;
   /** Last config-file update timestamp in milliseconds. */
   updatedAt: number;
 }

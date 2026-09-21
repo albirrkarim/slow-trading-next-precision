@@ -257,7 +257,7 @@ describe("slow end-to-end cycle", () => {
     storage.runtime.runnerEnabled = true;
     storage.runtime.autoEntryEnabled = true;
     storage.runtime.autoExitEnabled = false;
-    storage.runtime.sandboxInitialBalanceUSDT = 1_000;
+    storage.account.sandbox.initialBalanceUSDT = 1_000;
     storage.modes.sandbox = slowTradingStorage.mode.ensureTradeSettings(
       storage.modes.sandbox,
       storage.config.symbols,
@@ -318,6 +318,7 @@ describe("slow end-to-end cycle", () => {
     storage.config.exchangeType = "binance";
     storage.config.tradingMode = TradingMode.SPOT;
     storage.config.enableWatchLogic = false;
+    storage.runtime.sandboxEnabled = true;
     storage.runtime.runnerEnabled = true;
     storage.runtime.autoEntryEnabled = true;
     storage.runtime.autoExitEnabled = false;
@@ -328,13 +329,13 @@ describe("slow end-to-end cycle", () => {
           ...template,
           slug: "alpha",
           name: "Alpha",
-          sandbox: { enabled: true, initialBalanceUSDT: 1_000 },
+          sandbox: { initialBalanceUSDT: 1_000 },
         },
         {
           ...template,
           slug: "beta",
           name: "Beta",
-          sandbox: { enabled: true, initialBalanceUSDT: 1_000 },
+          sandbox: { initialBalanceUSDT: 1_000 },
         },
       ],
       storage.sharedConfig,
@@ -537,7 +538,7 @@ describe("slow end-to-end cycle", () => {
     storage.runtime.autoEntryEnabled = true;
     storage.runtime.autoExitEnabled = false;
     storage.runtime.autoRemoveSymbolAbsLevel = 3;
-    storage.runtime.sandboxInitialBalanceUSDT = 1_000;
+    storage.account.sandbox.initialBalanceUSDT = 1_000;
     storage.modes.sandbox = slowTradingStorage.mode.ensureTradeSettings(
       storage.modes.sandbox,
       storage.config.symbols,
@@ -609,7 +610,7 @@ describe("slow end-to-end cycle", () => {
     storage.runtime.runnerEnabled = true;
     storage.runtime.autoEntryEnabled = true;
     storage.runtime.autoExitEnabled = false;
-    storage.runtime.sandboxInitialBalanceUSDT = 1_000;
+    storage.account.sandbox.initialBalanceUSDT = 1_000;
     storage.modes.sandbox = slowTradingStorage.mode.ensureTradeSettings(
       storage.modes.sandbox,
       storage.config.symbols,
@@ -656,7 +657,7 @@ describe("slow end-to-end cycle", () => {
     storage.runtime.autoEntryEnabled = true;
     storage.runtime.autoExitEnabled = false;
     storage.runtime.autoRemoveSymbolMinPrice = 101;
-    storage.runtime.sandboxInitialBalanceUSDT = 1_000;
+    storage.account.sandbox.initialBalanceUSDT = 1_000;
     storage.modes.sandbox = slowTradingStorage.mode.ensureTradeSettings(
       storage.modes.sandbox,
       storage.config.symbols,
@@ -710,7 +711,7 @@ describe("slow end-to-end cycle", () => {
     storage.runtime.autoEntryEnabled = true;
     storage.runtime.autoExitEnabled = false;
     storage.runtime.autoRemoveSymbolMinMarketCapUSD = 100_000_000;
-    storage.runtime.sandboxInitialBalanceUSDT = 1_000;
+    storage.account.sandbox.initialBalanceUSDT = 1_000;
     storage.modes.sandbox = slowTradingStorage.mode.ensureTradeSettings(
       storage.modes.sandbox,
       storage.config.symbols,
@@ -806,7 +807,7 @@ describe("slow end-to-end cycle", () => {
     storage.runtime.runnerEnabled = true;
     storage.runtime.autoEntryEnabled = true;
     storage.runtime.autoExitEnabled = false;
-    storage.runtime.sandboxInitialBalanceUSDT = 1_000;
+    storage.account.sandbox.initialBalanceUSDT = 1_000;
     storage.modes.sandbox = slowTradingStorage.mode.ensureTradeSettings(
       storage.modes.sandbox,
       storage.config.symbols,

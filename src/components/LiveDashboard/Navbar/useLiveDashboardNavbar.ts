@@ -250,13 +250,13 @@ export function useLiveDashboardNavbar({
 
     setResettingSandboxAccount(account.slug);
     try {
-      const sandboxInitialBalanceUSDT = Math.max(
+      const initialBalanceUSDT = Math.max(
         0,
         Number(account.sandbox.initialBalanceUSDT) || 0,
       );
       await axios.post(endpoints.slow.prod.reset, {
         account: account.slug,
-        sandboxInitialBalanceUSDT,
+        initialBalanceUSDT,
       });
       await onRefresh();
     } catch (error) {

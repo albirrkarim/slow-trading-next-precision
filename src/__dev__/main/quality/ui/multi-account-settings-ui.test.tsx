@@ -34,7 +34,6 @@ function createAccount(params: {
   maxOpenPositions: number;
   name: string;
   notes?: string;
-  sandboxEnabled: boolean;
   slug: string;
 }): SlowTradingAccount {
   const now = Date.now();
@@ -55,7 +54,6 @@ function createAccount(params: {
     enabled: params.enabled !== false,
     trading,
     sandbox: {
-      enabled: params.sandboxEnabled,
       initialBalanceUSDT: params.initialBalanceUSDT,
     },
     createdAt: now,
@@ -70,7 +68,6 @@ function createState(): DashboardState {
       name: "Alpha",
       maxOpenPositions: 2,
       notes: "Small account, conservative entries.",
-      sandboxEnabled: true,
       initialBalanceUSDT: 1_000,
     }),
     createAccount({
@@ -78,7 +75,6 @@ function createState(): DashboardState {
       name: "Beta",
       maxOpenPositions: 7,
       notes: "Larger account, wider worker capacity.",
-      sandboxEnabled: true,
       initialBalanceUSDT: 2_000,
     }),
     createAccount({
@@ -86,7 +82,6 @@ function createState(): DashboardState {
       name: "Paused",
       enabled: false,
       maxOpenPositions: 1,
-      sandboxEnabled: false,
       initialBalanceUSDT: 500,
     }),
   ];
@@ -172,7 +167,6 @@ function createState(): DashboardState {
         telegram: { enabled: false, types: [] },
       },
       sandboxEnabled: true,
-      sandboxInitialBalanceUSDT: 1_000,
       withdrawal: { autoEnabled: false, schedules: [], walletBook: [] },
       safeHaven: { autoEnabled: false, schedules: [] },
       mcp: { tokens: [] },

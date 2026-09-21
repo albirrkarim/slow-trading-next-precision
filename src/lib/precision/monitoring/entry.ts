@@ -13,9 +13,6 @@ function canAttemptEntry(
 ): boolean {
   const account = context.helper.getAccount(decision.accountSlug);
   if (!account.enabled) return false;
-  if (context.state.mode === "sandbox" && !account.sandbox.enabled) {
-    return false;
-  }
 
   const openPositions = context.state.openPositions.filter(
     (position) =>

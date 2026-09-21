@@ -111,7 +111,7 @@ function dashboardState() {
             watchReserveLevels: 2,
             watchReservePctAlloc: 2,
           },
-          sandbox: { enabled: false, initialBalanceUSDT: 1_000 },
+          sandbox: { initialBalanceUSDT: 1_000 },
           type: "binance",
           updatedAt: 1,
         },
@@ -130,7 +130,6 @@ function dashboardState() {
       pnlHistoryBucketMinutes: 60,
       runnerEnabled: false,
       sandboxEnabled: false,
-      sandboxInitialBalanceUSDT: 1_000,
       withdrawal: {
         autoEnabled: false,
         schedules: [],

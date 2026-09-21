@@ -268,9 +268,8 @@ export function ensureTradeSettings(
  */
 export function createDefaultModeStates(
   symbols = uniqueSymbols(DEFAULT_DYNAMIC_TRADE_CONFIG_PRODUCTION.symbols),
+  sandboxInitialBalanceUSDT = DEFAULT_SANDBOX_INITIAL_BALANCE,
 ): SlowTradingStorageData["modes"] {
-  const sandboxInitialBalanceUSDT = DEFAULT_SANDBOX_INITIAL_BALANCE;
-
   return {
     live: ensureTradeSettings(createModeState(0), symbols),
     sandbox: ensureTradeSettings(

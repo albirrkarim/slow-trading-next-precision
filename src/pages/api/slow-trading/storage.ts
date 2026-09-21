@@ -56,10 +56,6 @@ export default async function handler(
       await slowTrading.storage.data.update({
         config: body.config,
         ...body,
-        sandboxInitialBalanceUSDT:
-          typeof body.sandboxInitialBalanceUSDT === "number"
-            ? body.sandboxInitialBalanceUSDT
-            : undefined,
         symbols: Array.isArray(body.symbols) ? body.symbols : undefined,
       });
       const storage = await slowTrading.storage.data.load({

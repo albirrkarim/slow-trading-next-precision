@@ -86,8 +86,6 @@ function buildPrecisionRuntimeConfig(
   const {
     exchangeAccounts: _exchangeAccounts,
     mcp: _mcp,
-    sandboxEnabled: _sandboxEnabled,
-    sandboxInitialBalanceUSDT: _sandboxInitialBalanceUSDT,
     ...runtimeConfig
   } = runtime;
 

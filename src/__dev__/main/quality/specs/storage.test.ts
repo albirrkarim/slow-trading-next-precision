@@ -665,7 +665,7 @@ describe("slow specs storage", () => {
     const storage = slowTradingStorage.data.createDefault();
     storage.config.symbols = ["INJ"];
     storage.runtime.sandboxEnabled = true;
-    storage.runtime.sandboxInitialBalanceUSDT = 1_000;
+    storage.account.sandbox.initialBalanceUSDT = 1_000;
     storage.modes.sandbox = slowTradingStorage.mode.ensureTradeSettings(
       storage.modes.sandbox,
       storage.config.symbols,
@@ -677,10 +677,10 @@ describe("slow specs storage", () => {
     await slowTradingStorage.data.save(storage);
 
     const reset = await slowTradingStorage.data.resetSandbox({
-      sandboxInitialBalanceUSDT: 180,
+      initialBalanceUSDT: 180,
     });
 
-    expect(reset.runtime.sandboxInitialBalanceUSDT).toBe(180);
+    expect(reset.account.sandbox.initialBalanceUSDT).toBe(180);
     expect(reset.modes.sandbox.dynamicTradeMemory.startingBalanceUSDT).toBe(180);
     expect(reset.modes.sandbox.dynamicTradeMemory.quoteAsset).toBe(180);
     expect(reset.modes.sandbox.tradeSettings[0].model_memory.positions)

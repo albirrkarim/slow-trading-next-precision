@@ -80,10 +80,6 @@ export function buildBacktestDashboardState(
     runtime: {
       ...configDraft.runtime,
       exchangeAccounts: structuredClone(configDraft.accounts),
-      sandboxEnabled: selectedAccount?.sandbox.enabled ?? false,
-      sandboxInitialBalanceUSDT: normalizeStartingBalance(
-        selectedAccount?.sandbox.initialBalanceUSDT ?? 0,
-      ),
     },
     stats: {
       closedTrades: 0,

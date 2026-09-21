@@ -27,11 +27,10 @@ function createAccountVolatilityMap(
 /** Finds entry decisions with the same recommendation engine used in production. */
 async function find(context: RuntimeContext): Promise<RuntimeEntryDecision[]> {
   const decisions: RuntimeEntryDecision[] = [];
-  const { config, mode, openPositions, vPointsMap } = context.state;
+  const { config, openPositions, vPointsMap } = context.state;
 
   for (const account of config.accounts) {
     if (!account.enabled || !context.state.balance[account.slug]) continue;
-    if (mode === "sandbox" && !account.sandbox.enabled) continue;
 
     const accountPositions = openPositions.filter(
       (position) => position.account === account.slug && !position.closed,

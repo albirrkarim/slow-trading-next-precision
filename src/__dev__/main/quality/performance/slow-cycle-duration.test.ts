@@ -175,7 +175,7 @@ describe("slow cycle performance", () => {
     storage.runtime.runnerEnabled = true;
     storage.runtime.autoEntryEnabled = true;
     storage.runtime.autoExitEnabled = false;
-    storage.runtime.sandboxInitialBalanceUSDT = 1_000;
+    storage.account.sandbox.initialBalanceUSDT = 1_000;
     storage.modes.sandbox = slowTradingStorage.mode.ensureTradeSettings(
       storage.modes.sandbox,
       storage.config.symbols,

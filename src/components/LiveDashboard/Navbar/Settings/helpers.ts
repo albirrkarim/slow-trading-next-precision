@@ -86,12 +86,7 @@ export function pickTradingConfigFields(
 }
 
 export function makeConfigDraft(state: DashboardState): ConfigDraft {
-  const {
-    exchangeAccounts,
-    sandboxEnabled: _sandboxEnabled,
-    sandboxInitialBalanceUSDT: _sandboxInitialBalanceUSDT,
-    ...runtime
-  } = structuredClone(state.runtime);
+  const { exchangeAccounts, ...runtime } = structuredClone(state.runtime);
 
   return {
     management: {

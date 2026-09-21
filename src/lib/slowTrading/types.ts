@@ -513,9 +513,8 @@ export type SlowTradingAccountTradingConfig = Pick<
   notes: string;
 };
 
-/** Sandbox controls edited in the Runtime tab and isolated per account. */
+/** Per-account sandbox balance configuration. */
 export interface SlowTradingAccountSandboxConfig {
-  enabled: boolean;
   initialBalanceUSDT: number;
 }
 
@@ -586,10 +585,8 @@ export interface SlowTradingRuntimeConfig {
   captureEntryStageIntervalMinutes: number;
   /** Dashboard notification routing configuration. */
   notification: DashboardNotificationConfig;
-  /** Enables sandbox mode availability in the UI/runtime. */
+  /** When enabled, every enabled account simulates orders locally. */
   sandboxEnabled: boolean;
-  /** Initial sandbox quote balance used after reset or first boot. */
-  sandboxInitialBalanceUSDT: number;
   /** Withdrawal wallet book and recurring schedule config. */
   withdrawal: SlowTradingWithdrawalConfig;
   /** Safe Haven recurring schedule config. */
@@ -661,7 +658,7 @@ export type SlowTradingDashboardRuntimeConfig = Omit<
 /** Runtime settings persisted independently from account-owned sandbox data. */
 export type SlowTradingSettingsRuntimeConfig = Omit<
   SlowTradingDashboardRuntimeConfig,
-  "exchangeAccounts" | "sandboxEnabled" | "sandboxInitialBalanceUSDT"
+  "exchangeAccounts"
 >;
 
 /**
@@ -808,10 +805,8 @@ export interface SlowTradingStorageUpdateInput {
   exchangeAccountSlug?: ExchangeAccountSlug;
   /** Legacy shortcut update for exchange type. */
   exchangeType?: DynamicTradeConfig["exchangeType"];
-  /** Runtime update for sandbox availability. */
+  /** Runtime update for global sandbox execution mode. */
   sandboxEnabled?: boolean;
-  /** Runtime update for sandbox initial balance. */
-  sandboxInitialBalanceUSDT?: number;
   /** Optional audit reason for Safe Haven balance updates. */
   safeHavenLogReason?: string;
   /** Optional audit source for Safe Haven balance updates. */

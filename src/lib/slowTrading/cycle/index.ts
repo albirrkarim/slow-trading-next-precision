@@ -73,7 +73,7 @@ async function executeSlowTradingAccountCycle(
       if (isSandbox) {
         slowTradingBalance.sandbox.ensureBalance(
           modeState,
-          storage.runtime.sandboxInitialBalanceUSDT,
+          storage.account.sandbox.initialBalanceUSDT,
         );
       }
 
@@ -174,11 +174,11 @@ async function executeSlowTradingAccountCycle(
       if (isSandbox) {
         if (!dynamicTradeMemory.startingBalanceUSDT) {
           dynamicTradeMemory.startingBalanceUSDT =
-            storage.runtime.sandboxInitialBalanceUSDT;
+            storage.account.sandbox.initialBalanceUSDT;
         }
         if (!dynamicTradeMemory.quoteAsset) {
           dynamicTradeMemory.quoteAsset =
-            storage.runtime.sandboxInitialBalanceUSDT;
+            storage.account.sandbox.initialBalanceUSDT;
         }
       }
 

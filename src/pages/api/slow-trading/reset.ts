@@ -14,13 +14,13 @@ export default async function handler(
     }
 
     const initialBalance =
-      typeof req.body?.sandboxInitialBalanceUSDT === "number"
-        ? req.body.sandboxInitialBalanceUSDT
+      typeof req.body?.initialBalanceUSDT === "number"
+        ? req.body.initialBalanceUSDT
         : undefined;
     const nextStorage = await slowTrading.storage.data.resetSandbox({
       account:
         typeof req.body?.account === "string" ? req.body.account : undefined,
-      sandboxInitialBalanceUSDT: initialBalance,
+      initialBalanceUSDT: initialBalance,
     });
     res
       .status(200)

@@ -189,7 +189,7 @@ async function read(
       enabled: account.enabled,
       createdAt: iso(account.createdAt),
       updatedAt: iso(account.updatedAt),
-      activeMode: account.sandbox.enabled ? "sandbox" as const : "live" as const,
+      activeMode,
       sandbox: cloneJson(account.sandbox),
       credentialStatus: {
         configured: Boolean(account.credentials.apiKey && account.credentials.apiSecret),

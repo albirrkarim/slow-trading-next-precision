@@ -166,10 +166,17 @@ export default function SettingsDialogRuntimeTab({
 
       <Grid size={{ xs: 12, md: 6 }}>
         <SettingsDialogSection
-          title="Sandbox Accounts"
-          description="Each account independently chooses live or sandbox execution and owns its sandbox starting balance. Backtests use this balance for every enabled account."
+          title="Sandbox Mode"
+          description="Execution mode applies globally. Each account keeps its own sandbox starting balance and reset action."
         >
           <Stack spacing={2}>
+            <RuntimeToggle
+              checked={configDraft.runtime.sandboxEnabled}
+              label="Sandbox Mode"
+              description="When ON, every enabled account simulates orders locally and sends no live exchange orders."
+              onChange={(checked) => updateRuntime({ sandboxEnabled: checked })}
+            />
+
             {configDraft.accounts.map((account) => {
               const resetting = resettingSandboxAccount === account.slug;
               return (
@@ -191,32 +198,6 @@ export default function SettingsDialogRuntimeTab({
                         {account.slug}
                       </Typography>
                     </Box>
-
-                      <RuntimeToggle
-                        checked={account.sandbox.enabled}
-                        label={`${account.name} Sandbox Mode`}
-                        description="When ON, this account simulates orders locally and sends no live exchange orders."
-                        onChange={(checked) =>
-                          setConfigDraft((prev) =>
-                            prev
-                              ? {
-                                  ...prev,
-                                  accounts: prev.accounts.map((candidate) =>
-                                    candidate.slug === account.slug
-                                      ? {
-                                          ...candidate,
-                                          sandbox: {
-                                            ...candidate.sandbox,
-                                            enabled: checked,
-                                          },
-                                        }
-                                      : candidate,
-                                  ),
-                                }
-                              : prev,
-                          )
-                        }
-                      />
 
                       <SettingsInfoField
                         label={`${account.name} Sandbox Initial Balance (USDT)`}
@@ -259,7 +240,7 @@ export default function SettingsDialogRuntimeTab({
                             }}
                             disabled={
                               resettingSandboxAccount !== null ||
-                              !account.sandbox.enabled
+                              !configDraft.runtime.sandboxEnabled
                             }
                           >
                             {resetting

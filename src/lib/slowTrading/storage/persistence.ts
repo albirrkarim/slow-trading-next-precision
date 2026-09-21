@@ -19,7 +19,6 @@ import { clone, uniqueSymbols } from "./common";
 import {
   DEFAULT_EXCHANGE_ACCOUNT_SLUG,
   DEFAULT_SAFE_HAVEN_CONFIG,
-  DEFAULT_SANDBOX_INITIAL_BALANCE,
   DEFAULT_WITHDRAWAL_CONFIG,
 } from "./constants";
 import slowTradingJsonFile from "./json-file";
@@ -149,9 +148,7 @@ function createDefaultSlowTradingRuntime(): SlowTradingStorageData["runtime"] {
     captureEntryStageIntervalMinutes:
       slowTradingStages.interval.defaults["capture-entry"],
     notification: createDefaultDashboardNotificationConfig("SLOW"),
-    sandboxEnabled: account?.sandbox.enabled ?? false,
-    sandboxInitialBalanceUSDT:
-      account?.sandbox.initialBalanceUSDT ?? DEFAULT_SANDBOX_INITIAL_BALANCE,
+    sandboxEnabled: false,
     withdrawal: clone(DEFAULT_WITHDRAWAL_CONFIG),
     safeHaven: clone(DEFAULT_SAFE_HAVEN_CONFIG),
     mcp: clone(DEFAULT_MCP_CONFIG),
@@ -302,7 +299,10 @@ export function createDefaultSlowTradingStorage(): SlowTradingStorageData {
     sharedConfig,
     config,
     runtime,
-    modes: createDefaultModeStates(config.symbols),
+    modes: createDefaultModeStates(
+      config.symbols,
+      account.sandbox.initialBalanceUSDT,
+    ),
     updatedAt: Date.now(),
   };
 }
@@ -320,7 +320,9 @@ function loadModeStateForScope(params: {
   symbols: string[];
 }): SlowTradingStorageData["modes"][SlowTradingMode] {
   const initialBalanceUSDT =
-    params.mode === "sandbox" ? params.sandboxInitialBalanceUSDT : 0;
+    params.mode === "sandbox"
+      ? params.sandboxInitialBalanceUSDT
+      : 0;
 
   if (params.modeScope === "active" && params.mode !== params.activeMode) {
     return createModeState(initialBalanceUSDT);
@@ -355,25 +357,16 @@ function splitSlowTradingStorage(
     storage.sharedConfig,
     storage.config,
   );
-  const account = {
-    ...slowTradingAccountConfig.trading.withEffectiveConfig(
-      storage.account,
-      storage.config,
-    ),
-    sandbox: {
-      enabled: storage.runtime.sandboxEnabled,
-      initialBalanceUSDT: storage.runtime.sandboxInitialBalanceUSDT,
-    },
-  };
+  const account = slowTradingAccountConfig.trading.withEffectiveConfig(
+    storage.account,
+    storage.config,
+  );
   const accounts = storage.runtime.exchangeAccounts.map((candidate) =>
     candidate.slug === account.slug ? account : candidate,
   );
-  const {
-    exchangeAccounts: _exchangeAccounts,
-    sandboxEnabled: _sandboxEnabled,
-    sandboxInitialBalanceUSDT: _sandboxInitialBalanceUSDT,
-    ...runtime
-  } = clone(storage.runtime);
+  const { exchangeAccounts: _exchangeAccounts, ...runtime } = clone(
+    storage.runtime,
+  );
 
   return {
     accounts,
@@ -492,17 +485,12 @@ async function loadSlowTradingConfigFile(accountSlug?: string): Promise<{
     ) ?? exchangeAccounts[0];
   if (!account) throw new Error("SLOW requires at least one exchange account");
   runtime.exchangeAccountSlug = account.slug;
-  runtime.sandboxEnabled = account.sandbox.enabled;
-  runtime.sandboxInitialBalanceUSDT = account.sandbox.initialBalanceUSDT;
+  runtime.sandboxEnabled = runtime.sandboxEnabled === true;
   const config = slowTradingAccountConfig.trading.toEffectiveConfig(
     sharedConfig,
     account,
   );
 
-  runtime.sandboxInitialBalanceUSDT = Math.max(
-    0,
-    Number(runtime.sandboxInitialBalanceUSDT ?? DEFAULT_SANDBOX_INITIAL_BALANCE),
-  );
   runtime.autoEntryDailyPnlLimitUSDT =
     slowTradingDailyPnlLimit.config.normalizeThresholdUsdt(
       runtime.autoEntryDailyPnlLimitUSDT,
@@ -578,8 +566,7 @@ async function migrateLegacySlowTradingState(): Promise<SlowTradingStorageData |
       ...loadedAccounts.filter((candidate) => candidate.slug !== account.slug),
     ],
     exchangeAccountSlug: account.slug,
-    sandboxEnabled: account.sandbox.enabled,
-    sandboxInitialBalanceUSDT: account.sandbox.initialBalanceUSDT,
+    sandboxEnabled: raw.runtime?.sandboxEnabled === true,
     notification: normalizeRuntimeNotification(
       raw.runtime?.notification ?? base.runtime.notification,
       raw.runtime?.autoEntryDailyPnlLimitUSDT === undefined,
@@ -674,7 +661,7 @@ export async function loadSlowTradingStorage(
     runtime,
     updatedAt: configUpdatedAt,
   } = await loadSlowTradingConfigFile(options.account);
-  const sandboxInitialBalanceUSDT = runtime.sandboxInitialBalanceUSDT;
+  const sandboxInitialBalanceUSDT = account.sandbox.initialBalanceUSDT;
 
   const activeMode: SlowTradingMode = runtime.sandboxEnabled
     ? "sandbox"
@@ -804,10 +791,7 @@ export async function saveSlowTradingModeState(
         FILES.slow.memory,
       )) as Partial<SlowTradingMemoryFileData>)
     : {};
-  const sandboxInitialBalanceUSDT = Math.max(
-    0,
-    Number(runtime.sandboxInitialBalanceUSDT ?? DEFAULT_SANDBOX_INITIAL_BALANCE),
-  );
+  const sandboxInitialBalanceUSDT = account.sandbox.initialBalanceUSDT;
   const targetModeState = ensureTradeSettings(modeState, config.symbols);
   await persistClosedPositionsToHistoryFiles(mode, targetModeState);
 
@@ -1053,19 +1037,8 @@ export async function updateSlowTradingStorage(
   }
   storage.runtime = ensureExchangeAccountSelection(storage.runtime);
 
-  if (typeof update.sandboxInitialBalanceUSDT === "number") {
-    storage.runtime.sandboxInitialBalanceUSDT = Math.max(
-      0,
-      update.sandboxInitialBalanceUSDT,
-    );
-  }
-
   storage.account = {
     ...storage.account,
-    sandbox: {
-      enabled: storage.runtime.sandboxEnabled,
-      initialBalanceUSDT: storage.runtime.sandboxInitialBalanceUSDT,
-    },
     updatedAt: Date.now(),
   };
   storage.runtime.exchangeAccounts = storage.runtime.exchangeAccounts.map(
@@ -1152,17 +1125,23 @@ export async function updateSlowTradingStorage(
  */
 export async function resetSandboxSlowTrading(params?: {
   account?: string;
-  sandboxInitialBalanceUSDT?: number;
+  initialBalanceUSDT?: number;
 }): Promise<SlowTradingStorageData> {
   const storage = await loadSlowTradingStorage({ account: params?.account });
-  if (typeof params?.sandboxInitialBalanceUSDT === "number") {
-    storage.runtime.sandboxInitialBalanceUSDT = Math.max(
-      0,
-      params.sandboxInitialBalanceUSDT,
+  if (typeof params?.initialBalanceUSDT === "number") {
+    const initialBalanceUSDT = Math.max(0, params.initialBalanceUSDT);
+    storage.account = {
+      ...storage.account,
+      sandbox: { initialBalanceUSDT },
+      updatedAt: Date.now(),
+    };
+    storage.runtime.exchangeAccounts = storage.runtime.exchangeAccounts.map(
+      (candidate) =>
+        candidate.slug === storage.account.slug ? storage.account : candidate,
     );
   }
   storage.modes.sandbox = ensureTradeSettings(
-    createModeState(storage.runtime.sandboxInitialBalanceUSDT),
+    createModeState(storage.account.sandbox.initialBalanceUSDT),
     storage.config.symbols,
   );
   // PROD:MULTI_ACCOUNT_SANDBOX_ISOLATION

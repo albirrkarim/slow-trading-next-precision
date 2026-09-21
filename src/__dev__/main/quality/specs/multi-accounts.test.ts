@@ -96,7 +96,7 @@ describe("SLOW multi-account specs", () => {
           ...template,
           slug: "beta",
           name: "Beta",
-          sandbox: { enabled: true, initialBalanceUSDT: 900 },
+          sandbox: { initialBalanceUSDT: 900 },
         },
       ],
       defaults.sharedConfig,
@@ -120,8 +120,8 @@ describe("SLOW multi-account specs", () => {
     expect(loadedBeta.modes.live.dynamicTradeMemory.quoteAsset).toBe(222);
     // PROD:MULTI_ACCOUNT_SANDBOX_ISOLATION
     expect(loadedAlpha.runtime.sandboxEnabled).toBe(false);
-    expect(loadedBeta.runtime.sandboxEnabled).toBe(true);
-    expect(loadedBeta.runtime.sandboxInitialBalanceUSDT).toBe(900);
+    expect(loadedBeta.runtime.sandboxEnabled).toBe(false);
+    expect(loadedBeta.account.sandbox.initialBalanceUSDT).toBe(900);
   });
 
   it("binds production and backtest positions to the scoped account", async () => {
@@ -190,6 +190,7 @@ describe("SLOW multi-account specs", () => {
   it("retains each account's balance summary in the combined dashboard", async () => {
     const slowTrading = (await import("@/lib/slowTrading")).default;
     const defaults = slowTrading.storage.data.createDefault();
+    defaults.runtime.sandboxEnabled = true;
     const template = defaults.runtime.exchangeAccounts[0];
     await slowTrading.storage.data.save(defaults);
     await slowTrading.storage.account.saveAccounts(
@@ -198,14 +199,14 @@ describe("SLOW multi-account specs", () => {
           ...template,
           slug: "alpha",
           name: "Alpha",
-          sandbox: { enabled: true, initialBalanceUSDT: 100 },
+          sandbox: { initialBalanceUSDT: 100 },
         },
         {
           ...template,
           slug: "beta",
           name: "Beta",
           enabled: false,
-          sandbox: { enabled: true, initialBalanceUSDT: 200 },
+          sandbox: { initialBalanceUSDT: 200 },
         },
       ],
       defaults.sharedConfig,
@@ -240,6 +241,7 @@ describe("SLOW multi-account specs", () => {
   it("keeps the newest run for each stage in the combined dashboard", async () => {
     const slowTrading = (await import("@/lib/slowTrading")).default;
     const defaults = slowTrading.storage.data.createDefault();
+    defaults.runtime.sandboxEnabled = true;
     const template = defaults.runtime.exchangeAccounts[0];
     await slowTrading.storage.data.save(defaults);
     await slowTrading.storage.account.saveAccounts(
@@ -248,13 +250,13 @@ describe("SLOW multi-account specs", () => {
           ...template,
           slug: "alpha",
           name: "Alpha",
-          sandbox: { enabled: true, initialBalanceUSDT: 100 },
+          sandbox: { initialBalanceUSDT: 100 },
         },
         {
           ...template,
           slug: "beta",
           name: "Beta",
-          sandbox: { enabled: true, initialBalanceUSDT: 200 },
+          sandbox: { initialBalanceUSDT: 200 },
         },
       ],
       defaults.sharedConfig,
@@ -328,20 +330,20 @@ describe("SLOW multi-account specs", () => {
           ...template,
           slug: "alpha",
           name: "Alpha",
-          sandbox: { enabled: true, initialBalanceUSDT: 100 },
+          sandbox: { initialBalanceUSDT: 100 },
         },
         {
           ...template,
           slug: "beta",
           name: "Beta",
-          sandbox: { enabled: true, initialBalanceUSDT: 400 },
+          sandbox: { initialBalanceUSDT: 400 },
         },
         {
           ...template,
           slug: "paused",
           name: "Paused",
           enabled: false,
-          sandbox: { enabled: true, initialBalanceUSDT: 999 },
+          sandbox: { initialBalanceUSDT: 999 },
         },
       ],
       defaults.sharedConfig,
@@ -408,20 +410,20 @@ describe("SLOW multi-account specs", () => {
           ...template,
           slug: "alpha",
           name: "Alpha",
-          sandbox: { enabled: true, initialBalanceUSDT: 100 },
+          sandbox: { initialBalanceUSDT: 100 },
         },
         {
           ...template,
           slug: "beta",
           name: "Beta",
-          sandbox: { enabled: true, initialBalanceUSDT: 400 },
+          sandbox: { initialBalanceUSDT: 400 },
         },
         {
           ...template,
           slug: "paused",
           name: "Paused",
           enabled: false,
-          sandbox: { enabled: true, initialBalanceUSDT: 999 },
+          sandbox: { initialBalanceUSDT: 999 },
         },
       ],
       defaults.sharedConfig,

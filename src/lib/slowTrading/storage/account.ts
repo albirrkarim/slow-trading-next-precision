@@ -106,7 +106,6 @@ function createAccount(params: {
       tradingNotes,
     ),
     sandbox: {
-      enabled: sandbox.enabled === true,
       initialBalanceUSDT: Math.max(
         0,
         Number(sandbox.initialBalanceUSDT ?? DEFAULT_SANDBOX_INITIAL_BALANCE) ||

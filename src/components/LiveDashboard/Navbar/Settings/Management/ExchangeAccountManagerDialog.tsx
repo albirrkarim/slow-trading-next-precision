@@ -325,7 +325,6 @@ export default function ExchangeAccountManagerDialog({
       enabled: true,
       trading: structuredClone(template.trading),
       sandbox: {
-        enabled: false,
         initialBalanceUSDT: template.sandbox.initialBalanceUSDT,
       },
       createdAt: now,
