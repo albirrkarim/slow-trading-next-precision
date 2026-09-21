@@ -7,10 +7,11 @@ import {
 import { resolveMarketTypeForTradingMode } from "@/lib/exchange/utils";
 import slowTradingShared from "@/lib/slowTrading/shared";
 import type { RuntimeEngineAdapter, RuntimeEngineState } from "../types";
+import {
+  MARK_PRICE_LOOKBACK_MINUTES,
+  VPOINT_INITIAL_LOOKBACK_MINUTES,
+} from "../constant";
 import type { RuntimeMarketHelper, RuntimeMarketInterval } from "./types";
-
-const MARK_PRICE_LOOKBACK_MINUTES = 30;
-const VPOINT_INITIAL_LOOKBACK_MINUTES = 60 * 24 * 30 * 2;
 
 interface VolatilityCursor {
   lastKnownPointId?: string;
