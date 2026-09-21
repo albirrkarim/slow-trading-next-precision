@@ -11,6 +11,7 @@ import jsonFile from "@/lib/slowTrading/storage/json-file";
 
 import type {
   PrecisionTestCase,
+  PrecisionTestCaseFileSummary,
   PrecisionTestCaseMode,
   PrecisionTestCaseRecordingState,
   PrecisionTestCaseResult,
@@ -116,6 +117,91 @@ function getFileName(
   return `${mode}-${formatFileTimestamp(startTime)}-${
     endTime === undefined ? "undefined" : formatFileTimestamp(endTime)
   }.json`;
+}
+
+const COMPLETED_FILE_PATTERN =
+  /^(live|sandbox)-\d{2}-\d{2}-\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{4}-\d{2}-\d{2}\.json$/;
+
+/** Validates a basename strictly matching the completed test-case format. */
+function assertCompletedFileName(fileName: string): void {
+  if (
+    typeof fileName !== "string" ||
+    path.basename(fileName) !== fileName ||
+    !COMPLETED_FILE_PATTERN.test(fileName)
+  ) {
+    throw new Error(`Invalid precision test case file name: ${fileName}`);
+  }
+}
+
+/**
+ * Lists completed test-case files newest-first. Pending recordings, unrelated
+ * files, and malformed JSON payloads are skipped.
+ */
+async function listFiles(): Promise<PrecisionTestCaseFileSummary[]> {
+  if (!(await fs.pathExists(RECORDING_DIRECTORY))) {
+    return [];
+  }
+
+  const entries = await fs.readdir(RECORDING_DIRECTORY);
+  const summaries = await Promise.all(
+    entries
+      .filter((entry) => COMPLETED_FILE_PATTERN.test(entry))
+      .map(async (fileName) => {
+        const filePath = path.join(RECORDING_DIRECTORY, fileName);
+        try {
+          const stats = await fs.stat(filePath);
+          if (!stats.isFile()) {
+            return null;
+          }
+          const value = (await fs.readJSON(filePath)) as Partial<
+            Pick<PrecisionTestCase, "startTime" | "endTime" | "tradeHistory">
+          > | null;
+          if (
+            !value ||
+            typeof value !== "object" ||
+            !Number.isFinite(value.startTime) ||
+            !Number.isFinite(value.endTime) ||
+            !Array.isArray(value.tradeHistory)
+          ) {
+            return null;
+          }
+          const mode: PrecisionTestCaseMode = fileName.startsWith("live")
+            ? "live"
+            : "sandbox";
+          return {
+            endTime: value.endTime as number,
+            fileName,
+            mode,
+            sizeBytes: stats.size,
+            startTime: value.startTime as number,
+            tradeHistoryLength: value.tradeHistory.length,
+          };
+        } catch {
+          return null;
+        }
+      }),
+  );
+
+  return summaries
+    .filter((summary): summary is PrecisionTestCaseFileSummary =>
+      Boolean(summary),
+    )
+    .sort((left, right) => right.endTime - left.endTime);
+}
+
+/** Removes exactly one completed test-case file after strict validation. */
+async function removeFile(
+  fileName: string,
+): Promise<{ deleted: true; fileName: string }> {
+  assertCompletedFileName(fileName);
+  const filePath = path.join(RECORDING_DIRECTORY, fileName);
+  const stats = await fs.stat(filePath).catch(() => null);
+  if (!stats?.isFile()) {
+    throw new Error(`Precision test case file not found: ${fileName}`);
+  }
+
+  await fs.unlink(filePath);
+  return { deleted: true, fileName };
 }
 
 async function readRecordingState(): Promise<PrecisionTestCaseRecordingState> {
@@ -288,6 +374,10 @@ async function end(state: RuntimeEngineState): Promise<PrecisionTestCaseResult> 
 
 const recorder = {
   end,
+  files: {
+    list: listFiles,
+    remove: removeFile,
+  },
   getStatus,
   start,
 } as const;
@@ -296,6 +386,7 @@ export default recorder;
 export { recorder };
 export type {
   PrecisionTestCase,
+  PrecisionTestCaseFileSummary,
   PrecisionTestCaseMode,
   PrecisionTestCaseRecordingState,
   PrecisionTestCaseResult,

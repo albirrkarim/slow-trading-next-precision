@@ -34,3 +34,13 @@ export interface PrecisionTestCaseResult {
   path: string;
   testCase: PrecisionTestCase;
 }
+
+/** Metadata of one completed precision test-case file stored on disk. */
+export interface PrecisionTestCaseFileSummary {
+  fileName: string;
+  mode: PrecisionTestCaseMode;
+  startTime: number;
+  endTime: number;
+  tradeHistoryLength: number;
+  sizeBytes: number;
+}

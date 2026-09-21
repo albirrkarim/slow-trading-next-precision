@@ -48,7 +48,9 @@ JSON for equivalent runs. No other precision type is measured in V1.
 # B. Production capture
 
 The Production Dashboard provides **Start Production Test Case** and **End
-Production Test Case**.
+Production Test Case**. The Precision Test Cases dashboard section lists
+completed captures and allows deleting an individual file after an explicit
+confirmation.
 
 TC: `PROD:PRODUCTION_TEST_CASE_CAPTURE_CONTROLS`
 
