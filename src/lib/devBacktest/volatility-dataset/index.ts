@@ -29,8 +29,12 @@ interface CacheMetadata {
 function getPaths(exchangeType: ExchangeType, range: string, symbol: string) {
   const folder = `${VOLATILITY_FOLDER}/${exchangeType}/${range}`;
   return {
-    data: path.join(folder, `${symbol}.json`),
-    metadata: path.join(folder, ".meta", `${symbol}.json`),
+    data: path.join(/*turbopackIgnore: true*/ folder, `${symbol}.json`),
+    metadata: path.join(
+      /*turbopackIgnore: true*/ folder,
+      ".meta",
+      `${symbol}.json`,
+    ),
   };
 }
 
@@ -42,11 +46,16 @@ async function readCompatibleCache(params: {
   symbol: string;
 }): Promise<VolatilityPoint[] | null> {
   const paths = getPaths(params.exchangeType, params.range, params.symbol);
-  if (!(await fs.pathExists(paths.data)) || !(await fs.pathExists(paths.metadata))) {
+  if (
+    !(await fs.pathExists(/*turbopackIgnore: true*/ paths.data)) ||
+    !(await fs.pathExists(/*turbopackIgnore: true*/ paths.metadata))
+  ) {
     return null;
   }
 
-  const metadata = (await fs.readJson(paths.metadata)) as CacheMetadata;
+  const metadata = (await fs.readJson(
+    /*turbopackIgnore: true*/ paths.metadata,
+  )) as CacheMetadata;
   if (
     metadata.interval !== params.interval ||
     metadata.marketType !== params.marketType
@@ -54,7 +63,9 @@ async function readCompatibleCache(params: {
     return null;
   }
 
-  return (await fs.readJson(paths.data)) as VolatilityPoint[];
+  return (await fs.readJson(
+    /*turbopackIgnore: true*/ paths.data,
+  )) as VolatilityPoint[];
 }
 
 async function createCache(params: LoadParams & { symbol: string }) {
@@ -73,10 +84,14 @@ async function createCache(params: LoadParams & { symbol: string }) {
   });
   const points = detectVolatilityPoints({ klines, symbol: params.symbol });
   const paths = getPaths(params.exchangeType, params.range, params.symbol);
-  await fs.ensureDir(path.dirname(paths.data));
-  await fs.writeJson(paths.data, points);
-  await fs.ensureDir(path.dirname(paths.metadata));
-  await fs.writeJson(paths.metadata, {
+  await fs.ensureDir(
+    path.dirname(/*turbopackIgnore: true*/ paths.data),
+  );
+  await fs.writeJson(/*turbopackIgnore: true*/ paths.data, points);
+  await fs.ensureDir(
+    path.dirname(/*turbopackIgnore: true*/ paths.metadata),
+  );
+  await fs.writeJson(/*turbopackIgnore: true*/ paths.metadata, {
     interval: params.interval,
     marketType: params.marketType,
     t0: klines[0]?.[0],
