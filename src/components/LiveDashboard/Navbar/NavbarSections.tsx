@@ -34,6 +34,7 @@ import NavbarBalanceRefreshButton from "./NavbarBalanceRefreshButton";
 import NavbarInstanceIp from "./NavbarInstanceIp";
 import NavbarStageRuns from "./NavbarStageRuns";
 import NavbarVolatilityThreshold from "./NavbarVolatilityThreshold";
+import PrecisionTestCaseControls from "./PrecisionTestCaseControls";
 import SettingsDialog from "./Settings/SettingsDialog";
 import type {
   ConfigDraft,
@@ -464,6 +465,8 @@ export function NavbarActionsSection({
               )
             }
           </ButtonDialog>
+
+          <PrecisionTestCaseControls activeMode={dashboardState.activeMode} />
 
           <ButtonDialog
             title="Daily PnL Calendar"

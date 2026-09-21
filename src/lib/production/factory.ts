@@ -22,6 +22,7 @@ import type {
 import clock from "./clock";
 import adapter from "./adapter";
 import state from "./state";
+import precisionTestCase from "./precision-test-case";
 import type { ProductionRuntimeFactory } from "./types";
 
 interface AccountRuntime {
@@ -306,6 +307,7 @@ function createActionHandlers(
   const onExit: RuntimeEngineAdapter["onExit"] = async (position, context) => {
     const accountRuntime = accountRuntimes.get(position.account);
     if (!accountRuntime) return;
+    precisionTestCase.recordClosed(position);
     await persistAccount(context.state, accountRuntime);
     pendingAccountSlug = undefined;
   };

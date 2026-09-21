@@ -3,6 +3,7 @@ import clock from "./clock";
 import factory from "./factory";
 import singleton from "./singleton";
 import state from "./state";
+import precisionTestCase from "./precision-test-case";
 
 /** Grouped production composition API for instrumentation and runtime setup. */
 const production = {
@@ -11,6 +12,7 @@ const production = {
   factory,
   runtime: singleton,
   state,
+  precisionTestCase,
 };
 
 export default production;
@@ -21,3 +23,9 @@ export type {
   ProductionRuntimeFactory,
   ProductionStateOptions,
 } from "./types";
+export type {
+  PrecisionTestCase,
+  PrecisionTestCaseMode,
+  PrecisionTestCaseResult,
+  PrecisionTestCaseStatus,
+} from "./precision-test-case";

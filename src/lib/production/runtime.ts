@@ -1,4 +1,5 @@
 import { RuntimeEngine } from "@/lib/precision";
+import type { RuntimeEngineState } from "@/lib/precision/types";
 import type { ProductionRuntimeFactory } from "./types";
 
 function isAbortError(error: unknown): boolean {
@@ -9,6 +10,7 @@ function isAbortError(error: unknown): boolean {
 class ProductionRuntime {
   private controller?: AbortController;
   private runPromise?: Promise<void>;
+  private state?: RuntimeEngineState;
 
   /** Starts the engine once; repeated calls share the same in-flight run. */
   start(factory: ProductionRuntimeFactory): Promise<void> {
@@ -19,6 +21,7 @@ class ProductionRuntime {
 
     this.runPromise = (async () => {
       const state = await factory.createState();
+      this.state = state;
       const adapter = await factory.createAdapter({
         signal: controller.signal,
         state,
@@ -46,6 +49,11 @@ class ProductionRuntime {
   /** Reports whether a production engine is currently running. */
   isRunning(): boolean {
     return this.runPromise !== undefined;
+  }
+
+  /** Returns the mutable state owned by the currently loaded runtime. */
+  getState(): RuntimeEngineState | undefined {
+    return this.state;
   }
 }
 

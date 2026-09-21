@@ -22,6 +22,7 @@ export const slowEndpoints = {
     logs: `${DASHBOARD_UI_API}/slow-trading/logs`,
     mcpTokens: `${DASHBOARD_UI_API}/slow-trading/mcp-tokens`,
     notificationTest: `${DASHBOARD_UI_API}/slow-trading/notification-test`,
+    precisionTestCase: `${DASHBOARD_UI_API}/slow-trading/precision-test-case`,
     quickBacktest: `${DASHBOARD_UI_API}/slow-trading/quick-backtest`,
     broadcastCoinMetadata: `${DASHBOARD_UI_API}/slow-trading/debug/broadcast-coin-metadata`,
     syncOnlineCoinMetadataToLocal: `${DASHBOARD_UI_API}/slow-trading/debug/sync-online-coin-metadata-to-local`,
