@@ -2,6 +2,36 @@
 
 TC: `BOTH:PRECISION_MEASUREMENT`
 
+for the http://localhost:3010/dev/precision-checker
+
+we trying to compare the live execution of the sandbox mode vs when it reply using the backtest method.
+
+i think we need
+
+in the production
+
+http://localhost:3010/
+
+i need to have record of the initial
+
+```
+vPointsMap
+```
+
+crop it about 2 month back.
+
+so the tescase will be like
+
+```ts
+interface PrecisionTestCase extends BacktestTestCase {
+  tradeHistory: Position[];
+  /**
+   * Used in precision checker test case
+   */
+  initialVPointsMap?: Record<string, VolatilityPoint<any>[]>;
+}
+```
+
 # A. Goal
 
 Measure result precision by comparing final production and backtest position
@@ -24,9 +54,11 @@ TC: `PROD:PRODUCTION_TEST_CASE_CAPTURE_CONTROLS`
 
 # C. Test-case JSON
 
+the time start and end is like `dd-mm-yyyy-hh-mm`
+
 ```text
-prod-test-case/live-<start>-<end>.json
-prod-test-case/sandbox-<start>-<end>.json
+storage/persistent/instances/3010/dev/precision-test-case/live-<start>-<end>.json
+storage/persistent/instances/3010/dev/precision-test-case/sandbox-<start>-<end>.json
 ```
 
 Use `ProdTestCaseV1` from `DATA_TYPE.md`. Write compact JSON atomically. Capture
