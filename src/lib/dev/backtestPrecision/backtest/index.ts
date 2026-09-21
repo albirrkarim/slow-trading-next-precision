@@ -13,11 +13,19 @@ import {
 import { windowsMs } from "@/lib/dynamic/constants-time";
 import simulatedAction from "@/lib/precision/action/simulated";
 import type { BacktestPrecisionResult } from "./backtest-precision-types";
+import { VolatilityPoint } from "@/lib/dynamic";
 
 const BACKTEST_ENTRY_CUTOFF_MS = 4 * 24 * 60 * 60 * 1000;
 
+interface PrecisionBacktestParams extends BacktestPrecisionParams {
+  /**
+   * Used in precision checker test case
+   */
+  initialVPointsMap?: Record<string, VolatilityPoint<any>[]>;
+}
+
 export async function precisionBacktest(
-  params: BacktestPrecisionParams,
+  params: PrecisionBacktestParams,
 ): Promise<BacktestPrecisionResult> {
   // A. Prepare klines
   // BTEST:BACKTEST_DATASET
@@ -37,12 +45,15 @@ export async function precisionBacktest(
       "Precision backtest requires more than two months of data for volatility warm-up.",
     );
   }
-  const vPointsMap = await createInitialVPointsMap(
-    symbols,
-    dataset.getKlines,
-    datasetStartTime,
-    currentTime,
-  );
+
+  const vPointsMap =
+    params.initialVPointsMap ??
+    (await createInitialVPointsMap(
+      symbols,
+      dataset.getKlines,
+      datasetStartTime,
+      currentTime,
+    ));
 
   const state: RuntimeEngineState = {
     balance: createInitialBalance(params),

@@ -19,11 +19,11 @@ crop it about 1 month back.
 so the tescase will be like
 
 ```ts
-interface PrecisionTestCase{
-    // unix ms
-    startTime:number
-    endTime:number
-    initialVPointsMap:Record<>
-    tradeHistory:Position[]
+interface PrecisionTestCase extends BacktestTestCase {
+  tradeHistory: Position[];
+  /**
+   * Used in precision checker test case
+   */
+  initialVPointsMap?: Record<string, VolatilityPoint<any>[]>;
 }
 ```

@@ -61,8 +61,8 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
 
     const result = await precisionBacktest({
       ...params,
-      endTime,
       range,
+      endTime,
       startTime,
       upToDateDecisionBacktest,
       upToDateKlines,
