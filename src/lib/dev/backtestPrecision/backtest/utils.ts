@@ -7,6 +7,7 @@ import type { BacktestPrecisionParams } from "../api/precision-api-types";
 export function createProgressLogger(
   startTime: number,
   endTime: number,
+  getTradeHistoryLength: () => number = () => 0,
 ): (currentTime: number) => void {
   let completed = false;
   let lastDay = "";
@@ -22,7 +23,10 @@ export function createProgressLogger(
     const progress = finished
       ? 100
       : ((boundedTime - startTime) / duration) * 100;
-    console.log(`[Precision Backtest] ${day} | ${progress.toFixed(1)}%`);
+    console.log(
+      `[Precision Backtest] ${day} | ${progress.toFixed(1)}% | ` +
+        `tradeHistory:${getTradeHistoryLength()}`,
+    );
 
     lastDay = day;
     completed = finished;

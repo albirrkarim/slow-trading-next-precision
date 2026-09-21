@@ -55,7 +55,11 @@ export async function precisionBacktest(
   };
   let clockTime = state.currentTime;
   const history: RuntimeEngineState["openPositions"] = [];
-  const logProgress = createProgressLogger(clockTime, endTime);
+  const logProgress = createProgressLogger(
+    clockTime,
+    endTime,
+    () => history.length,
+  );
   logProgress(clockTime);
 
   const adapter: RuntimeEngineAdapter = {
