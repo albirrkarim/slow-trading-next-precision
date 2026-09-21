@@ -80,8 +80,16 @@ When no candidate pair exists, overall precision is unavailable.
 
 # F. Page `/dev/precision-checker`
 
-Later we make this (not for now)
 
-Select a production test case and backtest result, validate them, and show the
-overall score, each pair score and differences, ambiguous keys, and unpaired
-positions.
+I imagine like top section it list the all the production test cases that has been captured. then select it. 
+and theres a button run.
+
+after run we got the backtest result right.
+
+Overview section shows the overall precision score.
+
+Then theres two column of 
+
+[production result] [backtest result]
+
+[table history]     [table history]

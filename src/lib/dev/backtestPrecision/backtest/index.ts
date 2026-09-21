@@ -18,6 +18,7 @@ import { VolatilityPoint } from "@/lib/dynamic";
 const BACKTEST_ENTRY_CUTOFF_MS = 4 * 24 * 60 * 60 * 1000;
 
 interface PrecisionBacktestParams extends BacktestPrecisionParams {
+  mode?: "backtest" | "precision-checker";
   /**
    * Used in precision checker test case
    */
@@ -35,7 +36,12 @@ export async function precisionBacktest(
   const { symbols } = dataset;
   const datasetStartTime = dataset.startTime;
   const endTime = dataset.endTime;
-  const entryCutoffTime = endTime - BACKTEST_ENTRY_CUTOFF_MS;
+  // Precision checker replays a recorded production window, so entries must
+  // be allowed all the way to the end to match what production did.
+  const isPrecisionChecker = params.mode === "precision-checker";
+  const entryCutoffTime = isPrecisionChecker
+    ? Number.POSITIVE_INFINITY
+    : endTime - BACKTEST_ENTRY_CUTOFF_MS;
 
   // i think we make the backtest forward two month,
   // so we can make the initial vPointsMap first.
