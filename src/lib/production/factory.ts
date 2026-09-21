@@ -80,6 +80,27 @@ function getAllModelMemories(runtime: AccountRuntime): TradingModelMemory[] {
   return runtime.modeState.tradeSettings.map((setting) => setting.model_memory);
 }
 
+function buildPrecisionRuntimeConfig(
+  runtime: SlowTradingStorageData["runtime"],
+): PrecisionRuntimeState["config"]["runtime"] {
+  const {
+    exchangeAccounts: _exchangeAccounts,
+    mcp: _mcp,
+    sandboxEnabled: _sandboxEnabled,
+    sandboxInitialBalanceUSDT: _sandboxInitialBalanceUSDT,
+    ...runtimeConfig
+  } = runtime;
+
+  // PROD:RUNTIME_CONFIG_ACCOUNT_SOURCE
+  // Precision uses config.accounts as the single account source. The SLOW
+  // dashboard runtime object contains those accounts for its own UI, but they
+  // must not be duplicated inside the shared runtime config.
+  return {
+    ...runtimeConfig,
+    mcp: { tokens: [] },
+  } as PrecisionRuntimeState["config"]["runtime"];
+}
+
 function createCurrentKline(
   runtimeState: PrecisionRuntimeState,
   symbol: string,
@@ -405,7 +426,7 @@ function createProductionFactory(): ProductionRuntimeFactory {
       config: {
         accounts: catalog.runtime.exchangeAccounts,
         management: catalog.sharedConfig,
-        runtime: catalog.runtime as unknown as PrecisionRuntimeState["config"]["runtime"],
+        runtime: buildPrecisionRuntimeConfig(catalog.runtime),
       },
       currentTime: Date.now(),
       mode,
