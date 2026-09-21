@@ -80,6 +80,8 @@ When no candidate pair exists, overall precision is unavailable.
 
 # F. Page `/dev/precision-checker`
 
+Later we make this (not for now)
+
 Select a production test case and backtest result, validate them, and show the
 overall score, each pair score and differences, ambiguous keys, and unpaired
 positions.
