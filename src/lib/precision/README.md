@@ -14,10 +14,14 @@ need to be connected to the shared trading functions.
 
 ```text
 precision/
-  index.ts                 RuntimeEngine and the shared clock loop
+  index.ts                 Public surface: re-exports RuntimeEngine and types
+  RuntimeEngine.ts         Shared engine: clock loop and stage orchestration
   types.ts                 State, adapter, clock, and context contracts
+  constant.ts              Engine constants (lookbacks, retention defaults)
   defaultDecision/         Shared decisions backed by production algorithms
   helper/                  State-bound account/config/balance/market helpers
+  utils/                   Stateless pure utilities shared by engine and adapters
+  action/                  Environment action implementations (e.g. simulated)
   monitoring/
     index.ts               Grouped monitoring API
     schedule.ts            Stage timing and Speedup activation
@@ -25,6 +29,24 @@ precision/
     position.ts            Position monitoring, averaging, and exit
     entry.ts               Entry capture
 ```
+
+## `helper/` vs `utils/`
+
+Both folders hold engine implementation details; the difference is binding:
+
+- `helper/` — **state-bound operations**. `createRuntimeHelper(state, adapter)`
+  is called once per `RuntimeEngine` and returns functions that read and mutate
+  that engine's state and call its adapter (`getAccount`, `getAccountBalance`,
+  `getAccountConfig`, `market.updateMarkPrice`, `market.updateVPointsMap`).
+  They are exposed to monitoring code through `context.helper`.
+- `utils/` — **stateless pure functions**. They take explicit inputs and
+  return outputs with no engine state or adapter (`vpoints.retainRecent`,
+  `vpoints.mergeById`). They are importable by the engine, by environment
+  adapters (production persistence, backtest result assembly), and by dev
+  tooling alike.
+
+Rule of thumb: if the operation needs `state` or `adapter`, it belongs in
+`helper/`; if it only needs its own arguments, it belongs in `utils/`.
 
 Callers import the engine as one public boundary:
 
@@ -95,6 +117,9 @@ const adapter: RuntimeEngineAdapter = {
 | `onStrategy` | Shared strategy | The same shared strategy |
 | `onAction` | Simulates an accepted action | Submits sandbox or live execution |
 | `onExit` | Collects closed backtest history | Persists closed-position history |
+| `onStateChange` | Usually omitted | Persists account state and vPoint usage markers |
+| `onNewVPoint` | Buffers detected points for the full result map | Merges each point into shared volatility files |
+| `retainRecentVPoints` | Unset — same window as production | Unset — default `DEFAULT_RECENT_VPOINTS` |
 | `onNotif` | Disabled/no-op | Delivers configured notifications |
 
 The environment adapter supplies capabilities. It must not contain a second
