@@ -378,6 +378,34 @@ Completion means more than passing TypeScript: production, sandbox, and
 backtest must use the same Precision runtime and Multi strategy path, with only
 their adapters differing.
 
+## Documentation authority
+
+Use documentation in this order:
+
+1. Current human instructions.
+2. `docs/PRECISION/_PRECISION.md` as the architectural backbone.
+3. Precision documents explicitly reviewed and approved by the human.
+4. `docs/SPECS/` only as a **legacy behavioral reference**.
+
+`docs/SPECS/` may be used to identify existing Multi calculations, cycle
+behavior, decision rules, edge cases, and requirements that still need to be
+preserved. It is not design authority for the new system.
+
+Do not inherit the following from legacy specs unless the human explicitly
+approves it:
+
+- Folder structure.
+- Runtime architecture.
+- Type design.
+- Legacy module boundaries.
+- Versioned decision-engine structure.
+- Dynamic or NN abstractions.
+- Any assumption that conflicts with `docs/PRECISION/_PRECISION.md`.
+
+When legacy specs and Precision direction conflict, stop and resolve the
+behavioral requirement separately from the legacy implementation. Preserve a
+required outcome without carrying its old architecture into the clean core.
+
 ## Human constraints (authoritative)
 
 - This repository, not the old Multi instance, is the behavioral source.
