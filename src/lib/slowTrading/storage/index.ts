@@ -8,7 +8,6 @@ import {
 import {
   aggregateSlowTradingBalanceSnapshots,
   readCombinedSlowTradingBalanceSnapshots,
-  readLegacySlowTradingBalanceSnapshots,
   readSlowTradingBalanceSnapshots,
   upsertSlowTradingBalanceSnapshot,
 } from "./balance-snapshots";
@@ -116,7 +115,6 @@ const slowTradingStorage = {
   balanceSnapshots: {
     aggregate: aggregateSlowTradingBalanceSnapshots,
     readCombined: readCombinedSlowTradingBalanceSnapshots,
-    readLegacy: readLegacySlowTradingBalanceSnapshots,
     read: readSlowTradingBalanceSnapshots,
     upsert: upsertSlowTradingBalanceSnapshot,
   },

@@ -15,8 +15,8 @@ export type SlowTradingBalanceSnapshot = {
   total: number;
 };
 
-function getLegacyBalanceSnapshotsFile(mode: SlowTradingMode): string {
-  return FILES.slow[mode].balanceSnapshots;
+function getBalanceSnapshotsDir(mode: SlowTradingMode): string {
+  return path.dirname(FILES.slow[mode].balanceSnapshots);
 }
 
 function getAccountBalanceSnapshotsFile(params: {
@@ -28,7 +28,7 @@ function getAccountBalanceSnapshotsFile(params: {
   }
 
   return path.join(
-    path.dirname(getLegacyBalanceSnapshotsFile(params.mode)),
+    getBalanceSnapshotsDir(params.mode),
     "balance_snapshots",
     `${params.account}.json`,
   );
@@ -65,13 +65,6 @@ export async function readSlowTradingBalanceSnapshots(params: {
   mode: SlowTradingMode;
 }): Promise<SlowTradingBalanceSnapshot[]> {
   return readBalanceSnapshotsFile(getAccountBalanceSnapshotsFile(params));
-}
-
-/** Reads the pre-multi-account mode-wide snapshot file for fallback only. */
-export async function readLegacySlowTradingBalanceSnapshots(
-  mode: SlowTradingMode,
-): Promise<SlowTradingBalanceSnapshot[]> {
-  return readBalanceSnapshotsFile(getLegacyBalanceSnapshotsFile(mode));
 }
 
 /**
@@ -118,8 +111,9 @@ export function aggregateSlowTradingBalanceSnapshots(
 }
 
 /**
- * Reads and aggregates the selected account snapshots. The old shared file is
- * returned only when no selected account has account-scoped snapshot data.
+ * Reads and aggregates the selected account snapshots. Carries each account's
+ * latest known balance forward once that account has produced its first
+ * snapshot.
  */
 export async function readCombinedSlowTradingBalanceSnapshots(params: {
   accounts: readonly string[];
@@ -131,11 +125,7 @@ export async function readCombinedSlowTradingBalanceSnapshots(params: {
     ),
   );
 
-  if (accountSnapshots.some((snapshots) => snapshots.length > 0)) {
-    return aggregateSlowTradingBalanceSnapshots(accountSnapshots);
-  }
-
-  return readLegacySlowTradingBalanceSnapshots(params.mode);
+  return aggregateSlowTradingBalanceSnapshots(accountSnapshots);
 }
 
 /** Upserts one account-scoped SLOW balance snapshot per UTC day. */
