@@ -1,6 +1,7 @@
 import { tradeLog } from "../trading";
 import { createRuntimeHelper, type RuntimeHelper } from "./helper";
 import monitoring from "./monitoring";
+import preview from "./utils/preview";
 import type {
   RuntimeContext,
   RuntimeEngineAdapter,
@@ -41,7 +42,8 @@ export class RuntimeEngine {
       return;
     }
 
-    tradeLog.log("RUNTIME ENGINE STARTED");
+    tradeLog.log("\n\nRUNTIME ENGINE STARTED");
+    tradeLog.log(preview.state(this.state));
 
     try {
       await this.helper.market.updateMarkPrice();
