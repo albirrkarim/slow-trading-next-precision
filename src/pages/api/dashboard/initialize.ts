@@ -72,12 +72,6 @@ async function initializeDashboard(req: NextApiRequest, res: NextApiResponse) {
     tradeLog.log("tradingMode", tradingMode);
     tradeLog.log("marketType", marketType);
 
-    if (!(await fs.exists(FILES.slow.system))) {
-      await fs.writeJson(FILES.slow.system, {
-        exchangeType,
-      });
-    }
-
     if (reinitialize) {
       await fs.remove(FILES.slow.volatility(exchangeType));
     }

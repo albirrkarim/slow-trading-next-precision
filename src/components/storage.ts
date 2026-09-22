@@ -32,7 +32,6 @@ function slowExchangeFiles(exchangeType: ExchangeType) {
 
 const SLOW_FILES = {
   root: SLOW_TRADING_DIR,
-  system: `${SLOW_TRADING_DIR}/system.json`,
   accounts: `${SLOW_TRADING_DIR}/accounts.json`,
   config: `${SLOW_TRADING_DIR}/config.json`,
   leaderboards: `${SLOW_TRADING_DIR}/leaderboards.json`,
@@ -128,7 +127,6 @@ async function moveIfNeeded(from: string, to: string) {
 
 async function migrateLegacyStorage() {
   await moveIfNeeded(LEGACY_SLOW_TRADING_DIR, SLOW_TRADING_DIR);
-  await moveIfNeeded(`${CACHE_DIR}/system.json`, FILES.slow.system);
   await moveIfNeeded(
     `${CACHE_DIR}/marketcap_cache.json`,
     FILES.slow.marketCapCache,
