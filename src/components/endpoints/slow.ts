@@ -26,6 +26,7 @@ export const slowEndpoints = {
     quickBacktest: `${DASHBOARD_UI_API}/slow-trading/quick-backtest`,
     broadcastCoinMetadata: `${DASHBOARD_UI_API}/slow-trading/debug/broadcast-coin-metadata`,
     syncOnlineCoinMetadataToLocal: `${DASHBOARD_UI_API}/slow-trading/debug/sync-online-coin-metadata-to-local`,
+    syncLocalToOnline: `${DASHBOARD_UI_API}/slow-trading/debug/sync-local-to-online`,
     syncOnlineToLocal: `${DASHBOARD_UI_API}/slow-trading/debug/sync-online-to-local`,
   },
   // used mostly for development and backtest

@@ -18,7 +18,7 @@ function cloneJson<T>(value: T): T {
 }
 
 function getVolatilityFile(exchangeType: ExchangeType, symbol: string) {
-  return `${FILES.slow.volatility(exchangeType)}/${symbol}.json`;
+  return `${FILES.prod.volatility(exchangeType)}/${symbol}.json`;
 }
 
 /** Atomically merges one symbol's completed public volatility calculation. */

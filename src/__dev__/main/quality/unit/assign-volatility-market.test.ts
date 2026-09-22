@@ -20,6 +20,7 @@ vi.mock("@/lib/dynamic", () => ({
 
 vi.mock("fs-extra", () => ({
   default: {
+    ensureDirSync: vi.fn(),
     exists: mocks.exists,
     readJSON: mocks.readJSON,
   },

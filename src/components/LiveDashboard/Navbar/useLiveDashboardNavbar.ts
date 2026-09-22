@@ -93,6 +93,7 @@ export function useLiveDashboardNavbar({
     string | null
   >(null);
   const [savingConfig, setSavingConfig] = useState(false);
+  const [pushingOnlineStorage, setPushingOnlineStorage] = useState(false);
   const [syncingOnlineStorage, setSyncingOnlineStorage] = useState(false);
   const [tryingWithdraw, setTryingWithdraw] = useState(false);
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
@@ -318,6 +319,45 @@ export function useLiveDashboardNavbar({
     }
   };
 
+  const pushLocalStorageToOnline = async (onlineBaseUrl: string) => {
+    const normalizedOnlineBaseUrl = onlineBaseUrl.trim();
+
+    if (!normalizedOnlineBaseUrl) {
+      alert("Please enter the online base URL to push to.");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Replace ${normalizedOnlineBaseUrl}'s persistent storage with this server's storage? A timestamped backup of the remote server will be created first.`,
+      )
+    ) {
+      return;
+    }
+
+    setPushingOnlineStorage(true);
+    try {
+      const response = await axios.post(endpoints.slow.prod.syncLocalToOnline, {
+        onlineBaseUrl: normalizedOnlineBaseUrl,
+      });
+      const backupPath = response.data?.backupPath
+        ? `\nRemote backup: ${response.data.backupPath}`
+        : "";
+      alert(
+        `Storage pushed from this server to ${normalizedOnlineBaseUrl}.${backupPath}`,
+      );
+    } catch (error: any) {
+      tradeLog.error(error);
+      alert(
+        error?.response?.data?.error ??
+          error?.response?.data?.message ??
+          "Storage push failed",
+      );
+    } finally {
+      setPushingOnlineStorage(false);
+    }
+  };
+
   const isActive = computeAutoEntryActive(dashboardState);
 
   const openPositionSummary = useMemo(
@@ -335,6 +375,8 @@ export function useLiveDashboardNavbar({
     dayPreview,
     isActive,
     openPositionSummary,
+    pushLocalStorageToOnline,
+    pushingOnlineStorage,
     refreshBalance,
     refreshingBalanceAccount,
     resetSandbox,

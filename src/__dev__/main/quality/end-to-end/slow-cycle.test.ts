@@ -281,15 +281,20 @@ describe("slow end-to-end cycle", () => {
         symbol: "SUI_USDT",
       }),
     );
-    expect(await fs.pathExists(path.join(tmpRoot!, "slow/config.json"))).toBe(
-      true,
-    );
-    expect(await fs.pathExists(path.join(tmpRoot!, "slow/memory.json"))).toBe(
+    expect(await fs.pathExists(path.join(tmpRoot!, "prod/config.json"))).toBe(
       true,
     );
     expect(
       await fs.pathExists(
-        path.join(tmpRoot!, "slow/sandbox/balance_snapshots/binance-1.json"),
+        path.join(tmpRoot!, "prod/accounts/binance-1/sandbox/positions.json"),
+      ),
+    ).toBe(true);
+    expect(
+      await fs.pathExists(
+        path.join(
+          tmpRoot!,
+          "prod/accounts/binance-1/sandbox/balance_snapshots.json",
+        ),
       ),
     ).toBe(true);
     expect(dashboard.activeMode).toBe("sandbox");
@@ -544,7 +549,7 @@ describe("slow end-to-end cycle", () => {
       storage.config.symbols,
     );
     await slowTradingStorage.data.save(storage);
-    await fs.outputJSON(`${FILES.slow.volatility("binance")}/SUI.json`, {
+    await fs.outputJSON(`${FILES.prod.volatility("binance")}/SUI.json`, {
       lastVolatility: [e2eSignal],
       symbol: "SUI",
     });
@@ -570,7 +575,7 @@ describe("slow end-to-end cycle", () => {
     storage.runtime.runnerEnabled = true;
     storage.runtime.autoRemoveSymbolMinVPointPct = 15;
     await slowTradingStorage.data.save(storage);
-    await fs.outputJSON(`${FILES.slow.volatility("binance")}/SUI.json`, {
+    await fs.outputJSON(`${FILES.prod.volatility("binance")}/SUI.json`, {
       lastVolatility: [
         { ...e2eSignal, id: "old-spike", pct: 15, t: 1 },
         { ...e2eSignal, id: "latest-small", pct: 2, t: 2 },

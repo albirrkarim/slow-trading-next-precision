@@ -209,9 +209,9 @@ export function normalizeSlowTradingAccounts(params: {
 }
 
 async function readAccountsFile(): Promise<Partial<SlowTradingAccountsFileData>> {
-  if (!(await fs.pathExists(FILES.slow.accounts))) return {};
+  if (!(await fs.pathExists(FILES.prod.accounts))) return {};
   return (await fs.readJSON(
-    FILES.slow.accounts,
+    FILES.prod.accounts,
   )) as Partial<SlowTradingAccountsFileData>;
 }
 
@@ -275,7 +275,7 @@ export async function saveSlowTradingExchangeAccounts(
     retiredSlugs: [...retiredSlugs].sort(),
     updatedAt: Date.now(),
   };
-  await slowTradingJsonFile.write.atomic(FILES.slow.accounts, payload);
+  await slowTradingJsonFile.write.atomic(FILES.prod.accounts, payload);
   return normalized;
 }
 

@@ -390,6 +390,8 @@ interface NavbarActionsSectionProps {
   runningCycle: boolean;
   saveConfig: (handleClose?: () => void) => Promise<void>;
   savingConfig: boolean;
+  pushLocalStorageToOnline: (onlineBaseUrl: string) => Promise<void>;
+  pushingOnlineStorage: boolean;
   safeHavenUSDT: number;
   selectedAccountSlug?: string;
   setConfigDraft: React.Dispatch<React.SetStateAction<ConfigDraft | null>>;
@@ -411,6 +413,8 @@ export function NavbarActionsSection({
   reinitializing,
   resetSandbox,
   resettingSandboxAccount,
+  pushLocalStorageToOnline,
+  pushingOnlineStorage,
   runCycle,
   runningCycle,
   saveConfig,
@@ -517,6 +521,8 @@ export function NavbarActionsSection({
             onOpenDialog={onSettingsDialogOpen}
             onReinitialize={onReinitialize}
             reinitializing={reinitializing}
+            pushLocalStorageToOnline={pushLocalStorageToOnline}
+            pushingOnlineStorage={pushingOnlineStorage}
             resetSandbox={resetSandbox}
             resettingSandboxAccount={resettingSandboxAccount}
             saveConfig={saveConfig}

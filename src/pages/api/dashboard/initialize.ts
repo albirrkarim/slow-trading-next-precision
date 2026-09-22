@@ -73,10 +73,10 @@ async function initializeDashboard(req: NextApiRequest, res: NextApiResponse) {
     tradeLog.log("marketType", marketType);
 
     if (reinitialize) {
-      await fs.remove(FILES.slow.volatility(exchangeType));
+      await fs.remove(FILES.prod.volatility(exchangeType));
     }
 
-    await fs.ensureDir(FILES.slow.volatility(exchangeType));
+    await fs.ensureDir(FILES.prod.volatility(exchangeType));
 
     let volumeSnapshot = await slowTrading.marketVolume.snapshot.read(
       exchangeType as ExchangeType,
@@ -108,14 +108,14 @@ async function initializeDashboard(req: NextApiRequest, res: NextApiResponse) {
 
     if (
       !(await fs.exists(
-        `${FILES.slow.volatility(exchangeType)}/${symbols[0]}.json`,
+        `${FILES.prod.volatility(exchangeType)}/${symbols[0]}.json`,
       )) ||
       reinitialize
     ) {
       // Volatility
       const volatilityMap: Record<string, VolatilityPoint[]> = {};
       // check directory
-      const files = await fs.readdir(FILES.slow.volatility(exchangeType));
+      const files = await fs.readdir(FILES.prod.volatility(exchangeType));
 
       tradeLog.log("files ", files);
 
@@ -123,7 +123,7 @@ async function initializeDashboard(req: NextApiRequest, res: NextApiResponse) {
         // A. Load existing volatility from file if exists
         if (
           (await fs.exists(
-            `${FILES.slow.volatility(exchangeType)}/${symbol}.json`,
+            `${FILES.prod.volatility(exchangeType)}/${symbol}.json`,
           )) &&
           !reinitialize
         ) {
@@ -132,7 +132,7 @@ async function initializeDashboard(req: NextApiRequest, res: NextApiResponse) {
             symbol,
           );
           const data = (await fs.readJSON(
-            `${FILES.slow.volatility(exchangeType)}/${symbol}.json`,
+            `${FILES.prod.volatility(exchangeType)}/${symbol}.json`,
           )) as PredictionEngineMemory;
 
           volatilityMap[symbol] = data.lastVolatility;
@@ -156,7 +156,7 @@ async function initializeDashboard(req: NextApiRequest, res: NextApiResponse) {
           });
 
           await fs.writeJson(
-            `${FILES.slow.volatility(exchangeType)}/${symbol}.json`,
+            `${FILES.prod.volatility(exchangeType)}/${symbol}.json`,
             vMemory,
           );
 

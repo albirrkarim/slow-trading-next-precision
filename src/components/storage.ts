@@ -1,12 +1,12 @@
-import path from "path";
 import fs from "fs-extra";
 import type { ExchangeType } from "@/lib/exchange";
 import { resolvePersistentStorageRoot } from "@/lib/persistent-storage-root";
 import type { PredictionEngineMemory, VolatilityPoint } from "@/lib/dynamic";
 import moment from "moment-timezone";
-import { tradeLog } from "@/lib/trading/helper/log";
 
 const IS_RAILWAY = !!process.env.RAILWAY_ENVIRONMENT;
+const ACCOUNT_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+type StorageMode = "live" | "sandbox";
 
 /**
  * Both development and production
@@ -14,68 +14,72 @@ const IS_RAILWAY = !!process.env.RAILWAY_ENVIRONMENT;
 export const CACHE_DIR = resolvePersistentStorageRoot();
 
 // PROD:STORAGE_SOURCE_OF_TRUTH
-export const SLOW_TRADING_DIR = `${CACHE_DIR}/slow`;
-const LEGACY_SLOW_TRADING_DIR = `${CACHE_DIR}/slow-trading`;
+export const PROD_DIR = `${CACHE_DIR}/prod`;
+export const DEV_DIR = `${CACHE_DIR}/dev`;
 
-function slowExchangeDir(exchangeType: ExchangeType) {
-  return `${SLOW_TRADING_DIR}/${exchangeType}`;
+/** Account slugs double as directory names; reject anything that escapes. */
+function accountDir(slug: string): string {
+  if (!ACCOUNT_SLUG_PATTERN.test(slug)) {
+    throw new Error(`Invalid exchange account slug: ${slug}`);
+  }
+
+  return `${PROD_DIR}/accounts/${slug}`;
 }
 
-function slowExchangeFiles(exchangeType: ExchangeType) {
-  const root = slowExchangeDir(exchangeType);
+function accountModeFiles(slug: string, mode: StorageMode) {
+  const dir = `${accountDir(slug)}/${mode}`;
 
   return {
-    root,
-    volatility: `${root}/volatility`,
+    dir,
+    positions: `${dir}/positions.json`,
+    balance: `${dir}/balance.json`,
+    balanceSnapshots: `${dir}/balance_snapshots.json`,
   };
 }
 
-const SLOW_FILES = {
-  root: SLOW_TRADING_DIR,
-  accounts: `${SLOW_TRADING_DIR}/accounts.json`,
-  config: `${SLOW_TRADING_DIR}/config.json`,
-  leaderboards: `${SLOW_TRADING_DIR}/leaderboards.json`,
-  memory: `${SLOW_TRADING_DIR}/memory.json`,
-  marketCapCache: `${SLOW_TRADING_DIR}/marketcap_cache.json`,
-  ip: `${SLOW_TRADING_DIR}/ip.json`,
-  notificationDedupe: `${SLOW_TRADING_DIR}/notification-dedupe.json`,
-  precisionTestCase: `${SLOW_TRADING_DIR}/precision-test-case.json`,
-  queue: `${SLOW_TRADING_DIR}/queue.json`,
+const PROD_FILES = {
+  root: PROD_DIR,
+  accounts: `${PROD_DIR}/accounts.json`,
+  accountsRoot: `${PROD_DIR}/accounts`,
+  config: `${PROD_DIR}/config.json`,
+  notifications: `${PROD_DIR}/notifications.json`,
+  queue: `${PROD_DIR}/queue.json`,
+  status: `${PROD_DIR}/status.json`,
+
+  accountRoot: accountDir,
+  account: accountModeFiles,
+
+  cache: {
+    ip: `${PROD_DIR}/cache/ip.json`,
+    marketCap: `${PROD_DIR}/cache/marketcap.json`,
+    notificationDedupe: `${PROD_DIR}/cache/notification-dedupe.json`,
+    ticker24h: (exchangeType: ExchangeType, marketType: string) =>
+      `${PROD_DIR}/cache/ticker-24h-${exchangeType}-${marketType.toLowerCase()}.json`,
+  },
+
   logs: {
-    binanceCooldowns: `${SLOW_TRADING_DIR}/logs/binance_cooldowns.json`,
-    errors: `${SLOW_TRADING_DIR}/logs/errors.json`,
-    management: `${SLOW_TRADING_DIR}/logs/management.json`,
-    safeHaven: `${SLOW_TRADING_DIR}/logs/safe_haven.json`,
-    withdrawals: `${SLOW_TRADING_DIR}/logs/withdrawals.json`,
-  },
-  live: {
-    balanceSnapshots: `${SLOW_TRADING_DIR}/live/balance_snapshots.json`,
-    historyRoot: `${SLOW_TRADING_DIR}/live/history`,
-  },
-  sandbox: {
-    balanceSnapshots: `${SLOW_TRADING_DIR}/sandbox/balance_snapshots.json`,
-    historyRoot: `${SLOW_TRADING_DIR}/sandbox/history`,
+    binanceCooldowns: `${PROD_DIR}/logs/binance_cooldowns.json`,
+    errors: `${PROD_DIR}/logs/errors.json`,
+    management: `${PROD_DIR}/logs/management.json`,
+    safeHaven: `${PROD_DIR}/logs/safe_haven.json`,
+    withdrawals: `${PROD_DIR}/logs/withdrawals.json`,
   },
 
-  getCachePrefix: (prefix: string) =>
-    `./storage/cache/${prefix}/${moment().format("DD_MMM_YYYY_HH")}_`,
+  history: (mode: StorageMode) => `${PROD_DIR}/history/${mode}`,
+  historyFile: (mode: StorageMode, symbol: string) =>
+    `${PROD_DIR}/history/${mode}/${symbol}.json`,
 
-  exchange: slowExchangeFiles,
   volatility: (exchangeType: ExchangeType) =>
-    slowExchangeFiles(exchangeType).volatility,
+    `${PROD_DIR}/volatility/${exchangeType}`,
 
   volatilityPoints: {
-    // save: async (exchangeType: ExchangeType, symbol: string, volatilityPoints: VolatilityPoint[]) => {
-    //   await fs.writeJson(`${FILES.slow.volatility(exchangeType)}/${symbol}.json`, volatilityPoints);
-    // },
-
     get: async (
       exchangeType: ExchangeType,
       symbol: string,
     ): Promise<VolatilityPoint[]> => {
       try {
         const memory = (await fs.readJson(
-          `${FILES.slow.volatility(exchangeType)}/${symbol}.json`,
+          `${PROD_FILES.volatility(exchangeType)}/${symbol}.json`,
         )) as PredictionEngineMemory;
 
         return memory.lastVolatility;
@@ -84,10 +88,21 @@ const SLOW_FILES = {
       }
     },
   },
+
+  getCachePrefix: (prefix: string) =>
+    `./storage/cache/${prefix}/${moment().format("DD_MMM_YYYY_HH")}_`,
+} as const;
+
+const DEV_FILES = {
+  root: DEV_DIR,
+  leaderboards: `${DEV_DIR}/leaderboards.json`,
+  precisionTestCaseDir: `${DEV_DIR}/precision-test-case`,
+  precisionTestCaseActive: `${DEV_DIR}/precision-test-case.json`,
 } as const;
 
 export const FILES = {
-  slow: SLOW_FILES,
+  prod: PROD_FILES,
+  dev: DEV_FILES,
 } as const;
 
 export const FOLDER = {
@@ -100,58 +115,18 @@ export const FOLDER = {
   },
 };
 
-async function main() {
-  await fs.ensureDir(CACHE_DIR);
-  await migrateLegacyStorage();
-  await fs.ensureDir(SLOW_TRADING_DIR);
-  await fs.ensureDir(path.dirname(FILES.slow.marketCapCache));
-
-  for (const ex of ["tokocrypto", "okx", "binance"]) {
-    await removeDirIfEmpty(FILES.slow.exchange(ex as ExchangeType).volatility);
-    await removeDirIfEmpty(slowExchangeDir(ex as ExchangeType));
-  }
+/** Creates the storage directories synchronously at module load. */
+function bootstrap() {
+  fs.ensureDirSync(CACHE_DIR);
+  fs.ensureDirSync(PROD_DIR);
+  fs.ensureDirSync(DEV_DIR);
+  fs.ensureDirSync(`${PROD_DIR}/cache`);
 
   if (!IS_RAILWAY) {
-    await fs.ensureDir("src/__dev__/storage/development/backtest-volatility");
-    await fs.ensureDir("src/__dev__/storage/production/backtest-volatility");
-    await fs.ensureDir("src/__dev__/storage/production/auto-generated");
+    fs.ensureDirSync("src/__dev__/storage/development/backtest-volatility");
+    fs.ensureDirSync("src/__dev__/storage/production/backtest-volatility");
+    fs.ensureDirSync("src/__dev__/storage/production/auto-generated");
   }
 }
 
-async function moveIfNeeded(from: string, to: string) {
-  if ((await fs.pathExists(from)) && !(await fs.pathExists(to))) {
-    await fs.ensureDir(path.dirname(to));
-    await fs.move(from, to, { overwrite: false });
-  }
-}
-
-async function migrateLegacyStorage() {
-  await moveIfNeeded(LEGACY_SLOW_TRADING_DIR, SLOW_TRADING_DIR);
-  await moveIfNeeded(
-    `${CACHE_DIR}/marketcap_cache.json`,
-    FILES.slow.marketCapCache,
-  );
-
-  for (const ex of ["tokocrypto", "okx", "binance"]) {
-    await moveIfNeeded(
-      `${CACHE_DIR}/${ex}`,
-      slowExchangeDir(ex as ExchangeType),
-    );
-  }
-}
-
-async function removeDirIfEmpty(dir: string) {
-  const exists = await fs.pathExists(dir);
-  if (!exists) {
-    return;
-  }
-
-  const entries = await fs.readdir(dir).catch(() => []);
-  if (entries.length === 0) {
-    await fs.remove(dir);
-  }
-}
-
-main().catch((error) => {
-  tradeLog.error(error);
-});
+bootstrap();

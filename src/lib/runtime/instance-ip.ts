@@ -35,11 +35,11 @@ function normalizeSnapshot(value: unknown): InstanceIpSnapshot | null {
 /** Reads the latest successfully checked public IP snapshot. */
 async function read(): Promise<InstanceIpSnapshot | null> {
   try {
-    if (!(await fs.pathExists(FILES.slow.ip))) {
+    if (!(await fs.pathExists(FILES.prod.cache.ip))) {
       return null;
     }
 
-    return normalizeSnapshot(await fs.readJSON(FILES.slow.ip));
+    return normalizeSnapshot(await fs.readJSON(FILES.prod.cache.ip));
   } catch (error) {
     tradeLog.error("[instance-ip] failed to read stored IP", error);
     return null;
@@ -65,7 +65,7 @@ async function check(): Promise<InstanceIpSnapshot | null> {
 
     const current = { ip, t: Date.now() } satisfies InstanceIpSnapshot;
     // PROD:INSTANCE_IP_STORAGE
-    await slowTradingJsonFile.write.atomic(FILES.slow.ip, current);
+    await slowTradingJsonFile.write.atomic(FILES.prod.cache.ip, current);
 
     if (previous && previous.ip !== current.ip) {
       // PROD:NOTIF_IP_CHANGED

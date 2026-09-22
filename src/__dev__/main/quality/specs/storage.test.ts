@@ -35,11 +35,19 @@ describe("slow specs storage", () => {
     const loaded = await slowTradingStorage.data.load();
 
     // PROD:STORAGE_SOURCE_OF_TRUTH
-    expect(FILES.slow.root).toBe(path.join(tmpRoot!, "slow"));
+    expect(FILES.prod.root).toBe(path.join(tmpRoot!, "prod"));
     // PROD:INSTANCE_IP_STORAGE
-    expect(FILES.slow.ip).toBe(path.join(tmpRoot!, "slow/ip.json"));
-    expect(await fs.pathExists(path.join(tmpRoot!, "slow/config.json"))).toBe(true);
-    expect(await fs.pathExists(path.join(tmpRoot!, "slow/memory.json"))).toBe(true);
+    expect(FILES.prod.cache.ip).toBe(
+      path.join(tmpRoot!, "prod/cache/ip.json"),
+    );
+    expect(
+      await fs.pathExists(path.join(tmpRoot!, "prod/config.json")),
+    ).toBe(true);
+    expect(
+      await fs.pathExists(
+        path.join(tmpRoot!, "prod/accounts/binance-1/live/positions.json"),
+      ),
+    ).toBe(true);
     expect(loaded.runtime.sandboxEnabled).toBe(true);
     expect(loaded.runtime.autoEntryDailyPnlLimitUSDT).toBe(-50);
     expect(
@@ -145,13 +153,13 @@ describe("slow specs storage", () => {
       .storage;
     const accounts = slowTradingStorage.data.createDefault().accounts;
 
-    await fs.outputJSON(FILES.slow.accounts, {
+    await fs.outputJSON(FILES.prod.accounts, {
       accounts,
       updatedAt: 123,
     });
 
     const loaded = await slowTradingStorage.account.loadAccounts();
-    const persisted = await fs.readJSON(FILES.slow.accounts);
+    const persisted = await fs.readJSON(FILES.prod.accounts);
 
     // PROD:ATOMIC_PERSISTENT_JSON
     expect(loaded).toEqual(accounts);
@@ -169,8 +177,8 @@ describe("slow specs storage", () => {
 
     await slowTradingStorage.data.save(storage);
 
-    const configFile = await fs.readJSON(FILES.slow.config);
-    const accountsFile = await fs.readJSON(FILES.slow.accounts);
+    const configFile = await fs.readJSON(FILES.prod.config);
+    const accountsFile = await fs.readJSON(FILES.prod.accounts);
 
     // PROD:MULTI_ACCOUNT_CONFIG_OWNERSHIP
     expect(configFile.management).not.toHaveProperty("maxLeverage");
@@ -202,7 +210,7 @@ describe("slow specs storage", () => {
     await slowTradingStorage.data.save(
       slowTradingStorage.data.createDefault(),
     );
-    const configFile = await fs.readJSON(FILES.slow.config);
+    const configFile = await fs.readJSON(FILES.prod.config);
 
     delete configFile.runtime.autoEntryDailyPnlLimitUSDT;
     for (const channel of ["telegram", "email"]) {
@@ -211,7 +219,7 @@ describe("slow specs storage", () => {
           (item: { id: string }) => item.id !== "NOTIF_DAILY_PNL_LIMIT",
         );
     }
-    await fs.writeJSON(FILES.slow.config, configFile);
+    await fs.writeJSON(FILES.prod.config, configFile);
 
     const runtime = (await slowTradingStorage.data.load()).runtime;
     expect(runtime.autoEntryDailyPnlLimitUSDT).toBe(-50);
@@ -231,7 +239,7 @@ describe("slow specs storage", () => {
     const slowTradingJsonFile = (
       await import("@/lib/slowTrading/storage/json-file")
     ).default;
-    const filePath = path.join(tmpRoot!, "slow/atomic.json");
+    const filePath = path.join(tmpRoot!, "prod/atomic.json");
 
     await slowTradingJsonFile.write.atomic(filePath, { value: "stable" });
     await expect(
@@ -560,7 +568,7 @@ describe("slow specs storage", () => {
       }),
     ).toMatchObject({ updated: true });
 
-    const historyFile = path.join(FILES.slow.sandbox.historyRoot, "SUI.json");
+    const historyFile = FILES.prod.historyFile("sandbox", "SUI");
     expect(await fs.readJSON(historyFile)).toEqual([
       expect.objectContaining({ notes: "Follow breakout retest" }),
     ]);
@@ -696,7 +704,7 @@ describe("slow specs storage", () => {
 
     vi.doMock("@/components/storage", () => ({
       FILES: {
-        slow: {
+        prod: {
           volatilityPoints: {
             get: getStoredVolatilityPoints,
           },
@@ -746,14 +754,14 @@ describe("slow specs storage", () => {
     try {
       const slowTrading = (await import("@/lib/slowTrading")).default;
 
-      await fs.outputJSON(path.join(onlineRoot, "slow/config.json"), {
+      await fs.outputJSON(path.join(onlineRoot, "prod/config.json"), {
         source: "online",
       });
       await fs.outputFile(
-        path.join(onlineRoot, "slow/binance/volatility/SUI.json"),
+        path.join(onlineRoot, "prod/volatility/binance/SUI.json"),
         JSON.stringify({ lastVolatility: [{ id: "online-vpoint" }] }),
       );
-      await fs.outputJSON(path.join(localRoot, "slow/config.json"), {
+      await fs.outputJSON(path.join(localRoot, "prod/config.json"), {
         source: "local",
       });
 
@@ -766,15 +774,15 @@ describe("slow specs storage", () => {
         );
 
       // PROD:SYNC_ONLINE_TO_LOCAL
-      expect(await fs.readJSON(path.join(localRoot, "slow/config.json"))).toEqual({
+      expect(await fs.readJSON(path.join(localRoot, "prod/config.json"))).toEqual({
         source: "online",
       });
       expect(
-        await fs.readJSON(path.join(localRoot, "slow/binance/volatility/SUI.json")),
+        await fs.readJSON(path.join(localRoot, "prod/volatility/binance/SUI.json")),
       ).toEqual({ lastVolatility: [{ id: "online-vpoint" }] });
       expect(result.backupPath).toBeTruthy();
       expect(
-        await fs.readJSON(path.join(result.backupPath!, "slow/config.json")),
+        await fs.readJSON(path.join(result.backupPath!, "prod/config.json")),
       ).toEqual({ source: "local" });
     } finally {
       await fs.remove(onlineRoot);

@@ -72,10 +72,10 @@ async function appendLogFile<T extends { createdAt: number }>(
 /** Gets the persistent file used by one dashboard log collection. */
 function getLogFilePath(kind: SlowTradingLogKind): string {
   const fileByKind: Record<SlowTradingLogKind, string> = {
-    errors: FILES.slow.logs.errors,
-    management: FILES.slow.logs.management,
-    safe_haven: FILES.slow.logs.safeHaven,
-    withdrawals: FILES.slow.logs.withdrawals,
+    errors: FILES.prod.logs.errors,
+    management: FILES.prod.logs.management,
+    safe_haven: FILES.prod.logs.safeHaven,
+    withdrawals: FILES.prod.logs.withdrawals,
   };
 
   return fileByKind[kind];
@@ -122,7 +122,7 @@ export async function updateSlowTradingErrorLogStatuses(
   let missingIds: string[] = [];
 
   await slowTradingJsonFile.update.atomic<SlowTradingErrorLogEntry[]>(
-    FILES.slow.logs.errors,
+    FILES.prod.logs.errors,
     (raw) => {
       const current = Array.isArray(raw)
         ? (raw as SlowTradingErrorLogEntry[])
@@ -188,7 +188,7 @@ export async function appendSlowTradingErrorLog(params: {
     ...(params.details ? { details: toJsonSafeDetails(params.details) } : {}),
   };
 
-  await appendLogFile(FILES.slow.logs.errors, entry);
+  await appendLogFile(FILES.prod.logs.errors, entry);
   return entry;
 }
 
@@ -210,7 +210,7 @@ export async function appendSlowTradingManagementLog(params: {
     reason: params.reason,
   };
 
-  await appendLogFile(FILES.slow.logs.management, entry);
+  await appendLogFile(FILES.prod.logs.management, entry);
   return entry;
 }
 
@@ -241,7 +241,7 @@ export async function appendSlowTradingSafeHavenLog(params: {
     ...(params.reason ? { reason: params.reason } : {}),
   };
 
-  await appendLogFile(FILES.slow.logs.safeHaven, entry);
+  await appendLogFile(FILES.prod.logs.safeHaven, entry);
   return entry;
 }
 
@@ -260,7 +260,7 @@ export async function appendSlowTradingWithdrawalLog(
     createdAt: params.timestamp ?? Date.now(),
   };
 
-  await appendLogFile(FILES.slow.logs.withdrawals, entry);
+  await appendLogFile(FILES.prod.logs.withdrawals, entry);
   return entry;
 }
 
@@ -270,12 +270,12 @@ export async function appendSlowTradingWithdrawalLog(
 export async function loadSlowTradingLogs(): Promise<SlowTradingLogs> {
   const [binanceCooldowns, errors, management, safeHaven, withdrawals] = await Promise.all([
     readLogFile<SlowTradingBinanceCooldownLogEntry>(
-      FILES.slow.logs.binanceCooldowns,
+      FILES.prod.logs.binanceCooldowns,
     ),
-    readLogFile<SlowTradingErrorLogEntry>(FILES.slow.logs.errors),
-    readLogFile<SlowTradingManagementLogEntry>(FILES.slow.logs.management),
-    readLogFile<SlowTradingSafeHavenLogEntry>(FILES.slow.logs.safeHaven),
-    readLogFile<SlowTradingWithdrawalLogEntry>(FILES.slow.logs.withdrawals),
+    readLogFile<SlowTradingErrorLogEntry>(FILES.prod.logs.errors),
+    readLogFile<SlowTradingManagementLogEntry>(FILES.prod.logs.management),
+    readLogFile<SlowTradingSafeHavenLogEntry>(FILES.prod.logs.safeHaven),
+    readLogFile<SlowTradingWithdrawalLogEntry>(FILES.prod.logs.withdrawals),
   ]);
 
   return {

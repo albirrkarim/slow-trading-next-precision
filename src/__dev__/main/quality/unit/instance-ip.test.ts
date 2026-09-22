@@ -71,14 +71,14 @@ describe("instance public IP", () => {
       }),
     );
     // PROD:INSTANCE_IP_STORAGE
-    expect(await fs.readJSON(path.join(tmpRoot!, "slow/ip.json"))).toEqual({
+    expect(await fs.readJSON(path.join(tmpRoot!, "prod/cache/ip.json"))).toEqual({
       ip: "203.0.113.25",
       t: 1_780_000_100_000,
     });
   });
 
   it("keeps the last successful snapshot when ipify returns invalid data", async () => {
-    const ipFile = path.join(tmpRoot!, "slow/ip.json");
+    const ipFile = path.join(tmpRoot!, "prod/cache/ip.json");
     await fs.ensureDir(path.dirname(ipFile));
     await fs.writeJSON(ipFile, { ip: "203.0.113.10", t: 1_780_000_000_000 });
     vi.stubGlobal(

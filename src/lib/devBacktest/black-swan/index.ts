@@ -1,3 +1,4 @@
+import { FILES } from "@/components/storage";
 import { fetchKlinesFunction } from "@/lib/datasets/fetchKlines";
 import {
   createPredictorMemory,
@@ -6,7 +7,6 @@ import {
   type VolatilityPoint,
 } from "@/lib/dynamic";
 import type { UnifiedKline } from "@/lib/exchange/types";
-import { resolvePersistentStorageRoot } from "@/lib/persistent-storage-root";
 import slowQuickBacktest from "@/lib/slowTrading/quick-backtest";
 import blackSwan from "@/lib/trading/black-swan";
 import fs from "fs-extra";
@@ -29,8 +29,8 @@ const MAX_SYMBOLS = 30;
 const MAX_PREVIEW_POSITIONS = 20;
 const MAX_CHART_POINTS = 1_200;
 const CACHE_ROOT = path.join(
-  resolvePersistentStorageRoot(),
-  "slow/cache/black-swan-klines/binance/futures",
+  FILES.dev.root,
+  "cache/black-swan-klines/binance/futures",
 );
 
 function normalizeSymbols(values: unknown): string[] {

@@ -98,9 +98,9 @@ async function loadCache(): Promise<MarketCapCacheFile> {
   if (!cacheLoadPromise) {
     cacheLoadPromise = (async () => {
       try {
-        if (await fs.pathExists(FILES.slow.marketCapCache)) {
+        if (await fs.pathExists(FILES.prod.cache.marketCap)) {
           const raw = (await fs.readJson(
-            FILES.slow.marketCapCache,
+            FILES.prod.cache.marketCap,
           )) as Partial<MarketCapCacheFile>;
           if (
             raw &&
@@ -131,8 +131,8 @@ async function loadCache(): Promise<MarketCapCacheFile> {
 async function persistCache(cache: MarketCapCacheFile): Promise<void> {
   cacheWritePromise = (cacheWritePromise ?? Promise.resolve()).then(
     async () => {
-      await fs.ensureDir(path.dirname(FILES.slow.marketCapCache));
-      await fs.writeJson(FILES.slow.marketCapCache, cache);
+      await fs.ensureDir(path.dirname(FILES.prod.cache.marketCap));
+      await fs.writeJson(FILES.prod.cache.marketCap, cache);
     },
   );
 

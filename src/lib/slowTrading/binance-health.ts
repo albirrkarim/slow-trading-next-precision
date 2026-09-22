@@ -15,9 +15,9 @@ import type {
 
 /** Reads normalized cooldown incidents from persistent SLOW storage. */
 async function readLogs(): Promise<SlowTradingBinanceCooldownLogEntry[]> {
-  if (!(await fs.pathExists(FILES.slow.logs.binanceCooldowns))) return [];
+  if (!(await fs.pathExists(FILES.prod.logs.binanceCooldowns))) return [];
   const raw = await fs
-    .readJSON(FILES.slow.logs.binanceCooldowns)
+    .readJSON(FILES.prod.logs.binanceCooldowns)
     .catch(() => []);
   return Array.isArray(raw)
     ? (raw as SlowTradingBinanceCooldownLogEntry[])
@@ -46,7 +46,7 @@ const persistence: BinanceCooldownPersistence = {
   async record(params) {
     let saved!: SlowTradingBinanceCooldownLogEntry;
     await slowTradingJsonFile.update.atomic<SlowTradingBinanceCooldownLogEntry[]>(
-      FILES.slow.logs.binanceCooldowns,
+      FILES.prod.logs.binanceCooldowns,
       (raw) => {
         const current = Array.isArray(raw)
           ? (raw as SlowTradingBinanceCooldownLogEntry[])
@@ -89,7 +89,7 @@ const persistence: BinanceCooldownPersistence = {
 
   async reset(now) {
     await slowTradingJsonFile.update.atomic<SlowTradingBinanceCooldownLogEntry[]>(
-      FILES.slow.logs.binanceCooldowns,
+      FILES.prod.logs.binanceCooldowns,
       (raw) => {
         const current = Array.isArray(raw)
           ? (raw as SlowTradingBinanceCooldownLogEntry[])

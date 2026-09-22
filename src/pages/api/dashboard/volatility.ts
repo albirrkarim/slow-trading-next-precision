@@ -171,7 +171,7 @@ async function keepTheVolatilityUpdated(
   const endTimeMs = pickTimeParam(params.endTime);
   const range = pickStringParam(params.range);
 
-  const cachePath = `${FILES.slow.getCachePrefix("volatility")}${md5(
+  const cachePath = `${FILES.prod.getCachePrefix("volatility")}${md5(
     JSON.stringify({
       cacheBucket: getDashboardVolatilityCacheBucket(Date.now()),
       config: slowStorage.config,
@@ -200,7 +200,7 @@ async function keepTheVolatilityUpdated(
   try {
     const volatilityMap: Record<string, VolatilityPoint[]> = {};
 
-    // const files = await fs.readdir(FILES.slow.volatility(exchangeType));
+    // const files = await fs.readdir(FILES.prod.volatility(exchangeType));
 
     // tradeLog.log("files ", files);
 
@@ -210,13 +210,13 @@ async function keepTheVolatilityUpdated(
       // A. Load existing volatility from file if exists
       if (
         (await fs.exists(
-          `${FILES.slow.volatility(exchangeType)}/${symbol}.json`,
+          `${FILES.prod.volatility(exchangeType)}/${symbol}.json`,
         )) &&
         !forceUpdate
       ) {
         tradeLog.debug("Load volatility from json ", symbol);
         const data = (await fs.readJSON(
-          `${FILES.slow.volatility(exchangeType)}/${symbol}.json`,
+          `${FILES.prod.volatility(exchangeType)}/${symbol}.json`,
         )) as PredictionEngineMemory;
 
         volatilityMap[symbol] = data.lastVolatility;
@@ -240,7 +240,7 @@ async function keepTheVolatilityUpdated(
         });
 
         await fs.writeJson(
-          `${FILES.slow.volatility(exchangeType)}/${symbol}.json`,
+          `${FILES.prod.volatility(exchangeType)}/${symbol}.json`,
           vMemory,
         );
 
@@ -257,7 +257,7 @@ async function keepTheVolatilityUpdated(
         }
 
         const currentMemory = (await fs.readJSON(
-          `${FILES.slow.volatility(exchangeType)}/${symbol}.json`,
+          `${FILES.prod.volatility(exchangeType)}/${symbol}.json`,
         )) as PredictionEngineMemory;
         const vMemory: PredictionEngineMemory = {
           ...currentMemory,
@@ -267,7 +267,7 @@ async function keepTheVolatilityUpdated(
 
         // save back
         await fs.writeJson(
-          `${FILES.slow.volatility(exchangeType)}/${symbol}.json`,
+          `${FILES.prod.volatility(exchangeType)}/${symbol}.json`,
           vMemory,
         );
       }

@@ -1,8 +1,7 @@
 import type { TradingModelMemory } from "@/lib/trading/models";
-import fs from "fs-extra";
 import { clone, normalizeSymbol } from "./common";
 import {
-  getModeHistoryRoot,
+  clearModeHistoryFiles,
   hydrateSlowTradingHistoryFromFiles,
   readHistoryFile,
   writeHistoryFile,
@@ -100,7 +99,7 @@ export async function clearSlowTradingHistory(
     tradeSetting.model_memory.positionsSell = [];
   }
 
-  await fs.remove(getModeHistoryRoot(mode));
+  await clearModeHistoryFiles(mode);
   delete modeState.dailyPnlLimitState;
   await saveSlowTradingStorage(storage);
   await hydrateSlowTradingHistoryFromFiles(storage, { mode });
@@ -141,7 +140,11 @@ export async function deleteSlowTradingHistoryEntry(params: {
       continue;
     }
 
-    const positionsSell = await readHistoryFile(params.mode, symbol);
+    const positionsSell = await readHistoryFile(
+      params.account,
+      params.mode,
+      symbol,
+    );
     const nextPositions = [];
 
     // B. Drop the first matching row and keep all other closed positions.
@@ -168,7 +171,12 @@ export async function deleteSlowTradingHistoryEntry(params: {
 
     // C. Persist the touched symbol file immediately after the row is removed.
     if (deleted) {
-      await writeHistoryFile(params.mode, symbol, nextPositions);
+      await writeHistoryFile(
+        params.account,
+        params.mode,
+        symbol,
+        nextPositions,
+      );
       break;
     }
   }
@@ -220,7 +228,11 @@ export async function updateSlowTradingHistoryEntryNotes(params: {
       continue;
     }
 
-    const positionsSell = await readHistoryFile(params.mode, normalizedSymbol);
+    const positionsSell = await readHistoryFile(
+      params.account,
+      params.mode,
+      normalizedSymbol,
+    );
     const position = positionsSell.find((candidate) =>
       historyPositionMatches(
         {
@@ -243,7 +255,12 @@ export async function updateSlowTradingHistoryEntryNotes(params: {
       delete position.notes;
     }
 
-    await writeHistoryFile(params.mode, normalizedSymbol, positionsSell);
+    await writeHistoryFile(
+      params.account,
+      params.mode,
+      normalizedSymbol,
+      positionsSell,
+    );
     updated = true;
     break;
   }

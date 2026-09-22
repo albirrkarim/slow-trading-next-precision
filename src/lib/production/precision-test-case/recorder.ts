@@ -3,7 +3,6 @@ import path from "path";
 import fs from "fs-extra";
 
 import { FILES } from "@/components/storage";
-import { resolvePersistentStorageRoot } from "@/lib/persistent-storage-root";
 import type { RuntimeEngineState } from "@/lib/precision/types";
 import slowTradingShared from "@/lib/slowTrading/shared";
 import slowTradingStorage from "@/lib/slowTrading/storage";
@@ -19,11 +18,7 @@ import type {
   PrecisionTestCaseStatus,
 } from "./types";
 
-const RECORDING_DIRECTORY = path.join(
-  resolvePersistentStorageRoot(),
-  "dev",
-  "precision-test-case",
-);
+const RECORDING_DIRECTORY = FILES.dev.precisionTestCaseDir;
 
 function clone<T>(value: T): T {
   return structuredClone(value);
@@ -221,11 +216,11 @@ async function removeFile(
 }
 
 async function readRecordingState(): Promise<PrecisionTestCaseRecordingState> {
-  if (!(await fs.pathExists(FILES.slow.precisionTestCase))) {
+  if (!(await fs.pathExists(FILES.dev.precisionTestCaseActive))) {
     return { recording: false };
   }
 
-  const value = await fs.readJSON(FILES.slow.precisionTestCase);
+  const value = await fs.readJSON(FILES.dev.precisionTestCaseActive);
   if (!value || typeof value !== "object") {
     return { recording: false };
   }
@@ -236,7 +231,7 @@ async function readRecordingState(): Promise<PrecisionTestCaseRecordingState> {
 async function writeRecordingState(
   state: PrecisionTestCaseRecordingState,
 ): Promise<void> {
-  await jsonFile.write.atomic(FILES.slow.precisionTestCase, state);
+  await jsonFile.write.atomic(FILES.dev.precisionTestCaseActive, state);
 }
 
 async function getStatus(

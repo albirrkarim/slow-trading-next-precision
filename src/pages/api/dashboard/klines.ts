@@ -104,7 +104,7 @@ export async function getStoredDashboardVolatilityPoints({
   symbol: string;
 }): Promise<VolatilityPoint[]> {
   // PROD:SAME_VOLATILITY_POINT
-  const storedPoints = await FILES.slow.volatilityPoints.get(exchange, symbol);
+  const storedPoints = await FILES.prod.volatilityPoints.get(exchange, symbol);
   return filterVolatilityPointsForKlines(storedPoints, klines);
 }
 

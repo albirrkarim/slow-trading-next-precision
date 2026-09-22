@@ -530,7 +530,7 @@ describe("settings dialog save payload", () => {
     // PROD:SYNC_ONLINE_TO_LOCAL
     expect(window.location.hostname).toBe("current.reinventwp.com");
     expect(
-      (screen.getByLabelText("Source Server Base URL") as HTMLInputElement)
+      (screen.getByLabelText("Remote Server Base URL") as HTMLInputElement)
         .disabled,
     ).toBe(false);
     expect(

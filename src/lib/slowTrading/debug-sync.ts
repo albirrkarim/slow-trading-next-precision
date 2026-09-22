@@ -131,6 +131,14 @@ export function getOnlinePersistentStorageExportUrl(baseUrl?: string) {
   return new URL("/api/slow-trading/debug/export", source).toString();
 }
 
+export function getOnlinePersistentStorageImportUrl(baseUrl?: string) {
+  const source =
+    baseUrl?.trim() ||
+    process.env.SLOW_SYNC_ONLINE_BASE_URL?.trim() ||
+    DEFAULT_ONLINE_BASE_URL;
+  return new URL("/api/slow-trading/debug/import", source).toString();
+}
+
 export async function exportPersistentStorageBundle(
   storageRoot = resolvePersistentStorageRoot(),
 ): Promise<PersistentStorageExportBundle> {
@@ -243,6 +251,36 @@ export async function syncOnlinePersistentStorageToLocal(
   return importPersistentStorageBundle(bundle);
 }
 
+/** Pushes this server's persistent storage bundle to a remote dashboard. */
+export async function pushLocalPersistentStorageToOnline(
+  params: {
+    onlineBaseUrl?: string;
+    token?: string;
+  } = {},
+) {
+  const bundle = await exportPersistentStorageBundle();
+  const response = await fetch(
+    getOnlinePersistentStorageImportUrl(params.onlineBaseUrl),
+    {
+      body: JSON.stringify(bundle),
+      headers: {
+        "content-type": "application/json",
+        ...(params.token ? { "x-slow-sync-token": params.token } : {}),
+      },
+      method: "POST",
+    },
+  );
+
+  if (!response.ok) {
+    const message = await response.text().catch(() => "");
+    throw new Error(
+      `Online persistent storage import failed: ${response.status} ${response.statusText}${message ? ` — ${message.slice(0, 300)}` : ""}`,
+    );
+  }
+
+  return (await response.json()) as PersistentStorageImportResult;
+}
+
 /**
  * Grouped debug-sync API for persistent storage transfer between servers.
  */
@@ -250,10 +288,12 @@ const slowTradingDebugSync = {
   exportPersistentStorageBundle,
   fetchOnlinePersistentStorageBundle,
   getOnlinePersistentStorageExportUrl,
+  getOnlinePersistentStorageImportUrl,
   importPersistentStorageBundle,
   isLocalAppName,
   isLocalCoinMetadataManualSyncAllowed,
   isLocalPersistentStorageSyncAllowed,
+  pushLocalPersistentStorageToOnline,
   syncOnlinePersistentStorageToLocal,
 } as const;
 

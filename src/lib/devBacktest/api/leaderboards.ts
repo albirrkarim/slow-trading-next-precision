@@ -8,7 +8,7 @@ import path from "path";
 const MAX_HISTORY = 25;
 
 async function readLeaderboardsFile(): Promise<SavedPayload[]> {
-  const filePath = FILES.slow.leaderboards;
+  const filePath = FILES.dev.leaderboards;
 
   if (!(await fs.pathExists(filePath))) {
     return [];
@@ -28,7 +28,7 @@ async function readLeaderboardsFile(): Promise<SavedPayload[]> {
 }
 
 async function writeLeaderboardsFile(history: SavedPayload[]): Promise<void> {
-  const filePath = FILES.slow.leaderboards;
+  const filePath = FILES.dev.leaderboards;
   await fs.ensureDir(path.dirname(filePath));
   await fs.writeJSON(filePath, history);
 }

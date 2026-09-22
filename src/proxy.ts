@@ -27,8 +27,11 @@ function isProtectedApiPath(pathname: string) {
   );
 }
 
-function isSlowSyncExportPath(pathname: string) {
-  return pathname === "/api/slow-trading/debug/export";
+function isSlowSyncTokenPath(pathname: string) {
+  return (
+    pathname === "/api/slow-trading/debug/export" ||
+    pathname === "/api/slow-trading/debug/import"
+  );
 }
 
 function hasValidSlowSyncToken(req: NextRequest) {
@@ -115,7 +118,7 @@ export async function proxy(req: NextRequest) {
   }
 
   const isApiRequest = isProtectedApiPath(pathname);
-  if (isSlowSyncExportPath(pathname) && hasValidSlowSyncToken(req)) {
+  if (isSlowSyncTokenPath(pathname) && hasValidSlowSyncToken(req)) {
     return NextResponse.next();
   }
 

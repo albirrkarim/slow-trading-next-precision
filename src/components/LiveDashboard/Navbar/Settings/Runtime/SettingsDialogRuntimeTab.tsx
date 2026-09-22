@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import {
@@ -27,6 +28,8 @@ interface SettingsDialogRuntimeTabProps {
   setConfigDraft: ConfigDraftSetter;
 
   onReinitialize?: () => Promise<void>;
+  pushLocalStorageToOnline?: (onlineBaseUrl: string) => Promise<void>;
+  pushingOnlineStorage?: boolean;
   reinitializing?: boolean;
   resetSandbox?: (accountSlug: string) => Promise<void>;
   resettingSandboxAccount?: string | null;
@@ -70,6 +73,8 @@ function RuntimeToggle(props: {
 export default function SettingsDialogRuntimeTab({
   configDraft,
   onReinitialize,
+  pushLocalStorageToOnline,
+  pushingOnlineStorage,
   reinitializing,
   resetSandbox,
   resettingSandboxAccount,
@@ -310,44 +315,71 @@ export default function SettingsDialogRuntimeTab({
           </SettingsDialogSection>
         )}
 
-        {syncOnlineStorageToLocal && (
+        {(syncOnlineStorageToLocal || pushLocalStorageToOnline) && (
           <SettingsDialogSection
             title="Debugging"
-            description="Clone persistent storage from another dashboard server for debugging."
+            description="Transfer persistent storage between this server and another dashboard server."
           >
             <Box>
               <SettingsInfoField
-                label="Source Server Base URL"
+                label="Remote Server Base URL"
                 size="small"
                 fullWidth
                 value={syncOnlineBaseUrl}
                 onChange={(event) => {
                   setSyncOnlineBaseUrl(event.target.value);
                 }}
-                info="Dashboard URL to clone persistent storage from. Example: https://wealth.reinventwp.com"
+                info="Dashboard URL to clone persistent storage from or push this server's storage to. Example: https://wealth.reinventwp.com"
                 sx={{ mb: 1.5 }}
               />
 
-              <Button
-                color="warning"
-                variant="outlined"
-                startIcon={<CloudDownloadIcon />}
-                onClick={() => {
-                  void syncOnlineStorageToLocal(syncOnlineBaseUrl);
-                }}
-                disabled={syncingOnlineStorage || !syncOnlineBaseUrl.trim()}
-              >
-                {syncingOnlineStorage
-                  ? "Syncing..."
-                  : "Clone Storage to This Server"}
-              </Button>
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                {syncOnlineStorageToLocal && (
+                  <Button
+                    color="warning"
+                    variant="outlined"
+                    startIcon={<CloudDownloadIcon />}
+                    onClick={() => {
+                      void syncOnlineStorageToLocal(syncOnlineBaseUrl);
+                    }}
+                    disabled={
+                      syncingOnlineStorage ||
+                      pushingOnlineStorage ||
+                      !syncOnlineBaseUrl.trim()
+                    }
+                  >
+                    {syncingOnlineStorage
+                      ? "Syncing..."
+                      : "Clone Storage to This Server"}
+                  </Button>
+                )}
+                {pushLocalStorageToOnline && (
+                  <Button
+                    color="warning"
+                    variant="outlined"
+                    startIcon={<CloudUploadIcon />}
+                    onClick={() => {
+                      void pushLocalStorageToOnline(syncOnlineBaseUrl);
+                    }}
+                    disabled={
+                      syncingOnlineStorage ||
+                      pushingOnlineStorage ||
+                      !syncOnlineBaseUrl.trim()
+                    }
+                  >
+                    {pushingOnlineStorage
+                      ? "Pushing..."
+                      : "Push Storage to Remote Server"}
+                  </Button>
+                )}
+              </Stack>
 
               <Typography
                 variant="caption"
                 color="text.secondary"
                 sx={{ display: "block", mt: 1 }}
               >
-                {`Fetches the full persistent storage export from ${syncOnlineBaseUrl.trim() || DEFAULT_SYNC_ONLINE_BASE_URL}, creates a timestamped backup of this server, then replaces this server's persistent storage. If the source dashboard is protected, configure the same SYNC_TOKEN on both servers.`}
+                {`Clone fetches the full persistent storage export from ${syncOnlineBaseUrl.trim() || DEFAULT_SYNC_ONLINE_BASE_URL} and replaces this server's storage; push sends this server's storage the other way and replaces the remote server's storage. Each direction creates a timestamped backup on the server being replaced. If a dashboard is protected, configure the same SYNC_TOKEN on both servers.`}
               </Typography>
             </Box>
           </SettingsDialogSection>

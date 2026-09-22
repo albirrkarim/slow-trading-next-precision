@@ -4,12 +4,15 @@ import fs from "fs-extra";
 import path from "path";
 import { clone, normalizeSymbol } from "./common";
 import type { HistoryPosition } from "./internal-types";
+import slowTradingJsonFile from "./json-file";
 import type {
   SlowTradingHistoryPosition,
   SlowTradingMode,
   SlowTradingModeState,
   SlowTradingStorageData,
 } from "../types";
+
+const ACCOUNT_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 interface HydrateSlowTradingHistoryOptions {
   /** Restrict shared history hydration to one immutable account slug. */
@@ -20,22 +23,6 @@ interface HydrateSlowTradingHistoryOptions {
   symbols?: string[];
   /** Keep only positions closed at or after this timestamp. */
   fromTime?: number;
-}
-
-/**
- * Gets mode history root from SLOW state or storage.
- */
-export function getModeHistoryRoot(mode: SlowTradingMode): string {
-  return mode === "sandbox"
-    ? FILES.slow.sandbox.historyRoot
-    : FILES.slow.live.historyRoot;
-}
-
-/**
- * Gets mode history file from SLOW state or storage.
- */
-function getModeHistoryFile(mode: SlowTradingMode, symbol: string): string {
-  return path.join(getModeHistoryRoot(mode), `${normalizeSymbol(symbol)}.json`);
 }
 
 /**
@@ -53,14 +40,27 @@ function historyPositionKey(symbol: string, position: HistoryPosition): string {
   ].join("|");
 }
 
+/** Lists persisted history symbols for one mode. */
+async function listHistorySymbols(mode: SlowTradingMode): Promise<string[]> {
+  const entries = await fs
+    .readdir(FILES.prod.history(mode), { withFileTypes: true })
+    .catch(() => []);
+
+  return entries
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
+    .map((entry) => normalizeSymbol(path.basename(entry.name, ".json")))
+    .filter(Boolean);
+}
+
 /**
- * Reads history file from SLOW persistent storage.
+ * Reads the shared mode history file. Rows carry their own `account` field;
+ * callers filter by account when they need one account's slice.
  */
-export async function readHistoryFile(
+async function readSharedHistoryFile(
   mode: SlowTradingMode,
   symbol: string,
 ): Promise<Position[]> {
-  const filePath = getModeHistoryFile(mode, symbol);
+  const filePath = FILES.prod.historyFile(mode, normalizeSymbol(symbol));
   if (!(await fs.pathExists(filePath))) {
     return [];
   }
@@ -69,35 +69,48 @@ export async function readHistoryFile(
   return Array.isArray(raw) ? raw : [];
 }
 
-/** Reads shared closed history once and keeps only the requested account owners. */
+/**
+ * Reads one account's rows from the shared mode history file.
+ */
+export async function readHistoryFile(
+  account: string,
+  mode: SlowTradingMode,
+  symbol: string,
+): Promise<Position[]> {
+  if (!ACCOUNT_SLUG_PATTERN.test(account)) {
+    return [];
+  }
+
+  const positions = await readSharedHistoryFile(mode, symbol);
+  return positions.filter((position) => position.account === account);
+}
+
+/** Reads closed history rows belonging to any of the requested accounts. */
 export async function readHistoryForAccounts(params: {
   accountSlugs: readonly string[];
   mode: SlowTradingMode;
   symbol?: string;
 }): Promise<SlowTradingHistoryPosition[]> {
-  const accountSlugs = new Set(params.accountSlugs);
+  const accountSlugs = new Set(
+    params.accountSlugs.filter((slug) => ACCOUNT_SLUG_PATTERN.test(slug)),
+  );
   if (accountSlugs.size === 0) return [];
 
   const requestedSymbol = normalizeSymbol(params.symbol ?? "");
   const symbols = requestedSymbol
     ? [requestedSymbol]
-    : (
-        await fs
-          .readdir(getModeHistoryRoot(params.mode), { withFileTypes: true })
-          .catch(() => [])
-      )
-        .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
-        .map((entry) => normalizeSymbol(path.basename(entry.name, ".json")));
+    : await listHistorySymbols(params.mode);
   const history: SlowTradingHistoryPosition[] = [];
 
   for (const symbol of symbols) {
-    const positions = await readHistoryFile(params.mode, symbol);
+    const positions = await readSharedHistoryFile(params.mode, symbol);
 
     history.push(
       ...positions
         .filter(
           (position) =>
-            Boolean(position.closed) && accountSlugs.has(position.account),
+            Boolean(position.closed) &&
+            accountSlugs.has(String(position.account ?? "")),
         )
         .map((position) => ({
           ...clone(position),
@@ -118,23 +131,16 @@ export async function readHistoryRange(params: {
   mode: SlowTradingMode;
   startTime: number;
 }): Promise<Position[]> {
-  const entries = await fs
-    .readdir(getModeHistoryRoot(params.mode), { withFileTypes: true })
-    .catch(() => []);
+  const account = params.account?.trim() || null;
   const history: Position[] = [];
 
-  for (const entry of entries) {
-    if (!entry.isFile() || !entry.name.endsWith(".json")) {
-      continue;
-    }
-
-    const symbol = normalizeSymbol(path.basename(entry.name, ".json"));
-    const positions = await readHistoryFile(params.mode, symbol);
+  for (const symbol of await listHistorySymbols(params.mode)) {
+    const positions = await readSharedHistoryFile(params.mode, symbol);
     history.push(
       ...positions.filter((position) => {
+        if (account && position.account !== account) return false;
         const closedAt = position.closed?.t;
         return (
-          (!params.account || position.account === params.account) &&
           typeof closedAt === "number" &&
           Number.isFinite(closedAt) &&
           closedAt >= params.startTime &&
@@ -169,75 +175,103 @@ function filterHistoryPositions(
 }
 
 /**
- * Writes history file into SLOW persistent storage.
+ * Replaces one account's rows inside the shared mode history file while
+ * preserving every other account's rows.
  */
 export async function writeHistoryFile(
+  account: string,
   mode: SlowTradingMode,
   symbol: string,
   positions: Position[],
 ) {
-  const filePath = getModeHistoryFile(mode, symbol);
-  await fs.ensureDir(path.dirname(filePath));
-  await fs.writeJSON(
-    filePath,
-    [...positions].sort((a, b) => (a.opened.t ?? 0) - (b.opened.t ?? 0)),
+  const normalizedSymbol = normalizeSymbol(symbol);
+  await slowTradingJsonFile.update.atomic<Position[]>(
+    FILES.prod.historyFile(mode, normalizedSymbol),
+    (raw) => {
+      const current = Array.isArray(raw) ? (raw as Position[]) : [];
+      const others = current.filter(
+        (position) => position.account !== account,
+      );
+      return [...others, ...positions].sort(
+        (a, b) => (a.opened.t ?? 0) - (b.opened.t ?? 0),
+      );
+    },
   );
 }
 
 /**
- * Appends history positions to SLOW persistent storage.
+ * Appends closed positions to the shared mode history file. Rows keep their
+ * own `account` field; rows missing it fall back to the account whose mode
+ * state is being saved.
  */
 async function appendHistoryPositions(params: {
+  fallbackAccount?: string;
   mode: SlowTradingMode;
   symbol: string;
   positions: Position[];
 }): Promise<number> {
   const symbol = normalizeSymbol(params.symbol);
-  const incoming = params.positions.filter((position) => position.closed?.t);
+  const incoming = params.positions
+    .filter((position) => position.closed?.t)
+    .map((position) => {
+      const account =
+        typeof position.account === "string" &&
+        ACCOUNT_SLUG_PATTERN.test(position.account)
+          ? position.account
+          : params.fallbackAccount;
+      return account ? { ...clone(position), account } : null;
+    })
+    .filter((position): position is Position => Boolean(position));
   if (incoming.length === 0) {
     return 0;
   }
 
-  const existing = await readHistoryFile(params.mode, symbol);
-  const seen = new Set(
-    existing.map((position) => historyPositionKey(symbol, position)),
-  );
-  const next = [...existing];
   let added = 0;
+  await slowTradingJsonFile.update.atomic<Position[]>(
+    FILES.prod.historyFile(params.mode, symbol),
+    (raw) => {
+      const existing = Array.isArray(raw) ? (raw as Position[]) : [];
+      const seen = new Set(
+        existing.map((position) => historyPositionKey(symbol, position)),
+      );
+      const next = [...existing];
 
-  for (const position of incoming) {
-    const key = historyPositionKey(symbol, position);
-    if (seen.has(key)) {
-      continue;
-    }
+      for (const position of incoming) {
+        const key = historyPositionKey(symbol, position);
+        if (seen.has(key)) {
+          continue;
+        }
 
-    seen.add(key);
-    next.push(clone(position));
-    added += 1;
-  }
+        seen.add(key);
+        next.push(position);
+        added += 1;
+      }
 
-  if (added > 0) {
-    await writeHistoryFile(params.mode, symbol, next);
-  }
+      return next.sort((a, b) => (a.opened.t ?? 0) - (b.opened.t ?? 0));
+    },
+  );
 
   return added;
 }
 
 /**
  * Persists closed positions to history files from memory into SLOW storage.
+ * Rows are appended to the shared `history/<mode>/<SYMBOL>.json` file; rows
+ * missing `account` fall back to the account whose mode state is being saved.
  */
 export async function persistClosedPositionsToHistoryFiles(
   mode: SlowTradingMode,
   modeState: SlowTradingModeState,
+  fallbackAccount?: string,
 ): Promise<number> {
   let archived = 0;
 
   for (const tradeSetting of modeState.tradeSettings) {
-    const symbol = normalizeSymbol(tradeSetting.symbol);
     const positionsSell = tradeSetting.model_memory.positionsSell ?? [];
     archived += await appendHistoryPositions({
+      fallbackAccount,
       mode,
-      symbol,
+      symbol: normalizeSymbol(tradeSetting.symbol),
       positions: positionsSell,
     });
     tradeSetting.model_memory.positionsSell = [];
@@ -254,21 +288,20 @@ async function hydrateModeHistoryFromFiles(
   modeState: SlowTradingModeState,
   options: HydrateSlowTradingHistoryOptions = {},
 ) {
+  const account = options.account;
+  if (!account || !ACCOUNT_SLUG_PATTERN.test(account)) {
+    return;
+  }
+
   // PROD:HISTORY_CONFIG_INDEPENDENT
   // Report loads discover persisted symbols independently from config symbols.
   if (!options.symbols) {
-    const historyRoot = getModeHistoryRoot(mode);
-    const entries = await fs
-      .readdir(historyRoot, { withFileTypes: true })
-      .catch(() => []);
     const existingSymbols = new Set(
       modeState.tradeSettings.map((item) => normalizeSymbol(item.symbol)),
     );
-    const persistedSymbols = entries
-      .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
-      .map((entry) => normalizeSymbol(path.basename(entry.name, ".json")))
-      .filter(Boolean)
-      .sort((a, b) => a.localeCompare(b));
+    const persistedSymbols = (await listHistorySymbols(mode)).sort((a, b) =>
+      a.localeCompare(b),
+    );
 
     for (const symbol of persistedSymbols) {
       if (existingSymbols.has(symbol)) {
@@ -296,7 +329,7 @@ async function hydrateModeHistoryFromFiles(
     }
 
     tradeSetting.model_memory.positionsSell = filterHistoryPositions(
-      await readHistoryFile(mode, symbol),
+      await readSharedHistoryFile(mode, symbol),
       options,
     );
   }
@@ -324,4 +357,9 @@ export async function hydrateSlowTradingHistoryFromFiles(
       scopedOptions,
     );
   }
+}
+
+/** Deletes the shared history directory for one mode. */
+export async function clearModeHistoryFiles(mode: SlowTradingMode) {
+  await fs.remove(FILES.prod.history(mode));
 }

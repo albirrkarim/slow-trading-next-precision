@@ -454,7 +454,7 @@ export default function Leaderboards({
                                 }}
                             >
                                 <Box sx={{ color: grey[700], fontSize: 13 }}>
-                                    Stored in `storage/persistent/instances/[PORT]/slow/leaderboards.json`
+                                    Stored in `storage/persistent/instances/[PORT]/dev/leaderboards.json`
                                 </Box>
 
                                 <Button

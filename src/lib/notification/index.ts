@@ -117,11 +117,11 @@ async function loadDashboardNotificationConfig(
   dashboard: NotificationDashboard,
 ): Promise<DashboardNotificationConfig> {
   try {
-    if (!(await fs.pathExists(FILES.slow.config))) {
+    if (!(await fs.pathExists(FILES.prod.config))) {
       return createDefaultDashboardNotificationConfig("SLOW");
     }
 
-    const data = await fs.readJSON(FILES.slow.config);
+    const data = await fs.readJSON(FILES.prod.config);
     return normalizeDashboardNotificationConfig(
       data?.runtime?.notification,
       "SLOW",
@@ -138,11 +138,11 @@ function normalizeDedupeKey(key: string): string {
 
 async function readDedupeStore(): Promise<NotificationDedupeStore> {
   try {
-    if (!(await fs.pathExists(FILES.slow.notificationDedupe))) {
+    if (!(await fs.pathExists(FILES.prod.cache.notificationDedupe))) {
       return {};
     }
 
-    const raw = await fs.readJSON(FILES.slow.notificationDedupe);
+    const raw = await fs.readJSON(FILES.prod.cache.notificationDedupe);
 
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
       return {};
@@ -156,8 +156,8 @@ async function readDedupeStore(): Promise<NotificationDedupeStore> {
 }
 
 async function writeDedupeStore(store: NotificationDedupeStore): Promise<void> {
-  await fs.ensureDir(path.dirname(FILES.slow.notificationDedupe));
-  await fs.writeJSON(FILES.slow.notificationDedupe, store);
+  await fs.ensureDir(path.dirname(FILES.prod.cache.notificationDedupe));
+  await fs.writeJSON(FILES.prod.cache.notificationDedupe, store);
 }
 
 async function wasNotificationAlreadySent(dedupeKey: string): Promise<boolean> {

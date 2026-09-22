@@ -3,7 +3,7 @@ import { FILES } from "@/components/storage";
 
 describe("test persistent storage isolation", () => {
   it("never resolves test storage into a development server instance", () => {
-    const normalizedRoot = path.normalize(FILES.slow.root);
+    const normalizedRoot = path.normalize(FILES.prod.root);
 
     expect(normalizedRoot).not.toContain(
       path.normalize("storage/persistent/instances/3010"),

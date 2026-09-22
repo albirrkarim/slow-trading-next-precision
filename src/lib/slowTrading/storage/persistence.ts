@@ -25,10 +25,12 @@ import {
   hydrateSlowTradingHistoryFromFiles,
   persistClosedPositionsToHistoryFiles,
 } from "./history-files";
-import type {
-  SlowTradingConfigFileData,
-  SlowTradingMemoryFileData,
-} from "./internal-types";
+import type { SlowTradingConfigFileData } from "./internal-types";
+import {
+  deleteAccountStateFiles,
+  loadPersistedModeStateFiles,
+  savePersistedModeStateFiles,
+} from "./mode-files";
 import { appendSlowTradingSafeHavenLog } from "./logs";
 import {
   applySlowTradingSafeHavenUpdate,
@@ -329,40 +331,16 @@ export function createDefaultSlowTradingStorage(): SlowTradingStorageData {
 }
 
 /**
- * Rejects pre-flat memory.json shapes instead of silently losing their
- * positions. Only existing account/mode entries are checked.
- */
-function assertPersistedMemoryShape(
-  memoryRaw: Partial<SlowTradingMemoryFileData>,
-): void {
-  for (const [slug, modes] of Object.entries(memoryRaw.accounts ?? {})) {
-    for (const mode of ["live", "sandbox"] as const) {
-      const state = modes?.[mode];
-      if (state === undefined || state === null) continue;
-      if (
-        !Array.isArray(state.positions) ||
-        Object.prototype.hasOwnProperty.call(state, "tradeSettings")
-      ) {
-        throw new Error(
-          `Unsupported memory.json mode shape for ${slug}/${mode}; expected flat positions.`,
-        );
-      }
-    }
-  }
-}
-
-/**
  * Normalizes a persisted mode only when the caller needs it in memory.
  */
-function loadModeStateForScope(params: {
+async function loadModeStateForScope(params: {
   accountSlug: string;
   mode: SlowTradingMode;
   activeMode: SlowTradingMode;
-  memoryRaw: Partial<SlowTradingMemoryFileData>;
   modeScope: "all" | "active";
   sandboxInitialBalanceUSDT: number;
   symbols: string[];
-}): SlowTradingStorageData["modes"][SlowTradingMode] {
+}): Promise<SlowTradingStorageData["modes"][SlowTradingMode]> {
   const initialBalanceUSDT =
     params.mode === "sandbox"
       ? params.sandboxInitialBalanceUSDT
@@ -376,8 +354,7 @@ function loadModeStateForScope(params: {
   return fromPersistedModeState(
     {
       ...base,
-      ...(params.memoryRaw.accounts?.[params.accountSlug]?.[params.mode] ??
-        {}),
+      ...(await loadPersistedModeStateFiles(params.accountSlug, params.mode)),
     },
     params.symbols,
   );
@@ -389,13 +366,10 @@ function loadModeStateForScope(params: {
  * @param storage - Full slow-trading storage state.
  * @returns Persistable config and memory payloads.
  */
-function splitSlowTradingStorage(
-  storage: SlowTradingStorageData,
-  memoryRaw: Partial<SlowTradingMemoryFileData> = {},
-): {
+function splitSlowTradingStorage(storage: SlowTradingStorageData): {
+  accountSlug: string;
   accounts: SlowTradingStorageData["accounts"];
   configFile: SlowTradingConfigFileData;
-  memoryFile: SlowTradingMemoryFileData;
 } {
   const sharedConfig = slowTradingAccountConfig.shared.fromEffectiveConfig(
     storage.sharedConfig,
@@ -410,6 +384,7 @@ function splitSlowTradingStorage(
   );
 
   return {
+    accountSlug: account.slug,
     accounts,
     configFile: {
       // PROD:MULTI_ACCOUNT_CONFIG_OWNERSHIP
@@ -418,24 +393,15 @@ function splitSlowTradingStorage(
       runtime: clone(storage.runtime),
       updatedAt: storage.updatedAt,
     },
-    memoryFile: {
-      accounts: {
-        ...(memoryRaw.accounts ?? {}),
-        [account.slug]: {
-          live: toPersistedModeState(storage.modes.live),
-          sandbox: toPersistedModeState(storage.modes.sandbox),
-        },
-      },
-      updatedAt: storage.updatedAt,
-    },
   };
 }
 
 /**
- * Persist the current storage object into the new split-file slow-trading format.
+ * Persist the current storage object into the account-scoped file layout.
+ * Only this account's files are written — other accounts' mode state lives in
+ * their own directories and is never touched here.
  *
  * @param storage - Full slow-trading storage state.
- * @returns Promise that resolves when both files are written.
  */
 async function saveSplitSlowTradingStorage(
   storage: SlowTradingStorageData,
@@ -444,20 +410,18 @@ async function saveSplitSlowTradingStorage(
     ...storage,
     updatedAt: Date.now(),
   };
-  const memoryRaw = (await fs.pathExists(FILES.slow.memory))
-    ? ((await fs.readJSON(
-        FILES.slow.memory,
-      )) as Partial<SlowTradingMemoryFileData>)
-    : {};
-  assertPersistedMemoryShape(memoryRaw);
-  const { accounts, configFile, memoryFile } = splitSlowTradingStorage(
-    normalized,
-    memoryRaw,
-  );
+  const { accountSlug, accounts, configFile } =
+    splitSlowTradingStorage(normalized);
 
-  await slowTradingJsonFile.write.atomic(FILES.slow.config, configFile);
-  await slowTradingJsonFile.write.atomic(FILES.slow.memory, memoryFile);
+  await slowTradingJsonFile.write.atomic(FILES.prod.config, configFile);
   await saveSlowTradingExchangeAccounts(accounts, normalized.sharedConfig);
+  for (const mode of ["live", "sandbox"] as const) {
+    await savePersistedModeStateFiles(
+      accountSlug,
+      mode,
+      toPersistedModeState(normalized.modes[mode]),
+    );
+  }
 }
 
 /**
@@ -471,10 +435,10 @@ async function loadSlowTradingConfigFile(accountSlug?: string): Promise<{
   runtime: SlowTradingStorageData["runtime"];
   updatedAt: number;
 }> {
-  const hasConfigFile = await fs.pathExists(FILES.slow.config);
+  const hasConfigFile = await fs.pathExists(FILES.prod.config);
   const configRaw = hasConfigFile
     ? ((await fs.readJSON(
-        FILES.slow.config,
+        FILES.prod.config,
       )) as Partial<SlowTradingConfigFileData>)
     : {};
   const baseConfig = createDefaultSlowTradingConfig();
@@ -571,11 +535,11 @@ async function loadSlowTradingConfigFile(accountSlug?: string): Promise<{
 export async function loadSlowTradingStorage(
   options: LoadSlowTradingStorageOptions = {},
 ): Promise<SlowTradingStorageData> {
-  const hasConfigFile = await fs.pathExists(FILES.slow.config);
-  const hasMemoryFile = await fs.pathExists(FILES.slow.memory);
+  const hasConfigFile = await fs.pathExists(FILES.prod.config);
+  const hasAccountState = await fs.pathExists(FILES.prod.accountsRoot);
 
-  // A. Create brand-new split files only when both files are still missing.
-  if (!hasConfigFile && !hasMemoryFile) {
+  // A. Create brand-new files only when nothing has been persisted yet.
+  if (!hasConfigFile && !hasAccountState) {
     const initial = createDefaultSlowTradingStorage();
     await saveSlowTradingStorage(initial);
     if (options.includeHistory) {
@@ -584,14 +548,7 @@ export async function loadSlowTradingStorage(
     return initial;
   }
 
-  // B. Merge persisted split-file data on top of the latest defaults.
-  // B.1 Read whichever file already exists when only part of the pair is present.
-  const memoryRaw = hasMemoryFile
-    ? ((await fs.readJSON(
-        FILES.slow.memory,
-      )) as Partial<SlowTradingMemoryFileData>)
-    : {};
-  assertPersistedMemoryShape(memoryRaw);
+  // B. Merge persisted data on top of the latest defaults.
   const {
     account,
     accounts,
@@ -606,7 +563,7 @@ export async function loadSlowTradingStorage(
     ? "sandbox"
     : "live";
   const effectiveModeScope =
-    !hasConfigFile || !hasMemoryFile
+    !hasConfigFile || !hasAccountState
       ? "all"
       : options.modeScope ?? "all";
 
@@ -617,26 +574,24 @@ export async function loadSlowTradingStorage(
     config,
     runtime,
     modes: {
-      live: loadModeStateForScope({
+      live: await loadModeStateForScope({
         accountSlug: account.slug,
         mode: "live",
         activeMode,
-        memoryRaw,
         modeScope: effectiveModeScope,
         sandboxInitialBalanceUSDT,
         symbols: config.symbols,
       }),
-      sandbox: loadModeStateForScope({
+      sandbox: await loadModeStateForScope({
         accountSlug: account.slug,
         mode: "sandbox",
         activeMode,
-        memoryRaw,
         modeScope: effectiveModeScope,
         sandboxInitialBalanceUSDT,
         symbols: config.symbols,
       }),
     },
-    updatedAt: configUpdatedAt ?? memoryRaw.updatedAt ?? Date.now(),
+    updatedAt: configUpdatedAt ?? Date.now(),
   };
 
   // B.2 Seed sandbox balance when this is an old file with no initialized memory yet.
@@ -655,10 +610,10 @@ export async function loadSlowTradingStorage(
       sandboxInitialBalanceUSDT;
   }
 
-  // B.3 Heal partial split storage by re-saving the fully normalized pair.
+  // B.3 Heal partial storage by re-saving the fully normalized set.
   if (
     effectiveModeScope === "all" &&
-    (!hasConfigFile || !hasMemoryFile)
+    (!hasConfigFile || !hasAccountState)
   ) {
     await saveSlowTradingStorage(storage);
   }
@@ -686,18 +641,7 @@ export async function saveSlowTradingStorage(
 export async function deleteSlowTradingAccountState(
   accountSlug: string,
 ): Promise<void> {
-  if (!(await fs.pathExists(FILES.slow.memory))) return;
-  const memory = (await fs.readJSON(
-    FILES.slow.memory,
-  )) as Partial<SlowTradingMemoryFileData>;
-  assertPersistedMemoryShape(memory);
-  if (!memory.accounts?.[accountSlug]) return;
-  const accounts = { ...memory.accounts };
-  delete accounts[accountSlug];
-  await slowTradingJsonFile.write.atomic(FILES.slow.memory, {
-    accounts,
-    updatedAt: Date.now(),
-  } satisfies SlowTradingMemoryFileData);
+  await deleteAccountStateFiles(accountSlug);
 }
 
 /**
@@ -717,41 +661,18 @@ export async function saveSlowTradingModeState(
 ): Promise<SlowTradingStorageData> {
   const { account, accounts, config, sharedConfig, runtime, updatedAt } =
     await loadSlowTradingConfigFile(options.account);
-  const hasMemoryFile = await fs.pathExists(FILES.slow.memory);
-  const memoryRaw = hasMemoryFile
-    ? ((await fs.readJSON(
-        FILES.slow.memory,
-      )) as Partial<SlowTradingMemoryFileData>)
-    : {};
-  assertPersistedMemoryShape(memoryRaw);
   const sandboxInitialBalanceUSDT = account.sandbox.initialBalanceUSDT;
   const targetModeState = ensureTradeSettings(modeState, config.symbols);
-  await persistClosedPositionsToHistoryFiles(mode, targetModeState);
+  await persistClosedPositionsToHistoryFiles(mode, targetModeState, account.slug);
 
-  const fallbackModes = memoryRaw.accounts?.[account.slug] ?? {
-    live: toPersistedModeState(createModeState(0)),
-    sandbox: toPersistedModeState(createModeState(sandboxInitialBalanceUSDT)),
-  };
   // PROD:MULTI_ACCOUNT_STATE_ISOLATION
-  const nextMemory: SlowTradingMemoryFileData = {
-    accounts: {
-      ...(memoryRaw.accounts ?? {}),
-      [account.slug]: {
-        live:
-          mode === "live"
-            ? toPersistedModeState(targetModeState)
-            : fallbackModes.live ?? toPersistedModeState(createModeState(0)),
-        sandbox:
-          mode === "sandbox"
-            ? toPersistedModeState(targetModeState)
-            : fallbackModes.sandbox ??
-              toPersistedModeState(createModeState(sandboxInitialBalanceUSDT)),
-      },
-    },
-    updatedAt: Date.now(),
-  };
-
-  await slowTradingJsonFile.write.atomic(FILES.slow.memory, nextMemory);
+  // The mode's files belong to this account alone — no other account's data
+  // needs to be read or preserved before writing.
+  await savePersistedModeStateFiles(
+    account.slug,
+    mode,
+    toPersistedModeState(targetModeState),
+  );
 
   return {
     account,
@@ -763,27 +684,11 @@ export async function saveSlowTradingModeState(
       live:
         mode === "live"
           ? targetModeState
-          : loadModeStateForScope({
-              accountSlug: account.slug,
-              mode: "live",
-              activeMode: mode,
-              memoryRaw: nextMemory,
-              modeScope: "active",
-              sandboxInitialBalanceUSDT,
-              symbols: config.symbols,
-            }),
+          : createModeState(0),
       sandbox:
         mode === "sandbox"
           ? targetModeState
-          : loadModeStateForScope({
-              accountSlug: account.slug,
-              mode: "sandbox",
-              activeMode: mode,
-              memoryRaw: nextMemory,
-              modeScope: "active",
-              sandboxInitialBalanceUSDT,
-              symbols: config.symbols,
-            }),
+          : createModeState(sandboxInitialBalanceUSDT),
     },
     updatedAt,
   };

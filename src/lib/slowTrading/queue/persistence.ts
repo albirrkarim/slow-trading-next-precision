@@ -162,12 +162,12 @@ function normalizeSlowTradingQueues(
 export async function loadSlowTradingQueues(
   options: SlowTradingQueueLoadOptions = {},
 ): Promise<SlowTradingQueues> {
-  if (!(await fs.pathExists(FILES.slow.queue))) {
+  if (!(await fs.pathExists(FILES.prod.queue))) {
     return createEmptySlowTradingQueues();
   }
 
   const raw = await fs
-    .readJSON(FILES.slow.queue)
+    .readJSON(FILES.prod.queue)
     .catch(() => createEmptySlowTradingQueues());
   return normalizeSlowTradingQueues(raw, options);
 }
@@ -178,11 +178,11 @@ async function writeSlowTradingQueues(
   options: SlowTradingQueueLoadOptions,
 ): Promise<void> {
   const normalized = normalizeSlowTradingQueues(queues, options);
-  const temporaryPath = `${FILES.slow.queue}.${process.pid}.tmp`;
+  const temporaryPath = `${FILES.prod.queue}.${process.pid}.tmp`;
 
-  await fs.ensureDir(path.dirname(FILES.slow.queue));
+  await fs.ensureDir(path.dirname(FILES.prod.queue));
   await fs.writeJSON(temporaryPath, normalized);
-  await fs.move(temporaryPath, FILES.slow.queue, { overwrite: true });
+  await fs.move(temporaryPath, FILES.prod.queue, { overwrite: true });
 }
 
 /** Serializes one queue mutation against other in-process queue mutations. */

@@ -102,7 +102,7 @@ async function evaluateCoinManagement(
               await Promise.all(
                 symbols.map(async (symbol) => [
                   symbol,
-                  await FILES.slow.volatilityPoints.get(
+                  await FILES.prod.volatilityPoints.get(
                     storage.config.exchangeType,
                     symbol,
                   ),

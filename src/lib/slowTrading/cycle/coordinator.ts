@@ -10,9 +10,15 @@ import type {
   SlowTradingModeState,
   SlowTradingStorageData,
 } from "../types";
+import { FILES } from "@/components/storage";
 import slowTradingCycleAccounts, {
   type SlowTradingCycleAccountScope,
 } from "./accounts";
+import {
+  MODE_STATE_NOTIFICATION_FIELDS,
+  pickModeFields,
+  writeKeyedModeFile,
+} from "../storage/mode-files";
 import slowTradingCyclePlanning from "./planning";
 import slowTradingCycleSharedMarket, {
   type SlowTradingSharedMarketSnapshot,
@@ -226,14 +232,16 @@ async function execute(params: {
       });
 
     if (stateChanged) {
-      // The account states share one memory file, so persist them sequentially.
-      for (const scope of group) {
-        await slowTradingStorage.mode.saveState(
-          mode,
-          scope.storage.modes[mode],
-          { account: scope.storage.account.slug },
-        );
-      }
+      // Notification state is global and mode-keyed — every account's copy was
+      // marked identically, so one slice write persists the result.
+      const persisted = slowTradingStorage.mode.toPersisted(
+        group[0].storage.modes[mode],
+      );
+      await writeKeyedModeFile(
+        FILES.prod.notifications,
+        mode,
+        pickModeFields(persisted, MODE_STATE_NOTIFICATION_FIELDS),
+      );
     }
   }
 

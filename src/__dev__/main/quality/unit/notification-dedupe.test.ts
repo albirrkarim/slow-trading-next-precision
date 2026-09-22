@@ -65,8 +65,8 @@ describe("notification dedupe", () => {
     const { FILES } = await import("@/components/storage");
     const { notif } = await import("@/lib/notification");
 
-    await fs.ensureDir(path.dirname(FILES.slow.config));
-    await fs.writeJSON(FILES.slow.config, {
+    await fs.ensureDir(path.dirname(FILES.prod.config));
+    await fs.writeJSON(FILES.prod.config, {
       runtime: {
         notification: {
           telegram: {
@@ -98,7 +98,7 @@ describe("notification dedupe", () => {
     await notif.central(payload);
 
     expect(axiosPostMock).toHaveBeenCalledTimes(1);
-    expect(await fs.pathExists(FILES.slow.notificationDedupe)).toBe(true);
+    expect(await fs.pathExists(FILES.prod.cache.notificationDedupe)).toBe(true);
   });
 
   it("sends email through the n8n CRM proxy", async () => {
@@ -187,8 +187,8 @@ describe("notification dedupe", () => {
       .spyOn(tradeLog, "error")
       .mockImplementation(() => undefined);
 
-    await fs.ensureDir(path.dirname(FILES.slow.config));
-    await fs.writeJSON(FILES.slow.config, {
+    await fs.ensureDir(path.dirname(FILES.prod.config));
+    await fs.writeJSON(FILES.prod.config, {
       runtime: {
         notification: {
           telegram: { enabled: false, types: [] },
@@ -217,8 +217,8 @@ describe("notification dedupe", () => {
       "[notification] email delivery failed after 3 retries",
       expect.any(Error),
     );
-    expect(await fs.pathExists(FILES.slow.notificationDedupe)).toBe(false);
-    const errors = await fs.readJSON(FILES.slow.logs.errors);
+    expect(await fs.pathExists(FILES.prod.cache.notificationDedupe)).toBe(false);
+    const errors = await fs.readJSON(FILES.prod.logs.errors);
     expect(errors).toEqual([
       expect.objectContaining({
         source: "notification.email",

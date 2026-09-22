@@ -86,7 +86,7 @@ describe("SLOW 24-hour market volume", () => {
     });
     const file = path.join(
       mocks.root,
-      "slow/binance/ticker-24h-futures.json",
+      "prod/cache/ticker-24h-binance-futures.json",
     );
     const saved = await fs.readFile(file, "utf8");
     expect(saved).toBe(JSON.stringify(snapshot));

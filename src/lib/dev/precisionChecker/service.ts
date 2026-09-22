@@ -1,8 +1,8 @@
 import fs from "fs-extra";
 import path from "path";
 
+import { FILES } from "@/components/storage";
 import { precisionBacktest } from "@/lib/dev/backtestPrecision/backtest";
-import { resolvePersistentStorageRoot } from "@/lib/persistent-storage-root";
 import type {
   PrecisionTestCase,
   PrecisionTestCaseMode,
@@ -15,11 +15,7 @@ import type {
 } from "./types";
 
 function testCaseDirectory(): string {
-  return path.join(
-    resolvePersistentStorageRoot(),
-    "dev",
-    "precision-test-case",
-  );
+  return FILES.dev.precisionTestCaseDir;
 }
 
 function modeFromFileName(fileName: string): PrecisionTestCaseMode {

@@ -61,7 +61,7 @@ describe("slow specs persistent queues", () => {
       }),
     );
     expect(
-      await fs.pathExists(path.join(tmpRoot!, "slow/queue.json")),
+      await fs.pathExists(path.join(tmpRoot!, "prod/queue.json")),
     ).toBe(true);
 
     await slowTrading.queue.items.cancel(

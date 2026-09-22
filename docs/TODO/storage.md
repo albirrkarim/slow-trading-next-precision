@@ -1,10 +1,15 @@
 # Storage Redesign
 
-Target layout for `storage/persistent/instances/<port>/`. Goal: one file =
-one concern, one writer. Kill the `memory.json` monolith and stop mixing
-production truth, rebuildable caches, and dev artifacts in the same directory.
+Implemented layout for `storage/persistent/instances/<port>/`. Goal: one file =
+one concern, one writer. The `memory.json` monolith is gone, and production
+truth, rebuildable caches, and dev artifacts no longer share a directory.
 
-## Problems with the current layout
+This is the only layout — the instance ships fresh with no compatibility or
+migration machinery. `components/storage.ts` creates the directory tree
+synchronously at module load and exports `FILES` path constants; every
+reader/writer addresses `FILES.prod`/`FILES.dev` paths directly.
+
+## Problems with the old layout
 
 - **`memory.json` is five files in one.** Positions + balances churn every
   action, `stageRuns`/`lastRun*` are dashboard diagnostics, notification and
@@ -36,28 +41,37 @@ production truth, rebuildable caches, and dev artifacts in the same directory.
 
 ```text
 instances/<port>/
-  prod/                                   ← production runtime truth only (was: slow/)
-    config.json                           ← unchanged: exchangeType, tradingMode, symbols, thresholds
-    accounts.json                         ← unchanged: credentials/secrets
-    queue.json                            ← unchanged: pending safeHaven/withdrawal ops
-    status.json                           ← stageRuns, lastRun*, blackSwan, dailyPnlLimit
-                                          ←   dashboard diagnostics; rewritten as a unit
-    notifications.json                    ← per-account-mode notification state
-                                          ←   (highVolatility, dailyPerformance, dailyPnlLimit)
+  prod/                                   ← production runtime truth only
+    config.json                           ← exchangeType, tradingMode, symbols, thresholds
+    accounts.json                         ← credentials/secrets
+    queue.json                            ← pending safeHaven/withdrawal ops
+
+    status.json                           ← {mode: {stageRuns, lastRun*, blackSwan, dailyPnlLimitState}}
+                                            ←   global system status — dailyPnlLimitState sums ALL
+                                            ←   accounts' shared history, blackSwan uses global
+                                            ←   config + market evidence, lastRun* describes the
+                                            ←   system cycle
+    notifications.json                    ← {mode: {highVolatility, dailyPerformance,
+                                            ←   dailyPnlLimit*NotificationState}} — global send
+                                            ←   dedupe; authoritative dedupe also lives in
+                                            ←   cache/notification-dedupe.json by dedupeKey
 
     accounts/<slug>/<mode>/               ← everything this account+mode owns
       positions.json                      ← Position[] flat — exactly what state.openPositions is
-      balance.json                        ← startingBalance, quoteAsset, reserved, safeHaven*
-      balance_snapshots.json              ← equity curve (was: <mode>/balance_snapshots/<slug>.json)
-      history/<SYMBOL>.json               ← closed positions (was: <mode>/history/<SYMBOL>.json)
+      balance.json                        ← dynamicTradeMemory: startingBalance, quoteAsset, reserved, safeHaven*
+      balance_snapshots.json              ← equity curve
+
+    history/<mode>/<SYMBOL>.json          ← closed positions, shared across accounts —
+                                          ←   each row carries `account` — the file is shared,
+                                          ←   ownership stays on the row
 
     volatility/<exchange>/<SYMBOL>.json   ← vPoint store, shared market data
-                                          ←   (was: <exchange>/volatility/<SYMBOL>.json)
 
     cache/                                ← safe to delete entirely
       marketcap.json
       ip.json
       notification-dedupe.json
+      ticker-24h-<exchange>-<market>.json ← 24h ticker snapshot
 
     logs/                                 ← unchanged append-only ops logs
       binance_cooldowns.json
@@ -67,17 +81,24 @@ instances/<port>/
       withdrawals.json
 
   dev/                                    ← dev tooling artifacts only
-    leaderboards.json                     ← moved from slow/
+    leaderboards.json
+    precision-test-case.json              ← recorder pointer
     precision-test-case/
-      <capture>.json                      ← unchanged
-      active.json                         ← recorder pointer (was: slow/precision-test-case.json)
+      <capture>.json                      ← completed + in-progress captures; pointer stays
+                                          ←   outside so listings see captures only
     coin-tags.sqlite                      ← unchanged
 ```
 
-One rule: **account data lives under `accounts/<slug>/<mode>/`, shared market
-data under `volatility/<exchange>/`**. Positions, balance, snapshots, and
-history all belong to an account+mode — putting them in one directory removes
-the three-way grouping inconsistency entirely.
+One rule: **account-owned runtime state lives under `accounts/<slug>/<mode>/`,
+shared/global data is grouped by kind at the top level** (`history/<mode>/`,
+`volatility/<exchange>/`, `status.json`, `notifications.json`). Positions,
+balance, and snapshots belong to an account+mode — one directory each, single
+writer. Status and notification state are global system state keyed by mode:
+the daily-PnL stop is computed across every account's shared history
+(`PROD:MULTI_ACCOUNT_COMBINED_DAILY_PNL`), black-swan evidence/config is
+global, and notification dedupe keys carry no account component. History is
+shared because each row already carries its `account` field: one file per
+mode+symbol, filtered on read, atomically merged on write.
 
 `prod/` vs `dev/` is the environment boundary — both live and sandbox modes
 write under `prod/accounts/<slug>/<mode>/`. (`prod` was previously a stale
@@ -90,9 +111,9 @@ it means the production *environment*, a different thing.)
 |---|---|---|
 | `accounts.<slug>.<mode>.positions` | `accounts/<slug>/<mode>/positions.json` | every action |
 | `dynamicTradeMemory` (balance fields) | `accounts/<slug>/<mode>/balance.json` | every action |
-| `highVolatilityNotificationState`, `dailyPerformance*`, `dailyPnlLimit*NotificationState` | `notifications.json` | rare |
-| `blackSwan`, `dailyPnlLimitState` | `status.json` | rare |
-| `stageRuns`, `lastRunAt/Duration/Summary/Performance` | `status.json` | every stage run |
+| `highVolatilityNotificationState`, `dailyPerformance*`, `dailyPnlLimit*NotificationState` | `notifications.json[mode]` | rare |
+| `blackSwan`, `dailyPnlLimitState` | `status.json[mode]` | rare |
+| `stageRuns`, `lastRunAt/Duration/Summary/Performance` | `status.json[mode]` | every stage run |
 
 `positions.json` shape = flat `Position[]`, no `model_memory` embedding —
 the precision runtime's `state.openPositions` serializes directly.
@@ -104,56 +125,42 @@ the precision runtime's `state.openPositions` serializes directly.
 
 | File | Writer | When |
 |---|---|---|
-| `accounts/<slug>/<mode>/positions.json` | production adapter `onStateChange`/`onExit` | after entry/averaging/exit |
+| `accounts/<slug>/<mode>/positions.json` | `saveSlowTradingModeState` via `mode-files.ts` | after entry/averaging/exit |
 | `accounts/<slug>/<mode>/balance.json` | same boundary | same |
-| `accounts/<slug>/<mode>/history/<SYMBOL>.json` | persistence layer | on position close |
+| `status.json` / `notifications.json` | same boundary — mode slice replaced wholesale | every save |
+| `history/<mode>/<SYMBOL>.json` | `persistClosedPositionsToHistoryFiles` (`update.atomic` merge) | on position close |
 | `accounts/<slug>/<mode>/balance_snapshots.json` | snapshot writer | daily |
 | `volatility/<exchange>/<SYMBOL>.json` | `onNewVPoint` + `onStateChange` flush | new point / marker set |
-| `status.json` | stage/cycle runner | end of each stage run |
-| `notifications.json` | notification senders | on send |
 | `queue.json` | queue persistence | on enqueue/dequeue |
 | `cache/*` | cache writers | on refresh/expiry |
 
 Per-account files mean account 1's write can never clobber account 2 —
 the load-modify-write dance in `saveSlowTradingModeState` disappears.
 
-## Migration order
+## Implementation notes
 
-1. **Rename the root** — `slow/` → `prod/` (`SLOW_TRADING_DIR` /
-   `FILES.slow` become `FILES.prod`). One-time directory move; every path
-   below flows from it.
-2. **Move dev files out** — `leaderboards.json` → `dev/`, recorder pointer →
-   `dev/precision-test-case/active.json`. Zero risk, no runtime coupling.
-3. **Move caches under `cache/`** — repoint `FILES` keys, move files.
-4. **Split `memory.json`** — land positions/balance writes behind the same
-   `saveState` boundary, then delete the flat↔nested translators in
-   `storage/mode.ts` (`toPersistedModeState`/`fromPersistedModeState` collapse
-   into plain JSON read/write).
-5. **Rehome account history + snapshots** — `<mode>/history/<SYMBOL>.json` →
-   `accounts/<slug>/<mode>/history/<SYMBOL>.json` (history entries already
-   carry `account`; split files by it), `<mode>/balance_snapshots/<slug>.json`
-   → `accounts/<slug>/<mode>/balance_snapshots.json`.
-6. **Flip volatility to kind-first** — `<exchange>/volatility/<SYMBOL>.json` →
-   `volatility/<exchange>/<SYMBOL>.json`. Move files, update `FILES` +
-   the `volatility(exchange)` helper.
-7. **Delete `memory.json`** once nothing reads it.
+- **Split `memory.json`** — `mode-files.ts` reads/writes the
+  per-account-mode files plus the two global mode-keyed files;
+  `persistence.ts` maps them onto the runtime `modeState` shape.
+  `toPersistedModeState`/`fromPersistedModeState` still flatten/scatter
+  `tradeSettings[].model_memory.positions` at the file boundary because the
+  legacy runtime keeps that shape in memory — they can go when
+  `precision/features` owns the model.
 
-Steps 1–3 are pure path changes. Steps 4–5 are the real work — do them
-alongside the `precision/features` migration since both change the same
-persistence seam. Step 5 changes per-symbol history files from mode-scoped to
-account-scoped: on migrate, read each `<mode>/history/<SYMBOL>.json`, group
-entries by `account` field, write per-account files.
+`status.json` and `notifications.json` are global files keyed by mode —
+`{live: {...}, sandbox: {...}}`. The mode slice is replaced wholesale on save;
+this is safe because accounts execute sequentially and the fields are computed
+from global inputs, so every account derives identical values (the last
+writer's `stageRuns`/`lastRun*` also carry the cycle's fullest cumulative
+performance). Account deletion leaves these files untouched — they describe
+the system, not the account.
 
-## Open questions
+## Remaining notes
 
 - `accounts.json` (credentials) vs `accounts/<slug>/` (runtime) sharing the
-  name — keep credentials in one file (rarely changes, atomic multi-account
-  write is fine) or split per slug too? Leaning keep-as-is; renaming
-  credentials to `credentials.json` would make the `accounts/` dir
-  unambiguous.
-- Does `status.json` need to survive at all, or should stage diagnostics move
-  to `logs/`? The dashboard reads `stageRuns`/`lastRun*` — if they're
-  lose-able, `cache/status.json` is more honest.
-- Recorder pointer currently has `recording: true` while pointing at a
-  `dev/` file — confirm whether it's dev-session state (belongs in `dev/`) or
-  a production flag the runtime must check on boot.
+  name — kept as-is; credentials rarely change and atomic multi-account write
+  is fine.
+- `pnl.history` is still unbounded inside each position — bound it or move it
+  to the closed `history/` file at exit in a follow-up.
+- `status.json` diagnostics (`stageRuns`, `lastRun*`) are dashboard-facing —
+  if they prove lose-able they can move to `cache/` later.

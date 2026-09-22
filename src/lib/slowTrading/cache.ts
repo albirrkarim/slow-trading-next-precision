@@ -12,7 +12,7 @@ export async function persistModeStateCaches(params: {
 }) {
   const { exchangeType, modeState } = params;
 
-  await fs.ensureDir(FILES.slow.volatility(exchangeType));
+  await fs.ensureDir(FILES.prod.volatility(exchangeType));
 
   for (const tradeSetting of modeState.tradeSettings) {
     const symbol = tradeSetting.symbol;

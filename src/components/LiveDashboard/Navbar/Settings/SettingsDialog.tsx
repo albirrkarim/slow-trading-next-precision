@@ -82,6 +82,8 @@ export default function SettingsDialog(props: {
   resettingSandboxAccount?: string | null;
   safeHavenUSDT?: number;
   saveConfig?: (handleClose?: () => void) => Promise<void>;
+  pushLocalStorageToOnline?: (onlineBaseUrl: string) => Promise<void>;
+  pushingOnlineStorage?: boolean;
   savingConfig?: boolean;
   selectedAccountSlug?: string;
   setSafeHavenUSDT?: (value: number) => void;
@@ -100,6 +102,8 @@ export default function SettingsDialog(props: {
     onCloseDialog,
     onOpenDialog,
     onReinitialize,
+    pushLocalStorageToOnline,
+    pushingOnlineStorage,
     reinitializing,
     resetSandbox,
     resettingSandboxAccount,
@@ -206,6 +210,8 @@ export default function SettingsDialog(props: {
                 setConfigDraft={setConfigDraft}
 
                 onReinitialize={onReinitialize}
+                pushLocalStorageToOnline={pushLocalStorageToOnline}
+                pushingOnlineStorage={pushingOnlineStorage}
                 reinitializing={reinitializing}
                 resetSandbox={resetSandbox}
                 resettingSandboxAccount={resettingSandboxAccount}

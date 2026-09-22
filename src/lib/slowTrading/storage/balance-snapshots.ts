@@ -1,7 +1,6 @@
 import { FILES } from "@/components/storage";
 import { tradeLog } from "@/lib/trading/helper/log";
 import fs from "fs-extra";
-import path from "path";
 import type { SlowTradingMode } from "../types";
 import slowTradingJsonFile from "./json-file";
 
@@ -15,23 +14,11 @@ export type SlowTradingBalanceSnapshot = {
   total: number;
 };
 
-function getBalanceSnapshotsDir(mode: SlowTradingMode): string {
-  return path.dirname(FILES.slow[mode].balanceSnapshots);
-}
-
 function getAccountBalanceSnapshotsFile(params: {
   account: string;
   mode: SlowTradingMode;
 }): string {
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(params.account)) {
-    throw new Error(`Invalid exchange account slug: ${params.account}`);
-  }
-
-  return path.join(
-    getBalanceSnapshotsDir(params.mode),
-    "balance_snapshots",
-    `${params.account}.json`,
-  );
+  return FILES.prod.account(params.account, params.mode).balanceSnapshots;
 }
 
 function normalizeBalanceSnapshots(

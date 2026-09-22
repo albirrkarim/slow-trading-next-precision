@@ -38,6 +38,8 @@ export default function LiveDashboardNavbar({
     saveConfig,
     safeHavenUSDT,
     savingConfig,
+    pushLocalStorageToOnline,
+    pushingOnlineStorage,
     setConfigDraft,
     setSafeHavenUSDT,
     syncOnlineStorageToLocal,
@@ -115,6 +117,8 @@ export default function LiveDashboardNavbar({
         runCycle={runCycle}
         runningCycle={runningCycle}
         saveConfig={saveConfig}
+        pushLocalStorageToOnline={pushLocalStorageToOnline}
+        pushingOnlineStorage={pushingOnlineStorage}
         savingConfig={savingConfig}
         safeHavenUSDT={safeHavenUSDT}
         selectedAccountSlug={selectedAccountSlug}

@@ -6,7 +6,7 @@ import jsonFile from "@/lib/slowTrading/storage/json-file";
 
 /**
  * Atomically merges vPoints into one symbol's persisted volatility file at
- * `slow/<exchangeType>/volatility/<symbol>.json`.
+ * `prod/volatility/<exchangeType>/<symbol>.json`.
  *
  * Points are merged by `id`: the full detected history already on disk is
  * preserved while runtime-only mutations — `usedBy<accountSlug>` markers and
@@ -24,7 +24,7 @@ async function persistPoints(params: {
   };
 
   await jsonFile.update.atomic<PredictionEngineMemory>(
-    `${FILES.slow.volatility(params.exchangeType)}/${params.symbol}.json`,
+    `${FILES.prod.volatility(params.exchangeType)}/${params.symbol}.json`,
     (current) => {
       const persisted = current as PredictionEngineMemory | undefined;
       return {

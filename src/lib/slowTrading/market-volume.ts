@@ -1,9 +1,9 @@
+import { FILES } from "@/components/storage";
 import { getExchange } from "@/lib/exchange";
 import type {
   ExchangeType,
   UnifiedTicker,
 } from "@/lib/exchange/types";
-import { resolvePersistentStorageRoot } from "@/lib/persistent-storage-root";
 import fs from "fs-extra";
 import path from "node:path";
 import slowTradingPublicMarketCache from "./public-market-cache";
@@ -52,12 +52,7 @@ function snapshotPath(
   exchangeType: ExchangeType,
   marketType: SlowTradingMarketType,
 ) {
-  return path.join(
-    resolvePersistentStorageRoot(),
-    "slow",
-    exchangeType,
-    `ticker-24h-${marketType.toLowerCase()}.json`,
-  );
+  return FILES.prod.cache.ticker24h(exchangeType, marketType);
 }
 
 /** Reads the last persisted ticker-volume snapshot for one exchange market. */

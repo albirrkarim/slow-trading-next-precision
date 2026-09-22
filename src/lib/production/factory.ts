@@ -459,7 +459,7 @@ function createProductionFactory(): ProductionRuntimeFactory {
     // retention rule so open positions keep their referenced/post-entry
     // vPoints. Runtime market updates merge new points on top of this seed.
     for (const source of vPointSources.values()) {
-      const points = await FILES.slow.volatilityPoints.get(
+      const points = await FILES.prod.volatilityPoints.get(
         source.exchangeType,
         source.symbol,
       );
