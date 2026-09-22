@@ -3,6 +3,8 @@ import type {
   RuntimeEngineAdapter,
   RuntimeEngineState,
 } from "@/lib/precision/types";
+import type { VolatilityPoint } from "@/lib/dynamic";
+import vpoints from "@/lib/precision/utils/vpoints";
 import type { BacktestPrecisionParams } from "../api/precision-api-types";
 import { preparePrecisionDataset } from "./data";
 import {
@@ -75,6 +77,11 @@ export async function precisionBacktest(
           datasetStartTime,
           currentTime,
         );
+  // The engine trims state.vPointsMap to the same recent window production
+  // uses; the full map returned to callers is rebuilt from this untouched
+  // seed plus every point reported through `onNewVPoint`.
+  const initialVPointsMap = structuredClone(vPointsMap);
+  const detectedVPoints: Record<string, VolatilityPoint[]> = {};
 
   const state: RuntimeEngineState = {
     balance:
@@ -134,15 +141,33 @@ export async function precisionBacktest(
     onExit: async (position) => {
       history.push(position);
     },
+    onNewVPoint: async (symbol, newVPoint) => {
+      (detectedVPoints[symbol] ??= []).push(newVPoint);
+    },
     onNotif: () => true,
   };
 
   const engine = new RuntimeEngine(state, adapter);
   await engine.start();
 
+  const resultVPointsMap = Object.fromEntries(
+    [
+      ...new Set([
+        ...Object.keys(initialVPointsMap),
+        ...Object.keys(detectedVPoints),
+      ]),
+    ].map((symbol) => [
+      symbol,
+      vpoints.mergeById(
+        initialVPointsMap[symbol] ?? [],
+        detectedVPoints[symbol] ?? [],
+      ),
+    ]),
+  );
+
   return {
     exchangeType: params.config.management.exchangeType,
-    vPointsMap,
+    vPointsMap: resultVPointsMap,
     positions: [...history, ...state.openPositions],
   };
 }

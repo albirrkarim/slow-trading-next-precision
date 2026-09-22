@@ -17,3 +17,10 @@ export const MARK_PRICE_LOOKBACK_MINUTES = 30;
  * symbols that have never produced a point.
  */
 export const VPOINT_INITIAL_LOOKBACK_MINUTES = 60 * 24 * 30 * 2;
+
+/**
+ * Default number of recent vPoints kept per symbol in
+ * `state.vPointsMap` when the adapter does not set `retainRecentVPoints`.
+ * Older points are dropped unless an open position still depends on them.
+ */
+export const DEFAULT_RECENT_VPOINTS = 10;

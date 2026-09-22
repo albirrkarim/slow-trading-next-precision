@@ -150,6 +150,26 @@ export interface RuntimeEngineAdapter {
   exchange: ExchangeFunction;
 
   /**
+   * Bounds how many recent vPoints `state.vPointsMap` keeps per symbol after
+   * each market update; older points survive only while an open position
+   * still references them. Defaults to `DEFAULT_RECENT_VPOINTS`. Set
+   * `Number.POSITIVE_INFINITY` to retain the full detected history.
+   */
+  retainRecentVPoints?: number;
+
+  /**
+   * Called once for every newly detected vPoint, in chronological order,
+   * before the retention trim. Production persists points into the shared
+   * volatility files so restarts resume from fresh data; backtests can buffer
+   * them to reconstruct the full result map while the runtime window stays
+   * bounded like production.
+   */
+  onNewVPoint?: (
+    symbol: string,
+    newVPoint: VolatilityPoint,
+  ) => Promise<void>;
+
+  /**
    * with the strategy outside we can doing manythings
    * adapt to our 3 instance (multi, hedge, both)
    *

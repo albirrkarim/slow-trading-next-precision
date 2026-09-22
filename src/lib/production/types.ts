@@ -22,6 +22,8 @@ export interface ProductionAdapterOptions {
   onExit: RuntimeEngineAdapter["onExit"];
   /** Persists account state after the shared runtime updates balances. */
   onStateChange?: RuntimeEngineAdapter["onStateChange"];
+  /** Receives each newly detected vPoint for production persistence. */
+  onNewVPoint?: RuntimeEngineAdapter["onNewVPoint"];
   /** Optional notification delivery hook. */
   onNotif?: RuntimeEngineAdapter["onNotif"];
   /** Optional account-aware balance reader used by runtime refreshes. */

@@ -8,9 +8,11 @@ import { resolveMarketTypeForTradingMode } from "@/lib/exchange/utils";
 import slowTradingShared from "@/lib/slowTrading/shared";
 import type { RuntimeEngineAdapter, RuntimeEngineState } from "../types";
 import {
+  DEFAULT_RECENT_VPOINTS,
   MARK_PRICE_LOOKBACK_MINUTES,
   VPOINT_INITIAL_LOOKBACK_MINUTES,
 } from "../constant";
+import vpoints from "../utils/vpoints";
 import type { RuntimeMarketHelper, RuntimeMarketInterval } from "./types";
 
 interface VolatilityCursor {
@@ -161,6 +163,7 @@ function create(
           assignNextLevel(predicted.point, previousPoint);
           points.push(predicted.point);
           previousPoint = predicted.point;
+          await adapter.onNewVPoint?.(symbol, predicted.point);
         }
 
         intervalCursors[symbol] = {
@@ -168,7 +171,15 @@ function create(
           lastProcessedOpenTime: closedKlines.at(-1)?.[0] ?? startTime,
           memory,
         };
-        state.vPointsMap[symbol] = points;
+        // Bounds the runtime window to recent points plus anything open
+        // positions still depend on; the full history lives in persisted
+        // volatility files (production) or the adapter's buffers (backtest).
+        state.vPointsMap[symbol] = vpoints.retainRecent({
+          symbol,
+          points,
+          positions: state.openPositions,
+          recent: adapter.retainRecentVPoints ?? DEFAULT_RECENT_VPOINTS,
+        });
       }
 
       vPointsUpdatedAt[interval] = currentTime;

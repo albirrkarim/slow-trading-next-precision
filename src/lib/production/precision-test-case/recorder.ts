@@ -8,7 +8,7 @@ import type { RuntimeEngineState } from "@/lib/precision/types";
 import slowTradingShared from "@/lib/slowTrading/shared";
 import slowTradingStorage from "@/lib/slowTrading/storage";
 import jsonFile from "@/lib/slowTrading/storage/json-file";
-import vpoints from "../vpoints";
+import vpoints from "@/lib/precision/utils/vpoints";
 
 import type {
   PrecisionTestCase,

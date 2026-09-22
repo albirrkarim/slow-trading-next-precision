@@ -20,10 +20,11 @@ import type {
   RuntimeEngineAdapter,
   RuntimeEngineState as PrecisionRuntimeState,
 } from "@/lib/precision/types";
+import vpoints from "@/lib/precision/utils/vpoints";
 import clock from "./clock";
 import adapter from "./adapter";
 import state from "./state";
-import vpoints from "./vpoints";
+import vpointFiles from "./vpoints";
 import type { ProductionRuntimeFactory } from "./types";
 
 interface AccountRuntime {
@@ -194,6 +195,9 @@ function isActionAllowed(
 
 function createActionHandlers(
   accountRuntimes: AccountRuntimes,
+  onVPointsChanged: (
+    vPointsMap: PrecisionRuntimeState["vPointsMap"],
+  ) => Promise<void>,
 ): Pick<
   RuntimeEngineAdapter,
   "onAction" | "onExit" | "onStateChange" | "onStrategy"
@@ -335,6 +339,9 @@ function createActionHandlers(
     if (!accountRuntime) return;
     await persistAccount(context.state, accountRuntime);
     pendingAccountSlug = undefined;
+    // Entries and averagings mark `usedBy<slug>` on vPoints right before this
+    // hook fires; flushing the retained window writes those markers to disk.
+    await onVPointsChanged(context.state.vPointsMap);
   };
 
   return { onAction, onExit, onStateChange, onStrategy };
@@ -345,10 +352,30 @@ const BOOTSTRAP_VPOINT_COUNT = 7;
 
 function createProductionFactory(): ProductionRuntimeFactory {
   const accountRuntimes: AccountRuntimes = new Map();
+  const symbolExchangeMap = new Map<string, ExchangeType>();
   let latestState: PrecisionRuntimeState | undefined;
+
+  /** Merges the given vPoints into each symbol's persisted volatility file. */
+  const persistVPointsToFiles = async (
+    vPointsMap: PrecisionRuntimeState["vPointsMap"],
+  ) => {
+    for (const [symbol, points] of Object.entries(vPointsMap)) {
+      const exchangeType = symbolExchangeMap.get(symbol.toUpperCase());
+      if (!exchangeType || points.length === 0) continue;
+      try {
+        await vpointFiles.persistPoints({ exchangeType, symbol, points });
+      } catch (error) {
+        tradeLog.warn(
+          `[Precision Runtime] vPoint persist failed for ${symbol}`,
+          error,
+        );
+      }
+    }
+  };
 
   const createState: ProductionRuntimeFactory["createState"] = async () => {
     accountRuntimes.clear();
+    symbolExchangeMap.clear();
     const catalog = await slowTradingStorage.data.load({ modeScope: "active" });
     const mode = slowTradingStorage.mode.getActive(catalog);
     const openPositions: Position[] = [];
@@ -406,6 +433,7 @@ function createProductionFactory(): ProductionRuntimeFactory {
 
         for (const setting of modeState.tradeSettings) {
           const symbol = setting.symbol.toUpperCase();
+          symbolExchangeMap.set(symbol, storage.config.exchangeType);
           vPointSources.set(`${storage.config.exchangeType}:${symbol}`, {
             exchangeType: storage.config.exchangeType,
             symbol,
@@ -472,7 +500,10 @@ function createProductionFactory(): ProductionRuntimeFactory {
     }
 
     const firstRuntime = accountRuntimes.values().next().value as AccountRuntime;
-    const handlers = createActionHandlers(accountRuntimes);
+    const handlers = createActionHandlers(
+      accountRuntimes,
+      persistVPointsToFiles,
+    );
     return adapter.create({
       clock: clock.create({ signal }),
       exchange: firstRuntime.exchange,
@@ -480,6 +511,12 @@ function createProductionFactory(): ProductionRuntimeFactory {
         latestState?.balance[accountSlug ?? ""]?.available ?? 0,
       onAction: handlers.onAction,
       onExit: handlers.onExit,
+      onNewVPoint: async (symbol, newVPoint) => {
+        // Each detected point is merged into the shared volatility file
+        // immediately so a restart seeds from fresh data instead of
+        // re-fetching the whole detection window.
+        await persistVPointsToFiles({ [symbol.toUpperCase()]: [newVPoint] });
+      },
       onStateChange: handlers.onStateChange,
       onStrategy: handlers.onStrategy,
       signal,
