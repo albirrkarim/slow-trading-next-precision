@@ -74,7 +74,7 @@ describe("slow specs storage", () => {
     const slowTradingStorage = (await import("@/lib/slowTrading")).default
       .storage;
 
-    await fs.outputJSON(FILES.slow.prod.balanceSnapshots, [
+    await fs.outputJSON(FILES.slow.live.balanceSnapshots, [
       {
         day: "2026-06-01",
         timestamp: Date.UTC(2026, 5, 1, 20),

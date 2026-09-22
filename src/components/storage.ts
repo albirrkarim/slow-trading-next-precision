@@ -50,10 +50,8 @@ const SLOW_FILES = {
     withdrawals: `${SLOW_TRADING_DIR}/logs/withdrawals.json`,
   },
   live: {
+    balanceSnapshots: `${SLOW_TRADING_DIR}/live/balance_snapshots.json`,
     historyRoot: `${SLOW_TRADING_DIR}/live/history`,
-  },
-  prod: {
-    balanceSnapshots: `${SLOW_TRADING_DIR}/prod/balance_snapshots.json`,
   },
   sandbox: {
     balanceSnapshots: `${SLOW_TRADING_DIR}/sandbox/balance_snapshots.json`,

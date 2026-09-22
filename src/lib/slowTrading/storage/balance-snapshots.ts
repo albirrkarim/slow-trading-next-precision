@@ -16,8 +16,7 @@ export type SlowTradingBalanceSnapshot = {
 };
 
 function getLegacyBalanceSnapshotsFile(mode: SlowTradingMode): string {
-  return FILES.slow[mode === "sandbox" ? "sandbox" : "prod"]
-    .balanceSnapshots;
+  return FILES.slow[mode].balanceSnapshots;
 }
 
 function getAccountBalanceSnapshotsFile(params: {
