@@ -1,4 +1,5 @@
 import {
+  assignNextLevel,
   createPredictorMemory,
   predictor,
   type PredictorMemory,
@@ -21,22 +22,7 @@ interface VolatilityCursor {
   memory: PredictorMemory;
 }
 
-function assignNextLevel(
-  point: VolatilityPoint,
-  previousPoint?: VolatilityPoint,
-): void {
-  if (!previousPoint) {
-    point.lvl = point.l === "T" ? 1 : -1;
-    return;
-  }
 
-  if (previousPoint.l !== point.l) {
-    point.lvl = previousPoint.lvl === 0 ? (point.l === "T" ? 1 : -1) : 0;
-    return;
-  }
-
-  point.lvl = previousPoint.lvl + (point.l === "T" ? 1 : -1);
-}
 
 /** Binds reusable market-state updates to one runtime state and adapter. */
 function create(
@@ -134,6 +120,8 @@ function create(
           ? cursor.lastProcessedOpenTime + intervalMs
           : (previousPoint?.t ??
             currentTime - VPOINT_INITIAL_LOOKBACK_MINUTES * 60_000);
+
+            
         const klines = await adapter.market.getKlines({
           endTime: currentTime,
           exactDate: true,

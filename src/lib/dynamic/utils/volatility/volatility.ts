@@ -467,28 +467,45 @@ export function detectVolatilityPoints({
   for (let i = 1, len = klines.length; i < len; i++) {
     const { memory: newMemory, point } = predictor(klines[i], memory, symbol);
     memory = newMemory;
-    if (point) points.push(point);
-  }
 
-  let before = vPointBefore ? vPointBefore.l : "NEUTRAL";
-
-  let level = vPointBefore ? vPointBefore.lvl : 0;
-
-  for (const point of points) {
-    if (before != point.l) {
-      if (level == 0) {
-        level = point.l == "T" ? 1 : -1;
-      } else {
-        level = 0;
-      }
-    } else {
-      level += point.l == "T" ? 1 : -1;
+    if (point) {
+      assignNextLevel(point, points.at(-1) ?? vPointBefore);
+      points.push(point);
     }
-
-    before = point.l;
-
-    point.lvl = level;
   }
 
   return points;
+}
+
+
+/**
+ * Assigns `point.lvl` — a streak counter that grows while consecutive points
+ * stay on the same side and resets when the side flips.
+ *
+ * - No previous point: `+1` for `T`, `-1` for `B`.
+ * - Side flip: `0` when the streak had built up, or a fresh `±1` when the
+ *   previous level was already `0` (alternating sides keep restarting).
+ * - Same side: extends the streak (`prev.lvl + ±1`).
+ *
+ * @example
+ * // point.l sequence:  T  T  B  T  T  B  T
+ * // resulting lvl:      1  2  0  1  2  0  1
+ * // point.l sequence:  B  B  T  B
+ * // resulting lvl:     -1 -2  0 -1
+ */
+export function assignNextLevel(
+  point: VolatilityPoint,
+  previousPoint?: VolatilityPoint,
+): void {
+  if (!previousPoint) {
+    point.lvl = point.l === "T" ? 1 : -1;
+    return;
+  }
+
+  if (previousPoint.l !== point.l) {
+    point.lvl = previousPoint.lvl === 0 ? (point.l === "T" ? 1 : -1) : 0;
+    return;
+  }
+
+  point.lvl = previousPoint.lvl + (point.l === "T" ? 1 : -1);
 }
