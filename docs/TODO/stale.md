@@ -11,11 +11,20 @@ rebuild. `BOTH:` means the behavior must exist in backtest AND production;
   closed-position history, mirroring production's `isActionAllowed` veto.
   Manual forced entries stay exempt. Marker relabeled to `BOTH:`.
 
-## Wrong `BOTH:` markers (never run in backtest)
+## Documented but not implemented in any mode
 
-- [ ] `BOTH:SAFE_HAVEN_QUEUE` (RUNTIME.md) — the spec text itself scopes it to
-  "live and sandbox modes"; the withdrawal/safe-haven queue never runs in
-  backtest. Should be `PROD:`.
+- [ ] `BOTH:SAFE_HAVEN_QUEUE` + `PROD:WITHDRAW_QUEUE` +
+  `PROD:SAFE_HAVEN_SCHEDULE_QUEUE` (RUNTIME.md) — audited: the queue is
+  write-only. `system/queue` persists items and the dashboard renders them, but
+  nothing in `production/` processes them: no scheduled pass calls
+  `isDue`/`executeSchedule`, `balance.safeHavenRequest` is never consumed,
+  `autoEnabled` is never evaluated, and `lastAttemptAt`/`nextAttemptAt` are
+  never updated. `runtimeWithdrawal.schedules.execute` bypasses the queue
+  entirely (manual API only, 2 USDT cap). The dashboard copy claiming "the
+  production runner checks pending work every five minutes" is false. Decision
+  needed: implement the queue-processing stage, mark the spec sections as
+  planned, or remove them as legacy. If kept, `BOTH:SAFE_HAVEN_QUEUE` should
+  also become `PROD:` (spec text scopes it to "live and sandbox modes").
 
 ## `PROD:` markers on code that is actually shared (should be `BOTH:`)
 
@@ -64,7 +73,7 @@ rebuild. `BOTH:` means the behavior must exist in backtest AND production;
   `MONITORING_POSITION_FUNDING_RATE`, `OPEN_POSITION_FUNDING_RATE_UI`,
   `MULTI_ACCOUNT_DAILY_BALANCE_SNAPSHOTS`, `SYNC_ONLINE_TO_LOCAL`,
   `HISTORY_CONFIG_INDEPENDENT`, `TRADE_HISTORY_NOTES`, `INSTANCE_IP_STORAGE`,
-  `NAVBAR_INSTANCE_IP_COPY`, `SAFE_HAVEN_SCHEDULE_QUEUE`, `WITHDRAW_QUEUE`,
+  `NAVBAR_INSTANCE_IP_COPY`,
   `OPEN_POSITION_STALE_MONITORING_WARNING`, `DAILY_PNL_META_TITLE`,
   `MULTI_ACCOUNT_TRADING_CONFIG_SUMMARY`, `MULTI_ACCOUNT_TRADING_NOTES`,
   `HISTORICAL_ENTRY_SEQUENCES`, `VPOINTS_FREQUENCY`, `VPOINTS_LEVEL_MAX_DD`,
