@@ -271,6 +271,7 @@ export default function DynamicTradeAnalytics() {
                         settings={backtestConfig.settings}
                     />
                     <BacktestBalanceChart
+                        accounts={backtestConfig.settings?.accounts}
                         snapshots={data.balanceSnapshots}
                     />
                 </Box>

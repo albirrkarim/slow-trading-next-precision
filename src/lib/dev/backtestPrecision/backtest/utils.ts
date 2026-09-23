@@ -62,32 +62,17 @@ export function createInitialBalance(
   return balance;
 }
 
-/** Sums every account balance summary into one aggregate snapshot point. */
-export function snapshotAggregateBalance(
+/** Copies each account's balance summary into a per-account snapshot map. */
+export function snapshotAccountBalances(
   balance: RuntimeEngineState["balance"],
   t: number,
-): BacktestBalanceSnapshot {
-  const totals = {
-    available: 0,
-    locked: 0,
-    reserved: 0,
-    safeHaven: 0,
-    spendable: 0,
-    startingBalance: 0,
-    total: 0,
-  };
-
-  for (const summary of Object.values(balance)) {
-    totals.available += summary.available;
-    totals.locked += summary.locked;
-    totals.reserved += summary.reserved;
-    totals.safeHaven += summary.safeHaven;
-    totals.spendable += summary.spendable;
-    totals.startingBalance += summary.startingBalance;
-    totals.total += summary.total;
-  }
-
-  return { t, ...totals };
+): Record<string, BacktestBalanceSnapshot> {
+  return Object.fromEntries(
+    Object.entries(balance).map(([slug, summary]) => [
+      slug,
+      { t, ...summary },
+    ]),
+  );
 }
 
 /** Creates volatility history using only candles closed by the runtime start. */

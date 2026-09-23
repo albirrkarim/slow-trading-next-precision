@@ -15,7 +15,7 @@ import {
   createInitialBalance,
   createInitialVPointsMap,
   createProgressLogger,
-  snapshotAggregateBalance,
+  snapshotAccountBalances,
 } from "./utils";
 import type { BacktestPrecisionResult } from "./backtest-precision-types";
 
@@ -104,14 +104,20 @@ export async function precisionBacktest(
   };
   let clockTime = state.currentTime;
   const history: RuntimeEngineState["openPositions"] = [];
-  const balanceSnapshots: BacktestPrecisionResult["balanceSnapshots"] = [];
+  const balanceSnapshots: BacktestPrecisionResult["balanceSnapshots"] = {};
   const captureBalance = () => {
-    const snapshot = snapshotAggregateBalance(state.balance, state.currentTime);
-    const last = balanceSnapshots[balanceSnapshots.length - 1];
-    if (last && last.t === snapshot.t) {
-      balanceSnapshots[balanceSnapshots.length - 1] = snapshot;
-    } else {
-      balanceSnapshots.push(snapshot);
+    const snapshots = snapshotAccountBalances(
+      state.balance,
+      state.currentTime,
+    );
+    for (const [slug, snapshot] of Object.entries(snapshots)) {
+      const list = (balanceSnapshots[slug] ??= []);
+      const last = list[list.length - 1];
+      if (last && last.t === snapshot.t) {
+        list[list.length - 1] = snapshot;
+      } else {
+        list.push(snapshot);
+      }
     }
   };
   captureBalance();
