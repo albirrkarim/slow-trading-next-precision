@@ -34,10 +34,20 @@ function timeForLog(timeMs?: number): string {
   return timeMsToReadable(timeMs, "DD MMM YYYY HH:mm");
 }
 
+/** Formats a vPoint ref for log display like "B_9b1 (lvl 3)". */
+function vPointForLog(vPoint?: { id: string; lvl: number }): string {
+  if (!vPoint) {
+    return "-";
+  }
+  const short = vPoint.id.split("_").slice(0, 2).join("_");
+  return `${short} (lvl ${vPoint.lvl})`;
+}
+
 const format = {
   duration: formatDuration,
   timeForLog,
   timeMsToReadable,
+  vPointForLog,
 } as const;
 
 export default format;

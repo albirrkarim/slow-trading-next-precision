@@ -480,7 +480,7 @@ function applyFill(
       `ENTRY ${position.symbol} ${position.direction} ` +
         `${format.timeForLog(position.opened.t)} | ` +
         `margin $${position.exposure.marginUsdt.toFixed(2)} | ` +
-        `${position.opened.vPoint.id}`,
+        `${format.vPointForLog(position.opened.vPoint)}`,
     );
   }
 

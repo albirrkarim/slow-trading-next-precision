@@ -1123,7 +1123,8 @@ function execute(
       `EXIT  ${position.symbol} ${position.direction} ` +
         `${format.timeForLog(closed.t)} | ` +
         `$${signedUsdt} (${signedPct}%) | ` +
-        `${closed.reason}`,
+        `${closed.reason}` +
+        (closed.vPoint ? ` | ${format.vPointForLog(closed.vPoint)}` : ""),
     );
   }
 

@@ -24,8 +24,8 @@ export function createProgressLogger(
       ? 100
       : ((boundedTime - startTime) / duration) * 100;
     console.log(
-      `[Precision Backtest] ${day} | ${progress.toFixed(1)}% | ` +
-        `tradeHistory:${getTradeHistoryLength()}`,
+      `\n\n[Precision Backtest] ${day} | ${progress.toFixed(1)}% | ` +
+        `tradeHistory:${getTradeHistoryLength()}\n\n`,
     );
 
     lastDay = day;
