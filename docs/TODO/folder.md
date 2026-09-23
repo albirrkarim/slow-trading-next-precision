@@ -514,32 +514,38 @@ against clean APIs; non-goal pages remain in legacy code until deletion.
       `dynamic`, `brain`, `evaluate`, `datasets`, `devBacktest`,
       `env`, or the old `trading/*` internals.
 
-### Phase 7 — deletion (separate approval required)
+### Phase 7 — deletion — [x] complete
 
-Nothing is deleted automatically after migration. First produce an inventory
-showing:
+Pre-deletion inventory showed: zero runtime importers; API/page/component
+importers confined to rejected surfaces; 72 test files importing legacy
+roots (all pure-legacy); recorded precision case present at
+`storage/persistent/instances/3010/dev/precision-test-case/` with the
+replay comparison covered by `precision-checker-service.test.ts`.
 
-- Zero runtime importers.
-- Zero API/page/component importers.
-- Which tests still import each legacy folder.
-- Which files are wholly unreachable.
-- Precision comparison results for recorded cases.
+Deleted (human-approved):
 
-Deletion removes folders and rejected surfaces, not live features: any
-code inside the roots below that is still used by `/`,
-`/dev/precision-checker`, or `/dev/backtest-precision` relocates to an
-authoritative root under Phase 6 before its folder can be deleted.
+- Lib roots: `slowTrading/`, `dynamic/`, `brain/`, old `trading/`,
+  `devBacktest/`, `evaluate/`, old `datasets/`, `notification/`,
+  `runtime/`, `env/`.
+- Rejected surfaces: `/dev/backtest-vrails` page,
+  `components/dev/DynamicTrade`, `components/dev/Evaluation`,
+  `components/api`, `api/dev/{black-swan,coins,coin-tags,dynamic-trade}`
+  routes (`api/dev/coin-tags` was already orphaned — all tag CRUD flows
+  through `/api/slow-trading/coin-metadata`).
+- 72 legacy test files + orphaned `__dev__/evaluate/` helper.
 
-Only then ask for explicit deletion approval for:
+Kept (live features): `components/dev/Coins/*` tag UI backed by
+`lib/dev/coins`, `lib/dev/black-swan` preview, `lib/dev/enabled`,
+`components/dev/{BacktestPrecision,PrecisionChecker}`.
 
-- `slowTrading/`.
-- `dynamic/`.
-- `brain/`.
-- Old `trading/`.
-- `devBacktest/`.
-- `evaluate/`.
-- Old `datasets/`, `notification/`, `runtime/`, and `env/`.
-- `/dev/coins` and `/dev/black-swan` pages.
+Post-deletion fixes: `BacktestPrecision/Config.tsx` repointed to the
+shared `components/ui/HeaderMetrics`; dead `devEndpoints` entries
+(`blackSwan`, `coinTags`, `coins`, `dynamicTrade`, phantom
+`backtestPrecision.leaderboards`) removed.
+
+Verification: `npm run type` clean; `npm run quality` — 62 test files,
+201 tests, all passing; final sweep shows zero references to any deleted
+path.
 
 ## Verification gates
 

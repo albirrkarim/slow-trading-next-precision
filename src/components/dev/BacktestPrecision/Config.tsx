@@ -18,7 +18,7 @@ import {
 } from "@mui/material";
 import { useEffect, useMemo, type Dispatch, type SetStateAction } from "react";
 import axios from "axios";
-import HeaderMetrics from "../Evaluation/HeaderMetrics";
+import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import { buildBacktestDashboardState } from "./backtest-dashboard-state";
 import type { BacktestConfig } from "./types";
 
