@@ -6,6 +6,7 @@ import type {
   RuntimeContext,
   RuntimeEngineAdapter,
   RuntimeEngineState,
+  RuntimeEntryDecision,
 } from "@/lib/precision/types";
 import type { RuntimeHelper } from "@/lib/precision/helper/types";
 import type { Kline, VolatilityPoint } from "@/lib/system/types";
@@ -299,6 +300,110 @@ describe("multi strategy entry decisions", () => {
     const second = await strategy.decisions.findEntries(context);
     expect(second).toHaveLength(1);
     expect(second[0].accountSlug).toBe("a2");
+  });
+});
+
+describe("multi strategy late-entry vPoint drift guard", () => {
+  // BOTH:LATE_ENTRY_VPOINT_PRICE_DRIFT_PCT — the guard runs identically in
+  // every runtime mode because all of them read the current price from
+  // state.markPriceMap (the latest closed kline at the runtime clock).
+  const driftedContext = (
+    price: number,
+    accountTrading: Record<string, unknown> = {},
+    points: Record<string, VolatilityPoint[]> = {
+      SUI: [makePoint(-2, 200)],
+    },
+  ) =>
+    makeContext(["a1"], points, {
+      accountTrading,
+      currentTime: 200,
+      markPriceMap: { SUI: { lastUpdated: 200, price } },
+    });
+
+  const entryDecision = (manual = false): RuntimeEntryDecision => ({
+    accountSlug: "a1",
+    direction: "LONG",
+    entrySignal: {
+      ...makePoint(-2, 100),
+      id: "B_sig1",
+      amountProbab: 0.5,
+      investAmount: 10,
+      maxLeverage: 3,
+      message: "decision.v20 LONG: absolute level 2 meets minimum 2",
+    },
+    ...(manual ? { manual } : {}),
+    message: "entry",
+    symbol: "SUI",
+    type: "entry",
+  });
+
+  it("blocks the decision and the plan when the mark drifted past the cap", async () => {
+    // p=100 -> mark 102: +2% LONG drift vs the 1% cap at threshold 5.
+    const point = makePoint(-2, 200);
+    const context = driftedContext(102, {}, { SUI: [point] });
+
+    expect(await strategy.decisions.findEntries(context)).toHaveLength(0);
+
+    // A blocked decision never consumes the source vPoint, so the same
+    // point can still enter later if the drift settles back under the cap.
+    expect(
+      (point as VolatilityPoint & Record<string, unknown>).usedBya1,
+    ).toBeUndefined();
+    context.state.markPriceMap.SUI.price = 100.5;
+    expect(await strategy.decisions.findEntries(context)).toHaveLength(1);
+
+    // The final execution check re-runs the guard on the freshest mark.
+    const drifted = driftedContext(102);
+    expect(
+      strategy.actions.executeEntry(drifted, entryDecision()),
+    ).toBeNull();
+  });
+
+  it("blocks a SHORT signal symmetrically", async () => {
+    // T point p=100 -> mark 98: +2% SHORT-side drift vs the 1% cap.
+    const context = makeContext(
+      ["a1"],
+      { SUI: [makePoint(3, 200)] },
+      {
+        currentTime: 200,
+        markPriceMap: { SUI: { lastUpdated: 200, price: 98 } },
+        tradingMode: "futures",
+      },
+    );
+    expect(await strategy.decisions.findEntries(context)).toHaveLength(0);
+  });
+
+  it("allows adverse drift and the exact cap boundary", async () => {
+    // -1% adverse drift is never blocked.
+    expect(
+      await strategy.decisions.findEntries(driftedContext(99)),
+    ).toHaveLength(1);
+    // Exactly +1.0% equals the cap; the boundary stays allowed.
+    expect(
+      await strategy.decisions.findEntries(driftedContext(101)),
+    ).toHaveLength(1);
+  });
+
+  it("respects the per-account disable flag and missing marks", async () => {
+    const disabled = driftedContext(102, {
+      lateEntryVPointPriceDriftEnabled: false,
+    });
+    expect(await strategy.decisions.findEntries(disabled)).toHaveLength(1);
+
+    // No mark price means no drift signal: the decision is still emitted
+    // and the execution plan falls back to MARK_PRICE_UNAVAILABLE.
+    const noMark = makeContext(["a1"], { SUI: [makePoint(-2, 200)] });
+    expect(await strategy.decisions.findEntries(noMark)).toHaveLength(1);
+  });
+
+  it("exempts operator-forced manual entries at execution", () => {
+    const context = driftedContext(102);
+    const position = strategy.actions.executeEntry(
+      context,
+      entryDecision(true),
+    );
+    expect(position).not.toBeNull();
+    expect(position?.opened.price).toBe(102);
   });
 });
 

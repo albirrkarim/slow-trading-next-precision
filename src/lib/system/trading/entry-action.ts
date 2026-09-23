@@ -18,6 +18,7 @@ import type {
 import { TradingMode } from "@/lib/exchange/types";
 
 import runtimeEntryLeverage from "./leverage";
+import lateEntryVPointDrift from "./late-entry-vpoint-drift";
 import reserve from "./reserve";
 
 const resolveEntryLeverage = runtimeEntryLeverage.resolve;
@@ -330,6 +331,23 @@ function buildPlan(
     decision.accountSlug,
   );
   const signal = decision.entrySignal;
+
+  // BOTH:LATE_ENTRY_VPOINT_PRICE_DRIFT_PCT — final execution check on the
+  // freshest mark, after the decision-time gate in entry.findDecisions.
+  // Operator-forced manual entries are exempt: the request is explicit.
+  if (!decision.manual) {
+    const drift = lateEntryVPointDrift.evaluate({
+      currentPrice: mark.price,
+      direction: decision.direction,
+      enabled: config.lateEntryVPointPriceDriftEnabled,
+      vPointPrice: signal.p,
+    });
+    if (drift.blocked) {
+      systemLog.info(drift.reason ?? "Entry blocked by late-entry drift.");
+      return null;
+    }
+  }
+
   const leverage = resolveEntryLeverage({
     config,
     entrySignal: signal,

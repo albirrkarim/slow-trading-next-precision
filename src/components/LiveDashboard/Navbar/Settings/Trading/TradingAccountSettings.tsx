@@ -58,7 +58,7 @@ export default function TradingAccountSettings({
                             checked={
                                 tradingConfig.lateEntryVPointPriceDriftEnabled !== false
                             }
-                            info="When ON, production and sandbox entries are blocked after price moves too far in the profitable direction from the source vPoint. This setting belongs only to the selected account."
+                            info="When ON, entries are blocked after price moves too far in the profitable direction from the source vPoint. Applies to live, sandbox, and backtest. This setting belongs only to the selected account."
                             label="Late Entry vPoint Price Drift Guard"
                             onChange={(checked) =>
                                 setTradingConfig((prev) =>

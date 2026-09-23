@@ -6,6 +6,7 @@ import type { RuntimeDailyPnlLimitEvaluation } from "./daily-pnl-limit";
 import runtimeDailyPnlLimit from "./daily-pnl-limit";
 import entryAction from "./entry-action";
 import tradingEntry from "./entry";
+import lateEntryVPointDrift from "./late-entry-vpoint-drift";
 import type { BalanceSummary, EntryRecommendation } from "./types";
 
 /** Current explanation for an actionable coin's entry outcome. */
@@ -106,6 +107,24 @@ function explainMissingDecision(
     };
   }
 
+  // BOTH:LATE_ENTRY_VPOINT_PRICE_DRIFT_PCT — mirrors the decision-time gate
+  // so the dashboard explains the same block the pipeline applied.
+  const drift = lateEntryVPointDrift.evaluate({
+    currentPrice: context.state.markPriceMap[symbol]?.price,
+    direction: lastPoint?.l === "B" ? "LONG" : "SHORT",
+    enabled: account?.trading.lateEntryVPointPriceDriftEnabled,
+    vPointPrice: Number(lastPoint?.p),
+  });
+  if (drift.blocked) {
+    return {
+      code: "LATE_ENTRY_VPOINT_PRICE_DRIFT",
+      reason:
+        drift.reason ??
+        "Blocked because the current price already drifted too far " +
+          "in the profit direction from the signal vPoint.",
+    };
+  }
+
   const maxOpenPositions = Math.max(
     0,
     Math.floor(Number(account?.trading.maxOpenPositions) || 0),
@@ -148,6 +167,27 @@ function explainRejectedPlan(
       reason:
         "Blocked because the current market price required by entry funding is unavailable.",
     };
+  }
+
+  // BOTH:LATE_ENTRY_VPOINT_PRICE_DRIFT_PCT — mirrors the plan-time gate;
+  // manual entries skip it exactly like the shared executor does.
+  if (!decision.manual) {
+    const drift = lateEntryVPointDrift.evaluate({
+      currentPrice: mark.price,
+      direction: decision.direction,
+      enabled: context.helper.getAccountConfig(decision.accountSlug)
+        .lateEntryVPointPriceDriftEnabled,
+      vPointPrice: decision.entrySignal.p,
+    });
+    if (drift.blocked) {
+      return {
+        code: "LATE_ENTRY_VPOINT_PRICE_DRIFT",
+        reason:
+          drift.reason ??
+          "Blocked because the current price already drifted too far " +
+            "in the profit direction from the signal vPoint.",
+      };
+    }
   }
 
   const balance: BalanceSummary = context.helper.getAccountBalance(

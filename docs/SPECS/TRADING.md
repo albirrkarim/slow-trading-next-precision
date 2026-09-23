@@ -572,8 +572,13 @@ so i need guard before entry.
 Each account owns `trading.lateEntryVPointPriceDriftEnabled`. It defaults to
 `true`. When `false`, both the entry-decision check and the final execution
 check skip this guard for that account only. Other enabled accounts retain
-their own setting. This remains production/runtime behavior and applies to
-both live and sandbox entries; backtest is unchanged.
+their own setting.
+
+The guard runs inside the shared Precision runtime, so it applies
+identically to live, sandbox, and backtest entries: every mode resolves the
+current price from `state.markPriceMap`, the latest closed kline at the
+runtime clock. Entries forced through the manual API are exempt because the
+request is explicit.
 
 The maximum profitable drift depends on `VOLATILITY_THRESHOLD`:
 
@@ -582,9 +587,7 @@ The maximum profitable drift depends on `VOLATILITY_THRESHOLD`:
 
 The boundary itself remains allowed. Adverse drift does not trigger this guard.
 
-on the backtest we dont have this. because on the backtest we use pure vpoints. not klines
-
-TC: `PROD:LATE_ENTRY_VPOINT_PRICE_DRIFT_PCT`
+TC: `BOTH:LATE_ENTRY_VPOINT_PRICE_DRIFT_PCT`
 
 ### B.3.8 Averaging not allowed in low level
 
@@ -912,12 +915,10 @@ Rules:
   - If a sideways open position has been held for at least `2` days, another
     coin with `abs(level) >= 4` can force-exit it when the candidate Speed Tier
     is better than or equal to the open position's Speed Tier.
-  - In production, the candidate must also pass
-    `PROD:LATE_ENTRY_VPOINT_PRICE_DRIFT_PCT`; a candidate whose current price
+  - The candidate must also pass
+    `BOTH:LATE_ENTRY_VPOINT_PRICE_DRIFT_PCT`; a candidate whose current price
     already drifted too far in the profit direction must not force-exit the
     aged sideways position.
-  - In backtest, this late-entry drift guard is not available because backtest
-    entries use pure vPoints instead of live/current klines.
 - The rule only marks the sideways position for exit. It must not mutate or
   clear entry signals; normal entry flow decides what can happen next.
 - The setting defaults to `false`.

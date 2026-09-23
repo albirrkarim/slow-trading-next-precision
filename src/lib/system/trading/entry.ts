@@ -5,6 +5,7 @@ import type {
 import { TradingMode } from "@/lib/exchange/types";
 import type { RuntimeConfig } from "../runtime";
 import type { VolatilityPoint } from "../types";
+import lateEntryVPointDrift from "./late-entry-vpoint-drift";
 import type { EntryRecommendation } from "./types";
 
 const DEFAULT_MIN_ACTIONABLE_ABSOLUTE_LEVEL = 2;
@@ -235,6 +236,18 @@ async function findDecisions(
       ) {
         continue;
       }
+
+      // BOTH:LATE_ENTRY_VPOINT_PRICE_DRIFT_PCT — decision-time check. A
+      // signal whose current mark already drifted past the profitable-move
+      // cap is skipped; the execution-time check in entryAction re-runs it
+      // on the freshest mark before the fill. Blocked points stay unused.
+      const drift = lateEntryVPointDrift.evaluate({
+        currentPrice: context.state.markPriceMap[symbol]?.price,
+        direction: entrySignal.l === "B" ? "LONG" : "SHORT",
+        enabled: account.trading.lateEntryVPointPriceDriftEnabled,
+        vPointPrice: entrySignal.p,
+      });
+      if (drift.blocked) continue;
 
       decisions.push({
         accountSlug: account.slug,
