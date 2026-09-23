@@ -483,28 +483,36 @@ against clean APIs; non-goal pages remain in legacy code until deletion.
       `components/api/production/utils.ts`.
       **Live features pending relocation** — used by the approved pages
       (`/`, `/dev/precision-checker`, `/dev/backtest-precision`), so the
-      rule is *move, don't delete*: coin metadata (dashboard tag UI,
-      `CoinTagManagerDialog`, `/api/slow-trading/coin-metadata`,
-      `debug/*coin-metadata*` routes, `api/mcp.ts` tag handlers) is
-      backed by `devBacktest/coins/{tags,tag-sync,tag-types,
-      filter-config}` + `devBacktest/api/coinTags` → relocate to
-      `lib/dev/coins` (only legacy dep: `tag-sync` uses `tradeLog` →
-      swap to `systemLog`); the Black Swan savings preview
-      (`BlackSwanSavingsPreview` in the settings dialog →
-      `/api/slow-trading/black-swan-preview`) is backed by
-      `devBacktest/black-swan` + `devBacktest/api/blackSwanBacktest`,
-      which internally pull `slowTrading/{quick-backtest,stages,
-      watch-reserve}`, `trading/*`, `dynamic`, `datasets` — relocating
-      means porting the preview onto the Precision engine;
-      `env/devBacktest.isDevBacktestEnabled` → `lib/dev` (consumed by
-      the four approved dev surfaces).
-- [ ] Verify no code outside the legacy quarry imports legacy folders.
-      Pending: the live-feature relocations listed above
-      (`devBacktest/coins` tag store, `devBacktest/black-swan` preview,
-      `env/devBacktest` flag). Verified so far: no live surface
-      references `slowTrading`, `dynamic`, `brain`, `evaluate`,
-      `datasets`, or the old `trading/*` internals — only the listed
-      `devBacktest`/`env` edges remain.
+      rule is *move, don't delete*:
+- [x] Relocate coin metadata to `lib/dev/coins`. Done:
+      `tags`/`tag-sync`/`tag-types`/`filter-config` + `api/coinTags`
+      moved; `tag-sync` now logs through `systemLog`; all live
+      consumers repointed (`api/mcp.ts` handlers, `coin-metadata` and
+      `debug/*coin-metadata*` routes, `/api/dev/coin-tags`,
+      `CoinTagManagerDialog`, `LiveDashboardPage`). The coin-finder
+      analysis modules stayed in `devBacktest/coins` as Phase-7 quarry.
+- [x] Port the Black Swan savings preview onto the Precision engine at
+      `lib/dev/black-swan`. Done: `types`/`index`/`portfolio` rebuilt on
+      `system/trading/black-swan`, `system/utils/vpoints` +
+      `system/utils/klines`, `dev/quick-backtest`, `system/trading/exit`
+      (`exit.evaluate` exported) and `system/trading/reserve`, with
+      speedup labels via `precision/utils/positions`; liquidation kept
+      as a replay-local leveraged-PnL floor. `/api/slow-trading/
+      black-swan-preview` and the Backswan preview components repointed;
+      `devBacktest/api/blackSwanBacktest` keeps serving the rejected
+      `/api/dev/black-swan` route until Phase 7.
+- [x] Move `env/devBacktest.isDevBacktestEnabled` → `lib/dev/enabled`;
+      the approved dev surfaces and the live `/api/dev/coin-tags` route
+      import it from there. `env/` remains only for rejected surfaces.
+- [x] Verify no code outside the legacy quarry imports legacy folders.
+      Verified: after the relocations above, the only legacy importers
+      left in `pages/`, `components/`, `app/`, and `instrumentation.ts`
+      are the Phase-7 deletion candidates (`/dev/backtest-vrails`,
+      `api/dev/{black-swan,coins,dynamic-trade/*}`,
+      `components/dev/{DynamicTrade,Evaluation}/*`,
+      `components/api/*`). No live surface references `slowTrading`,
+      `dynamic`, `brain`, `evaluate`, `datasets`, `devBacktest`,
+      `env`, or the old `trading/*` internals.
 
 ### Phase 7 — deletion (separate approval required)
 

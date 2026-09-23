@@ -14,7 +14,7 @@ import {
   type UTCTimestamp,
 } from "lightweight-charts";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { BlackSwanSavingsKline } from "@/lib/devBacktest/black-swan";
+import type { BlackSwanSavingsKline } from "@/lib/dev/black-swan";
 
 type ChartInterval = "1m" | "5m";
 

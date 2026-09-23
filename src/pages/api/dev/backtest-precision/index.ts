@@ -1,4 +1,4 @@
-import { isDevBacktestEnabled } from "@/lib/env/devBacktest";
+import { isDevBacktestEnabled } from "@/lib/dev/enabled";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export default async function handler(

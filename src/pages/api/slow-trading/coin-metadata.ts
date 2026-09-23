@@ -1,4 +1,4 @@
-import coinTagsHandler from "@/lib/devBacktest/api/coinTags";
+import coinTagsHandler from "@/lib/dev/coins/api/coinTags";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export default async function handler(

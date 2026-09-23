@@ -23,7 +23,7 @@ import {
 import { DEFAULT_COLORS } from "@/components/client/constants";
 import { endpoints } from "@/components/endpoints";
 import MultiLineTimelined from "@/components/ui/Chart/MultiLineTimelined";
-import type { CoinTagState } from "@/lib/devBacktest/coins/tag-types";
+import type { CoinTagState } from "@/lib/dev/coins/tag-types";
 
 import type { UnifiedFundingRate } from "@/lib/exchange";
 

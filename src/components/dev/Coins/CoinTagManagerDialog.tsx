@@ -4,12 +4,12 @@ import ButtonDialog from "@/components/ui/ButtonDialog";
 import {
   pruneCoinFilterConfig,
   type CoinFilterConfig,
-} from "@/lib/devBacktest/coins/filter-config";
+} from "@/lib/dev/coins/filter-config";
 import {
   DEFAULT_COIN_TAG_COLOR,
   type CoinTag,
   type CoinTagState,
-} from "@/lib/devBacktest/coins/tag-types";
+} from "@/lib/dev/coins/tag-types";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import LocalOfferOutlinedIcon from "@mui/icons-material/LocalOfferOutlined";
 import {

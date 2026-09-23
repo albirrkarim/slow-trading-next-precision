@@ -16,7 +16,7 @@ vi.mock("@/lib/trading", () => ({
   },
 }));
 
-import { coinMetadataSync } from "@/lib/devBacktest/coins/tag-sync";
+import { coinMetadataSync } from "@/lib/dev/coins/tag-sync";
 
 describe("coin metadata sync", () => {
   afterEach(() => {

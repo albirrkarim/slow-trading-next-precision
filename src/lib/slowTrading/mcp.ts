@@ -1,8 +1,8 @@
 import crypto from "node:crypto";
 
-import coinTags from "@/lib/devBacktest/coins/tags";
-import { coinMetadataSync } from "@/lib/devBacktest/coins/tag-sync";
-import type { CoinTagState } from "@/lib/devBacktest/coins/tag-types";
+import coinTags from "@/lib/dev/coins/tags";
+import { coinMetadataSync } from "@/lib/dev/coins/tag-sync";
+import type { CoinTagState } from "@/lib/dev/coins/tag-types";
 
 import slowTradingFinanceSummary from "./finance-summary";
 import slowTradingMcpBalance from "./mcp/balance";

@@ -1,5 +1,5 @@
-import { createCoinTagStore } from "@/lib/devBacktest/coins/tags";
-import { EMPTY_COIN_RESULT_FILTERS } from "@/lib/devBacktest/coins/filter-config";
+import { createCoinTagStore } from "@/lib/dev/coins/tags";
+import { EMPTY_COIN_RESULT_FILTERS } from "@/lib/dev/coins/filter-config";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";

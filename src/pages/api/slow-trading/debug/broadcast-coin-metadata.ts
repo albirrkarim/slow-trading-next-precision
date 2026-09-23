@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { coinMetadataSync } from "@/lib/devBacktest/coins/tag-sync";
-import coinTags from "@/lib/devBacktest/coins/tags";
+import { coinMetadataSync } from "@/lib/dev/coins/tag-sync";
+import coinTags from "@/lib/dev/coins/tags";
 import storageSync from "@/lib/dev/storage-sync";
 import { systemLog } from "@/lib/system/logging";
 import { runtimeLogs } from "@/lib/system/storage";

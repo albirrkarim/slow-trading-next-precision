@@ -1,4 +1,4 @@
-import { isDevBacktestEnabled } from "@/lib/env/devBacktest";
+import { isDevBacktestEnabled } from "@/lib/dev/enabled";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export default async function handler(
@@ -11,6 +11,6 @@ export default async function handler(
   }
 
   const { default: coinTagsHandler } =
-    await import("@/lib/devBacktest/api/coinTags");
+    await import("@/lib/dev/coins/api/coinTags");
   await coinTagsHandler(req, res);
 }

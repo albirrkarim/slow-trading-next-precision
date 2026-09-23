@@ -1,4 +1,4 @@
-import coinTags from "@/lib/devBacktest/coins/tags";
+import coinTags from "@/lib/dev/coins/tags";
 import type { SpeedTier } from "./constants";
 import type { SpeedTierBySymbol } from "./types";
 

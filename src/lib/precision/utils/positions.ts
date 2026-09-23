@@ -497,6 +497,9 @@ const positions = {
   updatePnl,
   updateMonitoringStage,
   markVPointUsed,
+  describeSpeedupReasons,
+  describeStandardReason,
+  getSpeedupReasons,
 } as const;
 
 export default positions;

@@ -1,7 +1,7 @@
 import { isDevBacktestEnabled } from "@/lib/env/devBacktest";
-import blackSwan from "@/lib/trading/black-swan";
+import blackSwan from "@/lib/system/trading/black-swan";
 import type { NextApiRequest, NextApiResponse } from "next";
-import blackSwanBacktest, { type BlackSwanBacktestInput } from "../black-swan";
+import blackSwanBacktest, { type BlackSwanBacktestInput } from "@/lib/dev/black-swan";
 
 export default async function blackSwanBacktestHandler(
   req: NextApiRequest,

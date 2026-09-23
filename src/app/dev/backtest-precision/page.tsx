@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 
 
-import { isDevBacktestEnabled } from "@/lib/env/devBacktest";
+import { isDevBacktestEnabled } from "@/lib/dev/enabled";
 import BacktestPrecision from "@/components/dev/BacktestPrecision";
 
 export const dynamic = "force-dynamic";

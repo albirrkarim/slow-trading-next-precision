@@ -1,6 +1,6 @@
-import coinTags from "@/lib/devBacktest/coins/tags";
-import { coinMetadataSync } from "@/lib/devBacktest/coins/tag-sync";
-import type { CoinTagState } from "@/lib/devBacktest/coins/tag-types";
+import coinTags from "@/lib/dev/coins/tags";
+import { coinMetadataSync } from "@/lib/dev/coins/tag-sync";
+import type { CoinTagState } from "@/lib/dev/coins/tag-types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 async function sendSyncedResponse(

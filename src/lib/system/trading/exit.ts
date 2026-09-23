@@ -49,7 +49,7 @@ const DEFAULT_POST_AVERAGE_RESCUE_THRESHOLDS: readonly PostAverageRescueExitThre
 const DEFAULT_POST_AVERAGE_STOP_LOSS_THRESHOLDS: readonly PostAverageStopLossThreshold[] =
   [{ maxNetPnlPct: 0, maxNetPnlUsdt: 0, minAveragingCount: 1 }];
 
-type ExitEvaluationConfig = RuntimeAccountTradingConfig &
+export type ExitEvaluationConfig = RuntimeAccountTradingConfig &
   RuntimeManagementConfig;
 
 /** Formats timestamps exactly like the legacy datasets time helper. */
@@ -1131,6 +1131,7 @@ function execute(
 }
 
 const exit = {
+  evaluate: evaluateExit,
   findDecision,
   execute,
 } as const;

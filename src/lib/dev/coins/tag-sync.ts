@@ -1,7 +1,7 @@
 import axios from "axios";
 
 import type { CoinTagState } from "./tag-types";
-import { tradeLog } from "@/lib/trading";
+import { systemLog } from "@/lib/system/logging";
 
 const SYNC_HEADER = "x-coin-metadata-sync-token";
 const MANUAL_SYNC_PEERS = [
@@ -94,7 +94,7 @@ export async function broadcastCoinMetadataSyncToPeers(
         message?: string;
         response?: { data?: { error?: string }; status?: number };
       };
-      tradeLog.log(error);
+      systemLog.error(error);
       results.push({
         error:
           requestError.response?.data?.error ??

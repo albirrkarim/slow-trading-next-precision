@@ -15,7 +15,7 @@ import PositionLevelSequence, {
 import type {
   BlackSwanSavingsBacktestResult,
   BlackSwanSavingsPositionResult,
-} from "@/lib/devBacktest/black-swan";
+} from "@/lib/dev/black-swan";
 import BlackSwanKlineChart, {
   type BlackSwanKlineMarker,
 } from "./BlackSwanKlineChart";

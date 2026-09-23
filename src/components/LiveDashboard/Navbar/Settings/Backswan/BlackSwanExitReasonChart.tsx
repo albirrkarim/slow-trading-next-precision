@@ -2,7 +2,7 @@
 
 import { Box, Chip, Paper, Typography, useTheme } from "@mui/material";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-import type { BlackSwanSavingsPositionResult } from "@/lib/devBacktest/black-swan";
+import type { BlackSwanSavingsPositionResult } from "@/lib/dev/black-swan";
 
 interface ExitReasonDatum {
   [key: string]: number | string;

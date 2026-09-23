@@ -1,7 +1,7 @@
 import blackSwanBacktest, {
   type BlackSwanSavingsBacktestInput,
-} from "@/lib/devBacktest/black-swan";
-import blackSwan from "@/lib/trading/black-swan";
+} from "@/lib/dev/black-swan";
+import blackSwan from "@/lib/system/trading/black-swan";
 import { systemLog } from "@/lib/system/logging";
 import type { NextApiRequest, NextApiResponse } from "next";
 

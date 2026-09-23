@@ -1,10 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-// Coin tag backends still live in devBacktest until the coin-tags capability
-// relocates to src/lib/dev — register them as external MCP tool handlers.
-import coinTags from "@/lib/devBacktest/coins/tags";
-import { coinMetadataSync } from "@/lib/devBacktest/coins/tag-sync";
-import type { CoinTagState } from "@/lib/devBacktest/coins/tag-types";
+// Coin tag backends live in dev/coins — register them as external MCP tool
+// handlers on top of the shared runtimeMcp dispatch.
+import coinTags from "@/lib/dev/coins/tags";
+import { coinMetadataSync } from "@/lib/dev/coins/tag-sync";
+import type { CoinTagState } from "@/lib/dev/coins/tag-types";
 import { runtimeMcp } from "@/lib/system/mcp";
 import type { RuntimeMcpAuthenticatedToken } from "@/lib/system/mcp";
 import { systemLog } from "@/lib/system/logging";
