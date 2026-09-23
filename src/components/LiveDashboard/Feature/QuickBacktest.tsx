@@ -254,7 +254,7 @@ export default function QuickBacktest({
     setLoading(true);
     try {
       const response = await axios.post<RuntimeQuickBacktestResult>(
-        endpoints.slow.prod.quickBacktest,
+        endpoints.system.quickBacktest,
         {
           config: dashboardState.config,
           accounts: enabledAccounts.map((account) => ({

@@ -153,7 +153,7 @@ export default function BlackSwanStatusSection({
   async function acknowledge() {
     setAcknowledging(true);
     try {
-      await axios.post(endpoints.slow.prod.blackSwan, {
+      await axios.post(endpoints.system.blackSwan.state, {
         action: "acknowledge-recovery",
       });
       await onRefresh();

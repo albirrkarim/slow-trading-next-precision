@@ -43,7 +43,7 @@ export default function TradeHistoryNotesField({
       // PROD:TRADE_HISTORY_NOTES
       const response = await axios.patch<{
         state?: RuntimeDashboardState;
-      }>(endpoints.slow.prod.history, {
+      }>(endpoints.system.history, {
         account: row.account,
         mode,
         symbol: row.symbol,

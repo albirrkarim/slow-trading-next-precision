@@ -281,7 +281,7 @@ export default function BlackSwanSavingsPreview({
       setLoading(true);
       setError("");
       void axios
-        .post(endpoints.slow.prod.blackSwanPreview, JSON.parse(requestKey), {
+        .post(endpoints.system.blackSwan.preview, JSON.parse(requestKey), {
           signal: controller.signal,
         })
         .then((response) => {

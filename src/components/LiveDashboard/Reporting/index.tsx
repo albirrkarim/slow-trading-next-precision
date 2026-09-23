@@ -103,7 +103,7 @@ export default function SlowTradingReporting({
       const response = await axios.delete<{
         deletedCount?: number;
         state?: RuntimeDashboardState;
-      }>(endpoints.slow.prod.history, {
+      }>(endpoints.system.history, {
         data: {
           clearAll: true,
           mode: activeMode,

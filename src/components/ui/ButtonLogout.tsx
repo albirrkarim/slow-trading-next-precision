@@ -1,10 +1,11 @@
 import { IconButton } from "@mui/material";
 import Logout from "@mui/icons-material/Logout";
+import { endpoints } from "@/components/endpoints";
 
 export default function ButtonLogout() {
     const handleLogout = async () => {
         try {
-            await fetch("/api/pin/logout", { method: "POST" });
+            await fetch(endpoints.pin.logout, { method: "POST" });
         } finally {
             const next = encodeURIComponent(window.location.pathname + window.location.search);
             window.location.assign(`/pin?next=${next}`);

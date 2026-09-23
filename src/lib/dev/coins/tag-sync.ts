@@ -77,7 +77,7 @@ export async function broadcastCoinMetadataSyncToPeers(
   for (const peer of peers) {
     try {
       await axios.put(
-        `${peer}/api/slow-trading/coin-metadata`,
+        `${peer}/api/system/coin/metadata`,
         {
           syncState: state,
         },

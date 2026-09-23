@@ -413,7 +413,7 @@ export default function SlowTradingQueuesPanel(props: {
   const loadQueues = useCallback(async () => {
     try {
       const response = await axios.get<RuntimeQueues>(
-        endpoints.slow.prod.queue,
+        endpoints.system.queue,
       );
       setQueues(response.data);
       setError(null);
@@ -432,7 +432,7 @@ export default function SlowTradingQueuesPanel(props: {
   const createQueue = useCallback(
     async (input: RuntimeManualQueueCreateInput) => {
       try {
-        await axios.post(endpoints.slow.prod.queue, input);
+        await axios.post(endpoints.system.queue, input);
         await loadQueues();
       } catch (requestError: any) {
         throw new Error(
@@ -466,7 +466,7 @@ export default function SlowTradingQueuesPanel(props: {
     setDeletingId(row.id);
     setError(null);
     try {
-      await axios.delete(endpoints.slow.prod.queue, {
+      await axios.delete(endpoints.system.queue, {
         params: {
           id: row.id,
           kind: row.kind,

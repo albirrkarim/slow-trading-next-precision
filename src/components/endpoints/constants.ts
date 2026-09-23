@@ -5,12 +5,12 @@
  */
 export const PRODUCTION_DOMAIN = "";
 
-/**
- * Base API prefix for the main dashboard/server endpoints.
- */
-export const DASHBOARD_UI_API = `${PRODUCTION_DOMAIN}/api`;
+/** Base API prefix for all application routes. */
+export const API = `${PRODUCTION_DOMAIN}/api`;
 
-/**
- * Base API prefix for development-only UI helper routes.
- */
-export const DEV_UI_API = "/api/dev";
+/** Route family prefixes — names mirror the URL segments. */
+export const SYSTEM_API = `${API}/system`;
+export const MARKET_API = `${API}/market`;
+export const DEV_API = `${API}/dev`;
+export const PIN_API = `${API}/pin`;
+export const MCP_API = `${API}/mcp`;

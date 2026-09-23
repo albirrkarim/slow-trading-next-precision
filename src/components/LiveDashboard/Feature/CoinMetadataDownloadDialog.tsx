@@ -61,7 +61,7 @@ function CoinMetadataDownloadForm({
         helperText={
           onlineBaseUrl.length > 0 && !normalizedBaseUrl
             ? "Enter a complete HTTP or HTTPS URL."
-            : "The app downloads from /api/slow-trading/coin-metadata on this domain."
+            : "The app downloads from /api/system/coin/metadata on this domain."
         }
         label="Source domain"
         onChange={(event) => setOnlineBaseUrl(event.target.value)}

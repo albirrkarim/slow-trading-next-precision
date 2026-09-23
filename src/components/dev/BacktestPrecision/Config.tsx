@@ -71,7 +71,7 @@ export default function DynamicBacktestConfig({
         if (backtestConfig.settings) return undefined;
         const controller = new AbortController();
         void axios
-            .get<DashboardState>(endpoints.slow.prod.storage, {
+            .get<DashboardState>(endpoints.system.state, {
                 signal: controller.signal,
             })
             .then((response) => {

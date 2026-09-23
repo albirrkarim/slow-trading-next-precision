@@ -24,7 +24,7 @@ async function downloadOnlineCoinMetadata(
   onlineBaseUrl: string,
 ): Promise<CoinTagState> {
   const response = await fetch(
-    `${onlineBaseUrl}/api/slow-trading/coin-metadata`,
+    `${onlineBaseUrl}/api/system/coin/metadata`,
     {
       headers: {
         accept: "application/json",
@@ -73,7 +73,7 @@ export default async function handler(
   } catch (error: any) {
     await runtimeLogs
       .appendError({
-        source: "api.slow-trading.debug.sync-online-coin-metadata-to-local",
+        source: "api.system.debug.sync-online-coin-metadata-to-local",
         error,
         details: {
           method: req.method,

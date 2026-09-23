@@ -90,7 +90,7 @@ export default async function handler(
   } catch (error: any) {
     await runtimeLogs
       .appendError({
-        source: "api.slow-trading.storage",
+        source: "api.system.storage",
         error,
         details: {
           method: req.method,

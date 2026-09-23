@@ -292,7 +292,7 @@ describe("settings dialog save payload", () => {
     await waitFor(
       () =>
         expect(axiosPost).toHaveBeenCalledWith(
-          endpoints.slow.prod.blackSwanPreview,
+          endpoints.system.blackSwan.preview,
           expect.any(Object),
           expect.objectContaining({ signal: expect.any(AbortSignal) }),
         ),
@@ -564,13 +564,13 @@ describe("settings dialog save payload", () => {
 
     await waitFor(() => {
       expect(axiosPut).toHaveBeenCalledWith(
-        endpoints.slow.prod.storage,
+        endpoints.system.state,
         expect.any(Object),
       );
     });
 
     const payload = axiosPut.mock.calls.find(
-      ([url]) => url === endpoints.slow.prod.storage,
+      ([url]) => url === endpoints.system.state,
     )?.[1] as any;
     expect(payload).toMatchObject({
       autoEntryEnabled: true,
@@ -603,7 +603,7 @@ describe("settings dialog save payload", () => {
     });
 
     const accountsPayload = axiosPut.mock.calls.find(
-      ([url]) => url === endpoints.slow.prod.exchangeAccounts,
+      ([url]) => url === endpoints.system.account.list,
     )?.[1] as any;
     expect(accountsPayload.accounts[0].trading).toMatchObject({
       averagingRescueProjectionGuardEnabled: false,

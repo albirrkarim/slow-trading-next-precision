@@ -24,7 +24,7 @@ vi.mock("@/lib/system/storage", () => ({
   },
 }));
 
-import handler from "@/pages/api/slow-trading/debug/sync-online-to-local";
+import handler from "@/pages/api/system/debug/sync-online-to-local";
 
 describe("persistent storage clone API", () => {
   beforeEach(() => {

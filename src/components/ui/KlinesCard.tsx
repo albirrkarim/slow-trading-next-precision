@@ -43,7 +43,7 @@ export default function KlinesCard({ config, customMarkers }: KlinesCardProps) {
         try {
             setData(null);
             const resp = await axios.post<KlinesAndMarkersData>(
-                endpoints.slow.dev.klines,
+                endpoints.market.klines,
                 customConfig ?? config
             );
 

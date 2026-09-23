@@ -60,7 +60,7 @@ export default function BinanceCooldownStatusSection({
     setResetting(true);
     try {
       const response = await axios.post<RuntimeBinanceHealthSnapshot>(
-        endpoints.slow.prod.binanceCooldownReset,
+        endpoints.system.exchange.cooldownReset,
       );
       onReset(response.data);
       setNow(Date.now());

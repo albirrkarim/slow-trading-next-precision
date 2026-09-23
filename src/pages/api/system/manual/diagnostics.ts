@@ -94,7 +94,7 @@ export default async function handler(
 
     await runtimeLogs
       .appendError({
-        source: "api.slow-trading.entry-diagnostics",
+        source: "api.system.entry-diagnostics",
         error,
         details: {
           method: req.method,

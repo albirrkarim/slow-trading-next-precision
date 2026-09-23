@@ -55,7 +55,7 @@ vi.mock("@/lib/exchange/platform/binance/request-coordinator", () => ({
   },
 }));
 
-import handler from "@/pages/api/slow-trading/entry-diagnostics";
+import handler from "@/pages/api/system/manual/diagnostics";
 
 describe("entry diagnostics Binance cooldown", () => {
   beforeEach(() => {

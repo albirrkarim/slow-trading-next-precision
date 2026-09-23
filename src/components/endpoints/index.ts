@@ -1,12 +1,19 @@
+import { MCP_API } from "./constants";
 import { devEndpoints } from "./dev";
-import { slowEndpoints } from "./slow";
+import { marketEndpoints } from "./market";
+import { pinEndpoints } from "./pin";
+import { systemEndpoints } from "./system";
 
 /**
- * Grouped endpoint catalog.
+ * Grouped endpoint catalog. Key paths mirror URL paths:
+ * endpoints.system.balance.refresh ⇔ /api/system/balance/refresh.
  */
 const endpoints = {
-  slow: slowEndpoints,
+  system: systemEndpoints,
+  market: marketEndpoints,
   dev: devEndpoints,
+  pin: pinEndpoints,
+  mcp: MCP_API,
 };
 
 export type Endpoints = typeof endpoints;

@@ -53,7 +53,7 @@ describe("trade-history notes", () => {
 
     // PROD:TRADE_HISTORY_NOTES
     await waitFor(() =>
-      expect(axios.patch).toHaveBeenCalledWith(endpoints.slow.prod.history, {
+      expect(axios.patch).toHaveBeenCalledWith(endpoints.system.history, {
         account: "binance-1",
         mode: "sandbox",
         symbol: "SUI",

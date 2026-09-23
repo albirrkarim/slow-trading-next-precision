@@ -71,7 +71,7 @@ export default function DailyPnlCalendarWrapper({
         setError(null);
 
         const snapshotsRes = await axios.get<DailyPnlCalendarBalanceSnapshot[]>(
-          endpoints.slow.prod.balanceSnapshots,
+          endpoints.system.balance.snapshots,
           { params: { mode: activeMode } },
         );
 

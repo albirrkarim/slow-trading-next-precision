@@ -54,7 +54,7 @@ function EntryBlockersContent() {
     setLoading(true);
     try {
       const response = await axios.get<RuntimeEntryDiagnosticsSnapshot>(
-        endpoints.slow.prod.entryDiagnostics,
+        endpoints.system.manual.diagnostics,
       );
       setAccounts(response.data.accounts);
       setSharedGuards(response.data.sharedGuards);

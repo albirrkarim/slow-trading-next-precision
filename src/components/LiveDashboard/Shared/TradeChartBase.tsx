@@ -135,7 +135,7 @@ export default function TradeChartBase({
     setError(null);
     try {
       const res = await axios.get<SlowKlinesResponse>(
-        endpoints.slow.dev.klines,
+        endpoints.market.klines,
         {
           params: {
             symbol,

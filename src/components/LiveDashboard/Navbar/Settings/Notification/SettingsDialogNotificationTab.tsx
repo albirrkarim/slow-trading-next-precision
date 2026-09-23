@@ -85,7 +85,7 @@ export default function SettingsDialogNotificationTab(props: {
   const sendTestNotification = async (channel: NotificationChannel) => {
     setTestingChannel(channel);
     try {
-      await axios.post(endpoints.slow.prod.notificationTest, { channel });
+      await axios.post(endpoints.system.notificationTest, { channel });
       enqueueSnackbar(`Sent ${channel} test notification`, {
         variant: "success",
       });

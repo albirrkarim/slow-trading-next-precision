@@ -23,7 +23,7 @@ vi.mock("@/lib/system/storage", () => ({
   runtimeLogs: { appendError: mocks.appendError },
 }));
 
-import handler from "@/pages/api/slow-trading/balance-refresh";
+import handler from "@/pages/api/system/balance/refresh";
 
 describe("manual balance refresh API", () => {
   beforeEach(() => {

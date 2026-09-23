@@ -283,7 +283,7 @@ export default function DynamicTradeHistoryPage({
       setData(null);
 
       const stateResp = await axios.get<RuntimeDashboardState>(
-        endpoints.slow.prod.storage,
+        endpoints.system.state,
       );
       const nextState = stateResp.data;
       const exchangeType = nextState.config.exchangeType;
@@ -296,7 +296,7 @@ export default function DynamicTradeHistoryPage({
           marketCapUSDBySymbol?: Record<string, number>;
           volume24hBySymbol?: Record<string, number>;
         };
-      }>(endpoints.slow.dev.initialize, {
+      }>(endpoints.market.initialize, {
         symbols: symbolsLocal,
         reinitialize,
         exchangeType,
@@ -317,7 +317,7 @@ export default function DynamicTradeHistoryPage({
       const resp1 = await axios.post<{
         data: Record<string, VolatilityPoint[]>;
         series: LeveledMarkers[][];
-      }>(endpoints.slow.dev.volatility, {
+      }>(endpoints.market.volatility, {
         symbols: symbolsLocal,
         range: config.range,
         startTime: config.startTime,
@@ -414,7 +414,7 @@ export default function DynamicTradeHistoryPage({
 
   useEffect(() => {
     void axios
-      .get<CoinTagState>(endpoints.slow.prod.coinMetadata)
+      .get<CoinTagState>(endpoints.system.coin.metadata)
       .then((response) => {
         if (!isCoinTagState(response.data)) {
           throw new Error("Coin metadata endpoint returned an invalid response");
@@ -447,7 +447,7 @@ export default function DynamicTradeHistoryPage({
     const refreshDashboardState = async () => {
       try {
         const stateResp = await axios.get<RuntimeDashboardState>(
-          endpoints.slow.prod.storage,
+          endpoints.system.state,
         );
 
         if (!isActive) {
@@ -460,7 +460,7 @@ export default function DynamicTradeHistoryPage({
             data: {
               fundingRateBySymbol?: Record<string, UnifiedFundingRate>;
             };
-          }>(endpoints.slow.dev.fundingRates, {
+          }>(endpoints.market.fundingRates, {
             exchangeType: stateResp.data.config.exchangeType,
             symbols: Array.from(
               new Set([...stateResp.data.config.symbols, "BTC"]),
@@ -517,7 +517,7 @@ export default function DynamicTradeHistoryPage({
 
     setResettingVPointUsed(true);
     try {
-      await axios.post(endpoints.slow.dev.volatility, {
+      await axios.post(endpoints.market.volatility, {
         symbols,
         range: config.range,
         startTime: config.startTime,
@@ -550,7 +550,7 @@ export default function DynamicTradeHistoryPage({
 
     setExitingSymbol(`${position.account}:${symbol}`);
     try {
-      await axios.post(endpoints.slow.prod.exit, {
+      await axios.post(endpoints.system.manual.exit, {
         account: position.account,
         symbol,
       });
@@ -574,7 +574,7 @@ export default function DynamicTradeHistoryPage({
         success: boolean;
         executed?: boolean;
         message?: string;
-      }>(endpoints.slow.prod.entry, {
+      }>(endpoints.system.manual.entry, {
         account: selectedAccountSlug,
         symbol,
       });
@@ -621,7 +621,7 @@ export default function DynamicTradeHistoryPage({
     setDeletingSymbol(symbol);
     try {
       const response = await axios.put<RuntimeDashboardState>(
-        endpoints.slow.prod.storage,
+        endpoints.system.state,
         { symbols: nextSymbols },
       );
       applyDashboardState(response.data);
@@ -652,7 +652,7 @@ export default function DynamicTradeHistoryPage({
   ) => {
     try {
       const response = await axios.put<CoinTagState>(
-        endpoints.slow.prod.coinMetadata,
+        endpoints.system.coin.metadata,
         {
           symbol,
           ...update,
@@ -676,7 +676,7 @@ export default function DynamicTradeHistoryPage({
       const response = await axios.post<{
         onlineBaseUrl: string;
         state: CoinTagState;
-      }>(endpoints.slow.prod.syncOnlineCoinMetadataToLocal, {
+      }>(endpoints.system.debug.syncOnlineCoinMetadataToLocal, {
         onlineBaseUrl,
       });
       setCoinMetadata(response.data.state);
@@ -712,7 +712,7 @@ export default function DynamicTradeHistoryPage({
         failed: Array<{ error?: string; peer: string; status?: number }>;
         state: CoinTagState;
         succeeded: Array<{ peer: string }>;
-      }>(endpoints.slow.prod.broadcastCoinMetadata, {});
+      }>(endpoints.system.debug.broadcastCoinMetadata, {});
       setCoinMetadata(response.data.state);
       if (response.data.failed.length > 0) {
         enqueueSnackbar(
@@ -738,7 +738,7 @@ export default function DynamicTradeHistoryPage({
   const createTag = async (tag: TagData) => {
     try {
       const response = await axios.post<CoinTagState>(
-        endpoints.slow.prod.coinMetadata,
+        endpoints.system.coin.metadata,
         tag,
       );
       setCoinMetadata(response.data);
@@ -754,7 +754,7 @@ export default function DynamicTradeHistoryPage({
   const updateTag = async (tag: TagData) => {
     try {
       const response = await axios.patch<CoinTagState>(
-        endpoints.slow.prod.coinMetadata,
+        endpoints.system.coin.metadata,
         tag,
       );
       setCoinMetadata(response.data);
@@ -770,7 +770,7 @@ export default function DynamicTradeHistoryPage({
   const deleteTag = async (tagId: number) => {
     try {
       const response = await axios.delete<CoinTagState>(
-        endpoints.slow.prod.coinMetadata,
+        endpoints.system.coin.metadata,
         {
           data: { tagId },
         },

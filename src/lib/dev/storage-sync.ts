@@ -128,7 +128,7 @@ export function getOnlinePersistentStorageExportUrl(baseUrl?: string) {
     baseUrl?.trim() ||
     process.env.SLOW_SYNC_ONLINE_BASE_URL?.trim() ||
     DEFAULT_ONLINE_BASE_URL;
-  return new URL("/api/slow-trading/debug/export", source).toString();
+  return new URL("/api/system/debug/export", source).toString();
 }
 
 export function getOnlinePersistentStorageImportUrl(baseUrl?: string) {
@@ -136,7 +136,7 @@ export function getOnlinePersistentStorageImportUrl(baseUrl?: string) {
     baseUrl?.trim() ||
     process.env.SLOW_SYNC_ONLINE_BASE_URL?.trim() ||
     DEFAULT_ONLINE_BASE_URL;
-  return new URL("/api/slow-trading/debug/import", source).toString();
+  return new URL("/api/system/debug/import", source).toString();
 }
 
 export async function exportPersistentStorageBundle(
@@ -226,7 +226,7 @@ export async function fetchOnlinePersistentStorageBundle(
     {
       headers: params.token
         ? {
-            "x-slow-sync-token": params.token,
+            "x-sync-token": params.token,
           }
         : undefined,
     },
@@ -265,7 +265,7 @@ export async function pushLocalPersistentStorageToOnline(
       body: JSON.stringify(bundle),
       headers: {
         "content-type": "application/json",
-        ...(params.token ? { "x-slow-sync-token": params.token } : {}),
+        ...(params.token ? { "x-sync-token": params.token } : {}),
       },
       method: "POST",
     },

@@ -87,7 +87,7 @@ export default async function handler(
   } catch (error) {
     await runtimeLogs
       .appendError({
-        source: "api.slow-trading.queue",
+        source: "api.system.queue",
         error,
         details: {
           method: req.method,

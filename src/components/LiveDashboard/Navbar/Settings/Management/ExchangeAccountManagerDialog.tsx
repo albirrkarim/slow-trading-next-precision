@@ -200,7 +200,7 @@ export default function ExchangeAccountManagerDialog({
     try {
       const response = await axios.put<{
         accounts: RuntimeAccountConfig[];
-      }>(endpoints.slow.prod.exchangeAccounts, { accounts });
+      }>(endpoints.system.account.list, { accounts });
       const savedAccounts = Array.isArray(response.data?.accounts)
         ? response.data.accounts
         : accounts;

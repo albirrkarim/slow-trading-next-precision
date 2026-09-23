@@ -4,6 +4,7 @@ import BackspaceIcon from "@mui/icons-material/Backspace";
 import { Box, Button, Grid, IconButton, Paper, Typography } from "@mui/material";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
+import { endpoints } from "@/components/endpoints";
 
 export default function PinClient() {
   const router = useRouter();
@@ -45,7 +46,7 @@ export default function PinClient() {
 
     setLoading(true);
     try {
-      const res = await fetch("/api/pin", {
+      const res = await fetch(endpoints.pin.login, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pin }),

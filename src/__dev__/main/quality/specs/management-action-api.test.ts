@@ -51,7 +51,7 @@ vi.mock("@/lib/system/storage", () => ({
   },
 }));
 
-import handler from "@/pages/api/slow-trading/storage";
+import handler from "@/pages/api/system/state";
 
 describe("storage API management-action notifications", () => {
   beforeEach(() => {

@@ -154,7 +154,7 @@ export default function DynamicTradeAnalytics() {
             systemLog.log("Sending payload:", JSON.stringify(payload, null, 2));
 
             const resp = await axios.post<BacktestPrecisionResult>(
-                endpoints.dev.backtestPrecision.backtest,
+                endpoints.dev.backtestPrecision,
                 payload,
             );
 

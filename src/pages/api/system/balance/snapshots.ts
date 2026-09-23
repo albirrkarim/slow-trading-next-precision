@@ -32,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     systemLog.error("[slow-trading] Failed to read balance snapshots", error);
     await runtimeLogs
       .appendError({
-        source: "api.slow-trading.balance-snapshots",
+        source: "api.system.balance-snapshots",
         error,
         details: {
           method: req.method,

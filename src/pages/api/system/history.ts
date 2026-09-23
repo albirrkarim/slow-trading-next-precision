@@ -105,7 +105,7 @@ export default async function handler(
   } catch (error: any) {
     await runtimeLogs
       .appendError({
-        source: "api.slow-trading.history",
+        source: "api.system.history",
         error,
         details: {
           method: req.method,

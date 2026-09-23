@@ -20,7 +20,7 @@ export default async function handler(
   } catch (error) {
     await runtimeLogs
       .appendError({
-        source: "api.slow-trading.binance-cooldown-reset",
+        source: "api.system.binance-cooldown-reset",
         error,
       })
       .catch((logError) => {

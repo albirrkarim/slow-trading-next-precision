@@ -16,7 +16,7 @@ describe("dashboard authentication proxy", () => {
     process.env.DASHBOARD_PIN = "test-pin";
 
     const response = await proxy(
-      new NextRequest("http://localhost/api/slow-trading/coin-metadata"),
+      new NextRequest("http://localhost/api/system/coin/metadata"),
     );
 
     expect(response.headers.get("x-middleware-next")).toBe("1");
@@ -27,7 +27,7 @@ describe("dashboard authentication proxy", () => {
 
     const response = await proxy(
       new NextRequest(
-        "http://localhost/api/slow-trading/debug/broadcast-coin-metadata",
+        "http://localhost/api/system/debug/broadcast-coin-metadata",
       ),
     );
 

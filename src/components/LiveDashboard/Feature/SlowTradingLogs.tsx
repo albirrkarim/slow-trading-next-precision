@@ -504,7 +504,7 @@ function SlowTradingLogSection<K extends GenericLogKind>(props: {
     setError(null);
     try {
       const response = await axios.get<LogEntryByKind[K][]>(
-        endpoints.slow.prod.logs,
+        endpoints.system.logs,
         {
           params: { kind },
         },
@@ -532,7 +532,7 @@ function SlowTradingLogSection<K extends GenericLogKind>(props: {
       setDeletingId(id);
       setError(null);
       try {
-        await axios.delete(endpoints.slow.prod.logs, {
+        await axios.delete(endpoints.system.logs, {
           params: { id, kind },
         });
         setRows((current) => current.filter((row) => row.id !== id));
@@ -560,7 +560,7 @@ function SlowTradingLogSection<K extends GenericLogKind>(props: {
     setDeletingId(DELETE_ALL_ID);
     setError(null);
     try {
-      await axios.delete(endpoints.slow.prod.logs, {
+      await axios.delete(endpoints.system.logs, {
         params: { all: "true", kind },
       });
       setRows([]);
@@ -730,7 +730,7 @@ export function SlowTradingErrorLogs() {
 
     try {
       const response = await axios.get<RuntimeErrorLogEntry[]>(
-        endpoints.slow.prod.logs,
+        endpoints.system.logs,
         { params: { kind: "errors" } },
       );
       setRows(response.data);
@@ -772,7 +772,7 @@ export function SlowTradingErrorLogs() {
         const response = await axios.patch<{
           updated: RuntimeErrorLogEntry[];
         }>(
-          endpoints.slow.prod.logs,
+          endpoints.system.logs,
           { ids, status },
           { params: { kind: "errors" } },
         );
@@ -809,7 +809,7 @@ export function SlowTradingErrorLogs() {
     setDeletingId(id);
     setError(null);
     try {
-      await axios.delete(endpoints.slow.prod.logs, {
+      await axios.delete(endpoints.system.logs, {
         params: { id, kind: "errors" },
       });
       setRows((current) => current.filter((row) => row.id !== id));
@@ -839,7 +839,7 @@ export function SlowTradingErrorLogs() {
     setDeletingId(DELETE_ALL_ID);
     setError(null);
     try {
-      await axios.delete(endpoints.slow.prod.logs, {
+      await axios.delete(endpoints.system.logs, {
         params: { all: "true", kind: "errors" },
       });
       setRows([]);

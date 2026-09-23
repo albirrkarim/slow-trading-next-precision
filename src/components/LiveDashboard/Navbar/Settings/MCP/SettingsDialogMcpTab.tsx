@@ -159,13 +159,13 @@ export default function SettingsDialogMcpTab() {
   const [visibleTokens, setVisibleTokens] = useState<Record<string, string>>({});
   const [origin, setOrigin] = useState("");
 
-  const mcpBaseUrl = `${origin || "https://fast.reinventwp.com"}/api/mcp`;
+  const mcpBaseUrl = `${origin || "https://fast.reinventwp.com"}${endpoints.mcp}`;
 
   const loadTokens = useCallback(async () => {
     setLoading(true);
     try {
       const response = await axios.get<McpTokensResponse>(
-        endpoints.slow.prod.mcpTokens,
+        endpoints.system.mcpTokens,
       );
       setTokens(response.data.tokens ?? []);
       setTools(response.data.tools ?? []);
@@ -194,7 +194,7 @@ export default function SettingsDialogMcpTab() {
     setSavingId(token.id);
     try {
       const response = await axios.patch<McpTokensResponse>(
-        endpoints.slow.prod.mcpTokens,
+        endpoints.system.mcpTokens,
         {
           id: token.id,
           ...patch,
@@ -225,7 +225,7 @@ export default function SettingsDialogMcpTab() {
     setSavingId(token.id);
     try {
       const response = await axios.delete<McpTokensResponse>(
-        endpoints.slow.prod.mcpTokens,
+        endpoints.system.mcpTokens,
         {
           data: {
             id: token.id,
@@ -248,7 +248,7 @@ export default function SettingsDialogMcpTab() {
     setSavingId("new");
     try {
       const response = await axios.post<McpCreateResponse>(
-        endpoints.slow.prod.mcpTokens,
+        endpoints.system.mcpTokens,
         {
           name: newTokenName,
           permissions: newTokenPermissions,
@@ -274,7 +274,7 @@ export default function SettingsDialogMcpTab() {
     setSavingId(token.id);
     try {
       const response = await axios.post<McpRevealResponse>(
-        endpoints.slow.prod.mcpTokens,
+        endpoints.system.mcpTokens,
         {
           action: "reveal",
           id: token.id,

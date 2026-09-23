@@ -4,7 +4,7 @@ import {
   buildDashboardVolatilityCacheWindow,
   filterDashboardEntrySignalResponse,
   getDashboardVolatilityCacheBucket,
-} from "@/pages/api/dashboard/volatility";
+} from "@/pages/api/market/volatility";
 import { describe, expect, it } from "vitest";
 
 function point(id: string, t: number): VolatilityPoint {

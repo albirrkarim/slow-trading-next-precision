@@ -26,7 +26,7 @@ export default async function handler(
     res.status(200).json(bundle);
   } catch (error: any) {
     await runtimeLogs.appendError({
-      source: "api.slow-trading.debug.export",
+      source: "api.system.debug.export",
       error,
       details: {
         method: req.method,

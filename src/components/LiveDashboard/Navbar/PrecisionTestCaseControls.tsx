@@ -77,7 +77,7 @@ export default function PrecisionTestCaseControls({
     setFilesLoading(true);
     try {
       const response = await axios.get<PrecisionTestCaseResponse>(
-        endpoints.slow.prod.precisionTestCase,
+        endpoints.system.precisionTestCase,
       );
       setStatus(response.data);
       setFiles(response.data.files ?? []);
@@ -119,7 +119,7 @@ export default function PrecisionTestCaseControls({
     setLoading(true);
     try {
       const response = await axios.post(
-        endpoints.slow.prod.precisionTestCase,
+        endpoints.system.precisionTestCase,
         { action },
       );
       if (action === "end" && response.data?.fileName) {
@@ -150,7 +150,7 @@ export default function PrecisionTestCaseControls({
 
     setDeletingFile(fileName);
     try {
-      await axios.delete(endpoints.slow.prod.precisionTestCase, {
+      await axios.delete(endpoints.system.precisionTestCase, {
         data: { fileName },
       });
       setError(null);

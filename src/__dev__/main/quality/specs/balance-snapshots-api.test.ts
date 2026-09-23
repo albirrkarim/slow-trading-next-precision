@@ -30,7 +30,7 @@ vi.mock("@/lib/system/storage", () => ({
   },
 }));
 
-import handler from "@/pages/api/slow-trading/balance-snapshots";
+import handler from "@/pages/api/system/balance/snapshots";
 
 describe("balance snapshots API", () => {
   beforeEach(() => {

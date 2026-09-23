@@ -2,45 +2,36 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 const AUTH_COOKIE = "dashboard_auth";
-const DEV_BACKTEST_ENABLED =
-  process.env.NODE_ENV !== "production" ||
-  process.env.ENABLE_DEV_BACKTEST === "1" ||
-  process.env.NEXT_PUBLIC_ENABLE_DEV_BACKTEST === "1";
 
 function isProtectedPath(pathname: string) {
   return (
     pathname === "/" ||
-    pathname === "/slow" ||
-    pathname.startsWith("/slow/") ||
-    (pathname.startsWith("/api/slow-trading") &&
-      pathname !== "/api/slow-trading/coin-metadata") ||
-    (DEV_BACKTEST_ENABLED &&
-      (pathname.startsWith("/dev/dynamic-trade") ||
-        pathname.startsWith("/dev/coins")))
+    (pathname.startsWith("/api/system") &&
+      pathname !== "/api/system/coin/metadata")
   );
 }
 
 function isProtectedApiPath(pathname: string) {
   return (
-    pathname.startsWith("/api/slow-trading") &&
-    pathname !== "/api/slow-trading/coin-metadata"
+    pathname.startsWith("/api/system") &&
+    pathname !== "/api/system/coin/metadata"
   );
 }
 
-function isSlowSyncTokenPath(pathname: string) {
+function isSyncTokenPath(pathname: string) {
   return (
-    pathname === "/api/slow-trading/debug/export" ||
-    pathname === "/api/slow-trading/debug/import"
+    pathname === "/api/system/debug/export" ||
+    pathname === "/api/system/debug/import"
   );
 }
 
-function hasValidSlowSyncToken(req: NextRequest) {
+function hasValidSyncToken(req: NextRequest) {
   const expectedToken = process.env.SYNC_TOKEN?.trim();
   if (!expectedToken) {
     return false;
   }
 
-  return req.headers.get("x-slow-sync-token") === expectedToken;
+  return req.headers.get("x-sync-token") === expectedToken;
 }
 
 function isPublicPath(pathname: string) {
@@ -118,7 +109,7 @@ export async function proxy(req: NextRequest) {
   }
 
   const isApiRequest = isProtectedApiPath(pathname);
-  if (isSlowSyncTokenPath(pathname) && hasValidSlowSyncToken(req)) {
+  if (isSyncTokenPath(pathname) && hasValidSyncToken(req)) {
     return NextResponse.next();
   }
 
@@ -156,15 +147,5 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    "/",
-    "/slow",
-    "/slow/:path*",
-    "/api/slow-trading",
-    "/api/slow-trading/:path*",
-    "/dev/dynamic-trade",
-    "/dev/dynamic-trade/:path*",
-    "/dev/coins",
-    "/dev/coins/:path*",
-  ],
+  matcher: ["/", "/api/system", "/api/system/:path*"],
 };

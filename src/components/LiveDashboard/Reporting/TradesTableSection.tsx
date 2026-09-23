@@ -477,7 +477,7 @@ export function TradesTableSection({
     try {
       const response = await axios.delete<{
         state?: RuntimeDashboardState;
-      }>(endpoints.slow.prod.history, {
+      }>(endpoints.system.history, {
         data: {
           account: row.account,
           mode,

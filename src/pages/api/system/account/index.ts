@@ -89,7 +89,7 @@ export default async function handler(
   } catch (error: any) {
     await runtimeLogs
       .appendError({
-        source: "api.slow-trading.exchange-accounts",
+        source: "api.system.exchange-accounts",
         error,
         details: {
           method: req.method,

@@ -122,37 +122,43 @@ constants (`SYSTEM = "${API}/system"`, …). `PRODUCTION_DOMAIN` stays `""`.
 
 ## Phases
 
-### Phase 1 — market data prefix — [ ]
+### Phase 1 — market data prefix — [x] complete
 
-- [ ] `pages/api/dashboard/*` → `pages/api/market/*` (4 routes).
-- [ ] Registry: `slow.dev` → `market`; repoint `LiveDashboardPage`,
-      `TradeChartBase`, `KlinesCard` (~7 call sites).
+- [x] `pages/api/dashboard/*` → `pages/api/market/*` (4 routes).
+- [x] Registry: `slow.dev` → `market`; repointed `LiveDashboardPage`,
+      `TradeChartBase`, `KlinesCard`.
 
-### Phase 2 — system prefix + grouping — [ ]
+### Phase 2 — system prefix + grouping — [x] complete
 
-- [ ] `pages/api/slow-trading/*` → `pages/api/system/*` with the nested
-      folders above (`balance/`, `action/`, `coin/`, `black-swan/`,
-      `account/`, `exchange/`); `storage.ts` → `state.ts`.
-- [ ] Registry: `slow.prod` → `system` with nested groups; repoint ~35
+- [x] `pages/api/slow-trading/*` → `pages/api/system/*` with the nested
+      folders above (`balance/`, `manual/`, `coin/`, `black-swan/`,
+      `account/`, `exchange/`); `storage.ts` → `state.ts`. (`action/` was
+      named `manual/` to match `production.manual.*`.)
+- [x] Registry: `slow.prod` → `system` with nested groups; repointed all
       call sites (dashboard page, navbar, settings dialogs, tests).
-- [ ] Route-internal imports updated; no legacy path strings remain.
+- [x] Route-internal imports updated; log `source` tags renamed
+      `api.slow-trading.*` → `api.system.*`; peer-sync URL literals
+      updated (`storage-sync`, `tag-sync`).
 
-### Phase 3 — registry exhaustiveness — [ ]
+### Phase 3 — registry exhaustiveness — [x] complete
 
-- [ ] Add `pin.{login,logout}` and `mcp` entries; repoint `ButtonLogout`,
-      `PinClient`.
-- [ ] Add `system.debug.{export,import}` entries (external-tool routes).
+- [x] Added `pin.{login,logout}` and `mcp` entries; repointed
+      `ButtonLogout`, `PinClient`, `SettingsDialogMcpTab`.
+- [x] Added `system.debug.{exportData,importData}` entries.
 
-### Phase 4 — proxy cleanup — [ ]
+### Phase 4 — proxy cleanup — [x] complete
 
-- [ ] Matcher + `isProtectedPath`/`isProtectedApiPath` move to
-      `/api/system`; drop `/slow/*`, `/dev/dynamic-trade/*`, `/dev/coins/*`.
-- [ ] `isSlowSyncTokenPath` → new debug paths; rename sync token header.
-- [ ] Preserve the `coin-metadata` auth exception.
+- [x] Matcher + `isProtectedPath`/`isProtectedApiPath` on `/api/system`;
+      dropped `/slow/*`, `/dev/dynamic-trade/*`, `/dev/coins/*` matchers
+      and the dead `DEV_BACKTEST_ENABLED` gate.
+- [x] `isSyncTokenPath`/`hasValidSyncToken` renamed; header
+      `x-slow-sync-token` → `x-sync-token` (sender + receiver updated).
+- [x] `coin-metadata` auth exception preserved at `/api/system/coin/metadata`.
 
-## Verification
+## Verification — [x] complete
 
-- [ ] `npm run type` and `npm run quality` after each phase.
-- [ ] Final sweep: zero `slow-trading`/`/api/dashboard/` literals in `src/`;
-      every `pages/api` route reachable via `endpoints` or documented as
-      external-only.
+- [x] `npm run type` clean; `npm run quality` — 62 test files, 201 tests,
+      all passing (3 pre-existing lint warnings).
+- [x] Final sweep: zero `slow-trading`/`/api/dashboard/` path literals in
+      `src/`; every `pages/api` route reachable via `endpoints` or
+      documented as external-only.

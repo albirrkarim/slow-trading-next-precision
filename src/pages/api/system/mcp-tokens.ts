@@ -84,7 +84,7 @@ export default async function handler(
   } catch (error: any) {
     await runtimeLogs
       .appendError({
-        source: "api.slow-trading.mcp-tokens",
+        source: "api.system.mcp-tokens",
         error,
         details: {
           method: req.method,

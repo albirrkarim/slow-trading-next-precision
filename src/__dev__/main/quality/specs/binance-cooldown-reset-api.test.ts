@@ -11,7 +11,7 @@ vi.mock("@/lib/system/storage", () => ({
   runtimeLogs: { appendError: mocks.appendError },
 }));
 
-import handler from "@/pages/api/slow-trading/binance-cooldown-reset";
+import handler from "@/pages/api/system/exchange/cooldown-reset";
 
 describe("Binance cooldown reset API", () => {
   beforeEach(() => {

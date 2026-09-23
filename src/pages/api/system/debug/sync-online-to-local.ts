@@ -31,7 +31,7 @@ export default async function handler(
   } catch (error: any) {
     await runtimeLogs
       .appendError({
-        source: "api.slow-trading.debug.sync-online-to-local",
+        source: "api.system.debug.sync-online-to-local",
         error,
         details: {
           method: req.method,

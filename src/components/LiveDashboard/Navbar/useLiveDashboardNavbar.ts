@@ -137,11 +137,11 @@ export function useLiveDashboardNavbar({
 
       const { mcp: _mcp, ...runtime } = configDraft.runtime;
 
-      await axios.put(endpoints.slow.prod.exchangeAccounts, {
+      await axios.put(endpoints.system.account.list, {
         accounts: configDraft.accounts,
       });
 
-      await axios.put(endpoints.slow.prod.storage, {
+      await axios.put(endpoints.system.state, {
         config: configDraft.management,
         ...runtime,
         account: selectedAccountSlug,
@@ -174,14 +174,14 @@ export function useLiveDashboardNavbar({
 
     setTryingWithdraw(true);
     try {
-      await axios.put(endpoints.slow.prod.storage, {
+      await axios.put(endpoints.system.state, {
         account: selectedAccountSlug,
         safeHavenUSDT: Math.max(0, Number(safeHavenUSDT) || 0),
         withdrawal: buildWithdrawalPayload(configDraft, selectedAccountSlug),
       });
 
       const response = await axios.post<SlowTradingWithdrawTryResponse>(
-        endpoints.slow.prod.withdraw,
+        endpoints.system.withdraw,
         { scheduleId },
       );
       alert(response.data.message);
@@ -202,7 +202,7 @@ export function useLiveDashboardNavbar({
   const refreshBalance = async (accountSlug: string) => {
     setRefreshingBalanceAccount(accountSlug);
     try {
-      await axios.post(endpoints.slow.prod.balanceRefresh, {
+      await axios.post(endpoints.system.balance.refresh, {
         account: accountSlug,
       });
       await onRefresh();
@@ -243,7 +243,7 @@ export function useLiveDashboardNavbar({
         0,
         Number(account.sandbox.initialBalanceUSDT) || 0,
       );
-      await axios.post(endpoints.slow.prod.reset, {
+      await axios.post(endpoints.system.reset, {
         account: account.slug,
         initialBalanceUSDT,
       });
@@ -274,7 +274,7 @@ export function useLiveDashboardNavbar({
 
     setSyncingOnlineStorage(true);
     try {
-      const response = await axios.post(endpoints.slow.prod.syncOnlineToLocal, {
+      const response = await axios.post(endpoints.system.debug.syncOnlineToLocal, {
         onlineBaseUrl: normalizedOnlineBaseUrl,
       });
       const backupPath = response.data?.backupPath
@@ -314,7 +314,7 @@ export function useLiveDashboardNavbar({
 
     setPushingOnlineStorage(true);
     try {
-      const response = await axios.post(endpoints.slow.prod.syncLocalToOnline, {
+      const response = await axios.post(endpoints.system.debug.syncLocalToOnline, {
         onlineBaseUrl: normalizedOnlineBaseUrl,
       });
       const backupPath = response.data?.backupPath
