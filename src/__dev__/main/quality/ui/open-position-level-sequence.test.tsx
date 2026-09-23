@@ -67,7 +67,6 @@ describe("OpenPositionLevelSequence", () => {
       <OpenPositionLevelSequence
         currentLevel={-3}
         entryLevel={-1}
-        reserveMultiplier={2}
         spendableQuoteAsset={100}
         watchState={{
           executions: [

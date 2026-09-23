@@ -20,6 +20,7 @@ interface ReserveStep {
 }
 
 interface AveragingTrigger {
+  adaptiveMultiplier?: number;
   allocationPct?: number;
   level?: number;
   monitoringState?: PositionLastMonitoringStage;
@@ -38,7 +39,6 @@ interface BuildOpenPositionLevelSequenceParams {
   entryLevel?: number;
   entryTime?: number;
   markPrice?: number;
-  reserveMultiplier?: number;
   spendableQuoteAsset?: number;
   volatilityPoints?: VolatilityPoint[];
   watchState?: WatchState;
@@ -143,6 +143,7 @@ function getTargetHitSequence({
       const execution = averagingExecutionByLevel.get(levelKey(point.lvl));
 
       return {
+        adaptiveMultiplier: execution?.adaptiveMultiplier,
         averagingMultiplier: execution?.allocationPct,
         coveredMarginUsdt: 0,
         isAveraged,
@@ -341,6 +342,7 @@ export function buildOpenPositionLevelSequence({
 
     return {
       ...item,
+      adaptiveMultiplier: execution?.adaptiveMultiplier,
       averagingMultiplier: execution?.allocationPct,
       coveredMarginUsdt,
       driftPct: index === currentIndex ? currentDriftPct : undefined,
@@ -358,7 +360,6 @@ export default function OpenPositionLevelSequence({
   entryLevel,
   entryTime,
   markPrice,
-  reserveMultiplier = 2,
   spendableQuoteAsset,
   volatilityPoints,
   watchState,
@@ -377,7 +378,6 @@ export default function OpenPositionLevelSequence({
   return (
     <PositionLevelSequence
       items={items}
-      reserveMultiplier={reserveMultiplier}
     />
   );
 }

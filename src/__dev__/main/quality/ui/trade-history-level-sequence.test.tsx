@@ -216,7 +216,6 @@ describe("trade-history level sequence", () => {
           mode="sandbox"
           onHistoryChange={vi.fn()}
           readOnly
-          reserveMultiplier={2}
         />
       </SnackbarProvider>,
     );
@@ -298,7 +297,6 @@ describe("trade-history level sequence", () => {
           mode="sandbox"
           onHistoryChange={vi.fn()}
           readOnly
-          reserveMultiplier={2}
         />
       </SnackbarProvider>,
     );

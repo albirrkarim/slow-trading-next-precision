@@ -369,7 +369,7 @@ export default function OpenPositionItem({
               entryLevel={position.opened.vPoint.lvl}
               entryTime={position.opened.t}
               markPrice={position.pnl.markPrice}
-              reserveMultiplier={config.watchReservePctAlloc ?? 2}
+
               spendableQuoteAsset={spendableQuoteAsset}
               volatilityPoints={volatilityPoints}
               watchState={position.strategy.averaging}

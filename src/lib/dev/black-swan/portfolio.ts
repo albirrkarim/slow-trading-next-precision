@@ -898,6 +898,7 @@ function simulate(params: {
           )
             .filter((execution) => execution.t <= protectedExit.t)
             .map((execution) => ({
+              adaptiveMultiplier: execution.adaptiveMultiplier,
               level: execution.level,
               marginUsdt: execution.marginUsdt,
               multiplier: Math.max(

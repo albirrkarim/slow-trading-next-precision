@@ -103,6 +103,7 @@ export interface BlackSwanSavingsVPoint {
 }
 
 export interface BlackSwanSavingsAveragingExecution {
+  adaptiveMultiplier?: number;
   level: number;
   marginUsdt: number;
   multiplier: number;

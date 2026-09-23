@@ -88,6 +88,7 @@ function buildLevelSequence(
       state: hasAveraging ? "passed" : "current",
     },
     ...position.averagingExecutions.map((execution, index) => ({
+      adaptiveMultiplier: execution.adaptiveMultiplier,
       averagingMultiplier: execution.multiplier,
       coveredMarginUsdt: 0,
       isAveraged: true,
@@ -287,9 +288,6 @@ export default function BlackSwanPositionScenarios({
 
             <PositionLevelSequence
               items={buildLevelSequence(position)}
-              reserveMultiplier={
-                position.averagingExecutions[0]?.multiplier ?? 2
-              }
               showTargetAlert={false}
             />
 

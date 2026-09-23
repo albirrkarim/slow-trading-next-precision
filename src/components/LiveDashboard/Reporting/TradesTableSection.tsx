@@ -317,6 +317,13 @@ function TradeChartDialog({
                   {(row.pnl.netPct ?? 0).toFixed(2)}% ($
                   {(row.pnl.netUsdt ?? 0).toFixed(2)})
                 </Typography>
+                <Box sx={{ flexBasis: "100%" }}>
+                  {/* BOTH:REUSABLE_LEVEL_SEQUENCE */}
+                  <PositionLevelSequence
+                    items={buildHistoryPositionLevelSequence(row)}
+                    showTargetAlert={false}
+                  />
+                </Box>
               </>
             }
           />
@@ -374,7 +381,6 @@ export function TradesTableSection({
   mode,
   onHistoryChange,
   readOnly = false,
-  reserveMultiplier = 2,
 }: {
   accounts?: TradeHistoryAccount[];
   exchangeType: ExchangeType;
@@ -386,7 +392,6 @@ export function TradesTableSection({
     refreshDashboard?: boolean,
   ) => void;
   readOnly?: boolean;
-  reserveMultiplier?: number;
 }) {
   const { enqueueSnackbar } = useSnackbar();
   const [page, setPage] = useState(0);
@@ -732,7 +737,6 @@ export function TradesTableSection({
                       {/* BOTH:REUSABLE_LEVEL_SEQUENCE */}
                       <PositionLevelSequence
                         items={buildHistoryPositionLevelSequence(row)}
-                        reserveMultiplier={reserveMultiplier}
                         showTargetAlert={false}
                       />
                     </Box>

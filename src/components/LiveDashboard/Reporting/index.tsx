@@ -215,7 +215,6 @@ export default function SlowTradingReporting({
             void onRefresh?.();
           }
         }}
-        reserveMultiplier={dashboardState.config.watchReservePctAlloc ?? 2}
       />
     </Box>
   );
