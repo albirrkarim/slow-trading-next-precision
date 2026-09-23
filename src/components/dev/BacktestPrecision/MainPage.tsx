@@ -19,6 +19,7 @@ import { useEffect, useState } from "react";
 import { delayExecution } from "../../client/utils";
 import { endpoints } from "../../endpoints";
 import PrecisionBTestConfig, { DEFAULT_BACKTEST_CONFIG } from "./Config";
+import BacktestDailyPnlCalendar from "./DailyPnlCalendar";
 import type { BacktestConfig } from "./types";
 import VPointsResult from "./VPointsResult";
 
@@ -262,6 +263,14 @@ export default function DynamicTradeAnalytics() {
 
             {error && <Alert severity="error" sx={{ m: 2 }}>{error}</Alert>}
 
+            {data && (
+                <Box sx={{ m: 1 }}>
+                    <BacktestDailyPnlCalendar
+                        positions={data.positions}
+                        settings={backtestConfig.settings}
+                    />
+                </Box>
+            )}
             {data && <VPointsResult result={data} />}
         </Box>
     );
