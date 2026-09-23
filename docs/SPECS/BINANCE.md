@@ -54,23 +54,21 @@ TC: `PROD:LAZY_BALANCE_REFRESH`
 | Speedup | 1 minute | Market preparation and monitoring for positions matching a Speedup rule. |
 | Standard Monitoring | 5 minutes | Market preparation and monitoring for open positions not owned by Speedup. |
 | Management | 5 minutes | Stored volatility/market metadata rules; any refresh it invokes still uses the coordinator. |
-| Capture Entry | 5 minutes | Market preparation, entry analysis, queue work, and possible order execution. |
+| Capture Entry | 5 minutes | Market preparation, entry analysis, and possible order execution. |
 
-The runner starts each loop immediately. Speedup, Standard Monitoring, and
-Capture Entry pass through the runner's stage queue and cannot overlap one
-another. A position is assigned to Speedup or Standard Monitoring, never both,
-for one classification pass.
+The runner dispatches each due stage in a fixed order — risk sentinel, speedup,
+standard monitoring, management, capture entry — and every stage run
+serializes through the engine's single run queue, so stages never overlap one
+another or an operator-triggered pass. A position is assigned to Speedup or
+Standard Monitoring, never both, for one classification pass.
 
-Risk Sentinel and Management have independent timers and can overlap another
-stage at the task level. Black Swan analysis therefore can coincide with a
-Speedup or Standard pass. This is intentional: the Binance request coordinator
-serializes the actual REST callbacks, observes request weight, and enforces the
-shared persistent cooldown before any callback. Black Swan evidence is shared
-once across all accounts.
+Inside a stage, the Binance request coordinator serializes the actual REST
+callbacks, observes request weight, and enforces the shared persistent cooldown
+before any callback. Black Swan evidence is shared once across all accounts.
 
-TC: `PROD:SPEEDUP_STAGE`
+TC: `BOTH:SPEEDUP_STAGE`
 
-TC: `PROD:STANDARD_MONITORING_STAGE`
+TC: `BOTH:STANDARD_MONITORING_STAGE`
 
 TC: `PROD:BINANCE_REQUEST_COORDINATOR`
 

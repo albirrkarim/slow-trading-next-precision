@@ -29,11 +29,14 @@ rebuild. `BOTH:` means the behavior must exist in backtest AND production;
   `MULTI_ACCOUNT_PRIVATE_STATE_ISOLATION`, `ATOMIC_PERSISTENT_JSON`,
   `CANONICAL_POSITION_STORAGE`. Each was verified running in the shared
   precision path (or shared UI/storage) in backtest before relabeling.
-- Kept `PROD:` deliberately: `SPEEDUP_STAGE` / `STANDARD_MONITORING_STAGE`
-  (RUNTIME.md, BINANCE.md). The stages run in backtest, but the marked
-  paragraphs describe production-only mechanics — independent wall-clock
-  timers, pre-execution storage reload, serialized mode-state persistence,
-  `stageRuns` records, and the Binance request coordinator's overlap rules.
+- `SPEEDUP_STAGE` / `STANDARD_MONITORING_STAGE` / `CAPTURE_ENTRY_STAGE`
+  relabeled `BOTH:` and the marked paragraphs rewritten to match the Precision
+  engine: fixed dispatch order, `isDue` minute-boundary scheduling (wall clock
+  in production, candle timestamps in backtest), single run-queue
+  serialization, and `stageRuns`/`lastRun*` persistence noted as
+  production-only adapter hooks. `MANAGEMENT_STAGE` stays `PROD:` — the engine
+  only dispatches it when the adapter implements `onManagement`, which backtest
+  omits.
 
 ## Implemented but missing source markers
 

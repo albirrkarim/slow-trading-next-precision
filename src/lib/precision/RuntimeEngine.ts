@@ -176,6 +176,8 @@ export class RuntimeEngine {
         );
       }
 
+      // BOTH:SPEEDUP_STAGE — same dispatch in live, sandbox, and backtest;
+      // production evaluates the wall clock, backtest evaluates candle time.
       if (monitoring.schedule.isSpeedupDue(this.state)) {
         stages.push(
           await this.runStage(
@@ -190,6 +192,7 @@ export class RuntimeEngine {
         );
       }
 
+      // BOTH:STANDARD_MONITORING_STAGE
       if (monitoring.schedule.isStandardDue(this.state)) {
         stages.push(
           await this.runStage(
@@ -217,6 +220,7 @@ export class RuntimeEngine {
         );
       }
 
+      // BOTH:CAPTURE_ENTRY_STAGE — the shared entry path in every mode.
       if (monitoring.schedule.isCaptureEntryDue(this.state)) {
         stages.push(
           await this.runStage(

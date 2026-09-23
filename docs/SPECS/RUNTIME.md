@@ -139,20 +139,31 @@ funding snapshot. Closed history retains the final snapshot for audit.
 
 TC: `PROD:MONITORING_POSITION_FUNDING_RATE`
 
-Stage timers are independent, but balance-changing execution and mode-state
-persistence are serialized. Before a queued stage executes, it reloads current
-storage and classifies symbols again. This prevents entry, averaging, exit, and
-manual API cycles from overwriting the same persisted balance or position
-state. A stage with no eligible symbols returns without exchange execution or
-cache persistence, but it does persist its compact successful-run statistics.
+Stage scheduling is shared across live, sandbox, and backtest. Each scheduler
+tick dispatches the due stages in a fixed order — risk sentinel, speedup,
+standard monitoring, management, capture entry — and each stage's configured
+interval is evaluated on minute boundaries. Production evaluates the wall
+clock; backtest evaluates candle timestamps, so stage cadence is identical.
 
-TC: `PROD:SPEEDUP_STAGE`
+Every stage run — scheduled or operator-triggered — serializes through the
+engine's single run queue, so a stage never overlaps another stage or a manual
+pass. Speedup refreshes the shared market snapshot at 1-minute resolution;
+standard monitoring and capture entry use 5-minute resolution. The engine
+measures compact run stats for every stage in every mode; production persists
+them to `status.stageRuns` and the cycle `lastRun*` fields through adapter
+hooks, while backtest keeps them in memory only.
 
-TC: `PROD:STANDARD_MONITORING_STAGE`
+The risk-sentinel and management stages are environment-owned: the engine
+dispatches them only when the adapter implements `onRiskSentinel` or
+`onManagement`. Production implements both; backtest omits them.
+
+TC: `BOTH:SPEEDUP_STAGE`
+
+TC: `BOTH:STANDARD_MONITORING_STAGE`
 
 TC: `PROD:MANAGEMENT_STAGE`
 
-TC: `PROD:CAPTURE_ENTRY_STAGE`
+TC: `BOTH:CAPTURE_ENTRY_STAGE`
 
 Each mode retains the latest successful pass for every stage in the optional,
 backward-compatible `modeState.stageRuns` map. Each record contains its
