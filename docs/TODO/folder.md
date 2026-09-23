@@ -472,24 +472,39 @@ against clean APIs; non-goal pages remain in legacy code until deletion.
       `timeMsToReadable`/`vpoint-pct-distribution` ported to
       `system/utils`; `windowsMs`, `DECISION_MODELS`, and
       `VOLATILITY_THRESHOLD` live in `system/constants`; dashboard/config
-      defaults come from `runtimeDefaults`. `devBacktest/` callers stay on
-      legacy tooling until Phase 7: `pages/api/dev/*`, `dev/*` pages,
-      coin-metadata routes/components (`coin-metadata`,
-      `debug/*coin-metadata*`, `CoinTagManagerDialog`,
-      `LiveDashboardPage`), Backswan preview components,
-      `black-swan-preview`, and the `api/mcp.ts` tag-handler registration —
-      relocating `devBacktest/coins` + `black-swan` + `api/` requires
-      porting their `dynamic`/`datasets`/`trading` internals
-      (Phase-7-scale, same as `evaluate/`). `components/api/dynamic/*`,
-      `components/api/utils.tsx`, and `components/api/production/utils.ts`
-      are quarry-adjacent: consumed only by rejected dev surfaces and
-      legacy tests.
-- [x] Verify no code outside the legacy quarry imports legacy folders.
-      Verified: the only legacy importers left in `pages/`, `components/`,
-      `app/`, and `instrumentation.ts` are the Phase-7 deletion candidates
-      listed above. No live surface references `slowTrading`, `dynamic`,
-      `brain`, `evaluate`, `datasets`, `devBacktest`, or the old
-      `trading/*` internals.
+      defaults come from `runtimeDefaults`. `devBacktest/` callers split into two groups.
+      **Rejected surfaces** — deleted in Phase 7: `/dev/backtest-vrails`,
+      `pages/api/dev/dynamic-trade/*`, `/dev/coins` + `/dev/black-swan`
+      pages and their routes (`api/dev/coins`, `api/dev/black-swan`),
+      `devBacktest/api/{coinFinder,dynamicTradeBacktest,leaderboards}`,
+      `devBacktest/volatility-dataset`, the coin-analysis modules
+      `devBacktest/coins/{capital-efficiency,correlation,health,result}`,
+      `components/api/dynamic/*`, `components/api/utils.tsx`, and
+      `components/api/production/utils.ts`.
+      **Live features pending relocation** — used by the approved pages
+      (`/`, `/dev/precision-checker`, `/dev/backtest-precision`), so the
+      rule is *move, don't delete*: coin metadata (dashboard tag UI,
+      `CoinTagManagerDialog`, `/api/slow-trading/coin-metadata`,
+      `debug/*coin-metadata*` routes, `api/mcp.ts` tag handlers) is
+      backed by `devBacktest/coins/{tags,tag-sync,tag-types,
+      filter-config}` + `devBacktest/api/coinTags` → relocate to
+      `lib/dev/coins` (only legacy dep: `tag-sync` uses `tradeLog` →
+      swap to `systemLog`); the Black Swan savings preview
+      (`BlackSwanSavingsPreview` in the settings dialog →
+      `/api/slow-trading/black-swan-preview`) is backed by
+      `devBacktest/black-swan` + `devBacktest/api/blackSwanBacktest`,
+      which internally pull `slowTrading/{quick-backtest,stages,
+      watch-reserve}`, `trading/*`, `dynamic`, `datasets` — relocating
+      means porting the preview onto the Precision engine;
+      `env/devBacktest.isDevBacktestEnabled` → `lib/dev` (consumed by
+      the four approved dev surfaces).
+- [ ] Verify no code outside the legacy quarry imports legacy folders.
+      Pending: the live-feature relocations listed above
+      (`devBacktest/coins` tag store, `devBacktest/black-swan` preview,
+      `env/devBacktest` flag). Verified so far: no live surface
+      references `slowTrading`, `dynamic`, `brain`, `evaluate`,
+      `datasets`, or the old `trading/*` internals — only the listed
+      `devBacktest`/`env` edges remain.
 
 ### Phase 7 — deletion (separate approval required)
 
@@ -501,6 +516,11 @@ showing:
 - Which tests still import each legacy folder.
 - Which files are wholly unreachable.
 - Precision comparison results for recorded cases.
+
+Deletion removes folders and rejected surfaces, not live features: any
+code inside the roots below that is still used by `/`,
+`/dev/precision-checker`, or `/dev/backtest-precision` relocates to an
+authoritative root under Phase 6 before its folder can be deleted.
 
 Only then ask for explicit deletion approval for:
 
