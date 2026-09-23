@@ -9,6 +9,7 @@ import type {
   RuntimeManagementConfig,
 } from "../runtime";
 import { systemLog } from "../logging";
+import format from "../utils/format";
 import pnl from "./pnl";
 import type {
   LevelBasedPctDriftStopLossCondition,
@@ -1119,9 +1120,8 @@ function execute(
     const signedUsdt = `${netUsdt >= 0 ? "+" : ""}${netUsdt.toFixed(2)}`;
     const signedPct = `${netPct >= 0 ? "+" : ""}${netPct.toFixed(2)}`;
     systemLog.info(
-      "trading",
       `EXIT  ${position.symbol} ${position.direction} ` +
-        `${timeMsToReadable(closed.t)} | ` +
+        `${format.timeForLog(closed.t)} | ` +
         `$${signedUsdt} (${signedPct}%) | ` +
         `${closed.reason}`,
     );

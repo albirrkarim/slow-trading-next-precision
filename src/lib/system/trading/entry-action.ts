@@ -7,6 +7,7 @@ import type {
   RuntimeManagementConfig,
 } from "../runtime";
 import { systemLog } from "../logging";
+import format from "../utils/format";
 import type {
   BalanceSummary,
   EntryRecommendation,
@@ -477,7 +478,7 @@ function applyFill(
   if (context.state.mode === "backtest") {
     systemLog.info(
       `ENTRY ${position.symbol} ${position.direction} ` +
-        `${new Date(position.opened.t).toISOString()} | ` +
+        `${format.timeForLog(position.opened.t)} | ` +
         `margin $${position.exposure.marginUsdt.toFixed(2)} | ` +
         `${position.opened.vPoint.id}`,
     );

@@ -29,8 +29,14 @@ function timeMsToReadable(
   return moment(timeMs).format(format);
 }
 
+/** Formats a millisecond timestamp for log display like "04 Aug 2026 19:55". */
+function timeForLog(timeMs?: number): string {
+  return timeMsToReadable(timeMs, "DD MMM YYYY HH:mm");
+}
+
 const format = {
   duration: formatDuration,
+  timeForLog,
   timeMsToReadable,
 } as const;
 
