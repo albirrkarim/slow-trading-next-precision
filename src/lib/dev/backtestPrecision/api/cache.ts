@@ -1,10 +1,14 @@
 import { createHash } from "crypto";
 import fs from "fs-extra";
 import path from "path";
-import { jsonFile, storageFiles } from "@/lib/system/storage";
+import { jsonFile } from "@/lib/system/storage";
 import type { BacktestPrecisionResult } from "../backtest/backtest-precision-types";
 
 const CACHE_VERSION = 1;
+
+// Local-only cache — `storage/persistent` syncs between instances, so
+// results live under the gitignored `storage/cache/` next to `datasets/`.
+const RESULTS_DIR = path.resolve("storage/cache/backtest-precision");
 
 interface BacktestResultCacheFile {
   createdAt: number;
@@ -42,7 +46,7 @@ function stableStringify(value: unknown): string {
 }
 
 function cacheFilePath(cacheKey: string): string {
-  return path.join(storageFiles.dev.backtestResults, `${cacheKey}.json`);
+  return path.join(RESULTS_DIR, `${cacheKey}.json`);
 }
 
 /**
@@ -98,6 +102,9 @@ async function write(params: {
 }
 
 const backtestResultCache = {
+  get dir() {
+    return RESULTS_DIR;
+  },
   key,
   read,
   write,

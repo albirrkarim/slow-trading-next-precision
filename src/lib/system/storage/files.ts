@@ -117,9 +117,6 @@ const dev = {
   get root() {
     return devDir();
   },
-  get backtestResults() {
-    return `${devDir()}/backtest-results`;
-  },
   get leaderboards() {
     return `${devDir()}/leaderboards.json`;
   },
