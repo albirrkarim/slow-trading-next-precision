@@ -40,6 +40,7 @@ vi.mock("@/lib/system/storage", () => ({
     upsert: mocks.upsert,
   },
   runtimeStorage: {
+    catalog: { load: vi.fn(async () => null) },
     history: { readRange: mocks.readRange },
     status: {
       load: vi.fn(async (mode: string) => mocks.statusByMode[mode] ?? {}),

@@ -6,17 +6,18 @@ rebuild. `BOTH:` means the behavior must exist in backtest AND production;
 
 ## Documented but not implemented in any mode
 
-- [ ] `BOTH:SAFE_HAVEN_QUEUE` + `PROD:WITHDRAW_QUEUE` +
-  `PROD:SAFE_HAVEN_SCHEDULE_QUEUE` (RUNTIME.md) — audited: the queue is
-  write-only. `system/queue` persists items and the dashboard renders them, but
-  nothing in `production/` processes them: no scheduled pass calls
-  `isDue`/`executeSchedule`, `balance.safeHavenRequest` is never consumed,
-  `autoEnabled` is never evaluated, and `lastAttemptAt`/`nextAttemptAt` are
-  never updated. `runtimeWithdrawal.schedules.execute` bypasses the queue
-  entirely (manual API only, 2 USDT cap). The dashboard copy claiming "the
-  production runner checks pending work every five minutes" is false. Decision
-  needed: implement the queue-processing stage, mark the spec sections as
-  planned, or remove them as legacy. If kept, `BOTH:SAFE_HAVEN_QUEUE` should
-  also become `PROD:` (spec text scopes it to "live and sandbox modes").
+- [x] `BOTH:SAFE_HAVEN_QUEUE` + `PROD:WITHDRAW_QUEUE` +
+  `PROD:SAFE_HAVEN_SCHEDULE_QUEUE` (RUNTIME.md) — implemented:
+  `runtimeQueue.process.run` (`system/queue/process.ts`) runs inside the
+  production management stage every ~5 minutes. It auto-queues due Safe Haven
+  and withdrawal schedules (`autoEnabled` + monthly `isDue`, per-mode/per-month
+  dedupe via `lastQueuedAt`), then processes pending items Safe Haven first:
+  partial moves bounded by `minimalAssetOnTrade` and the averaging reserve,
+  waiting items carry `lastAttemptAt`/`nextAttemptAt`/`lastMessage`, identical
+  failure messages are logged once, funded live withdrawals reuse the stable
+  `clientWithdrawId`, sandbox withdrawals complete as bookkeeping only, and
+  `balance.safeHavenRequest` is resynced to pending totals. Marker relabeled
+  to `PROD:` (queue processing is production-only; the balance fields remain
+  shared). Covered by `specs/queue-process.test.ts`.
 
 

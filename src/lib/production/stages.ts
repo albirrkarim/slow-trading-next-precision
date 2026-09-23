@@ -26,6 +26,7 @@ import blackSwan, {
 } from "@/lib/system/trading/black-swan";
 import runtimeDailyPerformance from "@/lib/system/trading/daily-performance";
 import runtimeDailyPnlLimit from "@/lib/system/trading/daily-pnl-limit";
+import runtimeQueue from "@/lib/system/queue";
 
 const SENTINEL_LOOKBACK_MINUTES = 65;
 const BREADTH_FETCH_CONCURRENCY = 4;
@@ -526,12 +527,19 @@ async function runManagement(
     });
   }
 
+  // 4. Safe Haven + withdrawal queue sweep: auto-queue due schedules, then
+  // attempt pending items (Safe Haven before withdrawals).
+  // PROD:SAFE_HAVEN_QUEUE / PROD:WITHDRAW_QUEUE / PROD:SAFE_HAVEN_SCHEDULE_QUEUE
+  const queue = await runtimeQueue.process.run({ mode, now });
+
   return {
     reports: 0,
     summary:
       `${mode} management pass | daily pnl ${formatSignedUsdt(evaluation.pnlUsdt)}` +
       `${evaluation.reached ? " (entry stop reached)" : ""}` +
-      ` | snapshots ${enabledAccounts.length}`,
+      ` | snapshots ${enabledAccounts.length}` +
+      ` | queue +${queue.queued} done ${queue.completed}` +
+      ` moved ${queue.movedUSDT.toFixed(2)} USDT`,
     symbols: enabledAccounts.length,
   };
 }

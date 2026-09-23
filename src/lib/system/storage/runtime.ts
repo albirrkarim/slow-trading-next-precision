@@ -28,6 +28,10 @@ export interface RuntimeBalanceMemory extends Record<string, unknown> {
   quoteAsset?: number;
   reservedQuoteAsset?: number;
   safeHaven?: number;
+  /** Sum of pending Safe Haven queue amounts for this account/mode. */
+  safeHavenRequest?: number;
+  /** Timestamp of the latest queued Safe Haven request. */
+  lastSafeHavenRequest?: number;
 }
 
 /** Account-owned positions + balance for one mode. */

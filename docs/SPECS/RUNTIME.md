@@ -879,7 +879,7 @@ manually deleted.
 - The item is deleted only after the full requested amount has moved into Safe
   Haven.
 
-TC: `BOTH:SAFE_HAVEN_QUEUE`
+TC: `PROD:SAFE_HAVEN_QUEUE`
 
 TC: `PROD:SAFE_HAVEN_SCHEDULE_QUEUE`
 
@@ -891,6 +891,9 @@ TC: `PROD:SAFE_HAVEN_SCHEDULE_QUEUE`
 - Automatic queue execution uses the schedule's full configured amount. It does
   not use the `2 USDT` manual-withdrawal cap.
 - A stable client withdrawal id is reused when the same queue item is retried.
+- In sandbox mode a funded withdrawal completes as bookkeeping only: it reduces
+  the virtual Safe Haven balance and records the withdrawal log without
+  submitting an exchange withdrawal.
 
 TC: `PROD:WITHDRAW_QUEUE`
 
