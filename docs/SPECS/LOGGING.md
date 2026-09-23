@@ -55,6 +55,28 @@ or use `Delete All`; both actions require confirmation.
 
 TC: `PROD:MANAGEMENT_LOG_UI`
 
+- Config Change Log
+
+Every persisted change to the effective config is recorded to
+`config.json`. Both dashboard write APIs — the state endpoint and the
+exchange-accounts endpoint — diff the stored config before and after each
+update and write one record per save, listing every changed leaf path in a
+`changes` array. Each change includes the flattened dot path, previous
+value, and next value; the record carries timestamp and source.
+Added keys have no previous value; removed keys have no next value.
+Leaf paths naming credentials (token, secret, password, API key, chat id,
+private key) store masked values instead of the real ones. Config writes
+that change nothing produce no records.
+
+TC: `PROD:CONFIG_CHANGE_LOG`
+
+The `/` dashboard displays `Config Change Logs` immediately below
+`Coin Management Logs`, using the same expandable `HeaderMetrics` section
+pattern as the other log collections. Rows are loaded only when first
+expanded and can be deleted individually or cleared with `Delete All`.
+
+TC: `PROD:CONFIG_CHANGE_LOG_UI`
+
 - Safe Haven Log
 
 When it increase or decrease or being modified i need it recorded

@@ -80,6 +80,26 @@ export default async function handler(
         await runtimeStorage.catalog.account.deleteState(removed.slug);
       }
 
+      const nextCatalog = await runtimeStorage.catalog.ensure();
+      const configChanges = runtimeStorage.catalog.diffConfig(
+        catalog.config,
+        nextCatalog.config,
+      );
+      // PROD:CONFIG_CHANGE_LOG
+      if (configChanges.length > 0) {
+        await runtimeLogs
+          .appendConfig({
+            changes: configChanges,
+            source: "dashboard.exchange-accounts",
+          })
+          .catch((logError) => {
+            systemLog.error(
+              "[slow-trading] failed to persist config-change log",
+              logError,
+            );
+          });
+      }
+
       res.status(200).json({ accounts });
       return;
     }

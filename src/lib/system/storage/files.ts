@@ -86,6 +86,9 @@ const prod = {
     get binanceCooldowns() {
       return `${prodDir()}/logs/binance_cooldowns.json`;
     },
+    get config() {
+      return `${prodDir()}/logs/config.json`;
+    },
     get errors() {
       return `${prodDir()}/logs/errors.json`;
     },

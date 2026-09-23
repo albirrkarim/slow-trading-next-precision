@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  appendConfig: vi.fn(async () => undefined),
   appendError: vi.fn(async () => undefined),
   appendManagement: vi.fn(async () => undefined),
   build: vi.fn(() => [
@@ -13,6 +14,7 @@ const mocks = vi.hoisted(() => ({
     },
   ]),
   buildCombined: vi.fn(async () => ({ activeMode: "live" })),
+  diffConfig: vi.fn(() => []),
   ensure: vi.fn(),
   notify: vi.fn(async () => undefined),
   runnerGet: vi.fn(async () => undefined),
@@ -40,11 +42,13 @@ vi.mock("@/lib/system/notification/management", () => ({
 
 vi.mock("@/lib/system/storage", () => ({
   runtimeLogs: {
+    appendConfig: mocks.appendConfig,
     appendError: mocks.appendError,
     appendManagement: mocks.appendManagement,
   },
   runtimeStorage: {
     catalog: {
+      diffConfig: mocks.diffConfig,
       ensure: mocks.ensure,
       update: mocks.update,
     },

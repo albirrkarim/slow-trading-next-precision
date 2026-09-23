@@ -1,5 +1,6 @@
 "use client";
 
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
@@ -34,10 +35,11 @@ import { useSnackbar } from "notistack";
 
 import { endpoints } from "@/components/endpoints";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
-import type { RuntimeErrorLogEntry, RuntimeErrorStatus, RuntimeLogKind, RuntimeManagementLogEntry, RuntimeSafeHavenLogEntry, RuntimeWithdrawalLogEntry } from "@/lib/system/storage";
+import type { RuntimeConfigLogEntry, RuntimeErrorLogEntry, RuntimeErrorStatus, RuntimeLogKind, RuntimeManagementLogEntry, RuntimeSafeHavenLogEntry, RuntimeWithdrawalLogEntry } from "@/lib/system/storage";
 
 
 type LogEntryByKind = {
+  config: RuntimeConfigLogEntry;
   management: RuntimeManagementLogEntry;
   safe_haven: RuntimeSafeHavenLogEntry;
   withdrawals: RuntimeWithdrawalLogEntry;
@@ -90,6 +92,82 @@ function formatUsdt(value: number | undefined) {
   }
 
   return `$${value.toFixed(2)}`;
+}
+
+function formatConfigValue(value: unknown) {
+  if (value === undefined) {
+    return "—";
+  }
+  if (value === null || typeof value !== "object") {
+    return String(value);
+  }
+
+  return JSON.stringify(value);
+}
+
+function ConfigChangeValue(props: {
+  side: "next" | "previous";
+  value: unknown;
+}) {
+  const { side, value } = props;
+
+  if (value === undefined) {
+    return (
+      <Typography
+        color="text.disabled"
+        component="span"
+        sx={{ fontStyle: "italic" }}
+        variant="caption"
+      >
+        —
+      </Typography>
+    );
+  }
+
+  const color = side === "previous" ? "error" : "success";
+  const text = formatConfigValue(value);
+  return (
+    <Tooltip title={text}>
+      <Box
+        component="span"
+        sx={(theme) => ({
+          bgcolor: alpha(theme.palette[color].main, 0.12),
+          borderRadius: 1,
+          color: theme.palette[color].dark,
+          display: "inline-block",
+          fontFamily: "monospace",
+          fontSize: 12,
+          maxWidth: 280,
+          overflow: "hidden",
+          px: 0.75,
+          py: 0.25,
+          textOverflow: "ellipsis",
+          verticalAlign: "middle",
+          whiteSpace: "nowrap",
+        })}
+      >
+        {text}
+      </Box>
+    </Tooltip>
+  );
+}
+
+function ConfigPath(props: { path: string }) {
+  const segments = props.path.split(".");
+  const leaf = segments.pop() ?? props.path;
+
+  return (
+    <>
+      {segments.length > 0 && (
+        <Box component="span" sx={{ color: "text.secondary" }}>
+          {segments.join(".")}.
+        </Box>
+      )}
+      <Box component="span" sx={{ fontWeight: 700 }}>
+        {leaf}
+      </Box>
+    </>
+  );
 }
 
 function LogsTableShell(props: {
@@ -459,6 +537,79 @@ function ManagementLogTable(props: {
             <TableCell sx={{ fontWeight: 700 }}>{row.symbol}</TableCell>
             <TableCell>{row.source}</TableCell>
             <TableCell>{row.reason}</TableCell>
+            <TableCell align="right">
+              <DeleteLogButton
+                deleting={deletingId === row.id}
+                disabled={deletingId !== null}
+                onDelete={() => onDelete(row.id)}
+              />
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </LogsTableShell>
+  );
+}
+
+function ConfigLogTable(props: {
+  deletingId: string | null;
+  error: string | null;
+  loading: boolean;
+  onDelete: (id: string) => void;
+  rows: RuntimeConfigLogEntry[];
+}) {
+  const { deletingId, error, loading, onDelete, rows } = props;
+
+  return (
+    <LogsTableShell
+      emptyLabel="No Config Change logs recorded yet."
+      error={error}
+      loading={loading}
+      rowCount={rows.length}
+    >
+      <TableHead>
+        <TableRow>
+          <TableCell>Time</TableCell>
+          <TableCell>Changes</TableCell>
+          <TableCell>Source</TableCell>
+          <TableCell align="right">Delete</TableCell>
+        </TableRow>
+      </TableHead>
+      <TableBody>
+        {rows.map((row) => (
+          <TableRow key={row.id}>
+            <TableCell sx={{ whiteSpace: "nowrap" }}>
+              {formatTime(row.createdAt)}
+            </TableCell>
+            <TableCell>
+              <Stack spacing={0.5}>
+                {(row.changes ?? []).map((change, index) => (
+                  <Stack
+                    alignItems="center"
+                    direction="row"
+                    key={index}
+                    spacing={0.75}
+                  >
+                    <Box
+                      component="span"
+                      sx={{ fontFamily: "monospace", fontSize: 12 }}
+                    >
+                      <ConfigPath path={change.path} />
+                    </Box>
+                    <ConfigChangeValue
+                      side="previous"
+                      value={change.previous}
+                    />
+                    <ArrowForwardIcon
+                      color="action"
+                      sx={{ fontSize: 14 }}
+                    />
+                    <ConfigChangeValue side="next" value={change.next} />
+                  </Stack>
+                ))}
+              </Stack>
+            </TableCell>
+            <TableCell>{row.source}</TableCell>
             <TableCell align="right">
               <DeleteLogButton
                 deleting={deletingId === row.id}
@@ -1043,6 +1194,16 @@ export function SlowTradingManagementLogs() {
   );
 }
 
+export function SlowTradingConfigLogs() {
+  return (
+    <SlowTradingLogSection
+      kind="config"
+      title="Config Change Logs"
+      renderTable={(params) => <ConfigLogTable {...params} />}
+    />
+  );
+}
+
 export function SlowTradingWithdrawalLogs() {
   return (
     <SlowTradingLogSection
@@ -1058,6 +1219,7 @@ export default function SlowTradingLogsPanel() {
     <Stack spacing={2}>
       <SlowTradingErrorLogs />
       <SlowTradingManagementLogs />
+      <SlowTradingConfigLogs />
       <SlowTradingSafeHavenLogs />
       <SlowTradingWithdrawalLogs />
     </Stack>

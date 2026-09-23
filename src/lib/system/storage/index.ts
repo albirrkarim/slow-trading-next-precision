@@ -21,6 +21,8 @@ export type {
 export type { RuntimeBalanceSnapshot } from "./balance-snapshots";
 export type {
   RuntimeBinanceCooldownLogEntry,
+  RuntimeConfigChange,
+  RuntimeConfigLogEntry,
   RuntimeBinanceHealthSnapshot,
   RuntimeErrorLogEntry,
   RuntimeErrorStatus,

@@ -40,6 +40,24 @@ export default async function handler(
       const managementSource = Array.isArray(body.symbols)
         ? "dashboard.coin-management"
         : "dashboard.settings.coin-management";
+      const configChanges = runtimeStorage.catalog.diffConfig(
+        previousCatalog.config,
+        nextCatalog.config,
+      );
+      // PROD:CONFIG_CHANGE_LOG
+      if (configChanges.length > 0) {
+        await runtimeLogs
+          .appendConfig({
+            changes: configChanges,
+            source: managementSource,
+          })
+          .catch((logError) => {
+            systemLog.error(
+              "[slow-trading] failed to persist config-change log",
+              logError,
+            );
+          });
+      }
       const managementActions = managementAction.build({
         previousSymbols: previousCatalog.config.management.symbols,
         nextSymbols: nextCatalog.config.management.symbols,

@@ -26,6 +26,7 @@ import runtimeWithdrawalSchedule from "@/lib/system/withdrawal/schedule";
 import runtimeSafeHavenSchedule from "@/lib/system/safehaven";
 
 import {
+  SlowTradingConfigLogs,
   SlowTradingErrorLogs,
   SlowTradingManagementLogs,
   SlowTradingSafeHavenLogs,
@@ -599,6 +600,7 @@ export default function SlowTradingQueuesPanel(props: {
 
       <SlowTradingErrorLogs />
       <SlowTradingManagementLogs />
+      <SlowTradingConfigLogs />
     </Stack>
   );
 }

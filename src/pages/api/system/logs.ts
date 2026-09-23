@@ -2,11 +2,12 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { systemLog } from "@/lib/system/logging";
 import { runtimeLogs } from "@/lib/system/storage";
-import type { RuntimeErrorLogEntry, RuntimeErrorStatus, RuntimeLogKind, RuntimeLogs, RuntimeManagementLogEntry, RuntimeSafeHavenLogEntry, RuntimeWithdrawalLogEntry } from "@/lib/system/storage";
+import type { RuntimeConfigLogEntry, RuntimeErrorLogEntry, RuntimeErrorStatus, RuntimeLogKind, RuntimeLogs, RuntimeManagementLogEntry, RuntimeSafeHavenLogEntry, RuntimeWithdrawalLogEntry } from "@/lib/system/storage";
 
 
 type RuntimeLogResponse =
   | RuntimeLogs
+  | RuntimeConfigLogEntry[]
   | RuntimeErrorLogEntry[]
   | RuntimeManagementLogEntry[]
   | RuntimeSafeHavenLogEntry[]
@@ -19,6 +20,7 @@ type RuntimeLogResponse =
 function parseKind(value: unknown): RuntimeLogKind | null {
   const raw = Array.isArray(value) ? value[0] : value;
   if (
+    raw === "config" ||
     raw === "errors" ||
     raw === "management" ||
     raw === "safe_haven" ||
@@ -118,6 +120,11 @@ export default async function handler(
     }
 
     const logs = await runtimeLogs.load();
+
+    if (kind === "config") {
+      res.status(200).json(logs.config);
+      return;
+    }
 
     if (kind === "errors") {
       res.status(200).json(logs.errors);

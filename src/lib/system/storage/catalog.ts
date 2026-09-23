@@ -22,6 +22,7 @@ import type {
 import storageFiles from "./files";
 import jsonFile from "./json-file";
 import runtimeLogs from "./logs";
+import type { RuntimeConfigChange } from "./logs";
 import type { RuntimeAccountModeState } from "./runtime";
 
 /** The storage catalog: shared config plus every persisted account. */
@@ -72,8 +73,70 @@ interface RuntimeAccountsFileData {
   updatedAt?: number;
 }
 
+/** Bookkeeping leaf keys that churn on every save without real changes. */
+const VOLATILE_CONFIG_KEYS = new Set(["updatedAt"]);
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function collectConfigChanges(
+  changes: RuntimeConfigChange[],
+  path: string,
+  previous: unknown,
+  next: unknown,
+): void {
+  if (isRecord(previous) && isRecord(next)) {
+    const keys = new Set([
+      ...Object.keys(previous),
+      ...Object.keys(next),
+    ]);
+    for (const key of [...keys].sort()) {
+      collectConfigChanges(
+        changes,
+        path ? `${path}.${key}` : key,
+        previous[key],
+        next[key],
+      );
+    }
+    return;
+  }
+
+  if (Array.isArray(previous) && Array.isArray(next)) {
+    const length = Math.max(previous.length, next.length);
+    for (let index = 0; index < length; index += 1) {
+      collectConfigChanges(
+        changes,
+        `${path}.${index}`,
+        previous[index],
+        next[index],
+      );
+    }
+    return;
+  }
+
+  if (JSON.stringify(previous ?? null) === JSON.stringify(next ?? null)) {
+    return;
+  }
+  const leaf = path.split(".").pop() ?? path;
+  if (VOLATILE_CONFIG_KEYS.has(leaf)) {
+    return;
+  }
+  changes.push({ path, previous, next });
+}
+
+/**
+ * Flattens the difference between two effective configs into leaf changes.
+ * Objects and arrays recurse so each change points at the exact value path;
+ * missing keys or indexes appear as added or removed.
+ */
+function diffConfig(
+  previous: RuntimeConfig,
+  next: RuntimeConfig,
+): RuntimeConfigChange[] {
+  const changes: RuntimeConfigChange[] = [];
+  collectConfigChanges(changes, "", previous, next);
+  return changes;
 }
 
 async function readJsonFile(filePath: string): Promise<unknown> {
@@ -563,6 +626,7 @@ const runtimeCatalog = {
   ensure,
   save,
   update,
+  diffConfig,
   accounts: {
     list: listAccounts,
     save: saveAccounts,

@@ -57,6 +57,21 @@ export interface RuntimeManagementLogEntry {
   reason: string;
 }
 
+/** One flattened leaf difference inside a config change record. */
+export interface RuntimeConfigChange {
+  path: string;
+  previous?: unknown;
+  next?: unknown;
+}
+
+/** Persistent config change audit entry — one record per save. */
+export interface RuntimeConfigLogEntry {
+  id: string;
+  createdAt: number;
+  changes: RuntimeConfigChange[];
+  source: string;
+}
+
 /** Persistent Safe Haven balance-change log entry. */
 export interface RuntimeSafeHavenLogEntry {
   id: string;
@@ -91,6 +106,7 @@ export interface RuntimeWithdrawalLogEntry {
 /** Grouped runtime logs returned to the dashboard. */
 export interface RuntimeLogs {
   binanceCooldowns?: RuntimeBinanceCooldownLogEntry[];
+  config: RuntimeConfigLogEntry[];
   errors: RuntimeErrorLogEntry[];
   management: RuntimeManagementLogEntry[];
   safeHaven: RuntimeSafeHavenLogEntry[];
@@ -99,6 +115,7 @@ export interface RuntimeLogs {
 
 /** Persistent log collection exposed by the dashboard API. */
 export type RuntimeLogKind =
+  | "config"
   | "errors"
   | "management"
   | "safe_haven"
@@ -123,6 +140,40 @@ function toJsonSafeDetails(
   } catch {
     return { value: String(value) };
   }
+}
+
+/** Converts arbitrary values into a JSON-safe clone. */
+function toJsonSafeValue(value: unknown): unknown {
+  try {
+    return structuredClone(value);
+  } catch {
+    return String(value);
+  }
+}
+
+const SECRET_PATH_SEGMENT =
+  /token|secret|password|api.?key|chat.?id|private|credential/i;
+const MASKED_VALUE = "••••••";
+
+/** Checks whether any config path segment names a credential to mask. */
+function isSensitivePath(path: string): boolean {
+  return path.split(".").some((segment) => SECRET_PATH_SEGMENT.test(segment));
+}
+
+/** Replaces credential values anywhere inside a stored config value. */
+function maskSecrets(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(maskSecrets);
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [
+        key,
+        SECRET_PATH_SEGMENT.test(key) ? MASKED_VALUE : maskSecrets(entry),
+      ]),
+    );
+  }
+  return value;
 }
 
 function getErrorMessage(error: unknown): string {
@@ -159,6 +210,7 @@ async function appendLogFile<T extends { createdAt: number }>(
 /** Gets the persistent file used by one dashboard log collection. */
 function getLogFilePath(kind: RuntimeLogKind): string {
   const fileByKind: Record<RuntimeLogKind, string> = {
+    config: storageFiles.prod.logs.config,
     errors: storageFiles.prod.logs.errors,
     management: storageFiles.prod.logs.management,
     safe_haven: storageFiles.prod.logs.safeHaven,
@@ -212,6 +264,43 @@ async function appendManagement(params: {
   return entry;
 }
 
+// PROD:CONFIG_CHANGE_LOG
+/** Appends one config save to persistent storage, masking credential values. */
+async function appendConfig(params: {
+  changes: RuntimeConfigChange[];
+  source: string;
+  timestamp?: number;
+}): Promise<RuntimeConfigLogEntry> {
+  const entry: RuntimeConfigLogEntry = {
+    id: createLogId("config"),
+    createdAt: params.timestamp ?? Date.now(),
+    changes: params.changes.map((change) => {
+      const sensitive = isSensitivePath(change.path);
+      return {
+        path: change.path,
+        ...(change.previous === undefined
+          ? {}
+          : {
+              previous: sensitive
+                ? MASKED_VALUE
+                : maskSecrets(toJsonSafeValue(change.previous)),
+            }),
+        ...(change.next === undefined
+          ? {}
+          : {
+              next: sensitive
+                ? MASKED_VALUE
+                : maskSecrets(toJsonSafeValue(change.next)),
+            }),
+      };
+    }),
+    source: params.source,
+  };
+
+  await appendLogFile(storageFiles.prod.logs.config, entry);
+  return entry;
+}
+
 // PROD:SAFE_HAVEN_LOG
 /** Appends one Safe Haven balance change to persistent storage. */
 async function appendSafeHaven(params: {
@@ -260,11 +349,12 @@ async function appendWithdrawal(
 
 /** Loads every persisted log collection, newest first. */
 async function load(): Promise<RuntimeLogs> {
-  const [binanceCooldowns, errors, management, safeHaven, withdrawals] =
+  const [binanceCooldowns, config, errors, management, safeHaven, withdrawals] =
     await Promise.all([
       readLogFile<RuntimeBinanceCooldownLogEntry>(
         storageFiles.prod.logs.binanceCooldowns,
       ),
+      readLogFile<RuntimeConfigLogEntry>(storageFiles.prod.logs.config),
       readLogFile<RuntimeErrorLogEntry>(storageFiles.prod.logs.errors),
       readLogFile<RuntimeManagementLogEntry>(
         storageFiles.prod.logs.management,
@@ -277,6 +367,7 @@ async function load(): Promise<RuntimeLogs> {
 
   return {
     binanceCooldowns: binanceCooldowns.sort((a, b) => b.t - a.t),
+    config: config.sort((a, b) => b.createdAt - a.createdAt),
     errors: errors.sort((a, b) => b.createdAt - a.createdAt),
     management: management.sort((a, b) => b.createdAt - a.createdAt),
     safeHaven: safeHaven.sort((a, b) => b.createdAt - a.createdAt),
@@ -344,6 +435,7 @@ async function updateErrorStatuses(
 
 /** Grouped runtime log persistence over the persistent layout. */
 const runtimeLogs = {
+  appendConfig,
   appendError,
   appendManagement,
   appendSafeHaven,
