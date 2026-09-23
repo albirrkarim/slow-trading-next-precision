@@ -9,6 +9,7 @@ import BackupIcon from "@mui/icons-material/Backup";
 import HubIcon from "@mui/icons-material/Hub";
 import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
 import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
+import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import SaveIcon from "@mui/icons-material/Save";
 import SettingsIcon from "@mui/icons-material/Settings";
 import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
@@ -16,6 +17,7 @@ import TuneIcon from "@mui/icons-material/Tune";
 import {
   Box,
   Button,
+  CircularProgress,
   IconButton,
   Tab,
   Tabs,
@@ -78,6 +80,7 @@ export default function SettingsDialog(props: {
   onOpenDialog?: () => void;
   onReinitialize?: () => Promise<void>;
   reinitializing?: boolean;
+  onResetToProduction?: () => Promise<void> | void;
   resetSandbox?: (accountSlug: string) => Promise<void>;
   resettingSandboxAccount?: string | null;
   safeHavenUSDT?: number;
@@ -94,6 +97,7 @@ export default function SettingsDialog(props: {
   tryingWithdraw?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<SettingsTab>(DEFAULT_SETTINGS_TAB);
+  const [resettingToProduction, setResettingToProduction] = useState(false);
   const {
     configDraft,
     setConfigDraft,
@@ -102,6 +106,7 @@ export default function SettingsDialog(props: {
     onCloseDialog,
     onOpenDialog,
     onReinitialize,
+    onResetToProduction,
     pushLocalStorageToOnline,
     pushingOnlineStorage,
     reinitializing,
@@ -190,6 +195,33 @@ export default function SettingsDialog(props: {
               ))}
             </Tabs>
 
+            {onResetToProduction && (
+              <Button
+                color="inherit"
+                disabled={resettingToProduction}
+                onClick={() => {
+                  setResettingToProduction(true);
+                  void Promise.resolve(onResetToProduction()).finally(() =>
+                    setResettingToProduction(false),
+                  );
+                }}
+                size="small"
+                startIcon={
+                  resettingToProduction ? (
+                    <CircularProgress color="inherit" size={14} />
+                  ) : (
+                    <RestartAltIcon fontSize="small" />
+                  )
+                }
+                sx={{
+                  alignSelf: "center",
+                  flexShrink: 0,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Reset to Production
+              </Button>
+            )}
           </Box>
 
           <Box sx={{ minHeight: 420 }}>

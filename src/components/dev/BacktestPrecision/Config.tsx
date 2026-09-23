@@ -87,6 +87,21 @@ export default function DynamicBacktestConfig({
         return () => controller.abort();
     }, [backtestConfig.settings, setBacktestConfig]);
 
+    const resetToProductionConfig = async () => {
+        if (
+            !confirm(
+                "Replace the current settings draft with the live production config?",
+            )
+        ) {
+            return;
+        }
+        const response = await axios.get<DashboardState>(endpoints.system.state);
+        setBacktestConfig((current) => ({
+            ...current,
+            settings: makeConfigDraft(response.data),
+        }));
+    };
+
     const dashboardState = useMemo(
         () =>
             backtestConfig.settings
@@ -181,6 +196,7 @@ export default function DynamicBacktestConfig({
                     configDraft={backtestConfig.settings}
                     dashboardState={dashboardState}
                     hiddenTabs={["notification", "withdraw", "mcp"]}
+                    onResetToProduction={resetToProductionConfig}
                     setConfigDraft={setTradingConfig}
                 />
             )}
