@@ -56,9 +56,9 @@ export type ExitEvaluationConfig = RuntimeAccountTradingConfig &
 /** Formats timestamps exactly like the legacy datasets time helper. */
 function timeMsToReadable(
   time?: number,
-  format: string = "DD_MMM_YYYY_HH_mm",
+  pattern: string = "DD_MMM_YYYY_HH_mm",
 ): string {
-  return moment(time).format(format);
+  return moment(time).format(pattern);
 }
 
 /** Counts completed averaging fills, with USED steps as legacy fallback. */

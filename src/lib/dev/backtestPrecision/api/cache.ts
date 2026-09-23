@@ -41,8 +41,8 @@ function stableStringify(value: unknown): string {
     .join(",")}}`;
 }
 
-function cacheFilePath(key: string): string {
-  return path.join(storageFiles.dev.backtestResults, `${key}.json`);
+function cacheFilePath(cacheKey: string): string {
+  return path.join(storageFiles.dev.backtestResults, `${cacheKey}.json`);
 }
 
 /**
