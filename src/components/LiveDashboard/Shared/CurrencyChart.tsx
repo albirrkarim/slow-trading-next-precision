@@ -855,7 +855,7 @@ export default function CurrencyChart({ data, markers, activePosition, aimPositi
 
             entryLineRef.current = seriesRef.current.createPriceLine({
                 price: activePosition.exposure.averageEntryPrice,
-                color: '#2962FF',
+                color: '#000000',
                 lineWidth: 2,
                 // BTEST:BACKTEST_TRADE_CHART_AVERAGING
                 lineStyle: dashedEntryPriceLine

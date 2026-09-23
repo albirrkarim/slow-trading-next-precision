@@ -1,6 +1,6 @@
 import type { Marker } from "@/components/LiveDashboard/converter";
 
-import { blue, orange, purple } from "@mui/material/colors";
+import { common, orange, purple } from "@mui/material/colors";
 import type { UTCTimestamp } from "lightweight-charts";
 import type { RuntimeHistoryPosition } from "@/lib/system/trading";
 
@@ -24,7 +24,7 @@ export function buildTradeMarkersFromHistory(
 
     if (Number.isFinite(trade.opened.t)) {
       markers.push({
-        color: blue[300],
+        color: common.black,
         position: "belowBar",
         shape: "arrowUp",
         text: `ENTRY ${trade.opened.vPoint.id}`,
