@@ -128,14 +128,20 @@ async function queueDueSafeHavenSchedules(
   }).total;
   const period = queueStore.getUtcMonthKey(now);
 
-  const created = await queueStore.mutateQueues((queues) => {
+  const outcome = await queueStore.mutateQueues((queues) => {
     const items: RuntimeSafeHavenQueueItem[] = [];
+    const unstampedIds: string[] = [];
     for (const schedule of due) {
       if (
         queues.safeHaven.some(
           (item) => item.scheduleId === schedule.id && item.mode === mode,
         )
       ) {
+        // A pending item already covers this month; self-heal the marker in
+        // case a restart lost the stamp between create and update.
+        if (!schedule.lastQueuedAt?.[mode]) {
+          unstampedIds.push(schedule.id);
+        }
         continue;
       }
       const amountUSDT = resolveScheduleAmountUSDT(
@@ -162,18 +168,23 @@ async function queueDueSafeHavenSchedules(
       queues.safeHaven.push(item);
       items.push(item);
     }
-    return items;
+    return { items, unstampedIds };
   });
-  if (created.length === 0) {
+  if (outcome.items.length === 0 && outcome.unstampedIds.length === 0) {
     return 0;
   }
 
-  const createdIds = new Set(created.map((item) => item.scheduleId));
+  const stampedIds = new Set([
+    ...outcome.items
+      .map((item) => item.scheduleId)
+      .filter((id): id is string => Boolean(id)),
+    ...outcome.unstampedIds,
+  ]);
   await runtimeStorage.catalog.update({
     account: accountSlug,
     safeHaven: {
       schedules: config.schedules.map((schedule) =>
-        createdIds.has(schedule.id)
+        stampedIds.has(schedule.id)
           ? {
               ...schedule,
               lastQueuedAt: { ...schedule.lastQueuedAt, [mode]: now },
@@ -183,9 +194,15 @@ async function queueDueSafeHavenSchedules(
     },
   });
 
-  modeState.balance.lastSafeHavenRequest = now;
-  await runtimeStorage.account.save({ accountSlug, mode, state: modeState });
-  return created.length;
+  if (outcome.items.length > 0) {
+    modeState.balance.lastSafeHavenRequest = now;
+    await runtimeStorage.account.save({
+      accountSlug,
+      mode,
+      state: modeState,
+    });
+  }
+  return outcome.items.length;
 }
 
 // PROD:WITHDRAW_QUEUE
@@ -211,8 +228,9 @@ async function queueDueWithdrawalSchedules(
     return 0;
   }
 
-  const created = await queueStore.mutateQueues((queues) => {
+  const outcome = await queueStore.mutateQueues((queues) => {
     const items: RuntimeWithdrawalQueueItem[] = [];
+    const unstampedIds: string[] = [];
     for (const schedule of due) {
       const amountUSDT = Math.max(0, Number(schedule.amountUSDT) || 0);
       if (!(amountUSDT > EPSILON_USDT)) {
@@ -223,6 +241,11 @@ async function queueDueWithdrawalSchedules(
           (item) => item.scheduleId === schedule.id,
         )
       ) {
+        // A pending item already covers this month; self-heal the marker in
+        // case a restart lost the stamp between create and update.
+        if (!schedule.lastQueuedAt) {
+          unstampedIds.push(schedule.id);
+        }
         continue;
       }
       const { targetNetwork, targetWalletAddress } =
@@ -244,24 +267,29 @@ async function queueDueWithdrawalSchedules(
       queues.withdrawals.push(item);
       items.push(item);
     }
-    return items;
+    return { items, unstampedIds };
   });
-  if (created.length === 0) {
+  if (outcome.items.length === 0 && outcome.unstampedIds.length === 0) {
     return 0;
   }
 
-  const createdIds = new Set(created.map((item) => item.scheduleId));
+  const stampedIds = new Set([
+    ...outcome.items.map((item) => item.scheduleId),
+    ...outcome.unstampedIds,
+  ]);
+  const accountSlug =
+    outcome.items[0]?.account ?? catalog.config.accounts[0]?.slug;
   await runtimeStorage.catalog.update({
-    account: created[0].account,
+    account: accountSlug,
     withdrawal: {
       schedules: config.schedules.map((schedule) =>
-        createdIds.has(schedule.id)
+        stampedIds.has(schedule.id)
           ? { ...schedule, lastQueuedAt: now }
           : schedule,
       ),
     },
   });
-  return created.length;
+  return outcome.items.length;
 }
 
 // PROD:SAFE_HAVEN_QUEUE
