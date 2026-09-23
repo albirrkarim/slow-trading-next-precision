@@ -4,13 +4,6 @@ Findings from the cross-spec TC audit (`docs/SPECS/`) after the Precision
 rebuild. `BOTH:` means the behavior must exist in backtest AND production;
 `PROD:` means production runtime only (live and/or sandbox).
 
-## Divergences: implemented in production only, should be shared
-
-- [x] `AUTO_ENTRY_DAILY_PNL_LIMIT_USDT` (RUNTIME.md) — fixed: the backtest
-  adapter's `onStrategy` now evaluates `runtimeDailyPnlLimit` over the run's
-  closed-position history, mirroring production's `isActionAllowed` veto.
-  Manual forced entries stay exempt. Marker relabeled to `BOTH:`.
-
 ## Documented but not implemented in any mode
 
 - [ ] `BOTH:SAFE_HAVEN_QUEUE` + `PROD:WITHDRAW_QUEUE` +

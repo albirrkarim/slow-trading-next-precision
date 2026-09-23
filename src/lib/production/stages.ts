@@ -394,6 +394,7 @@ async function runManagement(
   }
 
   // 2. Daily-PnL entry stop over combined live+sandbox closed history.
+  // BOTH:AUTO_ENTRY_DAILY_PNL_LIMIT_USDT
   const period = runtimeDailyPnlLimit.period.getCurrentUtc(now);
   const archived = (
     await Promise.all(

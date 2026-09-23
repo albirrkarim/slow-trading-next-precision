@@ -136,6 +136,9 @@ async function isActionAllowed(
   if (manual) return true;
   if (!runtimeState.config.runtime.autoEntryEnabled) return false;
 
+  // BOTH:AUTO_ENTRY_DAILY_PNL_LIMIT_USDT — the management stage persists
+  // `dailyPnlLimitState`; this veto mirrors the backtest adapter's history
+  // evaluation over the same UTC day.
   const limit = status.dailyPnlLimitState;
   if (limit) {
     const evaluation = runtimeDailyPnlLimit.guard.evaluatePnl({
