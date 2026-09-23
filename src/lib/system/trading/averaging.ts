@@ -367,12 +367,14 @@ function applyFill(
     price: fill.price,
     allocationPct: plan.rescueProjection.multiplier,
     reservedMarginUsdt: plan.nextStep.marginUsdt,
+    // BOTH:ADAPTIVE_AVERAGING
     adaptiveMultiplier: plan.adaptiveEnabled
       ? plan.rescueProjection.multiplier
       : undefined,
     projectedProfitPct: plan.adaptiveEnabled
       ? plan.rescueProjection.projectedProfitPct
       : undefined,
+    // BOTH:AVERAGING_MONITORING_STATE_SNAPSHOT
     monitoringState: position.lastMonitoringStage
       ? { ...position.lastMonitoringStage }
       : undefined,

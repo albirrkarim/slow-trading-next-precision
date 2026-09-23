@@ -232,7 +232,7 @@ describe("trade-history level sequence", () => {
         .getAllByText(/^L/)
         .map((chip) => chip.textContent),
     ).toEqual(["L2", "L3 AVG 5x", "L4 AVG 2x EXIT"]);
-    // PROD:AVERAGING_MONITORING_STATE_SNAPSHOT
+    // BOTH:AVERAGING_MONITORING_STATE_SNAPSHOT
     const speedupState = within(sequence).getByLabelText(
       "Speedup monitoring state at averaging level 3",
     );

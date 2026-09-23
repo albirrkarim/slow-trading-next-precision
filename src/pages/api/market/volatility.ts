@@ -248,7 +248,7 @@ async function keepTheVolatilityUpdated(
         systemLog.debug("Remove used vpoint ", symbol);
 
         for (const item of volatilityMap[symbol]) {
-          // PROD:MULTI_ACCOUNT_ENTRY_VPOINT_USAGE
+          // BOTH:MULTI_ACCOUNT_ENTRY_VPOINT_USAGE
           reserve.vpoints.resetUsage(item);
         }
 

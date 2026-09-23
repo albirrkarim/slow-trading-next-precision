@@ -62,7 +62,6 @@ function createTrading(): RuntimeAccountTradingConfig {
       minProjectedProfitPct: 2,
     },
     averagingRescueProjectionGuardEnabled: true,
-    exitSidewaysToFreeWorkersForStrongCandidates: false,
     maxOpenPositions: 0,
     maxEntryBased24HourVolPct: 0.2,
     minActionableAbsoluteLevel: 2,

@@ -16,7 +16,6 @@ export const ACCOUNT_TRADING_CONFIG_KEYS = [
   "enableWatchLogic",
   "entrySpareBufferEnabled",
   "exactLeverage",
-  "exitSidewaysToFreeWorkersForStrongCandidates",
   "lateEntryVPointPriceDriftEnabled",
   "maxEntryBased24HourVolPct",
   "maxEntryMargin",

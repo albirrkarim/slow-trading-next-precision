@@ -440,7 +440,7 @@ Guard:
 - Production must not use `item.model_memory.positionsSell` for this guard because `positionsSell` is deprecated for production closed-trade history. It may still exist for legacy/backtest flows only.
 
 TC: `BOTH:ENTRY_ONLY_IN_UNIQUE_VOLATILITY_POINT_ID`
-TC: `PROD:MULTI_ACCOUNT_ENTRY_VPOINT_USAGE`
+TC: `BOTH:MULTI_ACCOUNT_ENTRY_VPOINT_USAGE`
 TC: `BOTH:AVERAGING_CONSUMES_VOLATILITY_POINT`
 
 ### B.3.4 it should not entry when theres no spendable balance. left for current trade signal.
@@ -594,7 +594,7 @@ TC: `BOTH:LATE_ENTRY_VPOINT_PRICE_DRIFT_PCT`
 Averaging should not run on absolute level `1` or `0`. Entry uses `config.minActionableAbsoluteLevel`; setting it to `1` allows the Multi entry
 gate to enter on absolute level `1`.
 
-TC: `PROD:LOW_LEVEL_NO_ACTION_AVERAGING`
+TC: `BOTH:LOW_LEVEL_NO_ACTION_AVERAGING`
 
 ## B.4 Exit (`src/lib/system/trading/exit.ts`)
 
@@ -607,14 +607,14 @@ volatility point for its symbol satisfies
 `abs(latestVolatilityPoint.lvl) >= exitOnVPointAbsLevel`.
 
 The default is `0`, which disables this rule. The configured value is treated
-as a non-negative whole level. This production/runtime rule applies to both
-live and sandbox execution, but not to the volatility-point backtest.
+as a non-negative whole level. This runtime rule applies identically to live,
+sandbox, and backtest execution.
 
 The rule runs before the ordinary PnL-based automatic exits. A triggered close
 uses the stop-loss trade category and persists
 `closed.reason = "EXIT_ON_VPOINT_LEVEL"`.
 
-TC: `PROD:EXIT_ON_VPOINT_LEVEL`
+TC: `BOTH:EXIT_ON_VPOINT_LEVEL`
 
 ### B.4.2 Level-based vPoint price-drift stop loss
 
@@ -720,12 +720,12 @@ persisted averaging execution with its level, actual multiplier, margin, fill
 price, optional reservation/projection data, and execution time. The sequence
 does not reconstruct unused reserve steps or depend on current volatility data.
 
-Every successful production or sandbox averaging execution optionally freezes
-an independent copy of the position's `lastMonitoringStage` as
-`execution.monitoringState`. It captures exactly the last persisted monitoring
-state available when the averaging fill is recorded; later monitoring updates
-must not modify this snapshot. Existing executions and backtest executions may
-omit it.
+Every successful production, sandbox, or backtest averaging execution
+optionally freezes an independent copy of the position's `lastMonitoringStage`
+as `execution.monitoringState`. It captures exactly the last persisted
+monitoring state available when the averaging fill is recorded; later
+monitoring updates must not modify this snapshot. Executions recorded before
+any monitoring stage ran omit it.
 
 When this snapshot exists, the shared level sequence shows its stage icon
 immediately before the corresponding averaged level. Speedup uses the speed
@@ -736,7 +736,7 @@ discarding the averaging multiplier or rendering duplicate level chips.
 
 TC: `BOTH:REUSABLE_LEVEL_SEQUENCE`
 
-TC: `PROD:AVERAGING_MONITORING_STATE_SNAPSHOT`
+TC: `BOTH:AVERAGING_MONITORING_STATE_SNAPSHOT`
 
 ### B.4.6 Volatility target-zone stop loss
 
@@ -893,37 +893,3 @@ shows the trigger description so operators can identify which strategy may
 cause an exit.
 
 TC: `BOTH:SL_PLUS`
-
-### B.4.10 Exit sideways positions to free workers for stronger candidates
-
-When `exitSidewaysToFreeWorkersForStrongCandidates` is enabled, SLOW can
-force-exit one sideways open position for a strong entry candidate on the next
-cycle.
-
-Rules:
-
-- Applies to production, sandbox, and backtest.
-- Sideways means the open position net PnL percent after fees is between
-  `-1%` and `+1%`.
-- Strong candidate means Speed Tier 1 or Speed Tier 2 with `abs(level) >= 4`,
-  for both LONG and SHORT signals.
-- The original worker-freeing path only triggers when the Available Workers
-  calculation cannot afford the strong candidate.
-- In the original worker-freeing path, the current open position must be slower
-  than the strong candidate:
-  - Speed Tier 3 can be freed for Speed Tier 1 or 2.
-  - Speed Tier 2 can be freed for Speed Tier 1.
-  - Speed Tier 1 is not freed by this rule.
-- Additional aged-sideways path:
-  - If a sideways open position has been held for at least `2` days, another
-    coin with `abs(level) >= 4` can force-exit it when the candidate Speed Tier
-    is better than or equal to the open position's Speed Tier.
-  - The candidate must also pass
-    `BOTH:LATE_ENTRY_VPOINT_PRICE_DRIFT_PCT`; a candidate whose current price
-    already drifted too far in the profit direction must not force-exit the
-    aged sideways position.
-- The rule only marks the sideways position for exit. It must not mutate or
-  clear entry signals; normal entry flow decides what can happen next.
-- The setting defaults to `false`.
-
-TC: `BOTH:EXIT_SIDEWAYS_TO_ENTRY_STRONG_CANDIDATES`

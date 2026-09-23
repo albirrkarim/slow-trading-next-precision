@@ -34,7 +34,7 @@ describe("latest volatility point volume", () => {
   it("reads account-scoped usage markers from the latest vPoint", () => {
     const point = { id: "point-1", usedBymain: true } as any;
 
-    // PROD:MULTI_ACCOUNT_ENTRY_VPOINT_USAGE
+    // BOTH:MULTI_ACCOUNT_ENTRY_VPOINT_USAGE
     expect(isVolatilityPointUsedByAccount(point, "main")).toBe(true);
     expect(isVolatilityPointUsedByAccount(point, "second")).toBe(false);
     expect(isVolatilityPointUsedByAccount(point, "")).toBe(false);

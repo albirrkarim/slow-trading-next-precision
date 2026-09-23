@@ -192,6 +192,7 @@ async function findDecisions(
     const accountPositions = openPositions.filter(
       (position) => position.account === account.slug && !position.closed,
     );
+    // BOTH:MAX_OPEN_POSITIONS_ENTRY_GUARD
     const maxOpenPositions = Math.max(
       0,
       Math.floor(Number(account.trading.maxOpenPositions) || 0),
@@ -220,6 +221,7 @@ async function findDecisions(
       ) {
         continue;
       }
+      // BOTH:ONLY_ONE_ACTIVE_POSITION_PER_COIN
       if (
         accountPositions.some(
           (position) => position.symbol.toUpperCase() === symbol,

@@ -125,6 +125,7 @@ async function averaging(
 
   // F. Mark the averaging volatility point as used only after the action and
   // accounting have both succeeded.
+  // BOTH:AVERAGING_CONSUMES_VOLATILITY_POINT
   positions.markVPointUsed({
     accountSlug: decision.accountSlug,
     recommendation: decision.recommendation,

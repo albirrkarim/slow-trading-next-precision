@@ -606,7 +606,7 @@ function evaluateExit(params: {
   );
 
   // C.1 Exit at configured absolute vPoint level
-  // PROD:EXIT_ON_VPOINT_LEVEL
+  // BOTH:EXIT_ON_VPOINT_LEVEL
   const configuredExitOnVPointAbsLevel = Math.max(
     0,
     Math.floor(Number(config.exitOnVPointAbsLevel) || 0),
@@ -622,7 +622,7 @@ function evaluateExit(params: {
   ) {
     const reason = `[SELL] ${readableTime} ${
       TRADE_MESSAGE.sell.SL
-    } PROD:EXIT_ON_VPOINT_LEVEL latest absolute vPoint level ${latestAbsVPointLevel} reached configured level ${configuredExitOnVPointAbsLevel} | Net PnL ${(netGain * 100).toFixed(2)}%`;
+    } BOTH:EXIT_ON_VPOINT_LEVEL latest absolute vPoint level ${latestAbsVPointLevel} reached configured level ${configuredExitOnVPointAbsLevel} | Net PnL ${(netGain * 100).toFixed(2)}%`;
 
     const lastPosition = sellClone({
       exitMessage: reason,
@@ -675,7 +675,7 @@ function evaluateExit(params: {
   }
 
   // C.2 Stop loss by fee-adjusted net USDT loss
-  // PROD:STOP_LOSS_BY_USDT_LOSS
+  // BOTH:STOP_LOSS_BY_USDT_LOSS
   const configuredStopLossUSDT = Number(config.stopLossUSDT ?? 50);
   const stopLossUSDT =
     Number.isFinite(configuredStopLossUSDT) && configuredStopLossUSDT > 0
@@ -685,7 +685,7 @@ function evaluateExit(params: {
   if (stopLossUSDT > 0 && netProfitUSDT <= -stopLossUSDT) {
     const reason = `[SELL] ${readableTime} ${
       TRADE_MESSAGE.sell.SL
-    } PROD:STOP_LOSS_BY_USDT_LOSS net USDT PnL ${netProfitUSDT.toFixed(
+    } BOTH:STOP_LOSS_BY_USDT_LOSS net USDT PnL ${netProfitUSDT.toFixed(
       2,
     )} reached -${stopLossUSDT.toFixed(2)} USDT`;
 

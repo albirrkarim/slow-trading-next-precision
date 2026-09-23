@@ -40,7 +40,7 @@ function roundUsdt(value: number): number {
 function isActionableAveragingVolatilityLevel(
   volatilityPoint: Pick<VolatilityPoint, "lvl">,
 ): boolean {
-  // PROD:LOW_LEVEL_NO_ACTION_AVERAGING
+  // BOTH:LOW_LEVEL_NO_ACTION_AVERAGING
   return (
     typeof volatilityPoint.lvl === "number" &&
     Number.isFinite(volatilityPoint.lvl) &&

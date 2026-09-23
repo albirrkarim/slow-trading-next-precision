@@ -20,7 +20,7 @@ describe("per-account trading configuration summary", () => {
     trading.notes = "Small positions with fast exits.";
     trading.maxOpenPositions = 6;
     trading.maxEntryMarginPct = 0;
-    trading.exitSidewaysToFreeWorkersForStrongCandidates = true;
+    trading.entrySpareBufferEnabled = false;
     trading.adaptiveAveraging = {
       ...trading.adaptiveAveraging!,
       enabled: false,
@@ -29,7 +29,7 @@ describe("per-account trading configuration summary", () => {
 
     expect(getCustomAccountTradingConfig(trading)).toEqual({
       adaptiveAveraging: { enabled: false },
-      exitSidewaysToFreeWorkersForStrongCandidates: true,
+      entrySpareBufferEnabled: false,
       maxOpenPositions: 6,
       takeProfitPercent: 1.1,
     });

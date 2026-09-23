@@ -6,7 +6,6 @@ const BOOLEAN_KEYS = [
   "averagingRescueProjectionGuardEnabled",
   "enableWatchLogic",
   "entrySpareBufferEnabled",
-  "exitSidewaysToFreeWorkersForStrongCandidates",
   "lateEntryVPointPriceDriftEnabled",
   "useStopLossPlus",
 ] as const satisfies ReadonlyArray<keyof RuntimeAccountTradingConfig>;

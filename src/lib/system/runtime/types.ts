@@ -164,9 +164,7 @@ export interface RuntimeAccountTradingConfig {
   confidenceBase?: number;
   maxBuyUSDT?: number;
   onlyTPFromDate?: string;
-  /** Sideways positions can be force-exited to free a worker for a stronger candidate. */
-  exitSidewaysToFreeWorkersForStrongCandidates?: boolean;
-  /** Production entries enforce the vPoint price-drift guard. */
+  /** Entries in live, sandbox, and backtest enforce the vPoint price-drift guard. */
   lateEntryVPointPriceDriftEnabled?: boolean;
   /** User-authored reminder describing this account's trading strategy. */
   notes: string;
