@@ -30,6 +30,8 @@ function serializeWrite<T>(
  * Replaces one JSON file atomically so readers observe either the previous or
  * complete next payload, never a truncated intermediate file.
  */
+// BOTH:ATOMIC_PERSISTENT_JSON — shared by production storage and the
+// backtest/precision-checker cache writers.
 async function writeAtomic(filePath: string, value: unknown): Promise<void> {
   await serializeWrite(filePath, async () => {
     await replaceAtomic(filePath, value);

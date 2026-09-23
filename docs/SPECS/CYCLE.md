@@ -81,9 +81,9 @@ for each eligible account in deterministic order
 end stage cycle
 ```
 
-TC: `PROD:MULTI_ACCOUNT_SHARED_MARKET_PREPARATION`
+TC: `BOTH:MULTI_ACCOUNT_SHARED_MARKET_PREPARATION`
 
-TC: `PROD:MULTI_ACCOUNT_SEQUENTIAL_ACCOUNT_EXECUTION`
+TC: `BOTH:MULTI_ACCOUNT_SEQUENTIAL_ACCOUNT_EXECUTION`
 
 ## 2. One Shared Market Context
 
@@ -147,7 +147,7 @@ parallelizing private trading calls.
 Exit must retain priority over averaging. An account must never average a
 position that the same pass just closed.
 
-TC: `PROD:MULTI_ACCOUNT_PRIVATE_STATE_ISOLATION`
+TC: `BOTH:MULTI_ACCOUNT_PRIVATE_STATE_ISOLATION`
 
 ## 5. Stage Eligibility and Market I/O
 
@@ -175,7 +175,7 @@ missing transient account field as an empty volatility history.
 
 TC: `PROD:EMPTY_MONITORING_NO_MARKET_IO`
 
-TC: `PROD:SPEEDUP_STAGE_SHARED_VOLATILITY_CLASSIFICATION`
+TC: `BOTH:SPEEDUP_STAGE_SHARED_VOLATILITY_CLASSIFICATION`
 
 ### 5.2 Capture Entry
 

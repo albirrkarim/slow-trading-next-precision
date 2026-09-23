@@ -109,7 +109,7 @@ export default function PositionLevelSequence({
                     sx={{ alignItems: "center", display: "inline-flex" }}
                   >
                     {chipLabel}
-                    {/* PROD:TRADE_HISTORY_EXIT_MONITORING_STAGE */}
+                    {/* BOTH:TRADE_HISTORY_EXIT_MONITORING_STAGE */}
                     <ExitMonitoringStageIcon
                       level={item.level}
                       monitoringState={exitMonitoringState}

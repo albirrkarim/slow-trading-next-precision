@@ -110,7 +110,7 @@ projected into the effective execution configuration or affect calculations.
 
 TC: `PROD:FUTURES_ENTRY_ACCOUNT_SETUP`
 
-TC: `PROD:ATOMIC_PERSISTENT_JSON`
+TC: `BOTH:ATOMIC_PERSISTENT_JSON`
 
 TC: `PROD:MULTI_ACCOUNT_TRADING_NOTES`
 
@@ -140,7 +140,7 @@ contract defined in `src/lib/system/trading/types.ts`. There is no legacy
 flat-position format and no migration endpoint — the system has not been
 deployed, so storage starts canonical.
 
-TC: `PROD:CANONICAL_POSITION_STORAGE`
+TC: `BOTH:CANONICAL_POSITION_STORAGE`
 
 ## C.8 Persistent Storage Clone
 

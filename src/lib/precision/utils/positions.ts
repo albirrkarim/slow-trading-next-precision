@@ -185,7 +185,7 @@ function updatePnl(context: RuntimeContext, position: Position): void {
   position.pnl.markPrice = markPrice.price;
   applyFloatingFeeEstimate(position, roundTripFeeRatio);
 
-  // PROD:MONITORING_OPEN_POSITION
+  // BOTH:MONITORING_OPEN_POSITION
   position.pnl.history = normalizeHistoryPoints(position.pnl.history);
   const observationPct = position.pnl.netPct ?? 0;
   position.pnl.history = upsertHistoryPoint(
@@ -412,6 +412,8 @@ function getSpeedupReasons(params: {
 }
 
 /** Reclassifies a still-open position for its next monitoring pass. */
+// BOTH:SPEEDUP_STAGE_SHARED_VOLATILITY_CLASSIFICATION — every account's
+// position classifies against the one shared `state.vPointsMap` snapshot.
 function updateMonitoringStage(
   context: RuntimeContext,
   position: Position,

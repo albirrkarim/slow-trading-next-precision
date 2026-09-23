@@ -684,7 +684,7 @@ export function TradesTableSection({
                     </Typography>
                     <br />
 
-                    {/* PROD:TRADE_HISTORY_ACCOUNT_CHIP */}
+                    {/* BOTH:TRADE_HISTORY_ACCOUNT_CHIP */}
                     <MetricTooltip
                       title={tradingNotes || "No trading notes."}
                     >
@@ -705,7 +705,7 @@ export function TradesTableSection({
 
                     {lastMonitoringStage?.stage === "standard" && (
                       <>
-                        {/* PROD:TRADE_HISTORY_EXIT_MONITORING_STAGE */}
+                        {/* BOTH:TRADE_HISTORY_EXIT_MONITORING_STAGE */}
                         <Typography
                           color="text.secondary"
                           display="block"
@@ -918,7 +918,7 @@ export function TradesTableSection({
                     >
                       {() => (
                         <Box sx={{ p: 2 }}>
-                          {/* PROD:TRADE_HISTORY_JSON_TREE */}
+                          {/* BOTH:TRADE_HISTORY_JSON_TREE */}
                           <JsonTreeViewer
                             ariaLabel={`${row.symbol} trade JSON tree`}
                             value={row}

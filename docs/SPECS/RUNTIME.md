@@ -14,7 +14,7 @@ The SLOW navbar displays the server-resolved global value as `Vol: <value>%`.
 The browser receives this value through the dashboard state and does not read
 the server environment directly.
 
-TC: `PROD:GLOBAL_VOLATILITY_THRESHOLD`
+TC: `BOTH:GLOBAL_VOLATILITY_THRESHOLD`
 
 ### A.0.1 Daily PnL Browser Title
 
@@ -116,7 +116,7 @@ it for every account. Compact account memory does not retain volatility after a
 cycle, so classification must use this shared snapshot rather than interpreting
 the absent transient field as an empty vPoint history.
 
-TC: `PROD:SPEEDUP_STAGE_SHARED_VOLATILITY_CLASSIFICATION`
+TC: `BOTH:SPEEDUP_STAGE_SHARED_VOLATILITY_CLASSIFICATION`
 
 Standard Monitoring refreshes PnL and vPoint history on its normal pass. When
 that persisted state first satisfies any Speedup rule, the position becomes
@@ -218,7 +218,7 @@ TC: `PROD:CYCLE_PERFORMANCE_SECTION_DURATION`
 
 ### A.2 Monitoring
 
-TC: `PROD:MONITORING_OPEN_POSITION`
+TC: `BOTH:MONITORING_OPEN_POSITION`
 
 Speedup and Standard Monitoring refresh their eligible open positions, evaluate
 exit, evaluate averaging for positions that remain open, and then persist the
@@ -276,7 +276,7 @@ cell. When the diagnostic exists, the EXIT chip in the position level sequence
 shows a Speedup or Standard icon. Hovering that icon shows the persisted
 `position.lastMonitoringStage.reason`.
 
-TC: `PROD:TRADE_HISTORY_EXIT_MONITORING_STAGE`
+TC: `BOTH:TRADE_HISTORY_EXIT_MONITORING_STAGE`
 
 Trade History receives the configured account profiles and resolves each
 position's immutable `account` slug to its current account name. The symbol
@@ -285,7 +285,7 @@ shows the account's `trading.notes`; an account without notes shows
 `No trading notes.`. A history row whose account profile is unavailable falls
 back to its persisted account slug.
 
-TC: `PROD:TRADE_HISTORY_ACCOUNT_CHIP`
+TC: `BOTH:TRADE_HISTORY_ACCOUNT_CHIP`
 
 The Trade History JSON detail uses a read-only interactive tree. The root is
 expanded with nested objects collapsed initially. Every nested object or array
@@ -293,7 +293,7 @@ can be expanded or collapsed independently with its disclosure control or the
 keyboard, and the toolbar can expand the entire tree, collapse nested values,
 or copy the complete formatted JSON.
 
-TC: `PROD:TRADE_HISTORY_JSON_TREE`
+TC: `BOTH:TRADE_HISTORY_JSON_TREE`
 
 The Standard reason records the canonical persisted `pnl.netPct` used during
 stage selection and the active positive and negative PnL thresholds. Dashboard

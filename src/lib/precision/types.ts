@@ -99,6 +99,8 @@ export interface RuntimeEngineState {
   /**
    * Balance info per account slug
    */
+  // BOTH:MULTI_ACCOUNT_PRIVATE_STATE_ISOLATION — account-owned balance is
+  // keyed by slug and never shared across accounts.
   balance: Record<string, BalanceSummary>;
 
   /**

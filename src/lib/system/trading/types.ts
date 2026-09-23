@@ -166,6 +166,7 @@ export interface PositionLastMonitoringStage {
 }
 
 /** Canonical position persisted by production, sandbox, and backtest flows. */
+// BOTH:CANONICAL_POSITION_STORAGE
 export interface Position<TFeature = unknown> {
   /** Immutable account slug that owns this position. */
   account: string;

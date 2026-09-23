@@ -6,6 +6,8 @@ async function standardStages(context: RuntimeContext) {
   // do monitoring
   // this.monitoring;
   // also check criterion so the position might moved to speedup stages
+  // BOTH:MULTI_ACCOUNT_SEQUENTIAL_ACCOUNT_EXECUTION — positions across all
+  // accounts are monitored one at a time in deterministic list order.
   for (const position of [...context.state.openPositions]) {
     if (position.lastMonitoringStage?.lastUpdated === context.state.currentTime) {
       continue;

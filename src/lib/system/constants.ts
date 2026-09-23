@@ -2,6 +2,7 @@
  * Percentage move required to activate volatility detection. Used by both
  * backtest and production so the result stays identical across runtimes.
  */
+// BOTH:GLOBAL_VOLATILITY_THRESHOLD
 export const VOLATILITY_THRESHOLD = process.env.VOLATILITY_THRESHOLD
   ? Number.parseInt(process.env.VOLATILITY_THRESHOLD, 10)
   : 5; // in percent

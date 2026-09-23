@@ -19,28 +19,21 @@ rebuild. `BOTH:` means the behavior must exist in backtest AND production;
   planned, or remove them as legacy. If kept, `BOTH:SAFE_HAVEN_QUEUE` should
   also become `PROD:` (spec text scopes it to "live and sandbox modes").
 
-## `PROD:` markers on code that is actually shared (should be `BOTH:`)
+## `PROD:` markers on code that is actually shared — resolved
 
-- [ ] `GLOBAL_VOLATILITY_THRESHOLD` — `VOLATILITY_THRESHOLD` env drives shared
-  logic (late-entry drift cap, adaptive-averaging target) in backtest too.
-- [ ] `SPEEDUP_STAGE`, `STANDARD_MONITORING_STAGE`,
-  `SPEEDUP_STAGE_SHARED_VOLATILITY_CLASSIFICATION`, `MONITORING_OPEN_POSITION` —
-  classification + exit-first monitoring pass live in
-  `src/lib/precision/monitoring/` and run per-candle in backtest
-  (`lastMonitoringStage` is persisted on backtest positions). Only the
-  wall-clock interval scheduling is production-specific.
-- [ ] `TRADE_HISTORY_EXIT_MONITORING_STAGE`, `TRADE_HISTORY_ACCOUNT_CHIP`,
-  `TRADE_HISTORY_JSON_TREE` — shared `PositionLevelSequence` / trade dialog
-  render these in the backtest report too.
-- [ ] `MULTI_ACCOUNT_SEQUENTIAL_ACCOUNT_EXECUTION`,
-  `MULTI_ACCOUNT_PRIVATE_STATE_ISOLATION`,
-  `MULTI_ACCOUNT_SHARED_MARKET_PREPARATION` (CYCLE.md) — the shared
-  `RuntimeEngine` iterates accounts with isolated per-account state over one
-  shared market snapshot in every mode.
-- [ ] `ATOMIC_PERSISTENT_JSON` (STORAGE.md) — `jsonFile.write.atomic` is the
-  shared primitive; backtest cache writes use it too.
-- [ ] `CANONICAL_POSITION_STORAGE` (STORAGE.md) — the canonical position JSON
-  shape is exactly what the backtest cache persists.
+- Relabeled to `BOTH:` in docs and source: `GLOBAL_VOLATILITY_THRESHOLD`,
+  `SPEEDUP_STAGE_SHARED_VOLATILITY_CLASSIFICATION`, `MONITORING_OPEN_POSITION`,
+  `TRADE_HISTORY_EXIT_MONITORING_STAGE`, `TRADE_HISTORY_ACCOUNT_CHIP`,
+  `TRADE_HISTORY_JSON_TREE`, `MULTI_ACCOUNT_SHARED_MARKET_PREPARATION`,
+  `MULTI_ACCOUNT_SEQUENTIAL_ACCOUNT_EXECUTION`,
+  `MULTI_ACCOUNT_PRIVATE_STATE_ISOLATION`, `ATOMIC_PERSISTENT_JSON`,
+  `CANONICAL_POSITION_STORAGE`. Each was verified running in the shared
+  precision path (or shared UI/storage) in backtest before relabeling.
+- Kept `PROD:` deliberately: `SPEEDUP_STAGE` / `STANDARD_MONITORING_STAGE`
+  (RUNTIME.md, BINANCE.md). The stages run in backtest, but the marked
+  paragraphs describe production-only mechanics — independent wall-clock
+  timers, pre-execution storage reload, serialized mode-state persistence,
+  `stageRuns` records, and the Binance request coordinator's overlap rules.
 
 ## Implemented but missing source markers
 

@@ -196,6 +196,8 @@ export class RuntimeEngine {
             "standard-monitoring",
             this.openSymbolCount(),
             async (context) => {
+              // BOTH:MULTI_ACCOUNT_SHARED_MARKET_PREPARATION — one shared
+              // market snapshot per stage serves every account's positions.
               await this.helper.market.updateMarkPrice();
               await this.helper.market.updateVPointsMap();
               await monitoring.stages.standard(context);
