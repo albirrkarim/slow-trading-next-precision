@@ -2,7 +2,10 @@ import systemConfig from "@/lib/system/config";
 import systemTime from "@/lib/system/time";
 import type { NextApiRequest, NextApiResponse } from "next";
 import backtestResultCache from "./cache";
-import type { BacktestPrecisionParams } from "./precision-api-types";
+import type {
+  BacktestPrecisionParams,
+  BacktestPrecisionResponse,
+} from "./precision-api-types";
 import { precisionBacktest } from "../backtest";
 
 export default async function backtestPrecisionHandler(
@@ -65,10 +68,16 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
     range,
     startTime,
   });
+  const cachePath = backtestResultCache.dirFor(cacheKey);
   if (useCache && !upToDateDecisionBacktest && !upToDateKlines) {
     const cached = await backtestResultCache.read(cacheKey);
     if (cached) {
-      res.json(cached);
+      const body: BacktestPrecisionResponse = {
+        ...cached,
+        cached: true,
+        cachePath,
+      };
+      res.json(body);
       return;
     }
   }
@@ -83,6 +92,7 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
     verbose,
   });
 
+  const body: BacktestPrecisionResponse = { ...result, cached: false };
   if (useCache) {
     try {
       await backtestResultCache.write({
@@ -92,10 +102,11 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
         result,
         startTime,
       });
+      body.cachePath = cachePath;
     } catch (error) {
       console.error("[backtest-precision] Failed to persist result", error);
     }
   }
 
-  res.json(result);
+  res.json(body);
 }

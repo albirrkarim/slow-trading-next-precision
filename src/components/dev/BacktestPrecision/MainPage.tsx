@@ -3,8 +3,10 @@
 import type { ConfigDraft } from "@/components/LiveDashboard/Navbar/navbar-types";
 import { runtimeNormalize } from "@/lib/system/runtime";
 import SidebarButton from "@/components/ui/SidebarButton";
-import type { BacktestPrecisionParams } from "@/lib/dev/backtestPrecision/api/precision-api-types";
-import type { BacktestPrecisionResult } from "@/lib/dev/backtestPrecision/backtest/backtest-precision-types";
+import type {
+    BacktestPrecisionParams,
+    BacktestPrecisionResponse,
+} from "@/lib/dev/backtestPrecision/api/precision-api-types";
 import { systemLog } from "@/lib/system/logging";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import {
@@ -16,6 +18,7 @@ import {
 } from "@mui/material";
 import axios from "axios";
 import { useEffect, useState } from "react";
+import { CopyText } from "@/components/ui/CopyText";
 import { delayExecution } from "../../client/utils";
 import { endpoints } from "../../endpoints";
 import PrecisionBTestConfig, { DEFAULT_BACKTEST_CONFIG } from "./Config";
@@ -75,7 +78,7 @@ export default function DynamicTradeAnalytics() {
             : DEFAULT_BACKTEST_CONFIG,
     );
 
-    const [data, setData] = useState<BacktestPrecisionResult | null>(null);
+    const [data, setData] = useState<BacktestPrecisionResponse | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
@@ -155,7 +158,7 @@ export default function DynamicTradeAnalytics() {
 
             systemLog.log("Sending payload:", JSON.stringify(payload, null, 2));
 
-            const resp = await axios.post<BacktestPrecisionResult>(
+            const resp = await axios.post<BacktestPrecisionResponse>(
                 endpoints.dev.backtestPrecision,
                 payload,
             );
@@ -261,6 +264,47 @@ export default function DynamicTradeAnalytics() {
                     </Box>
                 </Box>
             </Box>
+
+            {data?.cachePath && (
+                <Box
+                    sx={{
+                        alignItems: "center",
+                        borderBottom: 1,
+                        borderColor: "divider",
+                        display: "flex",
+                        gap: 0.5,
+                        px: 1,
+                        py: 0.25,
+                    }}
+                >
+                    <Typography
+                        component="span"
+                        sx={{ fontSize: "0.7rem", fontWeight: 700 }}
+                    >
+                        {data.cached ? "Cache (reused):" : "Cache:"}
+                    </Typography>
+                    <Typography
+                        component="code"
+                        sx={{
+                            flex: 1,
+                            fontSize: "0.7rem",
+                            minWidth: 0,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                        }}
+                        title={data.cachePath}
+                    >
+                        {data.cachePath}
+                    </Typography>
+                    <CopyText
+                        label="backtest cache path"
+                        text={data.cachePath}
+                        tooltip="Copy cache path"
+                        copiedTooltip="Copied"
+                    />
+                </Box>
+            )}
 
             {error && <Alert severity="error" sx={{ m: 2 }}>{error}</Alert>}
 

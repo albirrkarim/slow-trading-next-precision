@@ -57,6 +57,11 @@ function cacheDir(cacheKey: string): string {
   return path.join(RESULTS_DIR, cacheKey);
 }
 
+/** Absolute path of the directory holding one cache entry's artifacts. */
+function dirFor(cacheKey: string): string {
+  return cacheDir(cacheKey);
+}
+
 /**
  * Hashes the effective backtest identity (range/bounds + full config) so the
  * same inputs reuse one saved result. Credentials feed the hash only; they
@@ -127,6 +132,7 @@ const backtestResultCache = {
   get dir() {
     return RESULTS_DIR;
   },
+  dirFor,
   key,
   read,
   write,
