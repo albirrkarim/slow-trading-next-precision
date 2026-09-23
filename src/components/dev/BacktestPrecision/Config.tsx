@@ -10,7 +10,9 @@ import { endpoints } from "@/components/endpoints";
 import { TIME_RANGE } from "@/components/constants";
 import {
     Box,
+    Checkbox,
     FormControl,
+    FormControlLabel,
     InputLabel,
     MenuItem,
     Select,
@@ -190,6 +192,38 @@ export default function DynamicBacktestConfig({
                     ))}
                 </Select>
             </FormControl>
+
+            <FormControlLabel
+                control={
+                    <Checkbox
+                        size="small"
+                        checked={backtestConfig.upToDateKlines}
+                        onChange={(e) =>
+                            updateBacktest({
+                                upToDateKlines: e.target.checked,
+                            })
+                        }
+                    />
+                }
+                label="Fresh klines"
+                title="Download the latest candles and recompute (ignores the saved result)"
+            />
+
+            <FormControlLabel
+                control={
+                    <Checkbox
+                        size="small"
+                        checked={backtestConfig.upToDateDecisionBacktest}
+                        onChange={(e) =>
+                            updateBacktest({
+                                upToDateDecisionBacktest: e.target.checked,
+                            })
+                        }
+                    />
+                }
+                label="Rerun backtest"
+                title="Ignore the saved result and recompute this backtest"
+            />
 
             {backtestConfig.settings && (
                 <SettingsDialog

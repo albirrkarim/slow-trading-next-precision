@@ -170,7 +170,7 @@ export async function getKlines(req: NextApiRequest, res: NextApiResponse) {
   };
 
   // Volatility markers
-  if (volatility) {
+  if (pickBooleanParam(volatility)) {
     const markers: Marker[] = [];
 
     const volatilityPoints =
