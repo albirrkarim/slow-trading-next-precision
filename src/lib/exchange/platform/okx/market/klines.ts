@@ -1,6 +1,6 @@
 import { MAX_KLINES_PER_CALL } from "@/lib/exchange/constants";
 import { requestPublic } from "../utils";
-import { tradeLog } from "@/lib/trading";
+import { systemLog } from "@/lib/system/logging";
 
 /**
  * OKX Candlestick (Kline) data format
@@ -172,7 +172,7 @@ export async function getKlines(
     limit: Math.min(limit, 300), // OKX max is 300
   };
 
-  tradeLog.debug("get kline okx");
+  systemLog.debug("get kline okx");
 
   if (after) params.after = after.toString();
   if (before) params.before = before.toString();

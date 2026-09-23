@@ -27,11 +27,10 @@ src/lib/precision
 src/lib/production
 ```
 
-These new folders also become ground truth:
+This new folder also becomes ground truth:
 
 ```text
 src/lib/system
-src/lib/strategy/multi
 ```
 
 Final authoritative roots:
@@ -42,10 +41,18 @@ src/lib/
   precision/
   production/
   dev/
-  strategy/
-    multi/
   system/
 ```
+
+There is no `src/lib/strategy` or `src/lib/system/strategy` root. Multi is the
+built-in default strategy of the precision system, so its functions are
+dissolved into the homes they semantically belong to: decision/execution
+functions into `src/lib/system/trading`, the generic vPoint detector into
+`src/lib/system/utils`, and position bookkeeping into `src/lib/precision/utils`.
+The runtime contract has no `RuntimeStrategy` type: the engine calls those
+functions directly, and `RuntimeEngineAdapter.onStrategy` remains the
+arrangement/veto gate for environments that need to deviate from the default
+behavior.
 
 Everything else under `src/lib` is a **legacy quarry**. It may be inspected to
 preserve required behavior, but new ground-truth code must not depend on it.
@@ -58,7 +65,7 @@ preserve required behavior, but new ground-truth code must not depend on it.
 | `precision/` | New shared `RuntimeEngine`, monitoring, actions, helpers | Keep; detach from `brain`, `dynamic`, `slowTrading`, and old `trading` |
 | `production/` | Production clock, state, factory, adapter, recorder | Keep; rebuild dependencies through clean ports |
 | `dev/` | Precision backtest and Precision Checker | Keep; all dev-page libraries belong here |
-| `strategy/` | Empty placeholder | Build `strategy/multi` as the Multi implementation of the Precision strategy contract |
+| `strategy/` | Removed — was an empty placeholder | Dissolved into `system/trading` + `system/utils` + `precision/utils`; Multi is the default strategy, not a separate root |
 | `slowTrading/` | Legacy production runtime, persistence, stages, queue, reporting | Legacy quarry; do not move or delete yet |
 | `dynamic/` | Legacy backtest, dynamic types, NN, price norm, vPoint implementation | Legacy quarry; do not move or delete yet |
 | `brain/` | Versioned legacy decisions and execution | Legacy quarry; do not move or delete yet |
@@ -128,6 +135,21 @@ src/lib/
     validation/
     config/
 
+    runtime/
+      engine.ts                   # shared runtime contract: adapter, context, state, decisions
+      types.ts                    # runtime config types
+      test-case.ts                # precision test-case snapshot contracts
+
+    strategy/                     # the default Multi strategy, dissolved into system
+      vpoints.ts                  # canonical vPoint stream + batch detection
+      entry.ts                    # v20 entry decision scan
+      entry-action.ts             # simulated entry execution
+      averaging.ts                # watch/averaging decisions + execution
+      exit.ts                     # exit decision model + simulated close
+      positions.ts                # PnL, monitoring stage, vPoint usage markers
+      reserve.ts                  # shared reserve ladder math
+      index.ts                    # grouped `strategy` object consumed by the engine
+
   exchange/                       # exchange implementations and contracts
     adapters/
     platform/
@@ -141,16 +163,6 @@ src/lib/
     ports/                        # clock, market, execution, persistence, monitoring
     helper/
     types.ts
-
-  strategy/
-    multi/                        # Multi implementation of Precision strategy
-      decision/
-      vpoints/
-      entry/
-      averaging/
-      exit/
-      types.ts
-      index.ts
 
   production/                     # live/sandbox implementations of Precision ports
     clock.ts
@@ -175,19 +187,31 @@ dependency direction below are fixed.
 ## Dependency rules
 
 ```text
-system      -> no dependency on precision, strategy, production, dev, or legacy
+system      -> no dependency on precision, production, dev, or legacy
 exchange    -> system only
-precision   -> system + its own abstract ports/contracts
-strategy    -> system + precision strategy contracts
-production  -> system + exchange + precision + strategy
- dev         -> system + exchange + precision + strategy
+precision   -> system only
+production  -> system + exchange + precision
+ dev         -> system + exchange + precision
 ```
+
+`precision` owns the engine contract (`precision/types.ts`: `RuntimeContext`,
+`RuntimeEngineAdapter`, `RuntimeEngineState`, `RuntimeClock`, decisions).
+`system/runtime` keeps the persisted config family (`RuntimeConfig`,
+`RuntimeAccountConfig`, `RuntimeManagementConfig`, `RuntimeControlConfig`)
+because `system/storage` owns catalog persistence. There is no injected
+strategy port: `RuntimeEngine` calls the dissolved default functions directly,
+and `adapter.onStrategy` is the gate where environments approve, veto, or
+arrange decisions.
+
+The default-strategy functions in `system/trading` consume `RuntimeContext`
+and the decision types, so they type-import `precision/types`. That is the
+one permitted upward edge — type-only, erased at runtime; no `system` module
+may import precision *values*.
 
 Forbidden in all new ground-truth code:
 
 ```text
 precision   -> slowTrading | dynamic | brain | old trading
-strategy    -> slowTrading | dynamic | brain | old trading
 production  -> slowTrading | dynamic | brain | old trading
  dev         -> slowTrading | dynamic | brain | old trading
 exchange    -> old trading helpers
@@ -206,8 +230,12 @@ folders directly.
 
 ### `system`
 
-Contains only small reusable foundations. It must not know about Multi,
-production, sandbox, backtest, dashboard pages, or SLOW runtime orchestration.
+Contains the shared foundation: the persisted config contract
+(`system/runtime`), the default-strategy trading primitives
+(`system/trading`), generic market utilities (`system/utils`), storage,
+logging, time, and domain types. Every module stays small, reusable, and
+strategy-neutral — `system` must not know about production, sandbox,
+backtest, dashboard pages, or SLOW runtime orchestration.
 
 Examples:
 
@@ -232,24 +260,33 @@ environment behavior through ports:
 - Persistence.
 - Notifications.
 - Monitoring.
-- Strategy.
 
-It must not load files, instantiate exchanges, send notifications, or import
-Multi-specific decision code directly.
+Strategy behavior is not a port. The engine calls the dissolved default
+functions directly; `adapter.onStrategy` is only the approval gate before an
+action runs. Precision must not load files, instantiate exchanges, send
+notifications, or reimplement strategy rules inside orchestration code.
 
-### `strategy/multi`
+### Default strategy homes (no `strategy` root)
 
-Implements the strategy callback used by `RuntimeEngine` (`onStrategy` or its
-final equivalent). It owns Multi-specific decision behavior, entry, averaging,
-exit, and strategy-specific state.
+The default Multi strategy is dissolved by concern:
+
+- `system/trading/{entry,averaging,exit,entry-action,reserve}.ts` — the
+  decision and simulated-execution functions, plus shared reserve math. These
+  are trading primitives whose signatures consume the precision engine
+  contract.
+- `system/utils/vpoints.ts` — the generic vPoint detector (predictor memory,
+  kline processing, batch detection, `mergeById`, `retainRecent`). A
+  strategy-neutral market utility.
+- `precision/utils/positions.ts` — position bookkeeping owned by the engine:
+  PnL updates, monitoring-stage classification, `markVPointUsed`.
 
 Reinvent the **API and structure**, not verified behavior. Required vPoint and
 Multi calculations should be transferred from this repository and protected by
 characterization tests. Do not import the legacy implementation from the new
-strategy; otherwise legacy remains part of the runtime.
+homes; otherwise legacy remains part of the runtime.
 
 The existing vPoint algorithm is behavioral source material, but batch and
-incremental processing should share one canonical clean processor so backtest,
+incremental processing share one canonical clean processor so backtest,
 sandbox, and live cannot diverge.
 
 ### `production`
@@ -263,14 +300,14 @@ Implements Precision ports for live and sandbox:
 - Notification delivery.
 - Runtime monitoring and production test-case recording.
 
-It composes `RuntimeEngine` with `strategy/multi`; it does not contain strategy
-rules.
+It composes `RuntimeEngine` with the default system strategy; it does not
+contain strategy rules.
 
 ### `dev`
 
 Contains everything used by dev pages, including Precision backtest and
-Precision Checker. Backtest must compose the same `RuntimeEngine` and
-`strategy/multi`, replacing only environment adapters.
+Precision Checker. Backtest must compose the same `RuntimeEngine` and default
+system strategy, replacing only environment adapters.
 
 Old dev tools are not moved wholesale. Required capabilities are rebuilt
 against clean APIs; non-goal pages remain in legacy code until deletion.
@@ -287,57 +324,172 @@ against clean APIs; non-goal pages remain in legacy code until deletion.
 
 ### Phase 1 — define clean contracts
 
-- [ ] Audit the exact state and adapter data required by `RuntimeEngine`.
-- [ ] Create minimal `system/types` and `system/trading` contracts.
-- [ ] Define Precision ports for clock, market, execution, storage,
-      notification, monitoring, and strategy.
-- [ ] Keep types environment-neutral and strategy-neutral.
+- [x] Audit the exact state and adapter data required by `RuntimeEngine`.
+- [x] Create minimal `system/types` and `system/trading` contracts.
+- [x] Define Precision ports for clock, market, execution, storage,
+      notification, and monitoring.
+- [x] Keep types environment-neutral and strategy-neutral.
 - [ ] Add dependency-boundary enforcement so authoritative roots cannot import
       legacy paths.
 
 ### Phase 2 — detach `precision`
 
-- [ ] Replace `dynamic` market/vPoint types with clean types.
-- [ ] Replace `slowTrading` symbol, schedule, reserve, monitoring, and position
+- [x] Replace `dynamic` market/vPoint types with clean types.
+- [x] Replace `slowTrading` symbol, schedule, reserve, monitoring, and position
       dependencies with Precision-owned behavior or ports.
-- [ ] Replace `brain` default decisions with the strategy port.
-- [ ] Replace old `trading` models/actions with `system/trading` contracts.
-- [ ] Finish with zero legacy imports in `src/lib/precision`.
+- [x] Replace `brain` default decisions with the default system strategy.
+- [x] Replace old `trading` models/actions with `system/trading` contracts.
+- [x] Finish with zero legacy imports in `src/lib/precision`.
 
-### Phase 3 — implement `strategy/multi`
+### Phase 3 — dissolve the default strategy (no `strategy` root)
 
-- [ ] Define the exact strategy interface consumed by `RuntimeEngine`.
-- [ ] Add characterization tests for required Multi behavior before transfer.
-- [ ] Implement one canonical vPoint stream processor shared by batch and
-      incremental operation.
-- [ ] Transfer current Multi entry, averaging, exit, and decision behavior into
-      the new strategy structure.
-- [ ] Do not transfer NN, price norm, dynamic legacy types, or old decision
+- [x] Dissolve `src/lib/strategy/multi` and then `src/lib/system/strategy`:
+      decision/execution functions into `system/trading`, the vPoint detector
+      into `system/utils`, position bookkeeping into `precision/utils`. There
+      is no `RuntimeStrategy` port — the engine calls the functions directly
+      and `adapter.onStrategy` stays the arrangement gate.
+- [x] The engine contract (`RuntimeContext`, `RuntimeEngineAdapter`,
+      `RuntimeEngineState`, `RuntimeClock`, decisions) lives in
+      `precision/types`; the persisted config family stays in
+      `system/runtime` for `system/storage`.
+- [x] Add characterization tests for required Multi behavior before transfer.
+- [x] Implement one canonical vPoint stream processor shared by batch and
+      incremental operation (`system/utils/vpoints.processKline` +
+      `detectVPoints`).
+- [x] Transfer current Multi entry, averaging, exit, and decision behavior
+      into `system/trading`.
+- [x] Do not transfer NN, price norm, dynamic legacy types, or old decision
       versions.
-- [ ] Finish with zero legacy imports in `src/lib/strategy/multi`.
+- [x] Finish with zero legacy imports in the dissolved modules.
 
 ### Phase 4 — detach `production`
 
-- [ ] Build clean production implementations of every Precision port.
-- [ ] Recreate only required persistence APIs under `system/storage` and the
+- [x] Build clean production implementations of every Precision port.
+- [x] Recreate only required persistence APIs under `system/storage` and the
       production storage adapter.
-- [ ] Preserve the approved `prod/` and `dev/` persistent-storage layout.
-- [ ] Wire live and sandbox through the same RuntimeEngine + Multi strategy path.
-- [ ] Finish with zero legacy imports in `src/lib/production`.
+- [x] Preserve the approved `prod/` and `dev/` persistent-storage layout.
+- [x] Wire live and sandbox through the same RuntimeEngine + Multi strategy path.
+- [x] Finish with zero legacy imports in `src/lib/production`.
 
 ### Phase 5 — detach `dev`
 
-- [ ] Wire Precision backtest to the same RuntimeEngine + Multi strategy path.
-- [ ] Wire Precision Checker and production test-case replay to clean contracts.
-- [ ] Rebuild only dev capabilities still present in approved pages.
-- [ ] Finish with zero legacy imports in `src/lib/dev`.
+- [x] Wire Precision backtest to the same RuntimeEngine + Multi strategy path.
+- [x] Wire Precision Checker and production test-case replay to clean contracts.
+- [x] Rebuild only dev capabilities still present in approved pages.
+      Approved set = `/dev/backtest-precision`, `/dev/precision-checker`,
+      and LiveDashboard Quick Backtest — all rebuilt on the new
+      architecture (`dev/backtestPrecision`, `dev/quick-backtest`, clean
+      `api/dev/precision-checker|backtest-precision` routes). Rejected for
+      Phase-7 deletion, not ported: `/dev/backtest-vrails` (DynamicTrade UI
+      + `api/dev/dynamic-trade/*`), coin tags (`components/dev/Coins/*`,
+      `api/dev/coin-tags|coins`, `api/slow-trading/coin-metadata`, the two
+      coin-metadata debug routes, `api/mcp.ts` tag handlers →
+      `devBacktest/coins`), black-swan preview (`api/dev/black-swan`,
+      `api/slow-trading/black-swan-preview`, `Backswan/*` settings
+      components → `devBacktest/black-swan`), `components/dev/Evaluation/*`
+      dashboards, and `components/api/production/utils.ts` (consumed only
+      by quarry code/tests).
+- [x] Finish with zero legacy imports in `src/lib/dev`.
 
 ### Phase 6 — detach `exchange` and application callers
 
-- [ ] Replace exchange imports of the old trading logger, notification helper,
+- [x] Replace exchange imports of the old trading logger, notification helper,
       and balance types with `system` APIs.
-- [ ] Rewire pages, API routes, components, and workers to authoritative roots.
-- [ ] Verify no code outside the legacy quarry imports legacy folders.
+- [x] Rewire pages, API routes, components, and workers to authoritative roots.
+      Done: `components/storage.ts` delegates to `storageFiles` (one path
+      registry), `tradeLog`→`systemLog` across app code, PrecisionChecker's
+      `datasets` edge removed. Clean dashboard read model landed:
+      `system/dashboard` rebuilds `RuntimeDashboardState` (same response
+      shape as `SlowTradingDashboardState`) over `runtimeStorage`, with
+      per-account realtime enrichment (live balance, floating PnL, Binance
+      health, instance IP). `runtimeStorage.catalog` covers config/accounts
+      load/ensure/save/update plus account lifecycle (deleteState,
+      resetSandbox); `system/runtime` owns stages, account-config split,
+      defaults, and normalizers; `system/trading` owns reporting and
+      black-swan. Rewired routes: `storage`, `history`, `logs`,
+      `binance-cooldown-reset`, `balance-snapshots`, `exchange-accounts`,
+      `reset`, `balance-refresh`, `black-swan`, `queue`, `withdraw`,
+      `mcp-tokens`, `mcp`, `notification-test`, and `dashboard/*`;
+      `instrumentation.ts` seeds the catalog and checks the instance IP
+      through system modules. Components and dashboard types migrated to
+      runtime/system shapes (`RuntimeDashboardState`,
+      `RuntimeAccountTradingConfig`, `RuntimeEffectiveConfig`,
+      `RuntimeSettingsConfig`). System ports added:
+      `system/notification/delivery` (delivery engine), `system/queue`
+      (items CRUD over catalog), `system/mcp` (tokens + tool dispatch +
+      storage read-model backends; tag/coin-metadata tools register from
+      `devBacktest` until they relocate), `system/withdrawal` (schedule +
+      executor), and `system/trading` gained `entry-sequences`,
+      `worker-capacity`, `market-volume`, `leverage`, `position`,
+      `post-average-stop-loss`, `post-average-rescue-exit`,
+      `level-based-pct-drift-stop-loss`, `adaptive-averaging`,
+      `late-entry-vpoint-drift`, and vPoint usage tracking in `reserve`.
+      Run stats producers landed: the engine dispatches all five declared
+      stages in `RUNTIME_STAGE_ORDER` — `risk-sentinel` and `management` are
+      environment-owned optional adapter hooks (`onRiskSentinel`,
+      `onManagement`) implemented by `production/stages.ts` and skipped by
+      backtest adapters. `risk-sentinel` runs two-pass Black Swan detection
+      (BTC drawdown first, breadth fan-out only on warning), persists
+      `status.blackSwan`, marks `control.forceExit` on policy-selected
+      positions through the shared monitor, and notifies transitions.
+      `management` upserts per-account daily balance snapshots, evaluates
+      the combined live+sandbox daily-PnL entry stop into
+      `status.dailyPnlLimitState`, and sends the completed-day performance
+      report once per channel (`status.dailyPerformanceNotified`,
+      `status.dailyPnlLimitNotified`). Every stage reports measured
+      `stageRuns` stats via `onStageStats` and the tick summary via
+      `onCycleComplete` into `status.lastRun*`. The production
+      `onStrategy` gate now blocks entries and averaging while Black Swan
+      protection is active (including manual entries, matching the legacy
+      signal purge), blocks automatic entries when the persisted daily-PnL
+      stop is reached, and lets manual/force-exit decisions bypass
+      `runnerEnabled`. `entry-diagnostics` surfaces both blocks via the
+      `DAILY_PNL_LIMIT`/`BLACK_SWAN_PROTECTION` codes and a shared
+      `DAILY_PNL_LIMIT` guard row. Feature ports landed:
+      `run`/`entry`/`exit` routes drive the shared `RuntimeEngine` through
+      `production.runtime.runManual` (serialized against the live loop,
+      runner-gate bypass, forced entry/exit semantics, read-only
+      `overrideRunnerGate` for diagnostics); `entry-diagnostics` evaluates
+      the new pipeline read-only via `system/trading/entry-diagnostics`
+      and `EntryBlockers` consumes `RuntimeEntryDiagnosticsSnapshot`;
+      `quick-backtest` is engine-driven via `dev/quick-backtest`
+      (per-account `RuntimeEngine` run, stored vPoints before `startTime`
+      seed detection, equity snapshots feed metrics/trade history/growth
+      + simulation series) with `dev/klines` shared dataset utils and
+      `RuntimeEngineState.volume24hMap` for the entry volume cap;
+      `debug/*` storage sync routes use `dev/storage-sync` (the two
+      coin-metadata debug routes keep only their `devBacktest/coins`
+      imports). Zero `@/lib/slowTrading` importers remain in
+      pages/components/app. Live-surface leftovers cleared: the dashboard
+      `volatility`/`initialize`/`klines` routes now run the canonical
+      detector (`system/utils/vpoints.detectVPoints`) over
+      `system/utils/klines.downloadRange` (batched exchange paging moved
+      out of `dev/klines`, with a `closedOnly` flag for chart tails) and
+      persist through `runtimeStorage.vpoints`; `converter.ts` consumes
+      system `Position`/`VolatilityPoint` and owns `MultiLinePair`;
+      `trading-live-preview`/`entry-sequence-candidates` use system
+      `EntryRecommendation` + `entry.threshold.resolve`; `formatDuration`/
+      `timeMsToReadable`/`vpoint-pct-distribution` ported to
+      `system/utils`; `windowsMs`, `DECISION_MODELS`, and
+      `VOLATILITY_THRESHOLD` live in `system/constants`; dashboard/config
+      defaults come from `runtimeDefaults`. `devBacktest/` callers stay on
+      legacy tooling until Phase 7: `pages/api/dev/*`, `dev/*` pages,
+      coin-metadata routes/components (`coin-metadata`,
+      `debug/*coin-metadata*`, `CoinTagManagerDialog`,
+      `LiveDashboardPage`), Backswan preview components,
+      `black-swan-preview`, and the `api/mcp.ts` tag-handler registration —
+      relocating `devBacktest/coins` + `black-swan` + `api/` requires
+      porting their `dynamic`/`datasets`/`trading` internals
+      (Phase-7-scale, same as `evaluate/`). `components/api/dynamic/*`,
+      `components/api/utils.tsx`, and `components/api/production/utils.ts`
+      are quarry-adjacent: consumed only by rejected dev surfaces and
+      legacy tests.
+- [x] Verify no code outside the legacy quarry imports legacy folders.
+      Verified: the only legacy importers left in `pages/`, `components/`,
+      `app/`, and `instrumentation.ts` are the Phase-7 deletion candidates
+      listed above. No live surface references `slowTrading`, `dynamic`,
+      `brain`, `evaluate`, `datasets`, `devBacktest`, or the old
+      `trading/*` internals.
 
 ### Phase 7 — deletion (separate approval required)
 
@@ -415,7 +567,9 @@ required outcome without carrying its old architecture into the clean core.
   dependencies.
 - Anything related to dev pages belongs under `lib/dev`.
 - Shared utilities and types belong under `lib/system`.
-- Multi strategy behavior belongs under `lib/strategy/multi` and connects to
-  `RuntimeEngine` through the strategy adapter.
+- Multi is the default strategy of the precision system, dissolved into
+  `lib/system/trading`, `lib/system/utils`, and `lib/precision/utils`;
+  `RuntimeEngine` calls those functions directly and `adapter.onStrategy` is
+  the arrangement/veto gate.
 - Legacy NN, dynamic types, price norm, and decision versions are not part of
   the new foundation.

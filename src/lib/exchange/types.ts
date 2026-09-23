@@ -8,6 +8,11 @@ export type { IntervalKlines, Kline };
  */
 export type ExchangeType = "okx" | "tokocrypto" | "binance";
 
+/** Slug identifying an exchange account credential set. */
+export type ExchangeAccountSlug = string;
+export type ExchangeAccountType = ExchangeType;
+export const DEFAULT_EXCHANGE_ACCOUNT_SLUG: ExchangeAccountSlug = "binance-1";
+
 /**
  * Unified order side
  */

@@ -2,7 +2,7 @@ import blackSwanBacktest, {
   type BlackSwanSavingsBacktestInput,
 } from "@/lib/devBacktest/black-swan";
 import blackSwan from "@/lib/trading/black-swan";
-import { tradeLog } from "@/lib/trading/helper/log";
+import { systemLog } from "@/lib/system/logging";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 const INCIDENT_START_T = Date.parse("2025-10-10T18:00:00.000Z");
@@ -34,7 +34,7 @@ export default async function handler(
   const abortOnDisconnect = () => {
     if (!res.writableEnded) abortController.abort();
   };
-  const tradeLogSession = tradeLog.startSession({
+  const tradeLogSession = systemLog.startSession({
     muted: true,
     verbose: false,
   });
@@ -73,6 +73,6 @@ export default async function handler(
     req.off("aborted", abortOnDisconnect);
     res.off("close", abortOnDisconnect);
     abortController.abort();
-    tradeLog.endSession(tradeLogSession);
+    systemLog.endSession(tradeLogSession);
   }
 }

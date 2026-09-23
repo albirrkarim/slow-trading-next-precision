@@ -2,7 +2,7 @@ import CheckIcon from "@mui/icons-material/Check";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { IconButton, Tooltip, type TypographyProps } from "@mui/material";
 import * as React from "react";
-import { tradeLog } from "@/lib/trading/helper/log";
+import { systemLog } from "@/lib/system/logging";
 
 type CopyTextProps = {
     text: string;
@@ -29,7 +29,7 @@ export function CopyText({
                 setCopied(false);
             }, 1500);
         } catch (error) {
-            tradeLog.error("Failed to copy text:", error);
+            systemLog.error("Failed to copy text:", error);
         }
     };
 

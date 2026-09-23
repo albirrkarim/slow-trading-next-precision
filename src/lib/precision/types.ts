@@ -1,27 +1,65 @@
-import type { BalanceSummary } from "@/components/LiveDashboard/Navbar/Settings/settings-types";
-import type { AveragingRecommendation, EntryRecommendation } from "../brain";
-import type { FetchKlinesFunction } from "../datasets/type";
-import type { VolatilityPoint } from "../dynamic";
-import type { SlowTradingSettingsConfig } from "../slowTrading";
+import type { FetchKlines, VolatilityPoint } from "@/lib/system/types";
 import type {
+  AveragingRecommendation,
+  BalanceSummary,
+  EntryRecommendation,
   Position,
   PositionDirection,
   TradeDecision,
-} from "../trading/models";
-import type { RuntimeHelper } from "./helper/types";
+} from "@/lib/system/trading";
+import type {
+  RuntimeAccountConfig,
+  RuntimeAccountTradingConfig,
+  RuntimeConfig,
+  RuntimeStage,
+  RuntimeStageRunStats,
+} from "@/lib/system/runtime";
+
+export type RuntimeMarketInterval = "1m" | "5m";
+
+export interface RuntimeMarketHelper {
+  updateMarkPrice(interval?: RuntimeMarketInterval): Promise<void>;
+  updateVPointsMap(interval?: RuntimeMarketInterval): Promise<void>;
+}
+
+/** State-bound account, balance, configuration, and market helpers. */
+export interface RuntimeHelper {
+  getAccount(accountSlug: string): RuntimeAccountConfig;
+  getAccountBalance(accountSlug: string): BalanceSummary;
+  getAccountConfig(
+    accountSlug: string,
+  ): RuntimeAccountTradingConfig;
+  market: RuntimeMarketHelper;
+}
 
 // Pack of market function
 interface MarketFunction {
-  getKlines: FetchKlinesFunction;
+  getKlines: FetchKlines;
 }
 
-interface ExchangeFunction {
+/**
+ * Exchange capabilities the shared runtime consumes. Fee rates are returned
+ * as decimal ratios: `0.001` means `0.1%`, and a round-trip rate is the
+ * combined entry + exit fee.
+ */
+export interface RuntimeExchangePort {
   /**
    * Not needed in backtest
    */
   getBalance?: (
     accountSlug?: string,
   ) => number | Promise<number>;
+
+  /** Single-side order fee as a decimal ratio. */
+  getFeeRate(params: {
+    side: "buy" | "sell";
+    type: "maker" | "taker";
+  }): number;
+
+  /** Round-trip (entry + exit) fee as a decimal ratio. */
+  getRoundTripFeeRate(params: {
+    type: "maker" | "taker";
+  }): number;
 }
 
 /**
@@ -56,7 +94,7 @@ export interface RuntimeEngineState {
   /**
    * All config
    */
-  config: SlowTradingSettingsConfig;
+  config: RuntimeConfig;
 
   /**
    * Balance info per account slug
@@ -88,6 +126,13 @@ export interface RuntimeEngineState {
       price: number;
     }
   >;
+
+  /**
+   * Optional 24h quote volume per base symbol, used to cap entry margin via
+   * `maxEntryBased24HourVolPct`. Backtests seed it from caller-provided
+   * volume maps; production leaves it unset until a live feed lands.
+   */
+  volume24hMap?: Record<string, number>;
 }
 
 /**
@@ -98,6 +143,8 @@ export interface RuntimeEntryDecision {
   accountSlug: string;
   direction: PositionDirection;
   entrySignal: EntryRecommendation;
+  /** Operator-forced entry: bypasses the auto-entry runtime gate. */
+  manual?: boolean;
   message: string;
   symbol: string;
 }
@@ -131,6 +178,11 @@ export type RuntimeDecision =
   | RuntimeAveragingDecision
   | RuntimeExitDecision;
 
+/** Opaque strategy-owned volatility detector memory. */
+export interface RuntimeVPointMemory {
+  readonly value: unknown;
+}
+
 /**
  * We will have Backend adapter and production adapter
  */
@@ -147,7 +199,7 @@ export interface RuntimeEngineAdapter {
    * we pass the exchange lib so it can later be tested outside
    * does it really called the update balance after doing some action
    */
-  exchange: ExchangeFunction;
+  exchange: RuntimeExchangePort;
 
   /**
    * Bounds how many recent vPoints `state.vPointsMap` keeps per symbol after
@@ -222,6 +274,51 @@ export interface RuntimeEngineAdapter {
    * Unused in backtest
    */
   onNotif: () => boolean;
+
+  /**
+   * Environment-owned risk-sentinel stage (Black Swan detection and
+   * protection). Production implements evidence capture, persisted status,
+   * notifications, and emergency-exit marking; backtests omit it.
+   * May return stats refinements merged into the stage run record.
+   */
+  onRiskSentinel?: (
+    context: RuntimeContext,
+  ) => Promise<RuntimeStageRunPatch | void>;
+
+  /**
+   * Environment-owned management stage: balance snapshots, daily-PnL entry
+   * limit evaluation, and completed-day performance reporting. Production
+   * implements it over persistent storage; backtests omit it.
+   */
+  onManagement?: (
+    context: RuntimeContext,
+  ) => Promise<RuntimeStageRunPatch | void>;
+
+  /**
+   * Called after every dispatched stage with its measured run stats so the
+   * environment can persist `stageRuns` records.
+   */
+  onStageStats?: (
+    stage: RuntimeStage,
+    stats: RuntimeStageRunStats,
+    context: RuntimeContext,
+  ) => Promise<void>;
+
+  /**
+   * Called once after all due stages in a scheduler tick finish so the
+   * environment can persist the `lastRun*` cycle summary.
+   */
+  onCycleComplete?: (
+    stats: RuntimeStageRunStats,
+    context: RuntimeContext,
+  ) => Promise<void>;
+}
+
+/** Optional refinements an environment-owned stage returns for its run stats. */
+export interface RuntimeStageRunPatch {
+  reports?: number;
+  summary?: string;
+  symbols?: number;
 }
 
 /** Shared dependencies and mutable state supplied to every runtime operation. */

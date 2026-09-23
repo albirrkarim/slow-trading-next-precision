@@ -8,7 +8,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { delayExecution, queueExecution } from "../client/utils";
 import { endpoints } from "../endpoints";
-import { tradeLog } from "@/lib/trading/helper/log";
+import { systemLog } from "@/lib/system/logging";
 
 const KlinesAndMarkers = dynamic(
     async () => await import("./Chart/KlinesAndMarkers"),
@@ -47,10 +47,10 @@ export default function KlinesCard({ config, customMarkers }: KlinesCardProps) {
                 customConfig ?? config
             );
 
-            tradeLog.log(resp.data);
+            systemLog.log(resp.data);
             setData(resp.data);
         } catch (e) {
-            tradeLog.error(e);
+            systemLog.error(e);
             alert("Execution failed");
         } finally {
             setLoading(false);

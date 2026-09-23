@@ -14,11 +14,9 @@ import { useEffect, useState } from "react";
 
 import { endpoints } from "@/components/endpoints";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
-import type { SlowTradingDashboardState } from "@/lib/slowTrading";
-import blackSwanModel, {
-  type BlackSwanReason,
-  type BlackSwanStatus,
-} from "@/lib/trading/black-swan";
+
+import blackSwanModel, {type BlackSwanReason, type BlackSwanStatus} from "@/lib/system/trading/black-swan";
+import type { RuntimeDashboardState } from "@/lib/system/dashboard";
 
 const MINUTE_MS = 60_000;
 type StatusColor = "error" | "info" | "success" | "warning";
@@ -96,7 +94,7 @@ function TimingItem({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Evidence({ state }: { state: SlowTradingDashboardState }) {
+function Evidence({ state }: { state: RuntimeDashboardState }) {
   const evidence = state.blackSwan.evidence;
   if (!evidence) return null;
 
@@ -137,7 +135,7 @@ export default function BlackSwanStatusSection({
   state,
   onRefresh,
 }: {
-  state: SlowTradingDashboardState;
+  state: RuntimeDashboardState;
   onRefresh: () => Promise<void>;
 }) {
   const [acknowledging, setAcknowledging] = useState(false);

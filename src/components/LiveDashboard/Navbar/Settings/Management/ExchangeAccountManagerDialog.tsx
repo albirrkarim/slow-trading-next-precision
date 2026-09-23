@@ -25,11 +25,12 @@ import axios from "axios";
 import { endpoints } from "@/components/endpoints";
 import ButtonDialog from "@/components/ui/ButtonDialog";
 import IconButtonTooltip from "@/components/ui/IconButtonTooltip";
-import type { ExchangeAccountType } from "@/lib/exchange/account-context";
-import type { SlowTradingAccount } from "@/lib/slowTrading";
+import type { ExchangeAccountType } from "@/lib/exchange/types";
+
 import type { ConfigDraft, ConfigDraftSetter } from "../settings-types";
 import SettingsInfoField from "../Components/SettingsInfoField";
-import { tradeLog } from "@/lib/trading/helper/log";
+import { systemLog } from "@/lib/system/logging";
+import type { RuntimeAccountConfig } from "@/lib/system/runtime";
 
 function maskCredentialValue(value: string): string {
   if (!value) {
@@ -194,11 +195,11 @@ export default function ExchangeAccountManagerDialog({
     }));
   };
 
-  const persistExchangeAccounts = async (accounts: SlowTradingAccount[]) => {
+  const persistExchangeAccounts = async (accounts: RuntimeAccountConfig[]) => {
     setSaveStatus("saving");
     try {
       const response = await axios.put<{
-        accounts: SlowTradingAccount[];
+        accounts: RuntimeAccountConfig[];
       }>(endpoints.slow.prod.exchangeAccounts, { accounts });
       const savedAccounts = Array.isArray(response.data?.accounts)
         ? response.data.accounts
@@ -224,7 +225,7 @@ export default function ExchangeAccountManagerDialog({
       );
       setSaveStatus("saved");
     } catch (error) {
-      tradeLog.error("Failed to save exchange accounts", error);
+      systemLog.error("Failed to save exchange accounts", error);
       setSaveStatus("error");
     }
   };
@@ -259,10 +260,10 @@ export default function ExchangeAccountManagerDialog({
 
   const updateExchangeAccount = (
     accountId: string,
-    updater: (account: SlowTradingAccount) => SlowTradingAccount,
+    updater: (account: RuntimeAccountConfig) => RuntimeAccountConfig,
   ) => {
     applyAccountDraftUpdate((prev) => {
-      let selectedAccount: SlowTradingAccount | undefined;
+      let selectedAccount: RuntimeAccountConfig | undefined;
       const exchangeAccounts = prev.accounts.map((account) => {
         if (account.slug !== accountId) {
           return account;
@@ -308,7 +309,7 @@ export default function ExchangeAccountManagerDialog({
         (candidate) => candidate.slug === selectedSlug,
       ) ?? configDraft.accounts[0];
     if (!template) return;
-    const account: SlowTradingAccount = {
+    const account: RuntimeAccountConfig = {
       slug: createExchangeAccountSlug(),
       type: "binance",
       name: `Binance ${configDraft.accounts.length + 1}`,

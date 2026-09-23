@@ -2,20 +2,15 @@
 
 import { endpoints } from "@/components/endpoints";
 import PreviewOutlinedIcon from "@mui/icons-material/PreviewOutlined";
-import type {
-  DashboardNotificationConfig,
-  NotificationChannel,
-  NotificationTypeConfig,
-  SlowNotificationKey,
-} from "@/lib/notification/config";
+import type { SlowNotificationKey } from "@/lib/system/notification/config";
 import {
-  createNotificationTypeConfig,
   DEFAULT_HIGH_VOLATILITY_MIN_ABSOLUTE_LEVEL,
   DEFAULT_LONG_OPEN_POSITION_HOUR,
   DEFAULT_STALE_POSITION_HOUR,
   SLOW_NOTIFICATION_KEYS,
   SLOW_NOTIFICATION_TYPE_INFO,
-} from "@/lib/notification/config";
+  createNotificationTypeConfig,
+} from "@/lib/system/notification/config";
 import {
   Button,
   Checkbox,
@@ -36,6 +31,7 @@ import NotificationExampleDialog, {
   type NotificationExampleSelection,
 } from "./NotificationExampleDialog";
 import type { ConfigDraft, ConfigDraftSetter } from "../settings-types";
+import type { DashboardNotificationConfig, NotificationChannel, NotificationTypeConfig } from "@/lib/system/notification";
 
 const CHANNELS: Array<{
   key: NotificationChannel;

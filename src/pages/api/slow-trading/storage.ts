@@ -1,36 +1,17 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import slowTrading, {
-  type SlowTradingStorageUpdateInput,
-} from "@/lib/slowTrading";
-import { tradeLog } from "@/lib/trading/helper/log";
-import instanceIp from "@/lib/runtime/instance-ip";
+
+import production from "@/lib/production";
+import { systemDashboard } from "@/lib/system/dashboard";
+import { systemLog } from "@/lib/system/logging";
+import managementAction from "@/lib/system/notification/management";
+import { runtimeLogs, runtimeStorage } from "@/lib/system/storage";
+import type { RuntimeCatalogUpdateInput } from "@/lib/system/storage";
 
 async function loadDashboardState() {
-  const catalog = await slowTrading.storage.data.load({ modeScope: "active" });
-  const orderedAccounts = [
-    catalog.account,
-    ...catalog.accounts.filter(
-      (accountItem) => accountItem.slug !== catalog.account.slug,
-    ),
-  ];
-  const storages = [];
-  for (const accountItem of orderedAccounts) {
-    storages.push(
-      await slowTrading.storage.data.load({
-        account: accountItem.slug,
-        includeHistory: true,
-      }),
-    );
-  }
-  const combined =
-    await slowTrading.storage.dashboard.buildCombinedStateRealtime(storages, {
-      // PROD:DASHBOARD_PERSISTED_BALANCE
-      refreshLiveBalance: false,
-    });
-  return {
-    ...combined,
-    instanceIp: (await instanceIp.storage.read()) ?? undefined,
-  };
+  return systemDashboard.state.buildCombined({
+    // PROD:DASHBOARD_PERSISTED_BALANCE
+    refreshLiveBalance: false,
+  });
 }
 
 export default async function handler(
@@ -38,9 +19,9 @@ export default async function handler(
   res: NextApiResponse,
 ) {
   try {
-    // Ensure the background slow-trading runner singleton is initialized
-    // whenever the dashboard storage endpoint is used.
-    await slowTrading.runner.get();
+    // Ensure the background runtime singleton is initialized whenever the
+    // dashboard storage endpoint is used.
+    await production.runtime.get();
 
     if (req.method === "GET") {
       res.setHeader("Cache-Control", "no-store");
@@ -49,34 +30,27 @@ export default async function handler(
     }
 
     if (req.method === "PUT") {
-      const body = (req.body ?? {}) as SlowTradingStorageUpdateInput;
-      const previousStorage = await slowTrading.storage.data.load({
-        modeScope: "active",
-      });
-      await slowTrading.storage.data.update({
+      const body = (req.body ?? {}) as RuntimeCatalogUpdateInput;
+      const previousCatalog = await runtimeStorage.catalog.ensure();
+      const nextCatalog = await runtimeStorage.catalog.update({
         config: body.config,
         ...body,
         symbols: Array.isArray(body.symbols) ? body.symbols : undefined,
       });
-      const storage = await slowTrading.storage.data.load({
-        includeHistory: true,
-      });
       const managementSource = Array.isArray(body.symbols)
         ? "dashboard.coin-management"
         : "dashboard.settings.coin-management";
-      const managementActions = slowTrading.notifications.managementAction.build(
-        {
-          previousSymbols: previousStorage.config.symbols,
-          nextSymbols: storage.config.symbols,
-          reason: "Configured Symbols list was updated through the dashboard storage API.",
-          source: managementSource,
-        },
-      );
+      const managementActions = managementAction.build({
+        previousSymbols: previousCatalog.config.management.symbols,
+        nextSymbols: nextCatalog.config.management.symbols,
+        reason: "Configured Symbols list was updated through the dashboard storage API.",
+        source: managementSource,
+      });
 
       if (managementActions.length > 0) {
         await Promise.all(
           managementActions.map((action) =>
-            slowTrading.storage.logs.appendManagement({
+            runtimeLogs.appendManagement({
               action: action.action,
               reason: action.reason,
               source: action.source,
@@ -85,23 +59,26 @@ export default async function handler(
             }),
           ),
         ).catch((logError) => {
-          tradeLog.error(
+          systemLog.error(
             "[slow-trading] failed to persist management-action log",
             logError,
           );
         });
 
-        await slowTrading.notifications.managementAction
-          .notify({
-            actions: managementActions,
-            notification: storage.runtime.notification,
-          })
-          .catch((notificationError) => {
-            tradeLog.error(
-              "[slow-trading] failed to send management-action notification",
-              notificationError,
-            );
-          });
+        const notification = nextCatalog.config.runtime.notification;
+        if (notification) {
+          await managementAction
+            .notify({
+              actions: managementActions,
+              notification,
+            })
+            .catch((notificationError) => {
+              systemLog.error(
+                "[slow-trading] failed to send management-action notification",
+                notificationError,
+              );
+            });
+        }
       }
 
       res.status(200).json(await loadDashboardState());
@@ -111,15 +88,17 @@ export default async function handler(
     res.setHeader("Allow", ["GET", "PUT"]);
     res.status(405).end(`Method ${req.method} Not Allowed`);
   } catch (error: any) {
-    await slowTrading.storage.logs.appendError({
-      source: "api.slow-trading.storage",
-      error,
-      details: {
-        method: req.method,
-      },
-    }).catch((logError) => {
-      tradeLog.error("[slow-trading] failed to write storage error log", logError);
-    });
+    await runtimeLogs
+      .appendError({
+        source: "api.slow-trading.storage",
+        error,
+        details: {
+          method: req.method,
+        },
+      })
+      .catch((logError) => {
+        systemLog.error("[slow-trading] failed to write storage error log", logError);
+      });
     res.status(500).json({
       error: error?.message ?? "Failed to handle slow trading storage",
     });

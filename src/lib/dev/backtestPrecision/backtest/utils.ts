@@ -1,6 +1,6 @@
-import { detectVolatilityPoints } from "@/lib/dynamic";
-import type { FetchKlinesFunction } from "@/lib/datasets/type";
 import type { RuntimeEngineState } from "@/lib/precision/types";
+import type { FetchKlines } from "@/lib/system/types";
+import vpoints from "@/lib/system/utils/vpoints";
 import type { BacktestPrecisionParams } from "../api/precision-api-types";
 
 /** Logs logical backtest progress once per UTC day and once at completion. */
@@ -64,7 +64,7 @@ export function createInitialBalance(
 /** Creates volatility history using only candles closed by the runtime start. */
 export async function createInitialVPointsMap(
   symbols: string[],
-  getKlines: FetchKlinesFunction,
+  getKlines: FetchKlines,
   startTime: number,
   currentTime: number,
 ): Promise<RuntimeEngineState["vPointsMap"]> {
@@ -78,7 +78,7 @@ export async function createInitialVPointsMap(
       startTime,
       symbol: `${symbol}_USDT`,
     });
-    vPointsMap[symbol] = detectVolatilityPoints({
+    vPointsMap[symbol] = vpoints.detectVPoints({
       klines: klines.filter((kline) => kline[6] <= currentTime),
       symbol,
     });

@@ -1,5 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import slowTrading from "@/lib/slowTrading";
+import production from "@/lib/production";
+import { systemLog } from "@/lib/system/logging";
+import { runtimeLogs } from "@/lib/system/storage";
 
 function parseOptionalBoolean(value: unknown): boolean | undefined {
   if (value === undefined || value === null || value === "") {
@@ -29,20 +31,26 @@ export default async function handler(
       return;
     }
 
-    const result = await slowTrading.service.runSlowTradingCycle({
+    const result = await production.manual.run({
       bypass: parseOptionalBoolean(req.body?.bypass),
-      ignoreRunnerEnabled: true,
     });
 
     res.status(200).json(result);
   } catch (error: any) {
-    await slowTrading.notifications.notifySlowTradingOperationalError({
-      source: "api.slow-trading.run",
-      error,
-      details: {
-        method: req.method,
-      },
-    });
+    await runtimeLogs
+      .appendError({
+        source: "api.slow-trading.run",
+        error,
+        details: {
+          method: req.method,
+        },
+      })
+      .catch((logError) => {
+        systemLog.error(
+          "[slow-trading] failed to write run error log",
+          logError,
+        );
+      });
 
     res.status(500).json({
       error: error?.message ?? "Failed to run slow trading cycle",

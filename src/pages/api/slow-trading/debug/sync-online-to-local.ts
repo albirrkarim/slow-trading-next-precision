@@ -1,7 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import slowTrading from "@/lib/slowTrading";
-import { tradeLog } from "@/lib/trading/helper/log";
+import storageSync from "@/lib/dev/storage-sync";
+import { systemLog } from "@/lib/system/logging";
+import { runtimeLogs } from "@/lib/system/storage";
 
 interface SyncOnlineToLocalBody {
   onlineBaseUrl?: string;
@@ -20,7 +21,7 @@ export default async function handler(
 
     const body = (req.body ?? {}) as SyncOnlineToLocalBody;
     const result =
-      await slowTrading.debugSync.syncOnlinePersistentStorageToLocal({
+      await storageSync.syncOnlinePersistentStorageToLocal({
         onlineBaseUrl: body.onlineBaseUrl,
         token: process.env.SYNC_TOKEN,
       });
@@ -28,7 +29,7 @@ export default async function handler(
     // PROD:SYNC_ONLINE_TO_LOCAL
     res.status(200).json(result);
   } catch (error: any) {
-    await slowTrading.storage.logs
+    await runtimeLogs
       .appendError({
         source: "api.slow-trading.debug.sync-online-to-local",
         error,
@@ -37,7 +38,7 @@ export default async function handler(
         },
       })
       .catch((logError) => {
-        tradeLog.error(
+        systemLog.error(
           "[slow-trading] failed to write debug sync error log",
           logError,
         );

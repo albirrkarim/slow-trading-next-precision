@@ -1,5 +1,5 @@
 import type { AxiosResponse } from "axios";
-import { tradeLog } from "@lib/trading";
+import { systemLog } from "@/lib/system/logging";
 
 const MINUTE_MS = 60_000;
 const DEFAULT_COOLDOWN_MS = 2 * MINUTE_MS;
@@ -373,7 +373,7 @@ async function activateCooldown(
         status: getErrorStatus(error),
       });
     } catch (persistenceError) {
-      tradeLog.error("Failed to persist Binance REST cooldown", {
+      systemLog.error("Failed to persist Binance REST cooldown", {
         endpoint: descriptor.endpoint,
         error: persistenceError,
       });
@@ -382,7 +382,7 @@ async function activateCooldown(
   runtime.cooldown = nextState;
 
   if (enteredOrExtended) {
-    tradeLog.error("Binance REST cooldown activated", {
+    systemLog.error("Binance REST cooldown activated", {
       endpoint: descriptor.endpoint,
       kind: descriptor.kind,
       reason: message,

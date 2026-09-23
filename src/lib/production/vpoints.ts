@@ -1,8 +1,5 @@
-import { FILES } from "@/components/storage";
-import type { PredictionEngineMemory, VolatilityPoint } from "@/lib/dynamic";
-import type { ExchangeType } from "@/lib/exchange";
-import vpoints from "@/lib/precision/utils/vpoints";
-import jsonFile from "@/lib/slowTrading/storage/json-file";
+import { runtimeStorage } from "@/lib/system/storage";
+import type { ExchangeType, VolatilityPoint } from "@/lib/system/types";
 
 /**
  * Atomically merges vPoints into one symbol's persisted volatility file at
@@ -18,25 +15,11 @@ async function persistPoints(params: {
   symbol: string;
   points: VolatilityPoint[];
 }): Promise<void> {
-  const memory: PredictionEngineMemory = {
+  await runtimeStorage.vpoints.merge({
+    exchangeType: params.exchangeType,
     symbol: params.symbol,
-    lastVolatility: params.points,
-  };
-
-  await jsonFile.update.atomic<PredictionEngineMemory>(
-    `${FILES.prod.volatility(params.exchangeType)}/${params.symbol}.json`,
-    (current) => {
-      const persisted = current as PredictionEngineMemory | undefined;
-      return {
-        ...persisted,
-        ...memory,
-        lastVolatility: vpoints.mergeById(
-          persisted?.lastVolatility ?? [],
-          memory.lastVolatility,
-        ),
-      };
-    },
-  );
+    points: params.points,
+  });
 }
 
 /** Grouped production vPoint persistence operations. */

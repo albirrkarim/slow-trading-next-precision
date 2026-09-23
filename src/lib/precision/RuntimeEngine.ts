@@ -1,4 +1,9 @@
-import { tradeLog } from "../trading";
+import systemLog from "../system/logging";
+import type {
+  RuntimeCycleSectionSummary,
+  RuntimeStage,
+  RuntimeStageRunStats,
+} from "../system/runtime";
 import { createRuntimeHelper, type RuntimeHelper } from "./helper";
 import monitoring from "./monitoring";
 import preview from "./utils/preview";
@@ -6,6 +11,7 @@ import type {
   RuntimeContext,
   RuntimeEngineAdapter,
   RuntimeEngineState,
+  RuntimeStageRunPatch,
 } from "./types";
 
 /**
@@ -22,6 +28,8 @@ export class RuntimeEngine {
   private ready = false;
 
   private processing = false;
+
+  private queue: Promise<unknown> = Promise.resolve();
 
   constructor(state: RuntimeEngineState, adapter: RuntimeEngineAdapter) {
     this.state = state;
@@ -42,8 +50,8 @@ export class RuntimeEngine {
       return;
     }
 
-    tradeLog.log("\n\nRUNTIME ENGINE STARTED");
-    tradeLog.log(preview.state(this.state));
+    systemLog.info("\n\nRUNTIME ENGINE STARTED");
+    systemLog.info(preview.state(this.state));
 
     try {
       await this.helper.market.updateMarkPrice();
@@ -53,13 +61,16 @@ export class RuntimeEngine {
       const clock = this.adapter.clock;
 
       while (!(await clock.finished())) {
-        const nextTime = monitoring.schedule.getNextTime(this.state);
+        const nextTime = monitoring.schedule.getNextTime(
+          this.state,
+          this.adapter,
+        );
 
         await clock.advanceTo(nextTime);
 
         this.state.currentTime = clock.now();
 
-        await this.runDueStages();
+        await this.enqueue(() => this.runDueStages());
       }
     } finally {
       this.ready = false;
@@ -67,25 +78,187 @@ export class RuntimeEngine {
     }
   }
 
+  private enqueue<T>(task: () => Promise<T>): Promise<T> {
+    const result = this.queue.then(task);
+    this.queue = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
+  }
+
+  /**
+   * Serializes an operator-initiated operation with the scheduled stage loop
+   * so manual passes and engine stages never interleave on shared state.
+   */
+  async runExclusive<T>(
+    task: (context: RuntimeContext) => Promise<T>,
+  ): Promise<T> {
+    return this.enqueue(async () => {
+      this.processing = true;
+      try {
+        return await task(this.context);
+      } finally {
+        this.processing = false;
+      }
+    });
+  }
+
+  /**
+   * Runs one stage while counting the positions its actions produced and
+   * measuring its wall-clock duration for the persisted run stats.
+   */
+  private async runStage(
+    stage: RuntimeStage,
+    symbols: number,
+    body: (
+      context: RuntimeContext,
+    ) => Promise<RuntimeStageRunPatch | void>,
+  ): Promise<RuntimeCycleSectionSummary & { stats: RuntimeStageRunStats }> {
+    const adapter = this.adapter;
+    let reports = 0;
+    const context: RuntimeContext = {
+      adapter: {
+        ...adapter,
+        onAction: async (decision, actionContext) => {
+          const position = await adapter.onAction(decision, actionContext);
+          if (position) reports += 1;
+          return position;
+        },
+      },
+      helper: this.helper,
+      state: this.state,
+    };
+
+    const startedAt = Date.now();
+    const patch = await body(context);
+    const ms = Date.now() - startedAt;
+    const stats = {
+      ms,
+      performance: {
+        sections: [{ ms, n: 1, s: stage }],
+        totalMs: ms,
+      },
+      reports: patch?.reports ?? reports,
+      summary: patch?.summary ?? `${stage} pass completed`,
+      symbols: patch?.symbols ?? symbols,
+      t: this.state.currentTime,
+    };
+
+    if (adapter.onStageStats) {
+      await adapter.onStageStats(stage, stats, this.context);
+    }
+
+    return { ms, n: 1, s: stage, stats };
+  }
+
+  private openSymbolCount(): number {
+    return new Set(
+      this.state.openPositions
+        .filter((position) => !position.closed)
+        .map((position) => position.symbol),
+    ).size;
+  }
+
   private async runDueStages() {
     this.processing = true;
+    const stages: Awaited<ReturnType<RuntimeEngine["runStage"]>>[] = [];
+
     try {
+      if (
+        this.adapter.onRiskSentinel &&
+        monitoring.schedule.isRiskSentinelDue(this.state)
+      ) {
+        stages.push(
+          await this.runStage("risk-sentinel", 0, (context) =>
+            this.adapter.onRiskSentinel!(context),
+          ),
+        );
+      }
+
       if (monitoring.schedule.isSpeedupDue(this.state)) {
-        await this.helper.market.updateMarkPrice("1m");
-        await this.helper.market.updateVPointsMap("1m");
-        await monitoring.stages.speedup(this.context);
+        stages.push(
+          await this.runStage(
+            "speedup",
+            this.openSymbolCount(),
+            async (context) => {
+              await this.helper.market.updateMarkPrice("1m");
+              await this.helper.market.updateVPointsMap("1m");
+              await monitoring.stages.speedup(context);
+            },
+          ),
+        );
       }
 
       if (monitoring.schedule.isStandardDue(this.state)) {
-        await this.helper.market.updateMarkPrice();
-        await this.helper.market.updateVPointsMap();
-        await monitoring.stages.standard(this.context);
+        stages.push(
+          await this.runStage(
+            "standard-monitoring",
+            this.openSymbolCount(),
+            async (context) => {
+              await this.helper.market.updateMarkPrice();
+              await this.helper.market.updateVPointsMap();
+              await monitoring.stages.standard(context);
+            },
+          ),
+        );
+      }
+
+      if (
+        this.adapter.onManagement &&
+        monitoring.schedule.isManagementDue(this.state)
+      ) {
+        stages.push(
+          await this.runStage("management", 0, (context) =>
+            this.adapter.onManagement!(context),
+          ),
+        );
       }
 
       if (monitoring.schedule.isCaptureEntryDue(this.state)) {
-        await this.helper.market.updateMarkPrice();
-        await this.helper.market.updateVPointsMap();
-        await monitoring.entry.capture(this.context);
+        stages.push(
+          await this.runStage(
+            "capture-entry",
+            Object.keys(this.state.vPointsMap).length,
+            async (context) => {
+              await this.helper.market.updateMarkPrice();
+              await this.helper.market.updateVPointsMap();
+              await monitoring.entry.capture(context);
+            },
+          ),
+        );
+      }
+
+      if (stages.length > 0 && this.adapter.onCycleComplete) {
+        const totalMs = stages.reduce(
+          (total, stage) => total + stage.ms,
+          0,
+        );
+        const sections = stages.map((stage) => ({
+          ms: stage.ms,
+          n: stage.n,
+          s: stage.s,
+        }));
+        await this.adapter.onCycleComplete(
+          {
+            ms: totalMs,
+            performance: {
+              sections: [...sections].sort((left, right) => right.ms - left.ms),
+              totalMs,
+            },
+            reports: stages.reduce(
+              (total, stage) => total + stage.stats.reports,
+              0,
+            ),
+            summary: `${stages.length} stage(s) completed`,
+            symbols: stages.reduce(
+              (total, stage) => total + stage.stats.symbols,
+              0,
+            ),
+            t: this.state.currentTime,
+          },
+          this.context,
+        );
       }
     } finally {
       this.processing = false;

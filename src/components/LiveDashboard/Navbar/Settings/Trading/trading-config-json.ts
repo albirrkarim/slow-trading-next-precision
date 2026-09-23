@@ -1,5 +1,6 @@
-import type { SlowTradingAccountTradingConfig } from "@/lib/slowTrading";
-import slowTradingAccountConfig from "@/lib/slowTrading/account-config";
+
+import { runtimeAccountConfig } from "@/lib/system/runtime";
+import type { RuntimeAccountTradingConfig } from "@/lib/system/runtime";
 
 const BOOLEAN_KEYS = [
   "averagingRescueProjectionGuardEnabled",
@@ -8,7 +9,7 @@ const BOOLEAN_KEYS = [
   "exitSidewaysToFreeWorkersForStrongCandidates",
   "lateEntryVPointPriceDriftEnabled",
   "useStopLossPlus",
-] as const satisfies ReadonlyArray<keyof SlowTradingAccountTradingConfig>;
+] as const satisfies ReadonlyArray<keyof RuntimeAccountTradingConfig>;
 
 const NUMBER_KEYS = [
   "exactLeverage",
@@ -35,11 +36,11 @@ const NUMBER_KEYS = [
   "watchMaxNextAveragingLevels",
   "watchReserveLevels",
   "watchReservePctAlloc",
-] as const satisfies ReadonlyArray<keyof SlowTradingAccountTradingConfig>;
+] as const satisfies ReadonlyArray<keyof RuntimeAccountTradingConfig>;
 
-const ALLOWED_KEYS = new Set<keyof SlowTradingAccountTradingConfig>([
-  ...slowTradingAccountConfig.trading.keys.dynamic,
-  ...slowTradingAccountConfig.trading.keys.strategy,
+const ALLOWED_KEYS = new Set<keyof RuntimeAccountTradingConfig>([
+  ...runtimeAccountConfig.trading.keys.dynamic,
+  ...runtimeAccountConfig.trading.keys.strategy,
   "notes",
 ]);
 
@@ -57,12 +58,12 @@ function requireFiniteNumber(
 }
 
 /** Serializes one account's non-sensitive Trading-tab configuration. */
-function stringify(config: SlowTradingAccountTradingConfig): string {
+function stringify(config: RuntimeAccountTradingConfig): string {
   return JSON.stringify(config, null, 2);
 }
 
 /** Parses the complete Trading-tab configuration copied from another account. */
-function parse(raw: string): SlowTradingAccountTradingConfig {
+function parse(raw: string): RuntimeAccountTradingConfig {
   let parsed: unknown;
 
   try {
@@ -76,7 +77,7 @@ function parse(raw: string): SlowTradingAccountTradingConfig {
   }
 
   const unknownKey = Object.keys(parsed).find(
-    (key) => !ALLOWED_KEYS.has(key as keyof SlowTradingAccountTradingConfig),
+    (key) => !ALLOWED_KEYS.has(key as keyof RuntimeAccountTradingConfig),
   );
   if (unknownKey) {
     throw new Error(`Unknown Trading configuration field: "${unknownKey}".`);
@@ -142,7 +143,7 @@ function parse(raw: string): SlowTradingAccountTradingConfig {
     );
   }
 
-  return structuredClone(parsed) as unknown as SlowTradingAccountTradingConfig;
+  return structuredClone(parsed) as unknown as RuntimeAccountTradingConfig;
 }
 
 const tradingConfigJson = {

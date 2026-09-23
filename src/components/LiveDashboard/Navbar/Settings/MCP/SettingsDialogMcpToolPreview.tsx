@@ -1,16 +1,17 @@
 import { Box, Chip, Tooltip, Typography } from "@mui/material";
+import type { RuntimeMcpPermission } from "@/lib/system/runtime";
 
-import type { SlowTradingMcpPermission } from "@/lib/slowTrading/types";
+
 
 export interface McpToolCatalogItem {
   description: string;
   name: string;
-  permission: SlowTradingMcpPermission;
+  permission: RuntimeMcpPermission;
   readOnly: boolean;
 }
 
 interface SettingsDialogMcpToolPreviewProps {
-  permissions: SlowTradingMcpPermission[];
+  permissions: RuntimeMcpPermission[];
   tools: McpToolCatalogItem[];
 }
 

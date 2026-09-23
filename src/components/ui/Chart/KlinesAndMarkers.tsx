@@ -11,7 +11,7 @@ import {
 } from "lightweight-charts";
 import React, { useEffect, useRef, type JSX } from "react";
 import { delayExecution } from "../../client/utils";
-import { tradeLog } from "@/lib/trading/helper/log";
+import { systemLog } from "@/lib/system/logging";
 
 interface TradeHistoryViewProps {
     klines: Kline[]
@@ -31,7 +31,7 @@ const KlinesAndMarkers = React.memo(
         useEffect(() => {
             const initialize = async () => {
                 try {
-                    tradeLog.log("initialize");
+                    systemLog.log("initialize");
 
                     const candlestickData = klines.map((k) => ({
                         time: unixToJakartaTZUTC(k[0]),
@@ -90,7 +90,7 @@ const KlinesAndMarkers = React.memo(
                         chart.timeScale().fitContent();
                     }
                 } catch (error) {
-                    tradeLog.error("Failed to fetch klines:", error);
+                    systemLog.error("Failed to fetch klines:", error);
                 }
             };
 

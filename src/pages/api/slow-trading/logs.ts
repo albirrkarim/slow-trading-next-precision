@@ -1,29 +1,22 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import slowTrading from "@/lib/slowTrading";
-import type {
-  SlowTradingErrorLogEntry,
-  SlowTradingErrorStatus,
-  SlowTradingLogKind,
-  SlowTradingLogs,
-  SlowTradingManagementLogEntry,
-  SlowTradingSafeHavenLogEntry,
-  SlowTradingWithdrawalLogEntry,
-} from "@/lib/slowTrading";
-import { tradeLog } from "@/lib/trading/helper/log";
+import { systemLog } from "@/lib/system/logging";
+import { runtimeLogs } from "@/lib/system/storage";
+import type { RuntimeErrorLogEntry, RuntimeErrorStatus, RuntimeLogKind, RuntimeLogs, RuntimeManagementLogEntry, RuntimeSafeHavenLogEntry, RuntimeWithdrawalLogEntry } from "@/lib/system/storage";
 
-type SlowTradingLogResponse =
-  | SlowTradingLogs
-  | SlowTradingErrorLogEntry[]
-  | SlowTradingManagementLogEntry[]
-  | SlowTradingSafeHavenLogEntry[]
-  | SlowTradingWithdrawalLogEntry[]
-  | { cleared: number; kind: SlowTradingLogKind }
-  | { deleted: boolean; id: string; kind: SlowTradingLogKind }
-  | { updated: SlowTradingErrorLogEntry[] }
+
+type RuntimeLogResponse =
+  | RuntimeLogs
+  | RuntimeErrorLogEntry[]
+  | RuntimeManagementLogEntry[]
+  | RuntimeSafeHavenLogEntry[]
+  | RuntimeWithdrawalLogEntry[]
+  | { cleared: number; kind: RuntimeLogKind }
+  | { deleted: boolean; id: string; kind: RuntimeLogKind }
+  | { updated: RuntimeErrorLogEntry[] }
   | { error: string };
 
-function parseKind(value: unknown): SlowTradingLogKind | null {
+function parseKind(value: unknown): RuntimeLogKind | null {
   const raw = Array.isArray(value) ? value[0] : value;
   if (
     raw === "errors" ||
@@ -37,7 +30,7 @@ function parseKind(value: unknown): SlowTradingLogKind | null {
   return null;
 }
 
-function parseErrorStatus(value: unknown): SlowTradingErrorStatus | null {
+function parseErrorStatus(value: unknown): RuntimeErrorStatus | null {
   return value === "new" || value === "dismissed" || value === "solved"
     ? value
     : null;
@@ -45,7 +38,7 @@ function parseErrorStatus(value: unknown): SlowTradingErrorStatus | null {
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<SlowTradingLogResponse>,
+  res: NextApiResponse<RuntimeLogResponse>,
 ) {
   try {
     if (
@@ -82,10 +75,7 @@ export default async function handler(
         return;
       }
 
-      const result = await slowTrading.storage.logs.updateErrorStatuses(
-        ids,
-        status,
-      );
+      const result = await runtimeLogs.updateErrorStatuses(ids, status);
       if (result.missingIds.length > 0) {
         res.status(404).json({
           error: `Error logs not found: ${result.missingIds.join(", ")}`,
@@ -107,7 +97,7 @@ export default async function handler(
       }
 
       if (clearAll) {
-        const cleared = await slowTrading.storage.logs.clearEntries(kind);
+        const cleared = await runtimeLogs.clear(kind);
         res.status(200).json({ cleared, kind });
         return;
       }
@@ -117,7 +107,7 @@ export default async function handler(
         return;
       }
 
-      const deleted = await slowTrading.storage.logs.deleteEntry(kind, id);
+      const deleted = await runtimeLogs.deleteEntry(kind, id);
       if (!deleted) {
         res.status(404).json({ error: "Log record was not found." });
         return;
@@ -127,7 +117,7 @@ export default async function handler(
       return;
     }
 
-    const logs = await slowTrading.storage.logs.load();
+    const logs = await runtimeLogs.load();
 
     if (kind === "errors") {
       res.status(200).json(logs.errors);
@@ -151,15 +141,17 @@ export default async function handler(
 
     res.status(200).json(logs);
   } catch (error: any) {
-    await slowTrading.storage.logs.appendError({
-      source: "api.slow-trading.logs",
-      error,
-      details: {
-        method: req.method,
-      },
-    }).catch((logError) => {
-      tradeLog.error("[slow-trading] failed to write logs error log", logError);
-    });
+    await runtimeLogs
+      .appendError({
+        source: "api.slow-trading.logs",
+        error,
+        details: {
+          method: req.method,
+        },
+      })
+      .catch((logError) => {
+        systemLog.error("[slow-trading] failed to write logs error log", logError);
+      });
     res.status(500).json({
       error: error?.message ?? "Failed to load slow trading logs",
     });

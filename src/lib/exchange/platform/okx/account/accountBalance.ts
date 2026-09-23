@@ -1,6 +1,6 @@
-import type { InitialBalance } from "@/lib/trading";
+import type { UnifiedBalance } from "@/lib/exchange/types";
 import { requestPrivate } from "../utils";
-import { tradeLog } from "@/lib/trading/helper/log";
+import { systemLog } from "@/lib/system/logging";
 
 /**
  * OKX Account Balance Response
@@ -112,7 +112,7 @@ export async function getAsset(
         : undefined,
     };
   } catch (error) {
-    tradeLog.error(`Error fetching balance for ${ccy}:`, error);
+    systemLog.error(`Error fetching balance for ${ccy}:`, error);
     return null;
   }
 }
@@ -139,7 +139,7 @@ export async function getAsset(
 export async function getBalance(
   instId: string,
   useEquity: boolean = false
-): Promise<InitialBalance | null> {
+): Promise<UnifiedBalance | null> {
   const [baseAsset, quoteAsset] = instId.split("-");
 
   if (!quoteAsset) {

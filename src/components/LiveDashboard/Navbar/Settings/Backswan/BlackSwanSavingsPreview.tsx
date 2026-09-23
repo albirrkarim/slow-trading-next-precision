@@ -31,7 +31,7 @@ import {
 } from "recharts";
 import { endpoints } from "@/components/endpoints";
 import type { BlackSwanSavingsBacktestResult } from "@/lib/devBacktest/black-swan";
-import blackSwan from "@/lib/trading/black-swan";
+import blackSwan from "@/lib/system/trading/black-swan";
 import { pickTradingConfigFields } from "../helpers";
 import type { ConfigDraft, DashboardState } from "../settings-types";
 import BlackSwanExitReasonChart from "./BlackSwanExitReasonChart";

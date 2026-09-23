@@ -1,7 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import slowTrading from "@/lib/slowTrading";
-import { tradeLog } from "@/lib/trading/helper/log";
+import storageSync from "@/lib/dev/storage-sync";
+import { systemLog } from "@/lib/system/logging";
+import { runtimeLogs } from "@/lib/system/storage";
 
 export const config = {
   api: {
@@ -21,17 +22,17 @@ export default async function handler(
     }
 
     // PROD:SYNC_ONLINE_TO_LOCAL
-    const bundle = await slowTrading.debugSync.exportPersistentStorageBundle();
+    const bundle = await storageSync.exportPersistentStorageBundle();
     res.status(200).json(bundle);
   } catch (error: any) {
-    await slowTrading.storage.logs.appendError({
+    await runtimeLogs.appendError({
       source: "api.slow-trading.debug.export",
       error,
       details: {
         method: req.method,
       },
     }).catch((logError) => {
-      tradeLog.error("[slow-trading] failed to write debug export error log", logError);
+      systemLog.error("[slow-trading] failed to write debug export error log", logError);
     });
 
     res.status(500).json({

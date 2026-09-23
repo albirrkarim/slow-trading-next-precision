@@ -11,10 +11,9 @@ import { useEffect, useState } from "react";
 
 import { endpoints } from "@/components/endpoints";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
-import type {
-  SlowTradingDashboardState,
-  SlowTradingBinanceHealthSnapshot,
-} from "@/lib/slowTrading";
+import type { RuntimeDashboardState } from "@/lib/system/dashboard";
+import type { RuntimeBinanceHealthSnapshot } from "@/lib/system/storage";
+
 
 const JAKARTA_TIME_ZONE = "Asia/Jakarta";
 
@@ -39,8 +38,8 @@ export default function BinanceCooldownStatusSection({
   onReset,
   state,
 }: {
-  onReset: (health: SlowTradingBinanceHealthSnapshot) => void;
-  state: SlowTradingDashboardState;
+  onReset: (health: RuntimeBinanceHealthSnapshot) => void;
+  state: RuntimeDashboardState;
 }) {
   const { enqueueSnackbar } = useSnackbar();
   const [now, setNow] = useState(0);
@@ -60,7 +59,7 @@ export default function BinanceCooldownStatusSection({
   async function resetCooldown() {
     setResetting(true);
     try {
-      const response = await axios.post<SlowTradingBinanceHealthSnapshot>(
+      const response = await axios.post<RuntimeBinanceHealthSnapshot>(
         endpoints.slow.prod.binanceCooldownReset,
       );
       onReset(response.data);

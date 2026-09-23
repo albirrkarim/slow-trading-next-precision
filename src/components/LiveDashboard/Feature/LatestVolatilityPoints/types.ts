@@ -1,14 +1,16 @@
-import type { VolatilityPoint } from "@/lib/dynamic";
+
 import type { UnifiedFundingRate } from "@/lib/exchange";
-import type { SlowTradingDashboardState } from "@/lib/slowTrading";
+
 import type { ReactNode } from "react";
+import type { RuntimeDashboardState } from "@/lib/system/dashboard";
+import type { VolatilityPoint } from "@/lib/system/types";
 
 export interface LatestVolatilityPointsProps {
   availableTags: string[];
   coinDescriptions: Record<string, string>;
   coinTags: Record<string, string[]>;
   volatilityMap: Record<string, VolatilityPoint[]>;
-  dashboardState: SlowTradingDashboardState;
+  dashboardState: RuntimeDashboardState;
   decisionEngineVersion?: string;
   deletingSymbol?: string | null;
   enteringSymbol?: string | null;

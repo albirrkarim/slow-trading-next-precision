@@ -3,8 +3,8 @@
 import { DEFAULT_COLORS } from "@/components/client/constants";
 import CoinMetadataEditor from "@/components/dev/Coins/CoinMetadataEditor";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
-import type { VolatilityPoint } from "@/lib/dynamic";
-import type { SlowTradingDashboardState } from "@/lib/slowTrading";
+
+
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { Box, IconButton, Tooltip, Typography } from "@mui/material";
 import { green, red } from "@mui/material/colors";
@@ -23,6 +23,8 @@ import {
   isLowVolume24h,
 } from "./volume";
 import { simplifyId, VPOINT_LEVEL_COLOR_MAP } from "./utils";
+import type { RuntimeDashboardState } from "@/lib/system/dashboard";
+import type { VolatilityPoint } from "@/lib/system/types";
 
 export default function LatestVolatilityPointCard({
   availableTags,
@@ -48,7 +50,7 @@ export default function LatestVolatilityPointCard({
   canDeleteAnotherCoin: boolean;
   coinDescriptions: Record<string, string>;
   coinTags: Record<string, string[]>;
-  dashboardState: SlowTradingDashboardState;
+  dashboardState: RuntimeDashboardState;
   deletingSymbol?: string | null;
   enteringSymbol?: string | null;
   index: number;

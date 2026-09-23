@@ -1,6 +1,6 @@
 import type { UnifiedBalance } from "@/lib/exchange/types";
 import { requestPrivate } from "../utils";
-import { tradeLog } from "@/lib/trading/helper/log";
+import { systemLog } from "@/lib/system/logging";
 
 interface FuturesBalance {
   accountAlias: string;
@@ -47,7 +47,7 @@ export async function getFuturesBalance(
         parseFloat(targetBalance.availableBalance),
     };
   } catch (e) {
-    tradeLog.warn(`[Binance Futures] Failed to fetch balance for ${asset}`, e);
+    systemLog.warn(`[Binance Futures] Failed to fetch balance for ${asset}`, e);
     throw e;
   }
 }

@@ -20,13 +20,10 @@ import type { LeveledMarkers } from "@/components/LiveDashboard/converter";
 import { endpoints } from "@/components/endpoints";
 import MultiLineTimelined from "@/components/ui/Chart/MultiLineTimelined";
 import ButtonDialog from "@/components/ui/ButtonDialog";
-import type { VolatilityPoint } from "@/lib/dynamic";
-import type {
-  SlowQuickBacktestResult,
-  SlowTradingDashboardState,
-} from "@/lib/slowTrading";
-import { tradeLog } from "@/lib/trading/helper/log";
-import slowTradingAccountConfig from "@/lib/slowTrading/account-config";
+
+import type { RuntimeQuickBacktestResult } from "@/lib/dev/quick-backtest";
+import { systemLog } from "@/lib/system/logging";
+import { runtimeAccountConfig } from "@/lib/system/runtime";
 import { DEFAULT_COLORS } from "@/components/client/constants";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import DurationSharePieChart from "@/components/ui/Chart/DurationSharePieChart";
@@ -44,9 +41,11 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
+import type { RuntimeDashboardState } from "@/lib/system/dashboard";
+import type { VolatilityPoint } from "@/lib/system/types";
 
 interface QuickBacktestProps {
-  dashboardState: SlowTradingDashboardState;
+  dashboardState: RuntimeDashboardState;
   endTime?: number;
   range: string;
   startTime?: number;
@@ -206,7 +205,7 @@ export default function QuickBacktest({
     [dashboardState.accounts],
   );
   const [startAmounts, setStartAmounts] = useState<Record<string, number>>({});
-  const [result, setResult] = useState<SlowQuickBacktestResult | null>(null);
+  const [result, setResult] = useState<RuntimeQuickBacktestResult | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -230,6 +229,17 @@ export default function QuickBacktest({
       }),
     [dashboardState.config.symbols, endTime, startTime, volatilityMap],
   );
+  // Pre-range points seed the runtime detector so in-range points are
+  // re-detected from klines as a continuation of the live chain.
+  const requestVolatilityMap = useMemo(
+    () =>
+      cropVolatilityMapForQuickBacktest({
+        volatilityMap,
+        symbols: dashboardState.config.symbols,
+        endTime,
+      }),
+    [dashboardState.config.symbols, endTime, volatilityMap],
+  );
 
   const execute = async () => {
     const hasPoints = Object.values(rangedVolatilityMap).some(
@@ -243,7 +253,7 @@ export default function QuickBacktest({
 
     setLoading(true);
     try {
-      const response = await axios.post<SlowQuickBacktestResult>(
+      const response = await axios.post<RuntimeQuickBacktestResult>(
         endpoints.slow.prod.quickBacktest,
         {
           config: dashboardState.config,
@@ -251,7 +261,7 @@ export default function QuickBacktest({
             slug: account.slug,
             name: account.name,
             enabled: account.enabled,
-            config: slowTradingAccountConfig.trading.toEffectiveConfig(
+            config: runtimeAccountConfig.trading.toEffective(
               dashboardState.config,
               account,
             ),
@@ -263,14 +273,14 @@ export default function QuickBacktest({
           startAmount: Object.values(startAmounts)[0] ?? 100,
           startTime,
           volume24hBySymbol,
-          volatilityMap: rangedVolatilityMap,
+          volatilityMap: requestVolatilityMap,
         },
       );
 
       setResult(response.data);
       onSimulationSeriesChange(response.data.simulationSeries);
     } catch (error: any) {
-      tradeLog.error(error);
+      systemLog.error(error);
       enqueueSnackbar(
         `Quick Backtest failed: ${error.response?.data?.error || error.message}`,
         { variant: "error" },

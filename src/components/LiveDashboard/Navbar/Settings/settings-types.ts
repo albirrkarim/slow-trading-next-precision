@@ -1,23 +1,19 @@
 "use client";
 
-import type {
-  SlowTradingSafeHavenSchedule,
-  SlowTradingSettingsConfig,
-  SlowTradingWithdrawalSchedule,
-  SlowTradingWithdrawalWallet,
-} from "@/lib/slowTrading";
+
 import type { Dispatch, SetStateAction } from "react";
+import type { RuntimeSafeHavenSchedule, RuntimeSettingsConfig, RuntimeWithdrawalSchedule, RuntimeWithdrawalWallet } from "@/lib/system/runtime";
 
 export type { DashboardState } from "../navbar-types";
 
 /** The Settings dialog edits the same grouped shape used by persistence/backtests. */
-export type ConfigDraft = SlowTradingSettingsConfig;
+export type ConfigDraft = RuntimeSettingsConfig;
 
 export type ConfigDraftSetter = Dispatch<SetStateAction<ConfigDraft | null>>;
 
-export type WithdrawalWalletDraft = SlowTradingWithdrawalWallet;
-export type WithdrawalScheduleDraft = SlowTradingWithdrawalSchedule;
-export type SafeHavenScheduleDraft = SlowTradingSafeHavenSchedule;
+export type WithdrawalWalletDraft = RuntimeWithdrawalWallet;
+export type WithdrawalScheduleDraft = RuntimeWithdrawalSchedule;
+export type SafeHavenScheduleDraft = RuntimeSafeHavenSchedule;
 
 export interface OpenPositionSummary {
   totalPnlUSDT: number;

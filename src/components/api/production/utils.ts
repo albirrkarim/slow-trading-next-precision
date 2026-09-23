@@ -2,7 +2,7 @@ import type { EntryRecommendation } from "@/lib/brain/algorithms/type-execute";
 import { decisionEngineLevelConfig } from "@/lib/brain/algorithms/v4/decisions/helper/constants";
 import type { PredictionEngineMemory, VolatilityPoint } from "@/lib/dynamic";
 import { predictionEngine } from "@/lib/dynamic";
-import { tradeLog } from "@/lib/trading";
+import { systemLog } from "@/lib/system/logging";
 import type { TradingModelMemory } from "@/lib/trading/models";
 import fs from "fs-extra";
 import type { TradeSettings } from "../dynamic";
@@ -101,7 +101,7 @@ export async function assignModelMemory(
     for (const item of tradeSettings) {
       try {
         if (typeof item.model_memory == "string") {
-          tradeLog.error("tradeSettings must be parsed into object");
+          systemLog.error("tradeSettings must be parsed into object");
           return {
             error: `tradeSettings must be parsed into object`,
           };
@@ -110,8 +110,8 @@ export async function assignModelMemory(
         // We need object because modelMemoryMap[item.symbol] is referenced to item.model_memory
         modelMemoryMap[item.symbol] = item.model_memory as TradingModelMemory;
       } catch (error) {
-        tradeLog.error(error);
-        tradeLog.error("Cant parse model memory of ", item.symbol);
+        systemLog.error(error);
+        systemLog.error("Cant parse model memory of ", item.symbol);
       }
     }
   }
@@ -138,7 +138,7 @@ export async function assignVolatility(
   tradingMode: TradingMode,
   minActionableAbsoluteLevel?: number,
 ) {
-  tradeLog.debug("\n\nassignVolatility");
+  systemLog.debug("\n\nassignVolatility");
 
   const marketType = resolveMarketTypeForTradingMode(tradingMode);
   // Assign v points
@@ -173,14 +173,14 @@ export async function assignVolatility(
       vMemory.lastVolatility,
       earliestActivePositionOpenedAt,
     );
-    tradeLog.debug(
+    systemLog.debug(
       "PRUNED vMemory.lastVolatility.length ",
       symbol,
       `${fullLength} -> ${vMemory.lastVolatility.length}`,
     );
   }
 
-  tradeLog.debug("AssignVolatility END\n\n\n");
+  systemLog.debug("AssignVolatility END\n\n\n");
 }
 
 /**

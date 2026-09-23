@@ -1,13 +1,49 @@
-import slowTradingStages from "@/lib/slowTrading/stages";
-import type { RuntimeEngineState } from "../types";
+import type { RuntimeEngineAdapter, RuntimeEngineState } from "../types";
 
 const MINUTE_MS = 60_000;
 
+/** Engine-dispatched stages with configurable cadence. */
+type ScheduledStage =
+  | "risk-sentinel"
+  | "speedup"
+  | "standard-monitoring"
+  | "management"
+  | "capture-entry";
+
+/** Normalizes a stage interval to a positive whole number of minutes. */
+function normalizeIntervalMinutes(
+  value: unknown,
+  fallbackMinutes: number,
+): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return fallbackMinutes;
+  }
+
+  return Math.max(1, Math.floor(parsed));
+}
+
 function getInterval(
   state: RuntimeEngineState,
-  stage: "speedup" | "standard-monitoring" | "capture-entry",
+  stage: ScheduledStage,
 ): number {
-  return slowTradingStages.interval.getMinutes(state.config.runtime, stage);
+  const runtime = state.config.runtime;
+  if (stage === "risk-sentinel") {
+    return normalizeIntervalMinutes(runtime.blackSwanStageIntervalMinutes, 1);
+  }
+  if (stage === "speedup") {
+    return normalizeIntervalMinutes(runtime.speedupStageIntervalMinutes, 1);
+  }
+  if (stage === "standard-monitoring") {
+    return normalizeIntervalMinutes(
+      runtime.standardMonitoringStageIntervalMinutes,
+      5,
+    );
+  }
+  if (stage === "management") {
+    return normalizeIntervalMinutes(runtime.managementStageIntervalMinutes, 5);
+  }
+  return normalizeIntervalMinutes(runtime.captureEntryStageIntervalMinutes, 5);
 }
 
 function getNextBoundary(currentTime: number, intervalMinutes: number): number {
@@ -26,7 +62,15 @@ function hasSpeedupPosition(state: RuntimeEngineState): boolean {
   );
 }
 
-function getNextTime(state: RuntimeEngineState): number {
+type EnvironmentStageAdapter = Pick<
+  RuntimeEngineAdapter,
+  "onManagement" | "onRiskSentinel"
+>;
+
+function getNextTime(
+  state: RuntimeEngineState,
+  adapter?: EnvironmentStageAdapter,
+): number {
   const standardTime = getNextBoundary(
     state.currentTime,
     getInterval(state, "standard-monitoring"),
@@ -36,6 +80,20 @@ function getNextTime(state: RuntimeEngineState): number {
     getInterval(state, "capture-entry"),
   );
   let nextTime = Math.min(standardTime, captureEntryTime);
+
+  if (adapter?.onRiskSentinel) {
+    nextTime = Math.min(
+      nextTime,
+      getNextBoundary(state.currentTime, getInterval(state, "risk-sentinel")),
+    );
+  }
+
+  if (adapter?.onManagement) {
+    nextTime = Math.min(
+      nextTime,
+      getNextBoundary(state.currentTime, getInterval(state, "management")),
+    );
+  }
 
   if (hasSpeedupPosition(state)) {
     nextTime = Math.min(
@@ -62,9 +120,19 @@ function isCaptureEntryDue(state: RuntimeEngineState): boolean {
   return isDue(state.currentTime, getInterval(state, "capture-entry"));
 }
 
+function isRiskSentinelDue(state: RuntimeEngineState): boolean {
+  return isDue(state.currentTime, getInterval(state, "risk-sentinel"));
+}
+
+function isManagementDue(state: RuntimeEngineState): boolean {
+  return isDue(state.currentTime, getInterval(state, "management"));
+}
+
 const schedule = {
   getNextTime,
   isCaptureEntryDue,
+  isManagementDue,
+  isRiskSentinelDue,
   isSpeedupDue,
   isStandardDue,
 } as const;

@@ -2,13 +2,14 @@
 
 import AccountCircleRoundedIcon from "@mui/icons-material/AccountCircleRounded";
 import { Box, Stack, Typography } from "@mui/material";
-import type { SlowTradingAccount } from "@/lib/slowTrading/types";
+
 
 import HeaderMetrics from "../../ui/HeaderMetrics";
 import { getCustomAccountTradingConfig } from "./account-trading-summary";
+import type { RuntimeAccountConfig } from "@/lib/system/runtime";
 
 type SummaryAccount = Pick<
-  SlowTradingAccount,
+  RuntimeAccountConfig,
   "enabled" | "name" | "slug" | "trading"
 >;
 

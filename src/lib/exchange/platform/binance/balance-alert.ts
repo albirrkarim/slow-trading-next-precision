@@ -1,5 +1,5 @@
-import { notif } from "@/lib/trading/helper/notification";
-import { tradeLog } from "@/lib/trading/helper/log";
+import { systemLog } from "@/lib/system/logging";
+import { systemNotif } from "@/lib/system/notification";
 
 const DEFAULT_COOLDOWN_MS = 30 * 60 * 1000;
 const lastAlertAtByKey = new Map<string, number>();
@@ -42,10 +42,13 @@ export function notifyBinanceBalanceFailure(params: {
 
   lastAlertAtByKey.set(key, now);
 
-  void notif
+  void systemNotif
     .central({
-      subject: "Binance balance check failed",
-      body: [
+      dashboard: "SLOW",
+      key: "NOTIF_ERROR",
+      dedupeKey: `binance-balance-failure:${key}`,
+      title: "Binance balance check failed",
+      message: [
         `System can't fetch Binance balance for ${params.symbol}.`,
         `Trading mode: ${params.tradingMode}`,
         `Reason: ${params.reason}`,
@@ -54,6 +57,6 @@ export function notifyBinanceBalanceFailure(params: {
       ].join("\n"),
     })
     .catch((error) => {
-      tradeLog.error("Failed to send Binance balance failure notification:", error);
+      systemLog.error("Failed to send Binance balance failure notification:", error);
     });
 }

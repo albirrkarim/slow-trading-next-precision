@@ -33,7 +33,7 @@ import { AccountType } from "@/lib/exchange/platform/okx/asset/transfer";
 import { delay } from "../platform/okx/utils";
 import { MAX_KLINES_PER_CALL } from "../constants";
 import { getMarketCapUSDForSymbol } from "../market-cap";
-import { tradeLog } from "@/lib/trading/helper/log";
+import { systemLog } from "@/lib/system/logging";
 import exchangeExit from "../ensure-closed";
 
 /**
@@ -67,11 +67,11 @@ export class OKXAdapter implements IExchange {
     const fundingAsset = await okx.asset.getFundingAsset(baseAsset);
     const fundingAvailable = fundingAsset?.available || 0;
 
-    tradeLog.log(`Checking funds for ${baseAsset}...`);
-    tradeLog.log(`- Funding Account: ${fundingAvailable}`);
+    systemLog.log(`Checking funds for ${baseAsset}...`);
+    systemLog.log(`- Funding Account: ${fundingAvailable}`);
 
     if (fundingAvailable > 0) {
-      tradeLog.log(
+      systemLog.log(
         "Found funds in Funding Account. Transferring to Trading Account...",
       );
       const transferRes = await okx.asset.transferFunds(
@@ -82,15 +82,15 @@ export class OKXAdapter implements IExchange {
       );
 
       if (transferRes.code === "0") {
-        tradeLog.log("Transfer successful.");
+        systemLog.log("Transfer successful.");
         // Wait for balance to reflect
         await new Promise((r) => setTimeout(r, 2000));
       } else {
-        tradeLog.error("Transfer failed:", transferRes);
+        systemLog.error("Transfer failed:", transferRes);
         throw new Error(`Transfer failed: ${transferRes.msg}`);
       }
     } else {
-      tradeLog.log("No funds in Funding Account to transfer.");
+      systemLog.log("No funds in Funding Account to transfer.");
     }
   }
 
@@ -338,7 +338,7 @@ export class OKXAdapter implements IExchange {
               algoParams.sz = params.quantity.toString();
             }
           } catch (e) {
-            tradeLog.error("Failed to get instrument info", e);
+            systemLog.error("Failed to get instrument info", e);
             algoParams.sz = params.quantity.toString();
           }
         } else {
@@ -466,7 +466,7 @@ export class OKXAdapter implements IExchange {
             const precision = countDecimals(lotSz);
             const finalContracts = parseFloat(contracts.toFixed(precision));
 
-            tradeLog.log(
+            systemLog.log(
               `[OKX] createOrder: Futures conversion. Qty=${params.quantity}, ctVal=${ctVal}, lotSz=${lotSz} -> Contracts=${finalContracts}`,
             );
 
@@ -486,14 +486,14 @@ export class OKXAdapter implements IExchange {
             okxParams.sz = finalContracts.toString();
           } else {
             // Fallback (likely error if ctVal needed but not found)
-            tradeLog.warn(
+            systemLog.warn(
               "[OKX] createOrder: ctVal not found for Futures symbol " +
                 okxSymbol,
             );
             okxParams.sz = params.quantity.toString();
           }
         } catch (e) {
-          tradeLog.warn("Failed to fetch info for contract size conversion", e);
+          systemLog.warn("Failed to fetch info for contract size conversion", e);
           // If the error was our own validation error, rethrow it
           if (e instanceof Error && e.message.includes("too small")) {
             throw e;
@@ -519,7 +519,7 @@ export class OKXAdapter implements IExchange {
           if (e instanceof Error && e.message.includes("too small")) {
             throw e;
           }
-          tradeLog.warn("Failed to validate spot min quantity", e);
+          systemLog.warn("Failed to validate spot min quantity", e);
         }
         okxParams.sz = params.quantity.toString();
       }
@@ -560,8 +560,8 @@ export class OKXAdapter implements IExchange {
 
     // Convert OKX response to unified format
     if (response.code !== "0" || !response.data || response.data.length === 0) {
-      tradeLog.log("okxParams", okxParams);
-      tradeLog.log("response", response);
+      systemLog.log("okxParams", okxParams);
+      systemLog.log("response", response);
 
       let message = response.msg || "Unknown error";
 
@@ -600,7 +600,7 @@ export class OKXAdapter implements IExchange {
         }
       }
     } catch (e) {
-      tradeLog.warn("[OKX] Failed to fetch executed details immediately", e);
+      systemLog.warn("[OKX] Failed to fetch executed details immediately", e);
     }
 
     // im not sure the executedQty is correct for market orders
@@ -764,7 +764,7 @@ export class OKXAdapter implements IExchange {
     const [standardOrders, algoOrdersResponse] = await Promise.all([
       response.data.map((order: any) => this.mapOrder(order, symbol)),
       getAlgoOpenOrders(okxSymbol || undefined).catch((e) => {
-        tradeLog.warn(`[OKX] Failed to fetch algo orders: ${e.message}`);
+        systemLog.warn(`[OKX] Failed to fetch algo orders: ${e.message}`);
         return { code: "error", data: [] };
       }),
     ]);
@@ -969,7 +969,7 @@ export class OKXAdapter implements IExchange {
     symbol: string,
   ): Promise<{ minQty: number; stepSize: number }> {
     const okxSymbol = this.denormalizeSymbol(symbol);
-    tradeLog.log(`[OKX] getMinQtyAndStepSize: ${symbol} -> ${okxSymbol}`);
+    systemLog.log(`[OKX] getMinQtyAndStepSize: ${symbol} -> ${okxSymbol}`);
 
     try {
       const info = await okx.market.getInstrumentInfo(okxSymbol);
@@ -984,12 +984,12 @@ export class OKXAdapter implements IExchange {
           okxSymbol.endsWith("-SWAP") || okxSymbol.endsWith("-FUTURES");
         if (isFutures && (info as any).ctVal) {
           const ctVal = parseFloat((info as any).ctVal);
-          tradeLog.log(`[OKX] Futures conversion ctVal: ${ctVal}`);
+          systemLog.log(`[OKX] Futures conversion ctVal: ${ctVal}`);
           minQr = minQr * ctVal;
           stepQr = stepQr * ctVal;
         }
 
-        tradeLog.log(
+        systemLog.log(
           `[OKX] Resolved limits: minQty=${minQr}, stepSize=${stepQr}`,
         );
 
@@ -999,7 +999,7 @@ export class OKXAdapter implements IExchange {
         };
       }
     } catch (e) {
-      tradeLog.warn("Failed to fetch instrument info, using defaults", e);
+      systemLog.warn("Failed to fetch instrument info, using defaults", e);
     }
 
     const [baseAsset] = okxSymbol.split("-");
@@ -1041,7 +1041,7 @@ export class OKXAdapter implements IExchange {
         return parseFloat(info.tickSz);
       }
     } catch (e) {
-      tradeLog.warn("Failed to fetch tick size, using default", e);
+      systemLog.warn("Failed to fetch tick size, using default", e);
     }
     return 0.01; // Default fallback
   }
@@ -1068,7 +1068,7 @@ export class OKXAdapter implements IExchange {
     );
 
     if (!ok) {
-      tradeLog.warn(
+      systemLog.warn(
         `[OKX] setLeverage failed for ${okxSymbol} lev=${leverage} mgnMode=${mgnMode}`,
       );
     }
@@ -1096,7 +1096,7 @@ export class OKXAdapter implements IExchange {
         ? "isolated"
         : "cross";
 
-    tradeLog.log(
+    systemLog.log(
       `[OKX] Repaying ${amount} ${currency} for ${okxSymbol} (${mgnMode})...`,
     );
 
@@ -1109,10 +1109,10 @@ export class OKXAdapter implements IExchange {
     });
 
     if (res.code === "0") {
-      tradeLog.log("[OKX] Repayment successful.");
+      systemLog.log("[OKX] Repayment successful.");
       return true;
     } else {
-      tradeLog.error("[OKX] Repayment failed:", res);
+      systemLog.error("[OKX] Repayment failed:", res);
       throw new Error(`Repayment failed: ${res.msg}`);
     }
   }
@@ -1134,7 +1134,7 @@ export class OKXAdapter implements IExchange {
         ? "isolated"
         : "cross";
 
-    tradeLog.log(`[OKX] Closing position for ${okxSymbol} (${mgnMode})...`);
+    systemLog.log(`[OKX] Closing position for ${okxSymbol} (${mgnMode})...`);
 
     // Determine margin currency for isolated mode (usually quote currency for Spot Margin)
     let ccy: string | undefined;
@@ -1152,10 +1152,10 @@ export class OKXAdapter implements IExchange {
     });
 
     if (res.code === "0") {
-      tradeLog.log("[OKX] Close position successful.");
+      systemLog.log("[OKX] Close position successful.");
       return true;
     } else {
-      tradeLog.error("[OKX] Close position failed:", res);
+      systemLog.error("[OKX] Close position failed:", res);
       throw new Error(`Close position failed: ${res.msg}`);
     }
   }

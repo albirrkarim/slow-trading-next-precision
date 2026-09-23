@@ -1,9 +1,7 @@
 "use client";
 
-import type { TradingConfig } from "@/lib/trading/models";
-import postAverageRescue from "@/lib/trading/post-average-rescue";
-import postAverageStopLoss from "@/lib/trading/post-average-stop-loss";
-import levelBasedPctDriftStopLoss from "@/lib/trading/level-based-pct-drift-stop-loss";
+
+import { postAverageRescue , postAverageStopLoss , levelBasedPctDriftStopLoss , reserve } from "@/lib/system/trading";
 import type { Theme } from "@mui/material";
 
 import { computeDailyPnlPercentStats } from "../../Reporting/utils";
@@ -14,20 +12,21 @@ import type {
   DayPreviewSummary,
   OpenPositionSummary,
 } from "./settings-types";
-import slowTradingClient from "@/lib/slowTrading/client";
-import slowTradingDailyPnlLimit from "@/lib/slowTrading/daily-pnl-limit";
+
+import runtimeDailyPnlLimit from "@/lib/system/trading/daily-pnl-limit";
+import type { RuntimeEffectiveConfig } from "@/lib/system/runtime";
 
 function computeLockedPositionValue(
   position: NonNullable<DashboardState>["openPositions"][number],
 ): number {
-  return slowTradingClient.watchReserve.balance.getLockedPositionMarginUsdt(
+  return reserve.balance.getLockedPositionMarginUsdt(
     position,
   );
 }
 
 export function pickTradingConfigFields(
-  tradingConfig: TradingConfig,
-): TradingConfig {
+  tradingConfig: Partial<RuntimeEffectiveConfig>,
+): Partial<RuntimeEffectiveConfig> {
   const {
     takeProfitPercent,
     stopLossPercent,
@@ -123,7 +122,7 @@ export function parseSymbols(symbolsText: string): string[] {
 export function computeAutoEntryActive(
   dashboardState: DashboardState | null,
 ): boolean {
-  const dailyPnlLimit = slowTradingDailyPnlLimit.guard.evaluate({
+  const dailyPnlLimit = runtimeDailyPnlLimit.guard.evaluate({
     positions: dashboardState?.history ?? [],
     thresholdUsdt: dashboardState?.runtime.autoEntryDailyPnlLimitUSDT,
   });
@@ -191,7 +190,7 @@ export function computeDayPreview(
   const todayPercent = percentStats.find((stat) => stat.day === todayKey);
 
   return {
-    dailyUsdtProfit: slowTradingDailyPnlLimit.pnl.sumForUtcDay(
+    dailyUsdtProfit: runtimeDailyPnlLimit.pnl.sumForUtcDay(
       history,
       todayKey,
     ),

@@ -6,11 +6,9 @@ const mocks = vi.hoisted(() => ({
   reset: vi.fn(async () => ({ current: null, logs: [] })),
 }));
 
-vi.mock("@/lib/slowTrading", () => ({
-  default: {
-    binanceHealth: { reset: mocks.reset },
-    storage: { logs: { appendError: mocks.appendError } },
-  },
+vi.mock("@/lib/system/storage", () => ({
+  runtimeBinanceHealth: { reset: mocks.reset },
+  runtimeLogs: { appendError: mocks.appendError },
 }));
 
 import handler from "@/pages/api/slow-trading/binance-cooldown-reset";

@@ -1,17 +1,20 @@
-import type { FetchKlinesFunctionProps } from "@/lib/datasets/type";
 import { MAX_KLINES_PER_CALL } from "@/lib/exchange/constants";
-import type { Kline } from "@/lib/exchange/platform/tokocrypto";
+import type {
+  IntervalKlines,
+  Kline,
+} from "@/lib/exchange/platform/tokocrypto";
 import { INTERVAL_MS_MAP } from "@/lib/exchange/platform/tokocrypto";
 import { simpleTimeToMinutes } from "@/lib/exchange/utils";
 import type { RuntimeEngineAdapter } from "@/lib/precision/types";
+import type { FetchKlinesParams } from "@/lib/system/types";
 import type { ProductionAdapterOptions } from "./types";
 
-function resolveEndTime(props: FetchKlinesFunctionProps, now: number): number {
+function resolveEndTime(props: FetchKlinesParams, now: number): number {
   return props.endTime ?? now;
 }
 
 function resolveStartTime(
-  props: FetchKlinesFunctionProps,
+  props: FetchKlinesParams,
   endTime: number,
 ): number {
   if (props.startTime !== undefined) return props.startTime;
@@ -40,11 +43,11 @@ function filterVisibleKlines(
 
 async function fetchKlinesInBatches(
   options: ProductionAdapterOptions,
-  props: FetchKlinesFunctionProps,
+  props: FetchKlinesParams,
   startTime: number,
   endTime: number,
 ): Promise<Kline[]> {
-  const interval = props.interval ?? "1m";
+  const interval = (props.interval ?? "1m") as IntervalKlines;
   const intervalMs = INTERVAL_MS_MAP[interval];
   if (!intervalMs) {
     throw new Error(`Unsupported production kline interval: ${interval}.`);
@@ -124,11 +127,34 @@ function create(options: ProductionAdapterOptions): RuntimeEngineAdapter {
 
   return {
     clock: options.clock,
-    exchange: { getBalance },
+    exchange: {
+      getBalance,
+      getFeeRate({ side, type }) {
+        return (
+          options.exchange.getFees().getTotalFeePercent({
+            currency: "USDT",
+            side,
+            type,
+          }) / 100
+        );
+      },
+      getRoundTripFeeRate({ type }) {
+        return (
+          options.exchange.getFees().getBothSideFeePercent({
+            currency: "USDT",
+            type,
+          }) / 100
+        );
+      },
+    },
     market: createMarket(options),
     onAction: options.onAction,
+    onCycleComplete: options.onCycleComplete,
     onExit: options.onExit,
+    onManagement: options.onManagement,
     onNewVPoint: options.onNewVPoint,
+    onRiskSentinel: options.onRiskSentinel,
+    onStageStats: options.onStageStats,
     onStateChange: options.onStateChange,
     onNotif: options.onNotif ?? (() => true),
     onStrategy: options.onStrategy,

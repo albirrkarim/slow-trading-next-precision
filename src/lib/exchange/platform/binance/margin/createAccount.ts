@@ -1,5 +1,5 @@
 import { requestPrivate } from "../utils";
-import { tradeLog } from "@/lib/trading/helper/log";
+import { systemLog } from "@/lib/system/logging";
 import binanceRequestCoordinator from "../request-coordinator";
 
 /**
@@ -15,7 +15,7 @@ export async function createIsolatedMarginAccount(
       { symbol },
       "post",
     );
-    tradeLog.log("Create Account Response:", JSON.stringify(response));
+    systemLog.log("Create Account Response:", JSON.stringify(response));
     // If we're here, it didn't throw 4xx/5xx.
     // Some endpoints might return empty body or different structure.
     // Assume success if no error.
@@ -26,12 +26,12 @@ export async function createIsolatedMarginAccount(
     // However, usually if it exists we wouldn't be calling this.
     // Code -11001 means account does not exist.
     // Code -20002 means default (if success is false)
-    tradeLog.warn(
+    systemLog.warn(
       `Failed to create isolated margin account for ${symbol}`,
       error.message,
     );
     if (error.response)
-      tradeLog.log("Error details:", JSON.stringify(error.response.data));
+      systemLog.log("Error details:", JSON.stringify(error.response.data));
     return false;
   }
 }

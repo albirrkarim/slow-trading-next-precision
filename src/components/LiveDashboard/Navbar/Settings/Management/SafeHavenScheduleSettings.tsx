@@ -16,7 +16,7 @@ import {
 import { useState } from "react";
 
 import ButtonDialog from "@/components/ui/ButtonDialog";
-import slowTradingSafeHavenSchedule from "@/lib/slowTrading/safe-haven-schedule";
+import runtimeSafeHavenSchedule from "@/lib/system/safehaven";
 
 import SettingsInfoField from "../Components/SettingsInfoField";
 import type {
@@ -151,7 +151,7 @@ function formatRule(schedule: SafeHavenScheduleDraft): string {
 }
 
 function formatNextOccurrence(schedule: SafeHavenScheduleDraft): string {
-  const occurrenceAt = slowTradingSafeHavenSchedule.timing.getNextOccurrenceAt(
+  const occurrenceAt = runtimeSafeHavenSchedule.timing.getNextOccurrenceAt(
     {
       ...schedule,
       amountUSDT: Number(schedule.amountUSDT) || 0,

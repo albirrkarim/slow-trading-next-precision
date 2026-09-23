@@ -1,5 +1,5 @@
 import { requestPrivate } from "../utils";
-import { tradeLog } from "@/lib/trading/helper/log";
+import { systemLog } from "@/lib/system/logging";
 
 /**
  * Repayment parameters
@@ -43,7 +43,7 @@ export async function repay(params: RepaymentParams): Promise<RepaymentResponse>
     if (params.instId) body.instId = params.instId;
     if (params.amt) body.repayAmt = params.amt;
 
-    tradeLog.log("[OKX] One-Click Repay Body:", JSON.stringify(body));
+    systemLog.log("[OKX] One-Click Repay Body:", JSON.stringify(body));
 
     return requestPrivate<RepaymentResponse>("/api/v5/trade/one-click-repay", body, "POST");
 }

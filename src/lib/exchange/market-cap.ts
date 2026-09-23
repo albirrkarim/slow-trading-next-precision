@@ -1,8 +1,11 @@
 import axios from "axios";
 import fs from "fs-extra";
-import { FILES } from "@/components/storage";
+import { storageFiles } from "@/lib/system/storage";
 import path from "path";
-import { delay } from "@/components/api/utils";
+
+async function delay(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 const COINMARKETCAP_BASE_URL = "https://pro-api.coinmarketcap.com";
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
@@ -98,9 +101,9 @@ async function loadCache(): Promise<MarketCapCacheFile> {
   if (!cacheLoadPromise) {
     cacheLoadPromise = (async () => {
       try {
-        if (await fs.pathExists(FILES.prod.cache.marketCap)) {
+        if (await fs.pathExists(storageFiles.prod.cache.marketCap)) {
           const raw = (await fs.readJson(
-            FILES.prod.cache.marketCap,
+            storageFiles.prod.cache.marketCap,
           )) as Partial<MarketCapCacheFile>;
           if (
             raw &&
@@ -131,8 +134,8 @@ async function loadCache(): Promise<MarketCapCacheFile> {
 async function persistCache(cache: MarketCapCacheFile): Promise<void> {
   cacheWritePromise = (cacheWritePromise ?? Promise.resolve()).then(
     async () => {
-      await fs.ensureDir(path.dirname(FILES.prod.cache.marketCap));
-      await fs.writeJson(FILES.prod.cache.marketCap, cache);
+      await fs.ensureDir(path.dirname(storageFiles.prod.cache.marketCap));
+      await fs.writeJson(storageFiles.prod.cache.marketCap, cache);
     },
   );
 

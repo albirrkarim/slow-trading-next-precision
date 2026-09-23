@@ -1,6 +1,6 @@
-import type { ExchangeType } from "@/lib/exchange/types";
 import type { PrecisionTestCaseMode } from "@/lib/production/precision-test-case";
-import type { Position } from "@/lib/trading/models";
+import type { Position } from "@/lib/system/trading";
+import type { ExchangeType } from "@/lib/system/types";
 
 /** Summary of a completed production capture selectable in the checker UI. */
 export interface PrecisionCheckerTestCaseSummary {

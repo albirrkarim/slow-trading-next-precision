@@ -1,7 +1,7 @@
 import fs from "fs-extra";
 import path from "path";
 
-import { FILES } from "@/components/storage";
+import { storageFiles } from "@/lib/system/storage";
 import { precisionBacktest } from "@/lib/dev/backtestPrecision/backtest";
 import type {
   PrecisionTestCase,
@@ -15,7 +15,7 @@ import type {
 } from "./types";
 
 function testCaseDirectory(): string {
-  return FILES.dev.precisionTestCaseDir;
+  return storageFiles.dev.precisionTestCaseDir;
 }
 
 function modeFromFileName(fileName: string): PrecisionTestCaseMode {
@@ -138,8 +138,8 @@ async function run(fileName: string): Promise<PrecisionCheckerRunResult> {
     testCase.config.accounts ?? []
   ).map((account) => ({
     slug: account.slug,
-    name: account.name,
-    trading: { notes: account.trading?.notes ?? "" },
+    name: account.name ?? "",
+    trading: { notes: String(account.trading?.notes ?? "") },
   }));
 
   return {

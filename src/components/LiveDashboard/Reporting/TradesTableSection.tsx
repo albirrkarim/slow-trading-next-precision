@@ -32,20 +32,19 @@ import PositionLevelSequence, {
 import { EXCHANGE_COLOR_MAP } from "@/components/LiveDashboard/Shared/constants";
 import { buildTradeMarkersFromHistory } from "@/components/LiveDashboard/Shared/trade-chart-markers";
 import type { ExchangeType } from "@/lib/exchange";
-import type { VolatilityPoint } from "@/lib/dynamic";
-import type {
-  SlowTradingAccount,
-  SlowTradingDashboardState,
-  SlowTradingMode,
-} from "@/lib/slowTrading";
+
+
 import RangedValueText, {
   type RangedValueColorRange,
 } from "./RangedValueText";
 import type { SlowTradingReportRow } from "./types";
 import { formatHoldMs } from "./utils";
-import positionData from "@/lib/trading/position";
+import { positionData  } from "@/lib/system/trading";
 import TradeHistoryNotesField from "./TradeHistoryNotesField";
 import JsonTreeViewer from "@/components/LiveDashboard/Shared/JsonTreeViewer";
+import type { RuntimeAccountConfig, RuntimeMode } from "@/lib/system/runtime";
+import type { RuntimeDashboardState } from "@/lib/system/dashboard";
+import type { VolatilityPoint } from "@/lib/system/types";
 
 type SortKey =
   | "symbol"
@@ -59,8 +58,8 @@ type SortKey =
   | "maxRunUpUsdt"
   | "netProfitUSDT";
 
-type TradeHistoryAccount = Pick<SlowTradingAccount, "name" | "slug"> & {
-  trading?: Pick<SlowTradingAccount["trading"], "notes">;
+type TradeHistoryAccount = Pick<RuntimeAccountConfig, "name" | "slug"> & {
+  trading?: Pick<RuntimeAccountConfig["trading"], "notes">;
 };
 
 const metricTooltipSlotProps = {
@@ -375,9 +374,9 @@ export function TradesTableSection({
   exchangeType: ExchangeType;
   getVolatilityPoints?: (symbol: string) => VolatilityPoint[] | undefined;
   history: SlowTradingReportRow[];
-  mode: SlowTradingMode;
+  mode: RuntimeMode;
   onHistoryChange: (
-    nextHistory: SlowTradingDashboardState["history"],
+    nextHistory: RuntimeDashboardState["history"],
     refreshDashboard?: boolean,
   ) => void;
   readOnly?: boolean;
@@ -477,7 +476,7 @@ export function TradesTableSection({
     setDeletingKey(rowKey);
     try {
       const response = await axios.delete<{
-        state?: SlowTradingDashboardState;
+        state?: RuntimeDashboardState;
       }>(endpoints.slow.prod.history, {
         data: {
           account: row.account,

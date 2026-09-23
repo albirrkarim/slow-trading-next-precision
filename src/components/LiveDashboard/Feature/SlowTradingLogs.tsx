@@ -34,25 +34,19 @@ import { useSnackbar } from "notistack";
 
 import { endpoints } from "@/components/endpoints";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
-import type {
-  SlowTradingErrorLogEntry,
-  SlowTradingErrorStatus,
-  SlowTradingLogKind,
-  SlowTradingManagementLogEntry,
-  SlowTradingSafeHavenLogEntry,
-  SlowTradingWithdrawalLogEntry,
-} from "@/lib/slowTrading";
+import type { RuntimeErrorLogEntry, RuntimeErrorStatus, RuntimeLogKind, RuntimeManagementLogEntry, RuntimeSafeHavenLogEntry, RuntimeWithdrawalLogEntry } from "@/lib/system/storage";
+
 
 type LogEntryByKind = {
-  management: SlowTradingManagementLogEntry;
-  safe_haven: SlowTradingSafeHavenLogEntry;
-  withdrawals: SlowTradingWithdrawalLogEntry;
+  management: RuntimeManagementLogEntry;
+  safe_haven: RuntimeSafeHavenLogEntry;
+  withdrawals: RuntimeWithdrawalLogEntry;
 };
-type GenericLogKind = Exclude<SlowTradingLogKind, "errors">;
+type GenericLogKind = Exclude<RuntimeLogKind, "errors">;
 
 const DELETE_ALL_ID = "__delete_all__";
 const ERROR_LOG_POLL_INTERVAL_MS = 30_000;
-type ErrorLogFilter = SlowTradingErrorStatus | "all";
+type ErrorLogFilter = RuntimeErrorStatus | "all";
 
 function DeleteLogButton(props: {
   deleting: boolean;
@@ -145,12 +139,12 @@ function ErrorLogTable(props: {
   deletingId: string | null;
   error: string | null;
   loading: boolean;
-  onCopy: (row: SlowTradingErrorLogEntry) => void;
+  onCopy: (row: RuntimeErrorLogEntry) => void;
   onDelete: (id: string) => void;
   onSelect: (id: string, selected: boolean) => void;
   onSelectAll: (selected: boolean) => void;
-  onStatus: (ids: string[], status: SlowTradingErrorStatus) => void;
-  rows: SlowTradingErrorLogEntry[];
+  onStatus: (ids: string[], status: RuntimeErrorStatus) => void;
+  rows: RuntimeErrorLogEntry[];
   selectedIds: Set<string>;
   updating: boolean;
 }) {
@@ -319,7 +313,7 @@ function SafeHavenLogTable(props: {
   error: string | null;
   loading: boolean;
   onDelete: (id: string) => void;
-  rows: SlowTradingSafeHavenLogEntry[];
+  rows: RuntimeSafeHavenLogEntry[];
 }) {
   const { deletingId, error, loading, onDelete, rows } = props;
 
@@ -373,7 +367,7 @@ function WithdrawalLogTable(props: {
   error: string | null;
   loading: boolean;
   onDelete: (id: string) => void;
-  rows: SlowTradingWithdrawalLogEntry[];
+  rows: RuntimeWithdrawalLogEntry[];
 }) {
   const { deletingId, error, loading, onDelete, rows } = props;
 
@@ -427,7 +421,7 @@ function ManagementLogTable(props: {
   error: string | null;
   loading: boolean;
   onDelete: (id: string) => void;
-  rows: SlowTradingManagementLogEntry[];
+  rows: RuntimeManagementLogEntry[];
 }) {
   const { deletingId, error, loading, onDelete, rows } = props;
 
@@ -697,7 +691,7 @@ export function SlowTradingErrorLogs() {
   const { enqueueSnackbar } = useSnackbar();
   const loadedRef = useRef(false);
   const requestInFlightRef = useRef(false);
-  const [rows, setRows] = useState<SlowTradingErrorLogEntry[]>([]);
+  const [rows, setRows] = useState<RuntimeErrorLogEntry[]>([]);
   const [filter, setFilter] = useState<ErrorLogFilter>("new");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [loaded, setLoaded] = useState(false);
@@ -735,7 +729,7 @@ export function SlowTradingErrorLogs() {
     }
 
     try {
-      const response = await axios.get<SlowTradingErrorLogEntry[]>(
+      const response = await axios.get<RuntimeErrorLogEntry[]>(
         endpoints.slow.prod.logs,
         { params: { kind: "errors" } },
       );
@@ -771,12 +765,12 @@ export function SlowTradingErrorLogs() {
   }, [loadRows]);
 
   const updateStatus = useCallback(
-    async (ids: string[], status: SlowTradingErrorStatus) => {
+    async (ids: string[], status: RuntimeErrorStatus) => {
       setUpdating(true);
       setError(null);
       try {
         const response = await axios.patch<{
-          updated: SlowTradingErrorLogEntry[];
+          updated: RuntimeErrorLogEntry[];
         }>(
           endpoints.slow.prod.logs,
           { ids, status },
@@ -862,7 +856,7 @@ export function SlowTradingErrorLogs() {
   }, [rows.length]);
 
   const copyJson = useCallback(
-    async (value: SlowTradingErrorLogEntry | SlowTradingErrorLogEntry[]) => {
+    async (value: RuntimeErrorLogEntry | RuntimeErrorLogEntry[]) => {
       try {
         await navigator.clipboard.writeText(JSON.stringify(value, null, 2));
         enqueueSnackbar("Error JSON copied", { variant: "success" });

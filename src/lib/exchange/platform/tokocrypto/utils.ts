@@ -2,7 +2,7 @@ import axios, { type AxiosRequestConfig } from "axios";
 import crypto from "crypto";
 import moment from "moment";
 import { BASE_URL } from "./config";
-import { tradeLog } from "@lib/trading";
+import { systemLog } from "@/lib/system/logging";
 import { getCurrentExchangeAccountSlug } from "@/lib/exchange/account-context";
 import { getTokocryptoCredentials } from "@/lib/exchange/credentials";
 import { requestPublic as requestBinancePublic } from "@/lib/exchange/platform/binance/utils";
@@ -87,7 +87,7 @@ export async function requestPrivate<T>(
 
     // await saveToFile(endpoint, data);
     if (data.code !== 0) {
-      tradeLog.log("response", data);
+      systemLog.log("response", data);
       throw new Error(data.msg);
     }
 
@@ -98,7 +98,7 @@ export async function requestPrivate<T>(
       ? errorData.msg || errorData.message || JSON.stringify(errorData)
       : error.message;
 
-    tradeLog.error(
+    systemLog.error(
       `Tokocrypto Private Request Error [${endpoint}]:`,
       errorMessage,
     );
@@ -130,7 +130,7 @@ export async function requestPublic<T>(
 
     return data;
   } catch (error: any) {
-    tradeLog.error("endpoint ", endpoint);
+    systemLog.error("endpoint ", endpoint);
     const errorData = error.response?.data;
     const errorMessage = errorData
       ? errorData.msg || errorData.message || JSON.stringify(errorData)

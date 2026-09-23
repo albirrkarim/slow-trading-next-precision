@@ -1,8 +1,8 @@
 import type {
   BacktestTestCase,
   PrecisionRuntimeSnapshot,
-} from "@/lib/dev/backtestPrecision/api/precision-api-types";
-import type { Position } from "@/lib/trading/models";
+} from "@/lib/system/runtime";
+import type { Position } from "@/lib/system/trading";
 
 /** A production recording that can later be supplied to the precision checker. */
 export interface PrecisionTestCase extends BacktestTestCase {

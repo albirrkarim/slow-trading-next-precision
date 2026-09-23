@@ -1,10 +1,11 @@
 "use client";
 
 import type { ConfigDraft } from "@/components/LiveDashboard/Navbar/navbar-types";
+import { runtimeNormalize } from "@/lib/system/runtime";
 import SidebarButton from "@/components/ui/SidebarButton";
 import type { BacktestPrecisionParams } from "@/lib/dev/backtestPrecision/api/precision-api-types";
 import type { BacktestPrecisionResult } from "@/lib/dev/backtestPrecision/backtest/backtest-precision-types";
-import { tradeLog } from "@/lib/trading/helper/log";
+import { systemLog } from "@/lib/system/logging";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import {
     Alert,
@@ -147,10 +148,10 @@ export default function DynamicTradeAnalytics() {
                 endTime,
                 upToDateKlines: usedConfig.upToDateKlines,
                 upToDateDecisionBacktest: usedConfig.upToDateDecisionBacktest,
-                config: usedConfig.settings,
+                config: runtimeNormalize.config.toRuntime(usedConfig.settings),
             };
 
-            tradeLog.log("Sending payload:", JSON.stringify(payload, null, 2));
+            systemLog.log("Sending payload:", JSON.stringify(payload, null, 2));
 
             const resp = await axios.post<BacktestPrecisionResult>(
                 endpoints.dev.backtestPrecision.backtest,
@@ -159,9 +160,9 @@ export default function DynamicTradeAnalytics() {
 
             setData(resp.data);
 
-            tradeLog.log("VolatilityMap response:", resp.data);
+            systemLog.log("VolatilityMap response:", resp.data);
         } catch (e) {
-            tradeLog.error(e);
+            systemLog.error(e);
             setError(
                 axios.isAxiosError(e)
                     ? (e.response?.data?.error ?? e.message)

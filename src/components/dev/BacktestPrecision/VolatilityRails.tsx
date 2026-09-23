@@ -7,7 +7,8 @@ import { Box, Typography } from "@mui/material";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import MultiLineTimelined from "@/components/ui/Chart/MultiLineTimelined";
 import { makeSeries } from "@/components/LiveDashboard/utils";
-import type { VolatilityPoint } from "@/lib/dynamic";
+import type { VolatilityPoint } from "@/lib/system/types";
+
 
 export default function VolatilityRails({
   volatilityMap,

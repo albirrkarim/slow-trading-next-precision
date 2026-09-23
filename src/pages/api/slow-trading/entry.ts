@@ -1,7 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import slowTrading from "@/lib/slowTrading";
-import blackSwan from "@/lib/trading/black-swan";
+import production from "@/lib/production";
+import { systemDashboard } from "@/lib/system/dashboard";
+import { systemLog } from "@/lib/system/logging";
+import { runtimeLogs, runtimeStorage } from "@/lib/system/storage";
+import { blackSwan } from "@/lib/system/trading";
 
 export default async function handler(
   req: NextApiRequest,
@@ -20,30 +23,43 @@ export default async function handler(
       return;
     }
 
-    const currentStorage = await slowTrading.storage.data.load({
-      account: String(req.body?.account || "").trim() || undefined,
-      modeScope: "active",
-    });
-    const activeMode = currentStorage.runtime.sandboxEnabled ? "sandbox" : "live";
-    if (!currentStorage.account.enabled) {
+    const catalog = await runtimeStorage.catalog.load();
+    const requestedSlug = String(req.body?.account || "").trim();
+    const account = requestedSlug
+      ? catalog.config.accounts.find((item) => item.slug === requestedSlug)
+      : catalog.config.accounts[0];
+    if (!account) {
+      res.status(400).json({ error: "Account is required" });
+      return;
+    }
+    if (!account.enabled) {
       res.status(409).json({
-        error: `Account ${currentStorage.account.slug} is disabled for new entries`,
+        error: `Account ${account.slug} is disabled for new entries`,
       });
       return;
     }
-    const protectionState = currentStorage.modes[activeMode].blackSwan;
+
+    const activeMode = catalog.mode;
+    const [status, accountState] = await Promise.all([
+      runtimeStorage.status.load(activeMode),
+      runtimeStorage.account.load({
+        accountSlug: account.slug,
+        mode: activeMode,
+      }),
+    ]);
+
+    const protectionState = status.blackSwan;
     if (blackSwan.state.isProtective(protectionState)) {
       res.status(423).json({
         error: `Entry blocked by Black Swan ${protectionState?.status}: ${protectionState?.reason}`,
       });
       return;
     }
-    const hasOpenPosition = currentStorage.modes[activeMode].tradeSettings.some(
-      (item) =>
-        String(item.symbol || "").trim().toUpperCase() === symbol &&
-        (item.model_memory.positions?.length ?? 0) > 0,
-    );
 
+    const hasOpenPosition = accountState.positions.some(
+      (position) =>
+        !position.closed && position.symbol.toUpperCase() === symbol,
+    );
     if (hasOpenPosition) {
       res.status(409).json({
         error: `Open position already exists for ${symbol} in ${activeMode} mode`,
@@ -51,53 +67,44 @@ export default async function handler(
       return;
     }
 
-    const result = await slowTrading.service.runSlowTradingCycle({
-      account: currentStorage.account.slug,
-      ignoreRunnerEnabled: true,
-      forceEntrySymbols: [symbol],
+    const result = await production.manual.entry({
+      accountSlug: account.slug,
+      symbol,
     });
-
-    const nextStorage = await slowTrading.storage.data.load({
-      includeHistory: true,
-    });
-    const report = result.reports.find(
-      (item) => String(item.symbol || "").trim().toUpperCase() === symbol,
-    );
-    const skippedEntrySignal = result.skippedEntrySignals.find(
-      (item) => String(item.symbol || "").trim().toUpperCase() === symbol,
-    );
-    const wasExecuted = Boolean(
-      report?.tradingDetail?.action === "BUY" ||
-      nextStorage.modes[activeMode].tradeSettings.some(
-        (item) =>
-          String(item.symbol || "").trim().toUpperCase() === symbol &&
-          (item.model_memory.positions?.length ?? 0) > 0,
-      ),
+    const entryOutcome = result.entries.find(
+      (item) => item.symbol === symbol,
     );
 
     res.status(200).json({
       success: true,
-      executed: wasExecuted,
-      message: wasExecuted
-        ? (report?.message ?? `Manual entry executed for ${symbol}`)
-        : (report?.message ??
-          skippedEntrySignal?.reason ??
-          `Manual entry for ${symbol} was skipped before order execution`),
-      skippedReason: wasExecuted
+      executed: Boolean(entryOutcome?.executed),
+      message:
+        entryOutcome?.message ??
+        `Manual entry for ${symbol} was skipped before order execution`,
+      skippedReason: entryOutcome?.executed
         ? undefined
-        : (report?.message ?? skippedEntrySignal?.reason),
+        : entryOutcome?.message,
       result,
-      state: await slowTrading.storage.dashboard.buildStateRealtime(nextStorage),
+      state: await systemDashboard.state.buildRealtime({
+        account: account.slug,
+      }),
     });
   } catch (error: any) {
-    await slowTrading.notifications.notifySlowTradingOperationalError({
-      source: "api.slow-trading.entry",
-      error,
-      details: {
-        method: req.method,
-        symbol: req.body?.symbol,
-      },
-    });
+    await runtimeLogs
+      .appendError({
+        source: "api.slow-trading.entry",
+        error,
+        details: {
+          method: req.method,
+          symbol: req.body?.symbol,
+        },
+      })
+      .catch((logError) => {
+        systemLog.error(
+          "[slow-trading] failed to write entry error log",
+          logError,
+        );
+      });
 
     res.status(500).json({
       error: error?.message ?? "Failed to entry slow trading position",

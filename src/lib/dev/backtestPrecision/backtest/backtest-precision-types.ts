@@ -1,6 +1,5 @@
-import type { VolatilityPoint } from "@/lib/dynamic";
-import type { ExchangeType } from "@/lib/exchange";
-import type { Position } from "@/lib/trading/models";
+import type { Position } from "@/lib/system/trading";
+import type { ExchangeType, VolatilityPoint } from "@/lib/system/types";
 
 export interface BacktestPrecisionResult {
   exchangeType: ExchangeType;

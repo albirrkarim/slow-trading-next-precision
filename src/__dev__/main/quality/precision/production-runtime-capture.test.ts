@@ -89,7 +89,10 @@ describe("ProductionRuntime.captureState", () => {
           return clockTime;
         },
       },
-      exchange: {},
+      exchange: {
+        getFeeRate: () => 0,
+        getRoundTripFeeRate: () => 0,
+      },
       market: {
         async getKlines(props) {
           const attempt = capture(runtime);

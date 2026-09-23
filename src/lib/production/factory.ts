@@ -1,193 +1,152 @@
-import type { BalanceSummary } from "@/components/LiveDashboard/Navbar/Settings/settings-types";
-import { FILES } from "@/components/storage";
-import { getExchange, type ExchangeType, type IExchange } from "@/lib/exchange";
-import type { Kline } from "@/lib/exchange/platform/tokocrypto";
-import slowTradingBalance from "@/lib/slowTrading/balance";
-import slowTradingStorage from "@/lib/slowTrading/storage";
-import type {
-  SlowTradingMode,
-  SlowTradingModeState,
-  SlowTradingStorageData,
-} from "@/lib/slowTrading/types";
-import trading from "@/lib/trading";
-import { tradeLog } from "@/lib/trading/helper/log";
-import type {
-  Position,
-  TradingModelMemory,
-} from "@/lib/trading/models";
+import {
+  getExchange,
+  TradingMode,
+  type ExchangeType,
+  type IExchange,
+} from "@/lib/exchange";
+import {
+  runWithExchangeAccount,
+  type ExchangeAccount,
+} from "@/lib/exchange/account-context";
 import type {
   RuntimeDecision,
   RuntimeEngineAdapter,
   RuntimeEngineState as PrecisionRuntimeState,
 } from "@/lib/precision/types";
-import vpoints from "@/lib/precision/utils/vpoints";
-import clock from "./clock";
+import { systemLog } from "@/lib/system/logging";
+import type {
+  RuntimeAccountConfig,
+  RuntimeControlConfig,
+} from "@/lib/system/runtime";
+import {
+  runtimeAccountState as accountState,
+  runtimeStorage,
+} from "@/lib/system/storage";
+import type { RuntimeAccountModeState } from "@/lib/system/storage";
+import tradingAveraging from "@/lib/system/trading/averaging";
+import blackSwan from "@/lib/system/trading/black-swan";
+import runtimeDailyPnlLimit from "@/lib/system/trading/daily-pnl-limit";
+import entryAction from "@/lib/system/trading/entry-action";
+import tradingExit from "@/lib/system/trading/exit";
+import type { BalanceSummary, Position } from "@/lib/system/trading";
+import vpoints from "@/lib/system/utils/vpoints";
 import adapter from "./adapter";
+import clock from "./clock";
+import execution from "./execution";
+import productionStages from "./stages";
 import state from "./state";
 import vpointFiles from "./vpoints";
 import type { ProductionRuntimeFactory } from "./types";
 
 interface AccountRuntime {
+  account: RuntimeAccountConfig;
   exchange: IExchange;
-  mode: SlowTradingMode;
-  modeState: SlowTradingModeState;
-  storage: SlowTradingStorageData;
+  exchangeAccount: ExchangeAccount;
+  mode: "live" | "sandbox";
+  state: RuntimeAccountModeState;
 }
 
 type AccountRuntimes = Map<string, AccountRuntime>;
 
-function finite(value: unknown, fallback = 0): number {
-  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
-}
-
-function getOpenPositions(modeState: SlowTradingModeState): Position[] {
-  return modeState.tradeSettings.flatMap((setting) =>
-    (setting.model_memory.positions ?? []).filter((position) => !position.closed),
-  );
-}
-
-function buildBalance(modeState: SlowTradingModeState): BalanceSummary {
-  const memory = modeState.dynamicTradeMemory;
-  const safeHaven = Math.max(0, finite(memory.safeHaven));
-  const quoteAsset = Math.max(0, finite(memory.quoteAsset));
-  const available = quoteAsset + safeHaven;
-  const reserved = Math.max(0, finite(memory.reservedQuoteAsset));
-  const locked = getOpenPositions(modeState).reduce(
-    (total, position) => total + Math.max(0, finite(position.exposure.marginUsdt)),
-    0,
-  );
-
-  return {
-    available,
-    locked,
-    reserved,
-    safeHaven,
-    spendable: Math.max(0, available - reserved - safeHaven),
-    startingBalance: Math.max(0, finite(memory.startingBalanceUSDT)),
-    total: available + locked,
-  };
-}
-
-function getModelMemory(runtime: AccountRuntime, symbol: string): TradingModelMemory {
-  const normalized = symbol.toUpperCase();
-  const setting = runtime.modeState.tradeSettings.find(
-    (candidate) => candidate.symbol.toUpperCase() === normalized,
-  );
-  if (!setting) {
-    throw new Error(`Production trade setting not found for ${normalized}.`);
-  }
-  return setting.model_memory;
-}
-
-function getAllModelMemories(runtime: AccountRuntime): TradingModelMemory[] {
-  return runtime.modeState.tradeSettings.map((setting) => setting.model_memory);
-}
-
-function buildPrecisionRuntimeConfig(
-  runtime: SlowTradingStorageData["runtime"],
-): PrecisionRuntimeState["config"]["runtime"] {
-  const { mcp: _mcp, ...runtimeConfig } = runtime;
-
-  // PROD:RUNTIME_CONFIG_ACCOUNT_SOURCE
-  // Precision uses config.accounts as the single account source; runtime MCP
-  // tokens are stripped so secrets never reach the engine config.
-  return {
-    ...runtimeConfig,
-    mcp: { tokens: [] },
-  } as PrecisionRuntimeState["config"]["runtime"];
-}
-
-function createCurrentKline(
-  runtimeState: PrecisionRuntimeState,
-  symbol: string,
-): Kline {
-  const mark = runtimeState.markPriceMap[symbol.toUpperCase()];
-  if (!mark) {
-    throw new Error(`Production mark price not found for ${symbol}.`);
-  }
-
-  const price = String(mark.price);
-  return [
-    runtimeState.currentTime,
-    price,
-    price,
-    price,
-    price,
-    "0",
-    runtimeState.currentTime,
-    "0",
-    0,
-    "0",
-    "0",
-    "",
-    new Date(runtimeState.currentTime).toISOString(),
-  ];
-}
-
-function getBalanceOverride(
-  runtimeState: PrecisionRuntimeState,
-  accountSlug: string,
+/** Merges shared management settings with one account's trading overrides. */
+function effectiveTrading(
+  management: PrecisionRuntimeState["config"]["management"],
+  account: RuntimeAccountConfig,
 ) {
-  const balance = runtimeState.balance[accountSlug];
-  return {
-    baseAsset: 0,
-    quoteAsset: Math.max(0, balance?.available ?? 0) -
-      Math.max(0, balance?.safeHaven ?? 0),
-  };
+  return { ...management, ...account.trading };
 }
 
-function syncBalanceToModeState(
-  runtimeState: PrecisionRuntimeState,
-  accountRuntime: AccountRuntime,
-): void {
-  const balance = runtimeState.balance[accountRuntime.storage.account.slug];
-  if (!balance) return;
-
-  const safeHaven = Math.max(0, finite(accountRuntime.modeState.dynamicTradeMemory.safeHaven));
-  accountRuntime.modeState.dynamicTradeMemory.quoteAsset = Math.max(
-    0,
-    balance.available - safeHaven,
-  );
-  accountRuntime.modeState.dynamicTradeMemory.reservedQuoteAsset = Math.max(
-    0,
-    balance.reserved,
-  );
+/** Maps the runtime trading mode to the exchange enum. */
+function toExchangeTradingMode(tradingMode?: string): TradingMode {
+  return tradingMode === "futures" ? TradingMode.FUTURES : TradingMode.SPOT;
 }
 
+/** Strips runtime secrets so the engine config never carries MCP tokens. */
+function buildRuntimeConfig(
+  runtime: RuntimeControlConfig,
+): PrecisionRuntimeState["config"]["runtime"] {
+  // PROD:RUNTIME_CONFIG_ACCOUNT_SOURCE
+  return { ...runtime, mcp: { tokens: [] } };
+}
+
+/** Persists one account's open positions and balance after a state change. */
 async function persistAccount(
-  runtimeState: PrecisionRuntimeState,
+  context: { state: PrecisionRuntimeState },
   accountRuntime: AccountRuntime,
 ): Promise<void> {
-  syncBalanceToModeState(runtimeState, accountRuntime);
-  await slowTradingStorage.mode.saveState(
-    accountRuntime.mode,
-    accountRuntime.modeState,
-    { account: accountRuntime.storage.account.slug },
+  const balance = context.state.balance[accountRuntime.account.slug];
+  if (balance) {
+    accountState.syncBalance(accountRuntime.state.balance, balance);
+  }
+  accountRuntime.state.positions = context.state.openPositions.filter(
+    (position) =>
+      position.account === accountRuntime.account.slug && !position.closed,
   );
+  await runtimeStorage.account.save({
+    accountSlug: accountRuntime.account.slug,
+    mode: accountRuntime.mode,
+    state: accountRuntime.state,
+  });
 }
 
-function isActionAllowed(
+/**
+ * Final approval gate for every runtime decision. Manual operator actions
+ * bypass `runnerEnabled` like the legacy manual routes, while Black Swan
+ * protection still blocks every entry and averaging — including forced
+ * ones — and the persisted daily-PnL stop blocks automatic entries.
+ */
+async function isActionAllowed(
   decision: RuntimeDecision,
   runtimeState: PrecisionRuntimeState,
   accountRuntimes: AccountRuntimes,
-): boolean {
-  if (!runtimeState.config.runtime.runnerEnabled) return false;
-
+): Promise<boolean> {
   const accountRuntime = accountRuntimes.get(decision.accountSlug);
   if (!accountRuntime) return false;
 
-  if (decision.type === "entry") {
-    return (
-      accountRuntime.storage.account.enabled &&
-      runtimeState.config.runtime.autoEntryEnabled
-    );
-  }
+  const manual =
+    decision.type === "entry"
+      ? Boolean(decision.manual)
+      : decision.type === "exit"
+        ? Boolean(decision.position.control?.forceExit)
+        : false;
+
+  if (!manual && !runtimeState.config.runtime.runnerEnabled) return false;
 
   if (decision.type === "exit") {
-    return (
-      runtimeState.config.runtime.autoExitEnabled ||
-      Boolean(decision.position.control?.forceExit)
-    );
+    return manual || runtimeState.config.runtime.autoExitEnabled;
+  }
+
+  const status = await runtimeStorage.status
+    .load(
+      runtimeState.mode === "sandbox" ? "sandbox" : "live",
+    )
+    .catch(() => ({}) as Awaited<ReturnType<typeof runtimeStorage.status.load>>);
+
+  // Black Swan protection blocks entries and averaging, including manual
+  // entries — the legacy cycle emptied every entry signal during a crisis.
+  if (blackSwan.state.isProtective(status.blackSwan)) {
+    return false;
+  }
+
+  if (decision.type === "averaging") {
+    return true;
+  }
+
+  if (!accountRuntime.account.enabled) return false;
+  if (manual) return true;
+  if (!runtimeState.config.runtime.autoEntryEnabled) return false;
+
+  const limit = status.dailyPnlLimitState;
+  if (limit) {
+    const evaluation = runtimeDailyPnlLimit.guard.evaluatePnl({
+      currentTimeMs: runtimeState.currentTime,
+      pnlUsdt: limit.usdt,
+      thresholdUsdt:
+        runtimeState.config.runtime.autoEntryDailyPnlLimitUSDT,
+    });
+    if (evaluation.reached && evaluation.day === limit.d) {
+      return false;
+    }
   }
 
   return true;
@@ -217,116 +176,112 @@ function createActionHandlers(
     if (!accountRuntime) return null;
 
     pendingAccountSlug = decision.accountSlug;
-    const { storage, mode, modeState } = accountRuntime;
-    const config = storage.config;
-    const modelMemory = getModelMemory(accountRuntime, decision.symbol);
-    let balance = context.state.balance[decision.accountSlug];
-    let balanceOverride = getBalanceOverride(context.state, decision.accountSlug);
-    const runInAccount = <T>(fn: () => Promise<T>) =>
-      slowTradingStorage.account.runWithExchangeAccount(storage, fn);
-    const executeSafely = async <T>(fn: () => Promise<T>): Promise<T | null> => {
+    const executeSafely = async <T>(
+      fn: () => T | Promise<T>,
+    ): Promise<T | null> => {
       try {
         return await fn();
       } catch (error) {
-        tradeLog.error(
-          `[Precision Runtime] ${decision.type} failed for ${decision.accountSlug}/${decision.symbol}`,
+        systemLog.error(
+          `[Precision Runtime] ${decision.type} failed for ` +
+            `${decision.accountSlug}/${decision.symbol}`,
           error,
         );
         return null;
       }
     };
+    const runInAccount = <T>(fn: () => Promise<T>) =>
+      runWithExchangeAccount(accountRuntime.exchangeAccount, fn);
 
-    if (mode === "live") {
+    // Live refreshes the authoritative exchange balance before every order.
+    if (accountRuntime.mode === "live") {
       try {
         await runInAccount(async () => {
-          const exchangeBalance = await accountRuntime.exchange.getBalance("USDT_USDT");
+          const exchangeBalance =
+            await accountRuntime.exchange.getBalance("USDT_USDT");
           if (exchangeBalance) {
-            slowTradingBalance.live.applyAvailableQuoteAsset({
-              dynamicTradeMemory: modeState.dynamicTradeMemory,
-              quoteAsset: exchangeBalance.quoteAsset,
-            });
+            accountState.applyLiveQuoteAsset(
+              accountRuntime.state.balance,
+              exchangeBalance.quoteAsset,
+            );
           }
         });
-        context.state.balance[decision.accountSlug] = buildBalance(modeState);
-        balance = context.state.balance[decision.accountSlug];
-        balanceOverride = getBalanceOverride(context.state, decision.accountSlug);
+        context.state.balance[decision.accountSlug] =
+          accountState.buildBalance({
+            balance: accountRuntime.state.balance,
+            positions: context.state.openPositions.filter(
+              (position) =>
+                position.account === decision.accountSlug && !position.closed,
+            ),
+          });
       } catch (error) {
-        tradeLog.warn(
+        systemLog.warn(
           `[Precision Runtime] balance refresh failed for ${decision.accountSlug}`,
           error,
         );
       }
     }
 
+    // Sandbox shares the exact simulated fills used by backtest — one code
+    // path for position math; only the fill source differs from live.
+    if (accountRuntime.mode === "sandbox") {
+      if (decision.type === "entry") {
+        return executeSafely(() => entryAction.execute(context, decision));
+      }
+      if (decision.type === "averaging") {
+        return executeSafely(() => tradingAveraging.execute(context, decision));
+      }
+      return executeSafely(() => tradingExit.execute(context, decision));
+    }
+
+    // Live places real exchange orders, then applies the executed fill through
+    // the same position math the simulation uses.
     if (decision.type === "entry") {
-      // The shared runtime supplies the current budget explicitly. Do not let
-      // an old cycle's legacy quoteAssetToTrade override that budget.
-      delete modelMemory.quoteAssetToTrade;
-      const report = await executeSafely(() => runInAccount(() =>
-        trading.execution.entry({
-          allModelMemories: getAllModelMemories(accountRuntime),
-          balanceOverride,
-          bypass: context.state.config.runtime.entrySignalBypass,
-          current: createCurrentKline(context.state, decision.symbol),
-          dynamicTradeConfig: config,
-          entrySignal: decision.entrySignal,
-          executionMode: mode,
-          exchangeType: config.exchangeType,
-          investAmount: Math.max(0, balance?.spendable ?? 0),
-          modelMemory,
-          reservedQuoteAsset: balance?.reserved ?? 0,
-          simulate: mode === "sandbox",
-          tradingConfig: config,
-          tradingMode: config.tradingMode,
-        }),
-      ));
-      if (!report || report.tradingDetail?.action !== "BUY") return null;
-      return modelMemory.positions.at(-1) ?? null;
+      return executeSafely(() =>
+        runInAccount(() =>
+          execution.entry({
+            context,
+            decision,
+            exchange: accountRuntime.exchange,
+          }),
+        ),
+      );
     }
-
     if (decision.type === "averaging") {
-      const report = await executeSafely(() => runInAccount(() =>
-        trading.execution.averaging({
-          accountSlug: decision.accountSlug,
-          adaptiveAveraging: config.adaptiveAveraging,
-          averagingRecommendation: decision.recommendation,
-          averagingRescueProjectionGuardEnabled:
-            config.averagingRescueProjectionGuardEnabled !== false,
-          balanceOverride,
-          exchangeType: config.exchangeType,
-          modelMemory,
-          reservedQuoteAsset: balance?.reserved ?? 0,
-          symbol: decision.symbol,
-          tradingConfig: config,
-          tradingMode: config.tradingMode,
-          volatilityPoints: context.state.vPointsMap[decision.symbol] ?? [],
-        }),
-      ));
-      if (!report || report.tradingDetail?.action !== "BUY") return null;
-      return modelMemory.positions[0] ?? null;
+      return executeSafely(() =>
+        runInAccount(() =>
+          execution.averaging({
+            context,
+            decision,
+            exchange: accountRuntime.exchange,
+          }),
+        ),
+      );
     }
-
-    const report = await executeSafely(() => runInAccount(() =>
-      trading.execution.exit({
-        balanceOverride,
-        bypass: false,
-        current: createCurrentKline(context.state, decision.symbol),
-        exchangeType: config.exchangeType,
-        modelMemory,
-        simulate: mode === "sandbox",
-        symbol: decision.symbol,
-        tradingConfig: config,
-        tradingMode: config.tradingMode,
-      }),
-    ));
-    if (!report || report.tradingDetail?.action !== "SELL") return null;
-    return modelMemory.positionsSell?.at(-1) ?? null;
+    return executeSafely(() =>
+      runInAccount(() =>
+        execution.exit({
+          context,
+          decision,
+          exchange: accountRuntime.exchange,
+        }),
+      ),
+    );
   };
 
   const onExit: RuntimeEngineAdapter["onExit"] = async (position, context) => {
     const accountRuntime = accountRuntimes.get(position.account);
     if (!accountRuntime) return;
-    await persistAccount(context.state, accountRuntime);
+    await persistAccount(context, accountRuntime);
+    await runtimeStorage.history
+      .append({ mode: accountRuntime.mode, position })
+      .catch((error) => {
+        systemLog.error(
+          `[Precision Runtime] history append failed for ` +
+            `${position.account}/${position.symbol}`,
+          error,
+        );
+      });
     pendingAccountSlug = undefined;
   };
 
@@ -337,7 +292,7 @@ function createActionHandlers(
     if (!accountSlug) return;
     const accountRuntime = accountRuntimes.get(accountSlug);
     if (!accountRuntime) return;
-    await persistAccount(context.state, accountRuntime);
+    await persistAccount(context, accountRuntime);
     pendingAccountSlug = undefined;
     // Entries and averagings mark `usedBy<slug>` on vPoints right before this
     // hook fires; flushing the retained window writes those markers to disk.
@@ -365,7 +320,7 @@ function createProductionFactory(): ProductionRuntimeFactory {
       try {
         await vpointFiles.persistPoints({ exchangeType, symbol, points });
       } catch (error) {
-        tradeLog.warn(
+        systemLog.warn(
           `[Precision Runtime] vPoint persist failed for ${symbol}`,
           error,
         );
@@ -376,8 +331,8 @@ function createProductionFactory(): ProductionRuntimeFactory {
   const createState: ProductionRuntimeFactory["createState"] = async () => {
     accountRuntimes.clear();
     symbolExchangeMap.clear();
-    const catalog = await slowTradingStorage.data.load({ modeScope: "active" });
-    const mode = slowTradingStorage.mode.getActive(catalog);
+    const catalog = await runtimeStorage.catalog.load();
+    const mode = catalog.mode;
     const openPositions: Position[] = [];
     const balance: Record<string, BalanceSummary> = {};
     const vPointsMap: PrecisionRuntimeState["vPointsMap"] = {};
@@ -387,60 +342,71 @@ function createProductionFactory(): ProductionRuntimeFactory {
     >();
 
     // PROD:RUNTIME_ACCOUNT_STATE_LOAD
-    for (const account of catalog.accounts) {
+    for (const account of catalog.config.accounts) {
       try {
-        const storage = await slowTradingStorage.data.load({
-          account: account.slug,
-          modeScope: "all",
+        const trading = effectiveTrading(catalog.config.management, account);
+        const accountModeState = await runtimeStorage.account.load({
+          accountSlug: account.slug,
+          mode,
         });
-        const modeState = slowTradingStorage.mode.ensureTradeSettings(
-          storage.modes[mode],
-          storage.config.symbols,
-        );
-        storage.modes[mode] = modeState;
-        const exchange = getExchange(storage.config.exchangeType, {
-          defaultTradingMode: storage.config.tradingMode,
+        const exchange = getExchange(trading.exchangeType, {
+          defaultTradingMode: toExchangeTradingMode(trading.tradingMode),
         });
+        const exchangeAccount = accountState.toExchangeAccount(account);
 
         if (mode === "sandbox") {
-          slowTradingBalance.sandbox.ensureBalance(
-            modeState,
-            storage.account.sandbox.initialBalanceUSDT,
+          accountState.ensureSandboxBalance(
+            accountModeState,
+            account.sandbox.initialBalanceUSDT,
           );
         } else {
           try {
-            await slowTradingStorage.account.runWithExchangeAccount(storage, async () => {
-              const exchangeBalance = await exchange.getBalance("USDT_USDT");
+            await runWithExchangeAccount(exchangeAccount, async () => {
+              const exchangeBalance =
+                await exchange.getBalance("USDT_USDT");
               if (exchangeBalance) {
-                slowTradingBalance.live.applyAvailableQuoteAsset({
-                  dynamicTradeMemory: modeState.dynamicTradeMemory,
-                  quoteAsset: exchangeBalance.quoteAsset,
-                });
+                accountState.applyLiveQuoteAsset(
+                  accountModeState.balance,
+                  exchangeBalance.quoteAsset,
+                );
               }
             });
           } catch (error) {
-            tradeLog.warn(
+            systemLog.warn(
               `[Precision Runtime] initial balance refresh failed for ${account.slug}`,
               error,
             );
           }
         }
 
-        const runtime = { exchange, mode, modeState, storage };
+        const runtime: AccountRuntime = {
+          account,
+          exchange,
+          exchangeAccount,
+          mode,
+          state: accountModeState,
+        };
         accountRuntimes.set(account.slug, runtime);
-        balance[account.slug] = buildBalance(modeState);
-        openPositions.push(...getOpenPositions(modeState));
+        balance[account.slug] = accountState.buildBalance({
+          balance: accountModeState.balance,
+          positions: accountModeState.positions,
+        });
+        openPositions.push(
+          ...accountModeState.positions.filter(
+            (position) => !position.closed,
+          ),
+        );
 
-        for (const setting of modeState.tradeSettings) {
-          const symbol = setting.symbol.toUpperCase();
-          symbolExchangeMap.set(symbol, storage.config.exchangeType);
-          vPointSources.set(`${storage.config.exchangeType}:${symbol}`, {
-            exchangeType: storage.config.exchangeType,
-            symbol,
+        for (const symbol of catalog.config.management.symbols) {
+          const normalized = symbol.toUpperCase();
+          symbolExchangeMap.set(normalized, trading.exchangeType);
+          vPointSources.set(`${trading.exchangeType}:${normalized}`, {
+            exchangeType: trading.exchangeType,
+            symbol: normalized,
           });
         }
       } catch (error) {
-        tradeLog.error(
+        systemLog.error(
           `[Precision Runtime] account load failed for ${account.slug}`,
           error,
         );
@@ -459,10 +425,10 @@ function createProductionFactory(): ProductionRuntimeFactory {
     // retention rule so open positions keep their referenced/post-entry
     // vPoints. Runtime market updates merge new points on top of this seed.
     for (const source of vPointSources.values()) {
-      const points = await FILES.prod.volatilityPoints.get(
-        source.exchangeType,
-        source.symbol,
-      );
+      const points = await runtimeStorage.vpoints.read({
+        exchangeType: source.exchangeType,
+        symbol: source.symbol,
+      });
       if (!points?.length) continue;
       const retained = vpoints.retainRecent({
         symbol: source.symbol,
@@ -478,9 +444,9 @@ function createProductionFactory(): ProductionRuntimeFactory {
     const runtimeState = state.create({
       balance,
       config: {
-        accounts: catalog.accounts,
-        management: catalog.sharedConfig,
-        runtime: buildPrecisionRuntimeConfig(catalog.runtime),
+        accounts: catalog.config.accounts,
+        management: catalog.config.management,
+        runtime: buildRuntimeConfig(catalog.config.runtime),
       },
       currentTime: Date.now(),
       mode,
@@ -499,7 +465,8 @@ function createProductionFactory(): ProductionRuntimeFactory {
       throw new Error("Production state must be created before its adapter.");
     }
 
-    const firstRuntime = accountRuntimes.values().next().value as AccountRuntime;
+    const firstRuntime = accountRuntimes.values().next()
+      .value as AccountRuntime;
     const handlers = createActionHandlers(
       accountRuntimes,
       persistVPointsToFiles,
@@ -510,13 +477,17 @@ function createProductionFactory(): ProductionRuntimeFactory {
       getBalance: async (accountSlug) =>
         latestState?.balance[accountSlug ?? ""]?.available ?? 0,
       onAction: handlers.onAction,
+      onCycleComplete: productionStages.cycleComplete,
       onExit: handlers.onExit,
+      onManagement: productionStages.management,
       onNewVPoint: async (symbol, newVPoint) => {
         // Each detected point is merged into the shared volatility file
         // immediately so a restart seeds from fresh data instead of
         // re-fetching the whole detection window.
         await persistVPointsToFiles({ [symbol.toUpperCase()]: [newVPoint] });
       },
+      onRiskSentinel: productionStages.riskSentinel,
+      onStageStats: productionStages.stageStats,
       onStateChange: handlers.onStateChange,
       onStrategy: handlers.onStrategy,
       signal,

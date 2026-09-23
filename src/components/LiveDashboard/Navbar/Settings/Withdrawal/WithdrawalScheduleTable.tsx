@@ -13,8 +13,8 @@ import {
   Typography,
 } from "@mui/material";
 
-import type { SlowTradingWithdrawalSchedule } from "@/lib/slowTrading";
-import slowTradingWithdrawalSchedule from "@/lib/slowTrading/withdrawal-schedule";
+
+import runtimeWithdrawalSchedule from "@/lib/system/withdrawal/schedule";
 
 import {
   WithdrawalScheduleDeleteDialog,
@@ -25,14 +25,15 @@ import type {
   WithdrawalScheduleDraft,
   WithdrawalWalletDraft,
 } from "../settings-types";
+import type { RuntimeWithdrawalSchedule } from "@/lib/system/runtime";
 
 function normalizeSchedule(
   schedule: WithdrawalScheduleDraft,
-): SlowTradingWithdrawalSchedule {
+): RuntimeWithdrawalSchedule {
   return {
     ...schedule,
     amountUSDT: Math.max(0, Number(schedule.amountUSDT) || 0),
-    dayOfMonth: slowTradingWithdrawalSchedule.values.normalizeDayOfMonth(
+    dayOfMonth: runtimeWithdrawalSchedule.values.normalizeDayOfMonth(
       schedule.dayOfMonth,
     ),
     ...(schedule.walletId ? { walletId: schedule.walletId } : {}),
@@ -50,9 +51,9 @@ function formatNextOccurrence(schedule: WithdrawalScheduleDraft): {
   const normalized = normalizeSchedule(schedule);
   const now = Date.now();
   const occurrenceAt =
-    slowTradingWithdrawalSchedule.timing.getNextOccurrenceAt(normalized, now);
+    runtimeWithdrawalSchedule.timing.getNextOccurrenceAt(normalized, now);
   const date = new Date(occurrenceAt);
-  const due = slowTradingWithdrawalSchedule.timing.isDue(
+  const due = runtimeWithdrawalSchedule.timing.isDue(
     { ...normalized, enabled: true },
     now,
   );

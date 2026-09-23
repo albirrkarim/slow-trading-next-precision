@@ -1,14 +1,15 @@
 "use client";
 
-import type { VolatilityPoint } from "@/lib/dynamic";
-import type { PositionLastMonitoringStage } from "@/lib/trading/models";
-import lateEntryVPointDrift from "@/lib/trading/execute/late-entry-vpoint-drift";
+
+import type { PositionLastMonitoringStage } from "@/lib/system/trading";
+import { lateEntryVPointDrift  } from "@/lib/system/trading";
 import PositionLevelSequence, {
   type PositionLevelSequenceCoverage,
   type PositionLevelSequenceItem,
   type PositionLevelSequenceReserveStatus,
   type PositionLevelSequenceState,
 } from "@/components/LiveDashboard/Shared/PositionLevelSequence";
+import type { VolatilityPoint } from "@/lib/system/types";
 
 type ReserveStepStatus = PositionLevelSequenceReserveStatus;
 

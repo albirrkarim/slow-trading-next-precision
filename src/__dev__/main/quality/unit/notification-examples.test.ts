@@ -1,8 +1,8 @@
 import {
   SLOW_NOTIFICATION_KEYS,
   type SlowNotificationKey,
-} from "@/lib/notification/config";
-import notificationExamples from "@/lib/notification/examples";
+} from "@/lib/system/notification/config";
+import notificationExamples from "@/lib/system/notification/examples";
 import { describe, expect, it } from "vitest";
 
 describe("notification examples", () => {

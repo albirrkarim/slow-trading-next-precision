@@ -1,4 +1,4 @@
-import type { SlowEntrySequenceInterval } from "@/lib/slowTrading/client";
+import type { RuntimeEntrySequenceInterval } from "@/lib/system/trading";
 
 const MINUTE_MS = 60 * 1000;
 const HOUR_MS = 60 * MINUTE_MS;
@@ -24,7 +24,7 @@ export interface EntrySequenceHoldDurationBucket {
 
 /** Groups entry sequences into fixed, comparable hold-duration ranges. */
 export function buildEntrySequenceHoldDurationDistribution(
-  intervals: SlowEntrySequenceInterval[],
+  intervals: RuntimeEntrySequenceInterval[],
 ): EntrySequenceHoldDurationBucket[] {
   const counts = BUCKETS.map(() => 0);
 

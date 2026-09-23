@@ -1,6 +1,6 @@
 import { enrichMarketCapsForTickers } from "./market-cap";
 import { TradingMode, type IExchange, type UnifiedTicker } from "./types";
-import { tradeLog } from "@/lib/trading/helper/log";
+import { systemLog } from "@/lib/system/logging";
 
 /** Maps an execution trading mode to the market that supplies its klines. */
 export function resolveMarketTypeForTradingMode(
@@ -156,7 +156,7 @@ export async function verifyAndFilterGainers(
       verifiedGainers.push(ticker);
     } catch (e) {
       // Failed to fetch klines or verify, skip this ticker
-      tradeLog.warn(`Failed to verify gainer ${ticker.symbol}:`, e);
+      systemLog.warn(`Failed to verify gainer ${ticker.symbol}:`, e);
     }
   }
 

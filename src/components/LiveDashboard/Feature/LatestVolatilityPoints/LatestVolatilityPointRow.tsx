@@ -4,12 +4,9 @@ import { DEFAULT_COLORS } from "@/components/client/constants";
 import CoinTagSelect from "@/components/dev/Coins/CoinTagSelect";
 import ButtonDialog from "@/components/ui/ButtonDialog";
 import VPointLevelFrequency from "@/components/ui/VPointLevelFrequency";
-import type { VolatilityPoint } from "@/lib/dynamic";
+
 import type { UnifiedFundingRate } from "@/lib/exchange";
-import type {
-  SlowEntrySequenceCount,
-  SlowTradingDashboardState,
-} from "@/lib/slowTrading";
+
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
@@ -46,6 +43,9 @@ import {
   getVolume24hRiskColor,
   isLowVolume24h,
 } from "./volume";
+import type { RuntimeEntrySequenceCount } from "@/lib/system/trading";
+import type { RuntimeDashboardState } from "@/lib/system/dashboard";
+import type { VolatilityPoint } from "@/lib/system/types";
 
 function formatLatestPointPrice(price: number) {
   if (!Number.isFinite(price)) return "-";
@@ -132,9 +132,9 @@ export default function LatestVolatilityPointRow({
   canDeleteAnotherCoin: boolean;
   coinDescriptions: Record<string, string>;
   coinTags: Record<string, string[]>;
-  dashboardState: SlowTradingDashboardState;
+  dashboardState: RuntimeDashboardState;
   deletingSymbol?: string | null;
-  entrySequenceCount: SlowEntrySequenceCount;
+  entrySequenceCount: RuntimeEntrySequenceCount;
   enteringSymbol?: string | null;
   fundingRate?: UnifiedFundingRate;
   index: number;

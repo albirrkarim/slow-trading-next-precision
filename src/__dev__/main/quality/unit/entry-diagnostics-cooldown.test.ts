@@ -1,30 +1,48 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  appendError: vi.fn(async () => undefined),
   build: vi.fn(),
   cooldown: vi.fn(),
   loadLogs: vi.fn(),
-  loadStorage: vi.fn(),
+  loadStatus: vi.fn(),
+  runManual: vi.fn(),
 }));
 
-vi.mock("@/lib/slowTrading", () => ({
+vi.mock("@/lib/production", () => ({
   default: {
-    signals: {
-      diagnostics: {
-        build: mocks.build,
-      },
-    },
-    storage: {
-      data: {
-        load: mocks.loadStorage,
-      },
-      logs: {
-        appendError: vi.fn(),
-        load: mocks.loadLogs,
-      },
+    runtime: {
+      get: () => ({
+        runManual: mocks.runManual,
+      }),
     },
   },
 }));
+
+vi.mock("@/lib/system/storage", () => ({
+  runtimeLogs: {
+    appendError: mocks.appendError,
+    load: mocks.loadLogs,
+  },
+  runtimeStorage: {
+    status: {
+      load: mocks.loadStatus,
+    },
+  },
+}));
+
+vi.mock("@/lib/system/trading", async (importOriginal) => {
+  const actual = await importOriginal<
+    typeof import("@/lib/system/trading")
+  >();
+  return {
+    ...actual,
+    entryDiagnostics: {
+      ...actual.entryDiagnostics,
+      build: mocks.build,
+    },
+  };
+});
 
 vi.mock("@/lib/exchange/platform/binance/request-coordinator", () => ({
   BinanceCooldownError: class BinanceCooldownError extends Error {
@@ -37,15 +55,16 @@ vi.mock("@/lib/exchange/platform/binance/request-coordinator", () => ({
   },
 }));
 
-vi.mock("@/lib/trading/helper/log", () => ({
-  tradeLog: { error: vi.fn() },
-}));
-
 import handler from "@/pages/api/slow-trading/entry-diagnostics";
 
 describe("entry diagnostics Binance cooldown", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.loadLogs.mockResolvedValue({ errors: [] });
+    mocks.loadStatus.mockResolvedValue({ blackSwan: undefined });
+    mocks.runManual.mockImplementation(async (fn: any) =>
+      fn({ state: { config: { accounts: [] }, mode: "live" } }),
+    );
   });
 
   it("returns retryAt without starting diagnostics", async () => {
@@ -67,6 +86,7 @@ describe("entry diagnostics Binance cooldown", () => {
       error: "Binance cooldown",
       retryAt,
     });
+    expect(mocks.runManual).not.toHaveBeenCalled();
     expect(mocks.build).not.toHaveBeenCalled();
   });
 
@@ -76,21 +96,7 @@ describe("entry diagnostics Binance cooldown", () => {
       { enabled: true, name: "Second", slug: "2" },
       { enabled: false, name: "Disabled", slug: "3" },
     ];
-    const catalog = {
-      accounts,
-      runtime: {
-        autoEntryEnabled: true,
-        runnerEnabled: true,
-      },
-    };
-    const storages = {
-      "1": { account: accounts[0] },
-      "2": { account: accounts[1] },
-    } as Record<string, unknown>;
     mocks.cooldown.mockReturnValue(null);
-    mocks.loadStorage.mockImplementation(async ({ account }: any) =>
-      account ? storages[account] : catalog,
-    );
     mocks.loadLogs.mockResolvedValue({
       errors: [
         {
@@ -102,16 +108,30 @@ describe("entry diagnostics Binance cooldown", () => {
         },
       ],
     });
-    mocks.build.mockImplementation(async ({ storage }: any) => [
-      {
-        code: "READY",
-        level: -3,
-        pointId: "point",
-        reason: `Ready for ${storage.account.name}`,
-        status: "ready",
-        symbol: "LINK",
-      },
-    ]);
+    mocks.runManual.mockImplementation(async (fn: any) =>
+      fn({ state: { config: { accounts }, mode: "live" } }),
+    );
+    mocks.build.mockImplementation(async (_context: any, options: any) => ({
+      accounts: accounts
+        .filter((account) => account.enabled)
+        .map((account) => ({
+          account: { name: account.name, slug: account.slug },
+          diagnostics: [
+            { reason: `Ready for ${account.name}`, status: "ready" },
+          ],
+          ...(options?.latestErrors?.has(account.slug)
+            ? {
+                latestExecutionError:
+                  options.latestErrors.get(account.slug),
+              }
+            : {}),
+        })),
+      generatedAt: 1,
+      sharedGuards: [
+        { code: "RUNNER_ENABLED", status: "ready" },
+        { code: "AUTO_ENTRY_ENABLED", status: "ready" },
+      ],
+    }));
     const json = vi.fn();
     const response = {
       json,
@@ -123,17 +143,22 @@ describe("entry diagnostics Binance cooldown", () => {
     await handler({ method: "GET" } as any, response);
 
     expect(response.status).toHaveBeenCalledWith(200);
-    expect(mocks.build).toHaveBeenCalledTimes(2);
+    expect(mocks.runManual).toHaveBeenCalledTimes(1);
+    expect(mocks.build).toHaveBeenCalledTimes(1);
     expect(json).toHaveBeenCalledWith(
       expect.objectContaining({
         accounts: [
           expect.objectContaining({
             account: { name: "Main", slug: "1" },
-            diagnostics: [expect.objectContaining({ reason: "Ready for Main" })],
+            diagnostics: [
+              expect.objectContaining({ reason: "Ready for Main" }),
+            ],
           }),
           expect.objectContaining({
             account: { name: "Second", slug: "2" },
-            diagnostics: [expect.objectContaining({ reason: "Ready for Second" })],
+            diagnostics: [
+              expect.objectContaining({ reason: "Ready for Second" }),
+            ],
             latestExecutionError: {
               createdAt: 123,
               id: "second-error",

@@ -1,7 +1,7 @@
 import ButtonDialog from "@/components/ui/ButtonDialog";
-import type { VolatilityPoint } from "@/lib/dynamic";
+
 import { TradingMode } from "@/lib/exchange/types";
-import type { SlowTradingDashboardState } from "@/lib/slowTrading";
+
 import {
   Alert,
   Box,
@@ -13,6 +13,8 @@ import {
 } from "@mui/material";
 
 import TradingLivePreview from "./TradingLivePreview";
+import type { RuntimeDashboardState } from "@/lib/system/dashboard";
+import type { VolatilityPoint } from "@/lib/system/types";
 
 function PreviewValue({ label, value }: { label: string; value: string }) {
   return (
@@ -35,7 +37,7 @@ export default function ManualEntryDialog({
   symbol,
   onConfirm,
 }: {
-  dashboardState: SlowTradingDashboardState;
+  dashboardState: RuntimeDashboardState;
   disabled: boolean;
   point: VolatilityPoint;
   submitting: boolean;

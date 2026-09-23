@@ -1,5 +1,5 @@
 import { requestPublic } from "../utils";
-import { tradeLog } from "@/lib/trading/helper/log";
+import { systemLog } from "@/lib/system/logging";
 
 /**
  * OKX Instrument Data
@@ -43,7 +43,7 @@ export async function getInstruments(
     );
 
     if (response.code !== "0" || !response.data) {
-        tradeLog.error("Error fetching instruments:", response.msg);
+        systemLog.error("Error fetching instruments:", response.msg);
         return [];
     }
 

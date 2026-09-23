@@ -1,6 +1,6 @@
 "use client";
 
-import type { SlowTradingAccountTradingConfig } from "@/lib/slowTrading";
+
 import CodeRoundedIcon from "@mui/icons-material/CodeRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import {
@@ -21,6 +21,7 @@ import type {
 import TradingAccountSettings from "./TradingAccountSettings";
 import TradingConfigJsonEditor from "./TradingConfigJsonEditor";
 import TradingSettingsPreview from "./TradingSettingsPreview";
+import type { RuntimeAccountTradingConfig } from "@/lib/system/runtime";
 
 interface SettingsDialogTradingTabProps {
   configDraft: ConfigDraft;
@@ -50,7 +51,7 @@ export default function SettingsDialogTradingTab({
     (account) => account.slug === accountSlug,
   );
   const setSelectedAccountTrading: Dispatch<
-    SetStateAction<SlowTradingAccountTradingConfig>
+    SetStateAction<RuntimeAccountTradingConfig>
   > = (value) => {
     setConfigDraft((current) => {
       if (!current) return current;
@@ -73,7 +74,7 @@ export default function SettingsDialogTradingTab({
   };
 
   const applySelectedAccountTradingConfig = (
-    trading: SlowTradingAccountTradingConfig,
+    trading: RuntimeAccountTradingConfig,
   ) => {
     setConfigDraft((current) => {
       if (!current) return current;

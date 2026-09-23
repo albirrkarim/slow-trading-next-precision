@@ -1,17 +1,19 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import slowTrading from "@/lib/slowTrading";
-import { normalizeExchangeAccountSlug } from "@/lib/slowTrading/storage/account";
-import { tradeLog } from "@/lib/trading/helper/log";
+
+import production from "@/lib/production";
+import runtimeAccounts from "@/lib/system/runtime/accounts";
+import { systemLog } from "@/lib/system/logging";
+import { runtimeLogs, runtimeStorage } from "@/lib/system/storage";
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse,
 ) {
   try {
-    await slowTrading.runner.get();
+    await production.runtime.get();
 
     if (req.method === "GET") {
-      const accounts = await slowTrading.storage.account.loadAccounts();
+      const accounts = await runtimeStorage.catalog.accounts.list();
       res.status(200).json({ accounts });
       return;
     }
@@ -20,13 +22,13 @@ export default async function handler(
       const body = (req.body ?? {}) as {
         accounts?: unknown;
       };
-      const storage = await slowTrading.storage.data.load();
-      const currentAccounts = storage.accounts;
+      const catalog = await runtimeStorage.catalog.ensure();
+      const currentAccounts = catalog.config.accounts;
       const requestedSlugs = new Set(
         (Array.isArray(body.accounts) ? body.accounts : [])
           .map((account) =>
             account && typeof account === "object"
-              ? normalizeExchangeAccountSlug(
+              ? runtimeAccounts.slug.normalize(
                   (account as { slug?: unknown }).slug,
                 )
               : "",
@@ -39,16 +41,22 @@ export default async function handler(
 
       // PROD:MULTI_ACCOUNT_DELETE_DEPENDENCY_GUARD
       for (const removed of removedAccounts) {
-        const scoped = await slowTrading.storage.data.load({
-          account: removed.slug,
-          modeScope: "all",
-        });
-        const hasOpenPositions = (["live", "sandbox"] as const).some(
-          (mode) => slowTrading.storage.history.getOpen(scoped, mode).length > 0,
+        const [liveState, sandboxState] = await Promise.all([
+          runtimeStorage.account.load({
+            accountSlug: removed.slug,
+            mode: "live",
+          }),
+          runtimeStorage.account.load({
+            accountSlug: removed.slug,
+            mode: "sandbox",
+          }),
+        ]);
+        const hasOpenPositions = [liveState, sandboxState].some((state) =>
+          state.positions.some((position) => !position.closed),
         );
-        const hasWithdrawalSchedule = storage.runtime.withdrawal.schedules.some(
-          (schedule) => schedule.account === removed.slug,
-        );
+        const hasWithdrawalSchedule = (
+          catalog.config.runtime.withdrawal?.schedules ?? []
+        ).some((schedule) => schedule.account === removed.slug);
         if (hasOpenPositions || hasWithdrawalSchedule) {
           res.status(409).json({
             error:
@@ -65,12 +73,11 @@ export default async function handler(
         }
       }
 
-      const accounts = await slowTrading.storage.account.saveAccounts(
+      const accounts = await runtimeStorage.catalog.accounts.save(
         body.accounts,
-        storage.sharedConfig,
       );
       for (const removed of removedAccounts) {
-        await slowTrading.storage.account.deleteState(removed.slug);
+        await runtimeStorage.catalog.account.deleteState(removed.slug);
       }
 
       res.status(200).json({ accounts });
@@ -80,7 +87,7 @@ export default async function handler(
     res.setHeader("Allow", ["GET", "PUT"]);
     res.status(405).end(`Method ${req.method} Not Allowed`);
   } catch (error: any) {
-    await slowTrading.storage.logs
+    await runtimeLogs
       .appendError({
         source: "api.slow-trading.exchange-accounts",
         error,
@@ -89,7 +96,7 @@ export default async function handler(
         },
       })
       .catch((logError) => {
-        tradeLog.error(
+        systemLog.error(
           "[slow-trading] failed to write exchange account error log",
           logError,
         );

@@ -1,9 +1,13 @@
-import slowTrading, {
-  type SlowTradingAccountEntryDiagnostics,
-  type SlowTradingEntryDiagnosticsSnapshot,
-  type SlowTradingSharedEntryGuardDiagnostic,
-} from "@/lib/slowTrading";
-import { tradeLog } from "@/lib/trading/helper/log";
+import production from "@/lib/production";
+import type { RuntimeMode } from "@/lib/system/runtime";
+import type {
+  RuntimeAccountExecutionError,
+  RuntimeEntryDiagnosticsSnapshot,
+} from "@/lib/system/trading";
+import { entryDiagnostics } from "@/lib/system/trading";
+import { runtimeDailyPnlLimit } from "@/lib/system/trading/daily-pnl-limit";
+import { systemLog } from "@/lib/system/logging";
+import { runtimeLogs, runtimeStorage } from "@/lib/system/storage";
 import binanceRequestCoordinator, {
   BinanceCooldownError,
 } from "@/lib/exchange/platform/binance/request-coordinator";
@@ -17,7 +21,7 @@ interface EntryDiagnosticsErrorResponse {
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    SlowTradingEntryDiagnosticsSnapshot | EntryDiagnosticsErrorResponse
+    RuntimeEntryDiagnosticsSnapshot | EntryDiagnosticsErrorResponse
   >,
 ) {
   if (req.method !== "GET") {
@@ -38,76 +42,47 @@ export default async function handler(
   }
 
   try {
-    const catalog = await slowTrading.storage.data.load({
-      modeScope: "active",
-    });
-    const enabledAccounts = catalog.accounts.filter(
-      (account) => account.enabled,
-    );
-    const logs = await slowTrading.storage.logs.load();
-    const sharedGuards: SlowTradingSharedEntryGuardDiagnostic[] = [
-      {
-        code: "RUNNER_ENABLED",
-        reason: catalog.runtime.runnerEnabled
-          ? "The SLOW runner is enabled."
-          : "The SLOW runner is disabled.",
-        status: catalog.runtime.runnerEnabled ? "ready" : "blocked",
-      },
-      {
-        code: "AUTO_ENTRY_ENABLED",
-        reason: catalog.runtime.autoEntryEnabled
-          ? "Automatic entry is enabled."
-          : "Automatic entry is disabled.",
-        status: catalog.runtime.autoEntryEnabled ? "ready" : "blocked",
-      },
-    ];
-    const accounts: SlowTradingAccountEntryDiagnostics[] = [];
-
-    for (const account of enabledAccounts) {
-      const latestExecutionError = logs.errors.find(
-        (entry) =>
-          entry.status === "new" &&
-          entry.source === `cycle.account.${account.slug}`,
-      );
-
-      try {
-        const storage = await slowTrading.storage.data.load({
-          account: account.slug,
-          modeScope: "active",
-        });
-        accounts.push({
-          account: { name: account.name, slug: account.slug },
-          diagnostics: await slowTrading.signals.diagnostics.build({ storage }),
-          ...(latestExecutionError && {
-            latestExecutionError: {
-              createdAt: latestExecutionError.createdAt,
-              id: latestExecutionError.id,
-              message: latestExecutionError.message,
-            },
-          }),
-        });
-      } catch (accountError: any) {
-        accounts.push({
-          account: { name: account.name, slug: account.slug },
-          diagnosticError:
-            accountError?.message ?? "Could not evaluate this account.",
-          diagnostics: [],
-          ...(latestExecutionError && {
-            latestExecutionError: {
-              createdAt: latestExecutionError.createdAt,
-              id: latestExecutionError.id,
-              message: latestExecutionError.message,
-            },
-          }),
+    const runtime = production.runtime.get();
+    const snapshot = await runtime.runManual(async (context) => {
+      const mode: RuntimeMode =
+        context.state.mode === "live" ? "live" : "sandbox";
+      const [status, logs] = await Promise.all([
+        runtimeStorage.status.load(mode),
+        runtimeLogs.load(),
+      ]);
+      const latestErrors = new Map<string, RuntimeAccountExecutionError>();
+      for (const entry of logs.errors) {
+        if (entry.status !== "new") continue;
+        const match = /^cycle\.account\.(.+)$/.exec(entry.source);
+        if (!match || latestErrors.has(match[1])) continue;
+        latestErrors.set(match[1], {
+          createdAt: entry.createdAt,
+          id: entry.id,
+          message: entry.message,
         });
       }
-    }
 
-    res.status(200).json({
-      accounts,
-      generatedAt: Date.now(),
-      sharedGuards,
+      const limitState = status.dailyPnlLimitState;
+      const dailyPnlLimit = limitState
+        ? runtimeDailyPnlLimit.guard.evaluatePnl({
+            currentTimeMs: context.state.currentTime,
+            pnlUsdt: limitState.usdt,
+            thresholdUsdt:
+              context.state.config.runtime.autoEntryDailyPnlLimitUSDT,
+          })
+        : undefined;
+
+      return entryDiagnostics.build(context, {
+        blackSwan: status.blackSwan,
+        dailyPnlLimit:
+          dailyPnlLimit && dailyPnlLimit.day === limitState?.d
+            ? dailyPnlLimit
+            : undefined,
+        latestErrors,
+      });
     });
+
+    res.status(200).json(snapshot);
   } catch (error: any) {
     if (error instanceof BinanceCooldownError) {
       res.status(503).json({
@@ -117,7 +92,7 @@ export default async function handler(
       return;
     }
 
-    await slowTrading.storage.logs
+    await runtimeLogs
       .appendError({
         source: "api.slow-trading.entry-diagnostics",
         error,
@@ -126,7 +101,7 @@ export default async function handler(
         },
       })
       .catch((logError) => {
-        tradeLog.error(
+        systemLog.error(
           "[slow-trading] failed to write entry diagnostics error log",
           logError,
         );

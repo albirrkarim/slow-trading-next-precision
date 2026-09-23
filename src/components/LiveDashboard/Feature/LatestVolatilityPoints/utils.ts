@@ -1,5 +1,6 @@
 import { amber, green, grey } from "@mui/material/colors";
-import type { VolatilityPoint } from "@/lib/dynamic";
+import type { VolatilityPoint } from "@/lib/system/types";
+
 
 export const VPOINT_LEVEL_COLOR_MAP: Record<number, string> = {
   0: grey[500],

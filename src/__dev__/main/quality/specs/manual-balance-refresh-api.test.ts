@@ -10,19 +10,17 @@ const mocks = vi.hoisted(() => ({
   })),
 }));
 
-vi.mock("@/lib/slowTrading", () => ({
+vi.mock("@/lib/system/dashboard", () => ({
   default: {
-    balance: {
-      live: {
-        refreshAccount: mocks.refreshAccount,
-      },
-    },
-    storage: {
-      logs: {
-        appendError: mocks.appendError,
-      },
-    },
+    balance: { refresh: mocks.refreshAccount },
   },
+  systemDashboard: {
+    balance: { refresh: mocks.refreshAccount },
+  },
+}));
+
+vi.mock("@/lib/system/storage", () => ({
+  runtimeLogs: { appendError: mocks.appendError },
 }));
 
 import handler from "@/pages/api/slow-trading/balance-refresh";

@@ -1,27 +1,28 @@
 import { describe, expect, it } from "vitest";
 
-import slowQuickBacktest from "@/lib/slowTrading/quick-backtest";
+import runtimeQuickBacktest from "@/lib/dev/quick-backtest";
 import { runBacktestVolatilityDynamic } from "@/lib/dynamic/backtest-volatility";
 import { TradingMode } from "@/lib/exchange";
 import { createTestPosition } from "../fixtures/position";
 
 const {
-  combineQuickGrowthSeries,
-  combineQuickSimulationSeries,
-  calculateQuickPositionMetrics,
-  calculateQuickSharpeRatio,
-  calculateQuickUnusedCapitalDurationMetrics,
-  growthOvertimeToQuickSeries,
-  positionsToQuickSimulationSeries,
-  positionsToQuickTradeHistory,
-} = slowQuickBacktest.report;
+  combineGrowthSeries,
+  combineSimulationSeries,
+  growthSeries,
+  simulationSeries,
+  tradeHistory,
+} = runtimeQuickBacktest.report;
+const {
+  positions: calculateQuickPositionMetrics,
+  sharpeRatio: calculateQuickSharpeRatio,
+  unusedCapital: calculateQuickUnusedCapitalDurationMetrics,
+} = runtimeQuickBacktest.report.metrics;
 
 describe("slow quick backtest report helpers", () => {
   it("converts growth snapshots into dashboard balance series", () => {
-    const result = growthOvertimeToQuickSeries([
+    const result = growthSeries([
       {
         timeMs: 1_000,
-        timeMsHuman: "t1",
         currentBalance: 100,
         currentSpendableBalance: 90,
         currentReservedBalance: 10,
@@ -29,8 +30,6 @@ describe("slow quick backtest report helpers", () => {
         currentAssetFloating: 101,
         currentBaseAsset: 0,
         currentSafeHaven: 0,
-        currentBaseAssetLabeled: {},
-        currentBaseAssetPercentCoin: {},
       },
     ]);
 
@@ -42,7 +41,7 @@ describe("slow quick backtest report helpers", () => {
   });
 
   it("labels simulated entry, averaging, and exit markers as one trade group", () => {
-    const result = positionsToQuickSimulationSeries({
+    const result = simulationSeries({
       INJ: [
         createTestPosition({
           symbol: "INJ",
@@ -97,7 +96,7 @@ describe("slow quick backtest report helpers", () => {
   });
 
   it("combines account markers under one trade simulation chart group", () => {
-    const result = combineQuickSimulationSeries([
+    const result = combineSimulationSeries([
       {
         name: "Account 1",
         result: {
@@ -145,7 +144,7 @@ describe("slow quick backtest report helpers", () => {
         series: [series],
       },
     });
-    const result = combineQuickGrowthSeries([
+    const result = combineGrowthSeries([
       {
         result: makeResult([
           { time: 1, level: 100 },
@@ -173,7 +172,7 @@ describe("slow quick backtest report helpers", () => {
   });
 
   it("converts simulated closed positions into read-only quick trade history rows", () => {
-    const result = positionsToQuickTradeHistory({
+    const result = tradeHistory({
       INJ: [
         createTestPosition({
           symbol: "inj",
@@ -236,41 +235,36 @@ describe("slow quick backtest report helpers", () => {
 
   it("exposes the grouped quick backtest API", () => {
     // PROD:QUICK_BACKTEST_VISIBLE_VPOINTS
-    expect(slowQuickBacktest.run).toBeTypeOf("function");
-    expect(slowQuickBacktest.report.combineQuickGrowthSeries).toBe(
-      combineQuickGrowthSeries,
+    expect(runtimeQuickBacktest.run).toBeTypeOf("function");
+    expect(runtimeQuickBacktest.report.combineGrowthSeries).toBe(
+      combineGrowthSeries,
     );
-    expect(slowQuickBacktest.report.combineQuickSimulationSeries).toBe(
-      combineQuickSimulationSeries,
+    expect(runtimeQuickBacktest.report.combineSimulationSeries).toBe(
+      combineSimulationSeries,
     );
-    expect(slowQuickBacktest.report.calculateQuickSharpeRatio).toBe(
+    expect(runtimeQuickBacktest.report.metrics.sharpeRatio).toBe(
       calculateQuickSharpeRatio,
     );
-    expect(slowQuickBacktest.report.calculateQuickUnusedCapitalDurationMetrics).toBe(
+    expect(runtimeQuickBacktest.report.metrics.unusedCapital).toBe(
       calculateQuickUnusedCapitalDurationMetrics,
     );
-    expect(slowQuickBacktest.report.calculateQuickPositionMetrics).toBe(
+    expect(runtimeQuickBacktest.report.metrics.positions).toBe(
       calculateQuickPositionMetrics,
     );
-    expect(slowQuickBacktest.report.positionsToQuickSimulationSeries).toBe(
-      positionsToQuickSimulationSeries,
+    expect(runtimeQuickBacktest.report.simulationSeries).toBe(
+      simulationSeries,
     );
-    expect(slowQuickBacktest.report.positionsToQuickTradeHistory).toBe(
-      positionsToQuickTradeHistory,
-    );
+    expect(runtimeQuickBacktest.report.tradeHistory).toBe(tradeHistory);
   });
 
   it("calculates non-monthly Sharpe for short quick ranges", () => {
     const base = {
-      timeMsHuman: "",
       currentBalance: 0,
       currentSpendableBalance: 0,
       currentReservedBalance: 0,
       currentBaseAsset: 0,
       currentAssetFloating: 0,
       currentSafeHaven: 0,
-      currentBaseAssetLabeled: {},
-      currentBaseAssetPercentCoin: {},
     };
     const sharpe = calculateQuickSharpeRatio([
       { ...base, timeMs: 1, currentAsset: 100 },
@@ -286,14 +280,11 @@ describe("slow quick backtest report helpers", () => {
   it("calculates min, avg, and max unused capital duration", () => {
     const hourMs = 60 * 60 * 1000;
     const base = {
-      timeMsHuman: "",
       currentSpendableBalance: 0,
       currentReservedBalance: 0,
       currentBaseAsset: 0,
       currentAssetFloating: 0,
       currentSafeHaven: 0,
-      currentBaseAssetLabeled: {},
-      currentBaseAssetPercentCoin: {},
     };
     const metrics = calculateQuickUnusedCapitalDurationMetrics([
       { ...base, timeMs: 0, currentBalance: 100, currentAsset: 100, currentBaseAsset: 0 },

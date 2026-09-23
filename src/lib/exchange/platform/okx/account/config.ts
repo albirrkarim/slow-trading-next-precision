@@ -1,5 +1,5 @@
 import { requestPrivate } from "../utils";
-import { tradeLog } from "@/lib/trading/helper/log";
+import { systemLog } from "@/lib/system/logging";
 
 export interface AccountConfiguration {
     uid: string;
@@ -32,7 +32,7 @@ export async function getAccountConfiguration(): Promise<AccountConfiguration | 
     );
 
     if (response.code !== "0" || !response.data || response.data.length === 0) {
-        tradeLog.error("Error fetching account config:", response.msg);
+        systemLog.error("Error fetching account config:", response.msg);
         return null;
     }
 
@@ -52,10 +52,10 @@ export async function setAccountLevel(acctLv: "1" | "2" | "3"): Promise<boolean>
     );
 
     if (response.code === "0") {
-        tradeLog.log(`✅ Account Level set to ${acctLv} successfully.`);
+        systemLog.log(`✅ Account Level set to ${acctLv} successfully.`);
         return true;
     } else {
-        tradeLog.error(`Failed to set Account Level to ${acctLv}:`, response.msg);
+        systemLog.error(`Failed to set Account Level to ${acctLv}:`, response.msg);
         // Common error: "Account level requirement not met" -> usually means quiz not passed
         return false;
     }
@@ -83,7 +83,7 @@ export async function setLeverage(instId: string, lever: string, mgnMode: "isola
     if (response.code === "0") {
         return true;
     } else {
-        tradeLog.error(`Failed to set leverage for ${instId}: ${response.msg}`);
+        systemLog.error(`Failed to set leverage for ${instId}: ${response.msg}`);
         return false;
     }
 }

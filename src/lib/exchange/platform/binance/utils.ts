@@ -1,7 +1,7 @@
 import axios, { type AxiosRequestConfig } from "axios";
 import crypto from "crypto";
 import { BASE_URL } from "./config";
-import { tradeLog } from "@lib/trading";
+import { systemLog } from "@/lib/system/logging";
 import { getCurrentExchangeAccountSlug } from "@/lib/exchange/account-context";
 import { getBinanceCredentials } from "@/lib/exchange/credentials";
 import binanceRequestCoordinator, {
@@ -114,7 +114,7 @@ export async function requestPrivate<T>(
     const errorCode =
       errorData?.code !== undefined ? ` (code: ${errorData.code})` : "";
 
-    tradeLog.error("Binance API Error:", errorData || error.message);
+    systemLog.error("Binance API Error:", errorData || error.message);
 
     if (errorData) {
       throw new BinanceApiError(
@@ -168,7 +168,7 @@ export async function requestPublic<T>(
     const errorCode =
       errorData?.code !== undefined ? ` (code: ${errorData.code})` : "";
 
-    tradeLog.error("Binance Public API Error:", errorData || error.message, {
+    systemLog.error("Binance Public API Error:", errorData || error.message, {
       url,
       params,
     });

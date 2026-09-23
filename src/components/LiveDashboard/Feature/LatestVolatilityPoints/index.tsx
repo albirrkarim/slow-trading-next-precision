@@ -1,11 +1,9 @@
 "use client";
 
 import CoinTagSelect from "@/components/dev/Coins/CoinTagSelect";
-import type { VolatilityPoint } from "@/lib/dynamic";
+
 import type { UnifiedFundingRate } from "@/lib/exchange";
-import slowTradingClient, {
-  type SlowEntrySequenceCount,
-} from "@/lib/slowTrading/client";
+import type { RuntimeEntrySequenceCount } from "@/lib/system/trading";
 import ClearIcon from "@mui/icons-material/Clear";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import SearchIcon from "@mui/icons-material/Search";
@@ -40,6 +38,8 @@ import type {
 import { estimateMaxEntryFromVolume24h } from "./volume";
 import VolatilityPointLabelFrequencyBar from "./VolatilityPointLabelFrequencyBar";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
+import type { VolatilityPoint } from "@/lib/system/types";
+import { runtimeEntrySequences } from "@/lib/system/trading";
 
 export {
   buildConfiguredCoinTagComposition,
@@ -81,7 +81,7 @@ type SortKey =
 
 interface LatestVolatilityPointTableRow {
   descriptionText: string;
-  entrySequenceCount: SlowEntrySequenceCount;
+  entrySequenceCount: RuntimeEntrySequenceCount;
   estimatedMaxEntry: number | undefined;
   fundingRate: UnifiedFundingRate | undefined;
   index: number;
@@ -569,7 +569,7 @@ export default function LatestVolatilityPoints({
     [resolvedMinActionableAbsoluteLevel],
   );
   const displayableRows = useMemo(() => {
-    const entrySequenceCounts = slowTradingClient.entrySequences.count({
+    const entrySequenceCounts = runtimeEntrySequences.count({
       entrySignals: entrySequenceCandidates.build({
         minActionableAbsoluteLevel:
           dashboardState.config.minActionableAbsoluteLevel,

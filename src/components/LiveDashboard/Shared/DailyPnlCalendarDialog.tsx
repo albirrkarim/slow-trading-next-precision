@@ -15,8 +15,8 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import type { Position } from "@/lib/trading/models";
-import slowTradingDailyPerformance from "@/lib/slowTrading/daily-performance";
+import type { Position } from "@/lib/system/trading";
+import runtimeDailyPerformance from "@/lib/system/trading/daily-performance";
 import { type ReactNode, useMemo, useState } from "react";
 
 export type DailyPnlCalendarTrade = {
@@ -559,7 +559,7 @@ export function buildDailyCalendarData(
   worstDay: DailyCalendarCell | null;
 } {
   const tradeMap =
-    slowTradingDailyPerformance.trades.summarizeByUtcDay(history);
+    runtimeDailyPerformance.trades.summarizeByUtcDay(history);
 
   const snapshotMap = new Map(balanceSnapshots.map((snapshot) => [snapshot.day, snapshot]));
   const allKeys = [...new Set([...tradeMap.keys(), ...snapshotMap.keys()])].sort();

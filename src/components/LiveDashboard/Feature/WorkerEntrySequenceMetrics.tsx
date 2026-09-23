@@ -1,12 +1,11 @@
 "use client";
 
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
-import {
-  type SlowTradingDashboardState
-} from "@/lib/slowTrading/client";
+
 import { Box, Paper, Typography } from "@mui/material";
 import { useMemo } from "react";
 import { calculateSlowWorkerCapacity } from "./worker-capacity";
+import type { RuntimeDashboardState } from "@/lib/system/dashboard";
 
 function formatUsdt(value: number) {
   return new Intl.NumberFormat("en-US", {
@@ -19,7 +18,7 @@ function formatUsdt(value: number) {
 export default function WorkerEntrySequenceMetrics({
   dashboardState,
 }: {
-  dashboardState: SlowTradingDashboardState;
+  dashboardState: RuntimeDashboardState;
 }) {
   return (
     <HeaderMetrics
@@ -46,7 +45,7 @@ export default function WorkerEntrySequenceMetrics({
 function WorkerEntrySequenceMetricsContent({
   dashboardState,
 }: {
-  dashboardState: SlowTradingDashboardState;
+  dashboardState: RuntimeDashboardState;
 }) {
   const capacity = useMemo(
     () => calculateSlowWorkerCapacity(dashboardState),

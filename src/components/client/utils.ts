@@ -1,4 +1,4 @@
-import { tradeLog } from "@/lib/trading/helper/log";
+import { systemLog } from "@/lib/system/logging";
 // This file contains function that used when TTS is playing
 const stackTimeout: Record<string, number | undefined> = {
   global: undefined,
@@ -49,7 +49,7 @@ export function queueExecution(
       await func();
     })
     .catch((err) => {
-      tradeLog.error(`Error in queueExecution (id: ${id}):`, err);
+      systemLog.error(`Error in queueExecution (id: ${id}):`, err);
     });
 }
 

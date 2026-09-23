@@ -5,13 +5,13 @@ import { type ReactNode, useMemo } from "react";
 
 import type { LeveledMarkers } from "@/components/LiveDashboard/converter";
 import MultiLineTimelined from "@/components/ui/Chart/MultiLineTimelined";
-import slowTradingClient, {
-  type SlowSystemCapacityEstimate,
-  type SlowWorkerNeededEstimate,
-} from "@/lib/slowTrading/client";
+import type { RuntimeSystemCapacityEstimate, RuntimeWorkerNeededEstimate } from "@/lib/system/trading";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
-import type { DynamicTradeConfig, VolatilityPoint } from "@/lib/dynamic";
+
 import entrySequenceCandidates from "./entry-sequence-candidates";
+import type { RuntimeEffectiveConfig } from "@/lib/system/runtime";
+import type { VolatilityPoint } from "@/lib/system/types";
+import { runtimeEntrySequences } from "@/lib/system/trading";
 
 const WORKER_NEEDED_CHART_COLOR = "#1565c0";
 const CAPITAL_NEEDED_CHART_COLOR = "#ef6c00";
@@ -98,8 +98,8 @@ function buildEffectiveBalanceTooltip({
   config,
   estimate,
 }: {
-  config: DynamicTradeConfig;
-  estimate: SlowSystemCapacityEstimate;
+  config: RuntimeEffectiveConfig;
+  estimate: RuntimeSystemCapacityEstimate;
 }) {
   const maxEntryPct = config.maxEntryBased24HourVolPct ?? 0.2;
   const spareDescription =
@@ -123,8 +123,8 @@ function buildMaxProfitUsdtTooltip({
   config,
   estimate,
 }: {
-  config: DynamicTradeConfig;
-  estimate: SlowSystemCapacityEstimate;
+  config: RuntimeEffectiveConfig;
+  estimate: RuntimeSystemCapacityEstimate;
 }) {
   const takeProfitPct = config.takeProfitPercent ?? 0;
 
@@ -136,7 +136,7 @@ function buildMaxProfitUsdtTooltip({
   ]);
 }
 
-function buildMaxProfitPctTooltip(estimate: SlowSystemCapacityEstimate) {
+function buildMaxProfitPctTooltip(estimate: RuntimeSystemCapacityEstimate) {
   return tooltipContent([
     "Profit efficiency against required effective balance.",
     "Formula: max TP profit USDT / effective balance × 100.",
@@ -155,7 +155,7 @@ function buildWorkerNeededChartTooltip() {
   ]);
 }
 
-function buildCapitalNeededChartTooltip(config: DynamicTradeConfig) {
+function buildCapitalNeededChartTooltip(config: RuntimeEffectiveConfig) {
   const maxEntryPct = config.maxEntryBased24HourVolPct ?? 0.2;
   const spareDescription =
     config.entrySpareBufferEnabled === false
@@ -209,7 +209,7 @@ function chartHeader({
  * Converts worker-needed points into the shared timeline chart marker shape.
  */
 function makeWorkerNeededSeries(
-  estimate: SlowWorkerNeededEstimate,
+  estimate: RuntimeWorkerNeededEstimate,
 ): LeveledMarkers[] {
   return estimate.points.map((point) => ({
     color: WORKER_NEEDED_CHART_COLOR,
@@ -220,7 +220,7 @@ function makeWorkerNeededSeries(
 }
 
 function makeCapitalNeededSeries(
-  estimate: SlowSystemCapacityEstimate,
+  estimate: RuntimeSystemCapacityEstimate,
 ): LeveledMarkers[] {
   return estimate.capitalPoints.map((point) => ({
     color: CAPITAL_NEEDED_CHART_COLOR,
@@ -237,7 +237,7 @@ export default function WorkerNeededEstimation({
   volume24hBySymbol,
   volatilityMap,
 }: {
-  config: DynamicTradeConfig;
+  config: RuntimeEffectiveConfig;
   endTime?: number;
   startTime?: number;
   volume24hBySymbol?: Record<string, number>;
@@ -275,20 +275,20 @@ function WorkerNeededEstimationContent({
   volume24hBySymbol,
   volatilityMap,
 }: {
-  config: DynamicTradeConfig;
+  config: RuntimeEffectiveConfig;
   endTime?: number;
   startTime?: number;
   volume24hBySymbol?: Record<string, number>;
   volatilityMap: Record<string, VolatilityPoint[]>;
 }) {
   const estimate = useMemo(() => {
-    const rangedVolatilityMap = slowTradingClient.entrySequences.range.crop({
+    const rangedVolatilityMap = runtimeEntrySequences.range.crop({
       endTimeMs: endTime,
       startTimeMs: startTime,
       volatilityMap,
     });
 
-    return slowTradingClient.entrySequences.systemCapacity.estimate({
+    return runtimeEntrySequences.systemCapacity.estimate({
       config,
       endTimeMs: endTime,
       entrySignals: entrySequenceCandidates.build({
@@ -300,7 +300,7 @@ function WorkerNeededEstimationContent({
       volume24hBySymbol,
     });
   }, [config, endTime, startTime, volatilityMap, volume24hBySymbol]);
-  const workerEstimate: SlowWorkerNeededEstimate = useMemo(
+  const workerEstimate: RuntimeWorkerNeededEstimate = useMemo(
     () => ({
       metrics: {
         avg: estimate.metrics.avgWorkers,

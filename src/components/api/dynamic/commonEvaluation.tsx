@@ -1,4 +1,4 @@
-import { type BacktestReturnDynamic } from "@/lib/dynamic";
+import type { BacktestReturnDynamic } from "@/lib/dynamic";
 import {
     getIncomePerMonth,
     type GetIncomePerMonthReturn,

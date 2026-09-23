@@ -5,13 +5,14 @@ import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 import { Alert, Button, Stack, TextField } from "@mui/material";
 import { useMemo, useState } from "react";
 
-import type { SlowTradingAccountTradingConfig } from "@/lib/slowTrading";
+
 import tradingConfigJson from "./trading-config-json";
+import type { RuntimeAccountTradingConfig } from "@/lib/system/runtime";
 
 interface TradingConfigJsonEditorProps {
   accountName: string;
-  onApply: (config: SlowTradingAccountTradingConfig) => void;
-  tradingConfig: SlowTradingAccountTradingConfig;
+  onApply: (config: RuntimeAccountTradingConfig) => void;
+  tradingConfig: RuntimeAccountTradingConfig;
 }
 
 export default function TradingConfigJsonEditor({

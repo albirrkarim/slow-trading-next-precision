@@ -1,7 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import slowTrading from "@/lib/slowTrading";
+
 import binanceRequestCoordinator from "@/lib/exchange/platform/binance/request-coordinator";
-import { tradeLog } from "@/lib/trading/helper/log";
+import { systemDashboard } from "@/lib/system/dashboard";
+import { systemLog } from "@/lib/system/logging";
+import { runtimeLogs } from "@/lib/system/storage";
 
 export default async function handler(
   req: NextApiRequest,
@@ -21,22 +23,24 @@ export default async function handler(
 
   try {
     // PROD:MANUAL_ACCOUNT_BALANCE_REFRESH
-    const result = await slowTrading.balance.live.refreshAccount(account);
+    const result = await systemDashboard.balance.refresh(account);
     res.status(200).json(result);
   } catch (error) {
     const rateLimited =
       binanceRequestCoordinator.error.isRateLimit(error);
     if (!rateLimited) {
-      await slowTrading.storage.logs.appendError({
-        source: "slow-trading.dashboard.manual-balance-refresh",
-        error,
-        details: { account },
-      }).catch((logError) => {
-        tradeLog.error(
-          "[slow-trading] failed to write manual balance refresh error log",
-          logError,
-        );
-      });
+      await runtimeLogs
+        .appendError({
+          source: "slow-trading.dashboard.manual-balance-refresh",
+          error,
+          details: { account },
+        })
+        .catch((logError) => {
+          systemLog.error(
+            "[slow-trading] failed to write manual balance refresh error log",
+            logError,
+          );
+        });
     }
 
     res.status(rateLimited ? 429 : 500).json({

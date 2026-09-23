@@ -24,13 +24,10 @@ import { DEFAULT_COLORS } from "@/components/client/constants";
 import { endpoints } from "@/components/endpoints";
 import MultiLineTimelined from "@/components/ui/Chart/MultiLineTimelined";
 import type { CoinTagState } from "@/lib/devBacktest/coins/tag-types";
-import type { VolatilityPoint } from "@/lib/dynamic";
+
 import type { UnifiedFundingRate } from "@/lib/exchange";
-import type {
-  SlowTradingBinanceHealthSnapshot,
-  SlowTradingDashboardState,
-} from "@/lib/slowTrading";
-import { tradeLog } from "@/lib/trading/helper/log";
+
+import { systemLog } from "@/lib/system/logging";
 
 import { delayExecution, queueExecution } from "../client/utils";
 import type { TagData } from "../dev/Coins/CoinTagManagerDialog";
@@ -59,6 +56,9 @@ import {
 import SystemAccountSummary from "./Reporting/SystemAccountSummary";
 import { DASHBOARD_POLL_INTERVAL_MS } from "./constants";
 import { applyTimeWindowClient, calculateTimeRange, makeSeries } from "./utils";
+import type { RuntimeBinanceHealthSnapshot } from "@/lib/system/storage";
+import type { RuntimeDashboardState } from "@/lib/system/dashboard";
+import type { VolatilityPoint } from "@/lib/system/types";
 
 export interface DashboardConfig {
   range: string;
@@ -177,7 +177,7 @@ export default function DynamicTradeHistoryPage({
     Record<string, UnifiedFundingRate>
   >({});
   const [dashboardState, setDashboardState] =
-    useState<SlowTradingDashboardState | null>(null);
+    useState<RuntimeDashboardState | null>(null);
   const [storedAccountSlug, setStoredAccountSlug] = useState<string | null>(
     null,
   );
@@ -255,7 +255,7 @@ export default function DynamicTradeHistoryPage({
     setConfig((prev) => ({ ...prev, ...update }));
   }
 
-  function applyDashboardState(nextState: SlowTradingDashboardState) {
+  function applyDashboardState(nextState: RuntimeDashboardState) {
     setDashboardState(nextState);
 
     const symbolsLocal = Array.from(
@@ -266,7 +266,7 @@ export default function DynamicTradeHistoryPage({
     return symbolsLocal;
   }
 
-  function applyBinanceHealth(health: SlowTradingBinanceHealthSnapshot) {
+  function applyBinanceHealth(health: RuntimeBinanceHealthSnapshot) {
     setDashboardState((current) =>
       current ? { ...current, binanceHealth: health } : current,
     );
@@ -282,7 +282,7 @@ export default function DynamicTradeHistoryPage({
     try {
       setData(null);
 
-      const stateResp = await axios.get<SlowTradingDashboardState>(
+      const stateResp = await axios.get<RuntimeDashboardState>(
         endpoints.slow.prod.storage,
       );
       const nextState = stateResp.data;
@@ -399,9 +399,9 @@ export default function DynamicTradeHistoryPage({
         ),
       );
 
-      tradeLog.log({ vMap, tradeHistory: nextState.history, series });
+      systemLog.log({ vMap, tradeHistory: nextState.history, series });
     } catch (error) {
-      tradeLog.error(error);
+      systemLog.error(error);
       alert(reinitialize ? "Reinitialize failed" : "Execution failed");
     } finally {
       if (reinitialize) {
@@ -421,7 +421,7 @@ export default function DynamicTradeHistoryPage({
         }
         setCoinMetadata(response.data);
       })
-      .catch((error) => tradeLog.error(error));
+      .catch((error) => systemLog.error(error));
   }, []);
 
   useEffect(() => {
@@ -446,7 +446,7 @@ export default function DynamicTradeHistoryPage({
 
     const refreshDashboardState = async () => {
       try {
-        const stateResp = await axios.get<SlowTradingDashboardState>(
+        const stateResp = await axios.get<RuntimeDashboardState>(
           endpoints.slow.prod.storage,
         );
 
@@ -473,10 +473,10 @@ export default function DynamicTradeHistoryPage({
             );
           }
         } catch (error) {
-          tradeLog.error(error);
+          systemLog.error(error);
         }
       } catch (error) {
-        tradeLog.error(error);
+        systemLog.error(error);
       }
     };
 
@@ -530,7 +530,7 @@ export default function DynamicTradeHistoryPage({
       });
       await execute();
     } catch (error: any) {
-      tradeLog.error(error);
+      systemLog.error(error);
       enqueueSnackbar(
         `Failed to reset volatility points: ${error.response?.data?.error || error.message}`,
         { variant: "error" },
@@ -541,7 +541,7 @@ export default function DynamicTradeHistoryPage({
   };
 
   const manualExit = async (
-    position: SlowTradingDashboardState["openPositions"][number],
+    position: RuntimeDashboardState["openPositions"][number],
   ) => {
     const { symbol } = position;
     if (!confirm(`Exit ${symbol} manually now?`)) {
@@ -557,7 +557,7 @@ export default function DynamicTradeHistoryPage({
       enqueueSnackbar(`Successfully exited ${symbol}`, { variant: "success" });
       await execute();
     } catch (error: any) {
-      tradeLog.error(error);
+      systemLog.error(error);
       enqueueSnackbar(
         `Manual exit failed for ${symbol}: ${error.response?.data?.error || error.message}`,
         { variant: "error" },
@@ -594,7 +594,7 @@ export default function DynamicTradeHistoryPage({
 
       await execute();
     } catch (error: any) {
-      tradeLog.error(error);
+      systemLog.error(error);
       enqueueSnackbar(
         `Manual entry failed for ${symbol}: ${error.response?.data?.error || error.message}`,
         { variant: "error" },
@@ -620,7 +620,7 @@ export default function DynamicTradeHistoryPage({
 
     setDeletingSymbol(symbol);
     try {
-      const response = await axios.put<SlowTradingDashboardState>(
+      const response = await axios.put<RuntimeDashboardState>(
         endpoints.slow.prod.storage,
         { symbols: nextSymbols },
       );
@@ -636,7 +636,7 @@ export default function DynamicTradeHistoryPage({
       });
       await execute();
     } catch (error: any) {
-      tradeLog.error(error);
+      systemLog.error(error);
       enqueueSnackbar(
         `Failed to remove ${symbol}: ${error.response?.data?.error || error.message}`,
         { variant: "error" },
@@ -660,7 +660,7 @@ export default function DynamicTradeHistoryPage({
       );
       setCoinMetadata(response.data);
     } catch (error: any) {
-      tradeLog.error(error);
+      systemLog.error(error);
       enqueueSnackbar(
         error.response?.data?.error ?? "Failed to save coin metadata",
         { variant: "error" },
@@ -689,7 +689,7 @@ export default function DynamicTradeHistoryPage({
       const message =
         error.response?.data?.error ??
         "Failed to download online coin metadata";
-      tradeLog.error(error);
+      systemLog.error(error);
       enqueueSnackbar(message, { variant: "error" });
       return false;
     } finally {
@@ -728,7 +728,7 @@ export default function DynamicTradeHistoryPage({
     } catch (error: any) {
       const message =
         error.response?.data?.error ?? "Failed to broadcast coin metadata";
-      tradeLog.error(error);
+      systemLog.error(error);
       enqueueSnackbar(message, { variant: "error" });
     } finally {
       setBroadcastingCoinMetadata(false);
@@ -745,7 +745,7 @@ export default function DynamicTradeHistoryPage({
     } catch (error: any) {
       const message =
         error.response?.data?.error ?? "Failed to create coin tag";
-      tradeLog.error(error);
+      systemLog.error(error);
       enqueueSnackbar(message, { variant: "error" });
       throw new Error(message);
     }
@@ -761,7 +761,7 @@ export default function DynamicTradeHistoryPage({
     } catch (error: any) {
       const message =
         error.response?.data?.error ?? "Failed to update coin tag";
-      tradeLog.error(error);
+      systemLog.error(error);
       enqueueSnackbar(message, { variant: "error" });
       throw new Error(message);
     }
@@ -779,7 +779,7 @@ export default function DynamicTradeHistoryPage({
     } catch (error: any) {
       const message =
         error.response?.data?.error ?? "Failed to delete coin tag";
-      tradeLog.error(error);
+      systemLog.error(error);
       enqueueSnackbar(message, { variant: "error" });
       throw new Error(message);
     }

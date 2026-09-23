@@ -13,7 +13,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import type { SlowTradingDashboardState } from "@/lib/slowTrading";
+
 
 import ReadMoreDialogButton from "../Navbar/Settings/Components/ReadMoreDialogButton";
 import ExitThresholdChart from "../Navbar/Settings/Trading/ExitThresholdChart";
@@ -24,6 +24,7 @@ import {
   type TradingLivePreviewData,
   type TradingLivePreviewExitStage,
 } from "./trading-live-preview";
+import type { RuntimeDashboardState } from "@/lib/system/dashboard";
 
 function formatUsdt(value: number) {
   return new Intl.NumberFormat("en-US", {
@@ -473,7 +474,7 @@ export default function TradingLivePreview({
 }: {
   allowSpendableAssumption?: boolean;
   config: TradingLivePreviewConfig;
-  dashboardState: SlowTradingDashboardState;
+  dashboardState: RuntimeDashboardState;
   sticky?: boolean;
 }) {
   const currentSpendableUsdt = Math.max(

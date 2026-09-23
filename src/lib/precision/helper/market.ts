@@ -1,28 +1,23 @@
-import {
-  assignNextLevel,
-  createPredictorMemory,
-  predictor,
-  type PredictorMemory,
-  type VolatilityPoint,
-} from "@/lib/dynamic";
-import { resolveMarketTypeForTradingMode } from "@/lib/exchange/utils";
-import slowTradingShared from "@/lib/slowTrading/shared";
-import type { RuntimeEngineAdapter, RuntimeEngineState } from "../types";
+import entry from "@/lib/system/trading/entry";
+
+import type {
+  RuntimeEngineAdapter,
+  RuntimeEngineState,
+  RuntimeVPointMemory,
+} from "../types";
 import {
   DEFAULT_RECENT_VPOINTS,
   MARK_PRICE_LOOKBACK_MINUTES,
   VPOINT_INITIAL_LOOKBACK_MINUTES,
 } from "../constant";
-import vpoints from "../utils/vpoints";
+import vpoints from "@/lib/system/utils/vpoints";
 import type { RuntimeMarketHelper, RuntimeMarketInterval } from "./types";
 
 interface VolatilityCursor {
   lastKnownPointId?: string;
   lastProcessedOpenTime: number;
-  memory: PredictorMemory;
+  memory: RuntimeVPointMemory;
 }
-
-
 
 /** Binds reusable market-state updates to one runtime state and adapter. */
 function create(
@@ -38,10 +33,9 @@ function create(
     >
   > = {};
   const getSymbols = () =>
-    slowTradingShared.symbols.buildExecution(state.config.management.symbols);
-  const marketType = resolveMarketTypeForTradingMode(
-    state.config.management.tradingMode,
-  );
+    entry.getSymbols(state.config);
+  const marketType =
+    state.config.management.tradingMode === "futures" ? "FUTURES" : "SPOT";
 
   return {
     /**
@@ -121,7 +115,7 @@ function create(
           : (previousPoint?.t ??
             currentTime - VPOINT_INITIAL_LOOKBACK_MINUTES * 60_000);
 
-            
+
         const klines = await adapter.market.getKlines({
           endTime: currentTime,
           exactDate: true,
@@ -137,18 +131,23 @@ function create(
 
         let memory =
           cursor?.memory ??
-          createPredictorMemory(
-            previousPoint?.p ?? Number(closedKlines[0][4]),
-            previousPoint?.t ?? closedKlines[0][0],
-          );
+          vpoints.createMemory({
+            firstClose:
+              previousPoint?.p ?? Number(closedKlines[0][4]),
+            firstTime: previousPoint?.t ?? closedKlines[0][0],
+          });
         const firstIndex = cursor ? 0 : 1;
 
         for (let index = firstIndex; index < closedKlines.length; index++) {
-          const predicted = predictor(closedKlines[index], memory, symbol);
+          const predicted = vpoints.processKline({
+            kline: closedKlines[index],
+            memory,
+            previousPoint,
+            symbol,
+          });
           memory = predicted.memory;
           if (!predicted.point) continue;
 
-          assignNextLevel(predicted.point, previousPoint);
           points.push(predicted.point);
           previousPoint = predicted.point;
           await adapter.onNewVPoint?.(symbol, predicted.point);

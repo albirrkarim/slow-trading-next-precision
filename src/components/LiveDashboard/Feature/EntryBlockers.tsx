@@ -2,12 +2,6 @@
 
 import { endpoints } from "@/components/endpoints";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
-import type {
-  SlowTradingAccountEntryDiagnostics,
-  SlowTradingEntryDiagnostic,
-  SlowTradingEntryDiagnosticsSnapshot,
-  SlowTradingSharedEntryGuardDiagnostic,
-} from "@/lib/slowTrading/client";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
@@ -25,6 +19,7 @@ import {
 } from "@mui/material";
 import axios from "axios";
 import { useEffect, useState } from "react";
+import type { RuntimeAccountEntryDiagnostics, RuntimeEntryDiagnostic, RuntimeEntryDiagnosticsSnapshot, RuntimeSharedEntryGuardDiagnostic } from "@/lib/system/trading";
 
 export default function EntryBlockers() {
   return (
@@ -45,10 +40,10 @@ export default function EntryBlockers() {
 
 function EntryBlockersContent() {
   const [accounts, setAccounts] = useState<
-    SlowTradingAccountEntryDiagnostics[]
+    RuntimeAccountEntryDiagnostics[]
   >([]);
   const [sharedGuards, setSharedGuards] = useState<
-    SlowTradingSharedEntryGuardDiagnostic[]
+    RuntimeSharedEntryGuardDiagnostic[]
   >([]);
   const [error, setError] = useState("");
   const [generatedAt, setGeneratedAt] = useState(0);
@@ -58,7 +53,7 @@ function EntryBlockersContent() {
     setError("");
     setLoading(true);
     try {
-      const response = await axios.get<SlowTradingEntryDiagnosticsSnapshot>(
+      const response = await axios.get<RuntimeEntryDiagnosticsSnapshot>(
         endpoints.slow.prod.entryDiagnostics,
       );
       setAccounts(response.data.accounts);
@@ -171,7 +166,7 @@ function EntryBlockersContent() {
 function AccountEntryDiagnostics({
   account,
 }: {
-  account: SlowTradingAccountEntryDiagnostics;
+  account: RuntimeAccountEntryDiagnostics;
 }) {
   return (
     <Box>
@@ -240,7 +235,7 @@ function AccountEntryDiagnostics({
 function EntryDiagnosticCard({
   diagnostic,
 }: {
-  diagnostic: SlowTradingEntryDiagnostic;
+  diagnostic: RuntimeEntryDiagnostic;
 }) {
   const ready = diagnostic.status === "ready";
   return (

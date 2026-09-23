@@ -1,6 +1,7 @@
-import type { EntryRecommendation } from "@/lib/brain/algorithms/type-execute";
-import { decisionEngineLevelConfig } from "@/lib/brain/algorithms/v4/decisions/helper/constants";
-import type { VolatilityPoint } from "@/lib/dynamic";
+import { entry } from "@/lib/system/trading";
+import type { EntryRecommendation } from "@/lib/system/trading";
+import type { VolatilityPoint } from "@/lib/system/types";
+
 
 const entrySequenceCandidates = {
   threshold: {
@@ -8,7 +9,7 @@ const entrySequenceCandidates = {
      * Resolves the dashboard threshold with the same rules as decision v19.
      */
     resolve(value?: number) {
-      return decisionEngineLevelConfig.resolveMinActionableAbsoluteLevel(value);
+      return entry.threshold.resolve(value);
     },
   },
 

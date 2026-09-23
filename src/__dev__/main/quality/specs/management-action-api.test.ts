@@ -12,29 +12,41 @@ const mocks = vi.hoisted(() => ({
       symbol: "IOTX",
     },
   ]),
-  buildStateRealtime: vi.fn(async () => ({ activeMode: "live" })),
-  load: vi.fn(),
+  buildCombined: vi.fn(async () => ({ activeMode: "live" })),
+  ensure: vi.fn(),
   notify: vi.fn(async () => undefined),
   runnerGet: vi.fn(async () => undefined),
-  update: vi.fn(async () => undefined),
+  update: vi.fn(),
 }));
 
-vi.mock("@/lib/slowTrading", () => ({
+vi.mock("@/lib/production", () => ({
   default: {
-    notifications: {
-      managementAction: {
-        build: mocks.build,
-        notify: mocks.notify,
-      },
-    },
-    runner: { get: mocks.runnerGet },
-    storage: {
-      dashboard: { buildStateRealtime: mocks.buildStateRealtime },
-      data: { load: mocks.load, update: mocks.update },
-      logs: {
-        appendError: mocks.appendError,
-        appendManagement: mocks.appendManagement,
-      },
+    runtime: { get: mocks.runnerGet },
+  },
+}));
+
+vi.mock("@/lib/system/dashboard", () => ({
+  default: {
+    state: { buildCombined: mocks.buildCombined },
+  },
+}));
+
+vi.mock("@/lib/system/notification/management", () => ({
+  default: {
+    build: mocks.build,
+    notify: mocks.notify,
+  },
+}));
+
+vi.mock("@/lib/system/storage", () => ({
+  runtimeLogs: {
+    appendError: mocks.appendError,
+    appendManagement: mocks.appendManagement,
+  },
+  runtimeStorage: {
+    catalog: {
+      ensure: mocks.ensure,
+      update: mocks.update,
     },
   },
 }));
@@ -44,12 +56,17 @@ import handler from "@/pages/api/slow-trading/storage";
 describe("storage API management-action notifications", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.load
-      .mockResolvedValueOnce({ config: { symbols: ["AAVE"] } })
-      .mockResolvedValueOnce({
-        config: { symbols: ["AAVE", "IOTX"] },
+    mocks.ensure.mockResolvedValue({
+      config: { management: { symbols: ["AAVE"] } },
+      mode: "live",
+    });
+    mocks.update.mockResolvedValue({
+      config: {
+        management: { symbols: ["AAVE", "IOTX"] },
         runtime: { notification: { email: {}, telegram: {} } },
-      });
+      },
+      mode: "live",
+    });
   });
 
   it("notifies additions and removals with the dashboard source", async () => {

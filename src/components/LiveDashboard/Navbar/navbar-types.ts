@@ -1,10 +1,12 @@
 "use client";
 
-import type { SlowTradingDashboardState } from "@/lib/slowTrading";
+import type { RuntimeDashboardState } from "@/lib/system/dashboard";
+
+
 
 export type { ConfigDraftSetter, ConfigDraft } from "./Settings/settings-types";
 
-export type DashboardState = NonNullable<SlowTradingDashboardState>;
+export type DashboardState = NonNullable<RuntimeDashboardState>;
 
 export interface OpenPositionSummary {
   totalPnlUSDT: number;
@@ -28,7 +30,7 @@ export interface BalanceSummary {
 }
 
 export interface LiveDashboardNavbarProps {
-  dashboardState: SlowTradingDashboardState | null;
+  dashboardState: RuntimeDashboardState | null;
   onRefresh: () => Promise<void>;
   onReinitialize: () => Promise<void>;
   reinitializing: boolean;

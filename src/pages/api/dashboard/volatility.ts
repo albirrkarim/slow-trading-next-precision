@@ -1,13 +1,13 @@
-import { FILES } from "@/components/storage";
-import {
-  type PredictionEngineMemory,
-  type VolatilityPoint,
-  predictionEngine,
-} from "@/lib/dynamic";
+import type { ExchangeType } from "@/lib/exchange/types";
 import { DEFAULT_EXCHANGE } from "@/lib/exchange/constants";
 import { resolveMarketTypeForTradingMode } from "@/lib/exchange/utils";
-import slowTrading from "@/lib/slowTrading";
-import { tradeLog } from "@/lib/trading";
+import { windowsMs } from "@/lib/system/constants";
+import { runtimeStorage, storageFiles } from "@/lib/system/storage";
+import type { VolatilityPoint } from "@/lib/system/types";
+import { reserve, runtimeEntrySequences } from "@/lib/system/trading";
+import klineUtils from "@/lib/system/utils/klines";
+import vpoints from "@/lib/system/utils/vpoints";
+import { systemLog } from "@/lib/system/logging";
 import fs from "fs-extra";
 import md5 from "md5";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -144,15 +144,13 @@ async function keepTheVolatilityUpdated(
 ) {
   const params = req.method == "GET" ? req.query : req.body;
   const requestedExchangeType = pickExchangeParam(params.exchangeType);
-  const slowStorage = await slowTrading.storage.data.load({
-    modeScope: "active",
-  });
+  const catalog = await runtimeStorage.catalog.ensure();
   const exchangeType =
     requestedExchangeType ??
-    slowStorage.config.exchangeType ??
+    catalog.config.management.exchangeType ??
     DEFAULT_EXCHANGE;
   const marketType = resolveMarketTypeForTradingMode(
-    slowStorage.config.tradingMode,
+    catalog.config.management.tradingMode,
   );
   const {
     verbose = false,
@@ -162,7 +160,7 @@ async function keepTheVolatilityUpdated(
     removeUsed = false,
   } = params;
 
-  const logSession = tradeLog.startSession({
+  const logSession = systemLog.startSession({
     categories: logCategories,
     verbose: Boolean(verbose),
   });
@@ -171,10 +169,10 @@ async function keepTheVolatilityUpdated(
   const endTimeMs = pickTimeParam(params.endTime);
   const range = pickStringParam(params.range);
 
-  const cachePath = `${FILES.prod.getCachePrefix("volatility")}${md5(
+  const cachePath = `${storageFiles.prod.cache.getCachePrefix("volatility")}${md5(
     JSON.stringify({
       cacheBucket: getDashboardVolatilityCacheBucket(Date.now()),
-      config: slowStorage.config,
+      config: catalog.config,
       exchangeType,
       range: buildDashboardVolatilityCacheWindow({
         endTimeMs,
@@ -200,80 +198,69 @@ async function keepTheVolatilityUpdated(
   try {
     const volatilityMap: Record<string, VolatilityPoint[]> = {};
 
-    // const files = await fs.readdir(FILES.prod.volatility(exchangeType));
+    // const files = await fs.readdir(storageFiles.prod.volatility(exchangeType));
 
-    // tradeLog.log("files ", files);
+    // systemLog.log("files ", files);
 
-    tradeLog.log("tradeLog categories", tradeLog.categories);
+    systemLog.log("tradeLog categories", systemLog.categories);
 
     for (const symbol of symbols) {
-      // A. Load existing volatility from file if exists
+      // A. Load existing volatility from storage if it exists
       if (
         (await fs.exists(
-          `${FILES.prod.volatility(exchangeType)}/${symbol}.json`,
+          `${storageFiles.prod.volatility(exchangeType)}/${symbol}.json`,
         )) &&
         !forceUpdate
       ) {
-        tradeLog.debug("Load volatility from json ", symbol);
-        const data = (await fs.readJSON(
-          `${FILES.prod.volatility(exchangeType)}/${symbol}.json`,
-        )) as PredictionEngineMemory;
-
-        volatilityMap[symbol] = data.lastVolatility;
-      } else {
-        // B. Otherwise, generate new volatility data
-        tradeLog.debug("get new the volatility ", symbol);
-
-        const vMemory = {
+        systemLog.debug("Load volatility from json ", symbol);
+        volatilityMap[symbol] = await runtimeStorage.vpoints.read({
+          exchangeType: exchangeType as ExchangeType,
           symbol,
-          lastVolatility: [],
-        };
+        });
+      } else {
+        // B. Otherwise, detect vPoints over a six-month 5m window and persist
+        systemLog.debug("get new the volatility ", symbol);
 
-        await predictionEngine({
-          tradePair: `${symbol}_USDT`,
-          memory: vMemory,
-          endTime: Date.now(),
-          exchangeType,
-          marketType,
-          minActionableAbsoluteLevel:
-            slowStorage.config.minActionableAbsoluteLevel,
+        const detected = vpoints.detectVPoints({
+          klines: await klineUtils.downloadRange({
+            endTime: Date.now(),
+            exchangeType: exchangeType as ExchangeType,
+            interval: "5m",
+            marketType,
+            startTime: Date.now() - windowsMs["6m"],
+            symbol: `${symbol}_USDT`,
+            tradingMode: catalog.config.management.tradingMode,
+          }),
+          symbol,
         });
 
-        await fs.writeJson(
-          `${FILES.prod.volatility(exchangeType)}/${symbol}.json`,
-          vMemory,
-        );
+        await runtimeStorage.vpoints.merge({
+          exchangeType: exchangeType as ExchangeType,
+          symbol,
+          points: detected,
+        });
 
-        volatilityMap[symbol] = vMemory.lastVolatility;
+        volatilityMap[symbol] = detected;
       }
 
       // C. Optionally remove used volatility points
       if (removeUsed) {
-        tradeLog.debug("Remove used vpoint ", symbol);
+        systemLog.debug("Remove used vpoint ", symbol);
 
         for (const item of volatilityMap[symbol]) {
           // PROD:MULTI_ACCOUNT_ENTRY_VPOINT_USAGE
-          slowTrading.watchReserve.volatilityPoint.resetUsage(item);
+          reserve.vpoints.resetUsage(item);
         }
 
-        const currentMemory = (await fs.readJSON(
-          `${FILES.prod.volatility(exchangeType)}/${symbol}.json`,
-        )) as PredictionEngineMemory;
-        const vMemory: PredictionEngineMemory = {
-          ...currentMemory,
-          symbol: currentMemory.symbol ?? symbol,
-          lastVolatility: volatilityMap[symbol],
-        };
-
-        // save back
-        await fs.writeJson(
-          `${FILES.prod.volatility(exchangeType)}/${symbol}.json`,
-          vMemory,
-        );
+        await runtimeStorage.vpoints.merge({
+          exchangeType: exchangeType as ExchangeType,
+          symbol,
+          points: volatilityMap[symbol],
+        });
       }
     }
 
-    const responseVolatilityMap = slowTrading.entrySequences.range.crop({
+    const responseVolatilityMap = runtimeEntrySequences.range.crop({
       endTimeMs,
       startTimeMs,
       volatilityMap,
@@ -314,13 +301,13 @@ async function keepTheVolatilityUpdated(
 
     res.json(output);
   } catch (err) {
-    tradeLog.error(err);
+    systemLog.error(err);
     res.status(500).json({
       status: false,
       data: {},
       series: [],
     });
   } finally {
-    tradeLog.endSession(logSession);
+    systemLog.endSession(logSession);
   }
 }

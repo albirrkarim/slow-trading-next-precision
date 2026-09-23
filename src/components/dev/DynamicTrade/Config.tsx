@@ -5,7 +5,7 @@ import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { DESCISION_MODELS } from "@/lib/dynamic/constants";
 import { TradingMode } from "@/lib/exchange/types";
 import type { TradingConfig } from "@/lib/trading/models";
-import type { AdaptiveAveragingConfig } from "@/lib/dynamic";
+
 import adaptiveAveraging from "@/lib/trading/adaptive-averaging";
 import postAverageRescue from "@/lib/trading/post-average-rescue";
 import postAverageStopLoss from "@/lib/trading/post-average-stop-loss";
@@ -29,6 +29,7 @@ import { brown } from "@mui/material/colors";
 import type { Dispatch, SetStateAction } from "react";
 import HeaderMetrics from "../Evaluation/HeaderMetrics";
 import { TIME_RANGE } from "@/components/constants";
+import type { AdaptiveAveragingConfig } from "@/lib/system/trading";
 
 export type BacktestConfig = TradingConfig & {
     mode: "kline" | "volatility_point";

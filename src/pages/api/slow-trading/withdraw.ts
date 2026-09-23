@@ -1,9 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import slowTrading, {
-  type SlowTradingWithdrawalExecutionResult,
-} from "@/lib/slowTrading";
-import { tradeLog } from "@/lib/trading/helper/log";
+import { runtimeWithdrawal } from "@/lib/system/withdrawal";
+import type { RuntimeWithdrawalExecutionResult } from "@/lib/system/withdrawal";
+import { systemLog } from "@/lib/system/logging";
+import { runtimeLogs } from "@/lib/system/storage";
+
 
 type WithdrawRequestBody = {
   scheduleId?: string;
@@ -11,12 +12,12 @@ type WithdrawRequestBody = {
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<SlowTradingWithdrawalExecutionResult | { error: string }>,
+  res: NextApiResponse<RuntimeWithdrawalExecutionResult | { error: string }>,
 ) {
   try {
     if (req.method !== "POST") {
       res.setHeader("Allow", ["POST"]);
-      res.status(405).json({ error: `Method ${req.method} Not Allowed` });
+      res.status(405).json({ error: `Method ${req.method} not allowed` });
       return;
     }
 
@@ -27,21 +28,23 @@ export default async function handler(
       return;
     }
 
-    const result = await slowTrading.withdrawal.schedules.execute({
+    const result = await runtimeWithdrawal.schedules.execute({
       scheduleId,
     });
     res.status(200).json(result);
   } catch (error: any) {
-    await slowTrading.storage.logs.appendError({
-      source: "api.slow-trading.withdraw",
-      error,
-      details: {
-        method: req.method,
-        scheduleId: req.body?.scheduleId,
-      },
-    }).catch((logError) => {
-      tradeLog.error("[slow-trading] failed to write withdrawal error log", logError);
-    });
+    await runtimeLogs
+      .appendError({
+        source: "api.slow-trading.withdraw",
+        error,
+        details: {
+          method: req.method,
+          scheduleId: req.body?.scheduleId,
+        },
+      })
+      .catch((logError) => {
+        systemLog.error("[slow-trading] failed to write withdrawal error log", logError);
+      });
     res.status(500).json({
       error: error?.message ?? "Failed to try slow trading withdraw flow",
     });

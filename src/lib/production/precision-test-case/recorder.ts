@@ -2,12 +2,14 @@ import path from "path";
 
 import fs from "fs-extra";
 
-import { FILES } from "@/components/storage";
 import type { RuntimeEngineState } from "@/lib/precision/types";
-import slowTradingShared from "@/lib/slowTrading/shared";
-import slowTradingStorage from "@/lib/slowTrading/storage";
-import jsonFile from "@/lib/slowTrading/storage/json-file";
-import vpoints from "@/lib/precision/utils/vpoints";
+import { runtimeSymbols } from "@/lib/system/runtime";
+import {
+  jsonFile,
+  runtimeStorage,
+  storageFiles,
+} from "@/lib/system/storage";
+import vpoints from "@/lib/system/utils/vpoints";
 
 import type {
   PrecisionTestCase,
@@ -18,7 +20,9 @@ import type {
   PrecisionTestCaseStatus,
 } from "./types";
 
-const RECORDING_DIRECTORY = FILES.dev.precisionTestCaseDir;
+function recordingDirectory(): string {
+  return storageFiles.dev.precisionTestCaseDir;
+}
 
 function clone<T>(value: T): T {
   return structuredClone(value);
@@ -143,16 +147,16 @@ function assertCompletedFileName(fileName: string): void {
  * files, and malformed JSON payloads are skipped.
  */
 async function listFiles(): Promise<PrecisionTestCaseFileSummary[]> {
-  if (!(await fs.pathExists(RECORDING_DIRECTORY))) {
+  if (!(await fs.pathExists(recordingDirectory()))) {
     return [];
   }
 
-  const entries = await fs.readdir(RECORDING_DIRECTORY);
+  const entries = await fs.readdir(recordingDirectory());
   const summaries = await Promise.all(
     entries
       .filter((entry) => COMPLETED_FILE_PATTERN.test(entry))
       .map(async (fileName) => {
-        const filePath = path.join(RECORDING_DIRECTORY, fileName);
+        const filePath = path.join(recordingDirectory(), fileName);
         try {
           const stats = await fs.stat(filePath);
           if (!stats.isFile()) {
@@ -205,7 +209,7 @@ async function removeFile(
   fileName: string,
 ): Promise<{ deleted: true; fileName: string }> {
   assertCompletedFileName(fileName);
-  const filePath = path.join(RECORDING_DIRECTORY, fileName);
+  const filePath = path.join(recordingDirectory(), fileName);
   const stats = await fs.stat(filePath).catch(() => null);
   if (!stats?.isFile()) {
     throw new Error(`Precision test case file not found: ${fileName}`);
@@ -216,11 +220,11 @@ async function removeFile(
 }
 
 async function readRecordingState(): Promise<PrecisionTestCaseRecordingState> {
-  if (!(await fs.pathExists(FILES.dev.precisionTestCaseActive))) {
+  if (!(await fs.pathExists(storageFiles.dev.precisionTestCaseActive))) {
     return { recording: false };
   }
 
-  const value = await fs.readJSON(FILES.dev.precisionTestCaseActive);
+  const value = await fs.readJSON(storageFiles.dev.precisionTestCaseActive);
   if (!value || typeof value !== "object") {
     return { recording: false };
   }
@@ -231,7 +235,7 @@ async function readRecordingState(): Promise<PrecisionTestCaseRecordingState> {
 async function writeRecordingState(
   state: PrecisionTestCaseRecordingState,
 ): Promise<void> {
-  await jsonFile.write.atomic(FILES.dev.precisionTestCaseActive, state);
+  await jsonFile.write.atomic(storageFiles.dev.precisionTestCaseActive, state);
 }
 
 async function getStatus(
@@ -249,7 +253,7 @@ async function getStatus(
       finiteTime(state.currentTime),
     );
     tradeHistoryLength = (
-      await slowTradingStorage.history.readRange({
+      await runtimeStorage.history.readRange({
         endTime,
         mode: recordingState.mode,
         startTime: recordingState.startTime,
@@ -287,7 +291,7 @@ async function start(
     );
   }
 
-  const symbols = slowTradingShared.symbols.buildExecution(
+  const symbols = runtimeSymbols.buildExecution(
     state.config.management.symbols,
   );
   const missingVPoints = symbols.filter(
@@ -321,9 +325,9 @@ async function start(
     startTime,
     tradeHistory: [],
   };
-  const filePath = path.join(RECORDING_DIRECTORY, fileName);
+  const filePath = path.join(recordingDirectory(), fileName);
 
-  await fs.ensureDir(RECORDING_DIRECTORY);
+  await fs.ensureDir(recordingDirectory());
   await jsonFile.write.atomic(filePath, testCase);
 
   try {
@@ -354,7 +358,7 @@ async function end(state: RuntimeEngineState): Promise<PrecisionTestCaseResult> 
 
   const startTime = recordingState.startTime;
   const endTime = Math.max(startTime, finiteTime(state.currentTime));
-  const pendingPath = path.join(RECORDING_DIRECTORY, recordingState.fileName);
+  const pendingPath = path.join(recordingDirectory(), recordingState.fileName);
   if (!(await fs.pathExists(pendingPath))) {
     throw new Error(
       `Recording test case file is missing: ${recordingState.fileName}`,
@@ -362,7 +366,7 @@ async function end(state: RuntimeEngineState): Promise<PrecisionTestCaseResult> 
   }
 
   const initialTestCase = (await fs.readJSON(pendingPath)) as PrecisionTestCase;
-  const tradeHistory = await slowTradingStorage.history.readRange({
+  const tradeHistory = await runtimeStorage.history.readRange({
     endTime,
     mode: recordingState.mode,
     startTime,
@@ -381,7 +385,7 @@ async function end(state: RuntimeEngineState): Promise<PrecisionTestCaseResult> 
     tradeHistory: clone(tradeHistory),
   };
   const fileName = getFileName(recordingState.mode, startTime, endTime);
-  const filePath = path.join(RECORDING_DIRECTORY, fileName);
+  const filePath = path.join(recordingDirectory(), fileName);
 
   // PROD:PRODUCTION_TEST_CASE
   await jsonFile.write.atomic(filePath, testCase);

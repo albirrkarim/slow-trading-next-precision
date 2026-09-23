@@ -12,7 +12,7 @@ import {
 
 import CoinMultiSelect from "@/components/ui/CoinMultiSelect";
 import IconButtonTooltip from "@/components/ui/IconButtonTooltip";
-import { DESCISION_MODELS } from "@/lib/dynamic/constants-clients";
+import { DECISION_MODELS } from "@/lib/system/constants";
 import type { TradingMode } from "@/lib/exchange/types";
 
 import ExchangeAccountManagerDialog from "./ExchangeAccountManagerDialog";
@@ -183,7 +183,7 @@ export default function SettingsDialogManagementTab({
                 size="small"
                 value={configDraft.management.decisionEngineVersion}
               >
-                {DESCISION_MODELS.map((item) => (
+                {DECISION_MODELS.map((item) => (
                   <MenuItem
                     key={item.value}
                     title={item.descrption}

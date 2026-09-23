@@ -4,8 +4,8 @@ const mocks = vi.hoisted(() => ({
   error: vi.fn(),
 }));
 
-vi.mock("@lib/trading", () => ({
-  tradeLog: {
+vi.mock("@/lib/system/logging", () => ({
+  systemLog: {
     error: mocks.error,
   },
 }));

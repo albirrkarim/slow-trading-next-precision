@@ -21,15 +21,16 @@ import type {
   PrecisionTestCaseFileSummary,
   PrecisionTestCaseStatus,
 } from "@/lib/production/precision-test-case";
-import type { SlowTradingMode } from "@/lib/slowTrading";
-import { tradeLog } from "@/lib/trading/helper/log";
+
+import { systemLog } from "@/lib/system/logging";
+import type { RuntimeMode } from "@/lib/system/runtime";
 
 interface PrecisionTestCaseResponse extends PrecisionTestCaseStatus {
   files: PrecisionTestCaseFileSummary[];
 }
 
 interface PrecisionTestCaseControlsProps {
-  activeMode: SlowTradingMode;
+  activeMode: RuntimeMode;
 }
 
 const idleStatus: PrecisionTestCaseStatus = {
@@ -82,7 +83,7 @@ export default function PrecisionTestCaseControls({
       setFiles(response.data.files ?? []);
       setError(null);
     } catch (requestError) {
-      tradeLog.error("[Precision Test Case] status failed", requestError);
+      systemLog.error("[Precision Test Case] status failed", requestError);
       setError(
         axios.isAxiosError(requestError)
           ? requestError.response?.data?.error ?? requestError.message
@@ -127,7 +128,7 @@ export default function PrecisionTestCaseControls({
       setError(null);
       await refreshStatus();
     } catch (actionError: any) {
-      tradeLog.error("[Precision Test Case] action failed", actionError);
+      systemLog.error("[Precision Test Case] action failed", actionError);
       const message =
         actionError?.response?.data?.error ??
         `Failed to ${label} the production test case`;
@@ -155,7 +156,7 @@ export default function PrecisionTestCaseControls({
       setError(null);
       await refreshStatus();
     } catch (deleteError: any) {
-      tradeLog.error("[Precision Test Case] delete failed", deleteError);
+      systemLog.error("[Precision Test Case] delete failed", deleteError);
       setError(
         deleteError?.response?.data?.error ??
           `Failed to delete ${fileName}.`,

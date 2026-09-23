@@ -3,8 +3,12 @@ import type {
   RuntimeEngineAdapter,
   RuntimeEngineState,
 } from "@/lib/precision/types";
-import type { VolatilityPoint } from "@/lib/dynamic";
-import vpoints from "@/lib/precision/utils/vpoints";
+import type { VolatilityPoint } from "@/lib/system/types";
+import vpoints from "@/lib/system/utils/vpoints";
+import { getFeeCalculator } from "@/lib/exchange/fees";
+import tradingAveraging from "@/lib/system/trading/averaging";
+import entryAction from "@/lib/system/trading/entry-action";
+import tradingExit from "@/lib/system/trading/exit";
 import type { BacktestPrecisionParams } from "../api/precision-api-types";
 import { preparePrecisionDataset } from "./data";
 import {
@@ -12,11 +16,10 @@ import {
   createInitialVPointsMap,
   createProgressLogger,
 } from "./utils";
-import { windowsMs } from "@/lib/dynamic/constants-time";
-import simulatedAction from "@/lib/precision/action/simulated";
 import type { BacktestPrecisionResult } from "./backtest-precision-types";
 
 const BACKTEST_ENTRY_CUTOFF_MS = 4 * 24 * 60 * 60 * 1000;
+const VPOINT_WARMUP_MS = 2 * 30 * 24 * 60 * 60_000;
 
 interface PrecisionBacktestParams extends BacktestPrecisionParams {
   mode?: "backtest" | "precision-checker";
@@ -61,7 +64,7 @@ export async function precisionBacktest(
   // so we can make the initial vPointsMap first.
   const currentTime = isPrecisionChecker
     ? (params.startTime as number)
-    : datasetStartTime + windowsMs["1m"] * 2;
+    : datasetStartTime + VPOINT_WARMUP_MS;
   if (!isPrecisionChecker && currentTime >= endTime) {
     throw new Error(
       "Precision backtest requires more than two months of data for volatility warm-up.",
@@ -123,7 +126,20 @@ export async function precisionBacktest(
     market: {
       getKlines: dataset.getKlines,
     },
-    exchange: {},
+    exchange: {
+      getFeeRate({ side, type }) {
+        return (
+          getFeeCalculator(params.config.management.exchangeType)
+            .getTotalFeePercent({ currency: "USDT", side, type }) / 100
+        );
+      },
+      getRoundTripFeeRate({ type }) {
+        return (
+          getFeeCalculator(params.config.management.exchangeType)
+            .getBothSideFeePercent({ currency: "USDT", type }) / 100
+        );
+      },
+    },
     onStrategy: async (decision, context) => {
       // BTEST:STOP_AUTO_ENTRY_BEFORE_END
       // Keep monitoring existing positions during the final four days, but do
@@ -137,7 +153,19 @@ export async function precisionBacktest(
 
       return true;
     },
-    onAction: simulatedAction.execute,
+    onAction: async (decision, context) => {
+      if (decision.type === "entry") {
+        return entryAction.execute(context, decision);
+      }
+      if (decision.type === "averaging") {
+        return tradingAveraging.execute(context, decision);
+      }
+      if (decision.type === "exit") {
+        return tradingExit.execute(context, decision);
+      }
+
+      return null;
+    },
     onExit: async (position) => {
       history.push(position);
     },

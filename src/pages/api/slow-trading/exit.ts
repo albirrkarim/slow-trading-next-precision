@@ -1,6 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import slowTrading from "@/lib/slowTrading";
+import production from "@/lib/production";
+import { systemDashboard } from "@/lib/system/dashboard";
+import { systemLog } from "@/lib/system/logging";
+import { runtimeLogs, runtimeStorage } from "@/lib/system/storage";
 
 export default async function handler(
   req: NextApiRequest,
@@ -19,17 +22,25 @@ export default async function handler(
       return;
     }
 
-    const currentStorage = await slowTrading.storage.data.load({
-      account: String(req.body?.account || "").trim() || undefined,
-      modeScope: "active",
-    });
-    const activeMode = currentStorage.runtime.sandboxEnabled ? "sandbox" : "live";
-    const hasOpenPosition = currentStorage.modes[activeMode].tradeSettings.some(
-      (item) =>
-        String(item.symbol || "").trim().toUpperCase() === symbol &&
-        (item.model_memory.positions?.length ?? 0) > 0,
-    );
+    const catalog = await runtimeStorage.catalog.load();
+    const activeMode = catalog.mode;
+    const requestedSlug = String(req.body?.account || "").trim();
+    const account = requestedSlug
+      ? catalog.config.accounts.find((item) => item.slug === requestedSlug)
+      : catalog.config.accounts[0];
+    if (!account) {
+      res.status(400).json({ error: "Account is required" });
+      return;
+    }
 
+    const accountState = await runtimeStorage.account.load({
+      accountSlug: account.slug,
+      mode: activeMode,
+    });
+    const hasOpenPosition = accountState.positions.some(
+      (position) =>
+        !position.closed && position.symbol.toUpperCase() === symbol,
+    );
     if (!hasOpenPosition) {
       res.status(404).json({
         error: `No open position found for ${symbol} in ${activeMode} mode`,
@@ -37,31 +48,34 @@ export default async function handler(
       return;
     }
 
-    const result = await slowTrading.service.runSlowTradingCycle({
-      account: currentStorage.account.slug,
-      ignoreRunnerEnabled: true,
-      forceExitSymbols: [symbol],
-      disableAutoEntry: true,
-    });
-
-    const nextStorage = await slowTrading.storage.data.load({
-      includeHistory: true,
+    const result = await production.manual.exit({
+      accountSlug: account.slug,
+      symbol,
     });
 
     res.status(200).json({
       success: true,
       result,
-      state: await slowTrading.storage.dashboard.buildStateRealtime(nextStorage),
+      state: await systemDashboard.state.buildRealtime({
+        account: account.slug,
+      }),
     });
   } catch (error: any) {
-    await slowTrading.notifications.notifySlowTradingOperationalError({
-      source: "api.slow-trading.exit",
-      error,
-      details: {
-        method: req.method,
-        symbol: req.body?.symbol,
-      },
-    });
+    await runtimeLogs
+      .appendError({
+        source: "api.slow-trading.exit",
+        error,
+        details: {
+          method: req.method,
+          symbol: req.body?.symbol,
+        },
+      })
+      .catch((logError) => {
+        systemLog.error(
+          "[slow-trading] failed to write exit error log",
+          logError,
+        );
+      });
 
     res.status(500).json({
       error: error?.message ?? "Failed to exit slow trading position",

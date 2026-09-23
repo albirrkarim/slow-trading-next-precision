@@ -112,10 +112,10 @@ describe("slow specs notification", () => {
     await expectSourceContains("src/instrumentation.ts", [
       // PROD:INSTANCE_IP_CHECK_ON_START
       "PROD:INSTANCE_IP_CHECK_ON_START",
-      'import("@/lib/runtime/instance-ip")',
-      ".default.lifecycle.check()",
+      'import("@/lib/system/storage")',
+      "runtimeInstanceIp.lifecycle.check()",
     ]);
-    await expectSourceContains("src/lib/runtime/instance-ip.ts", [
+    await expectSourceContains("src/lib/system/storage/instance-ip.ts", [
       // PROD:NOTIF_IP_CHANGED
       'key: "NOTIF_IP_CHANGED"',
       "https://api.ipify.org",

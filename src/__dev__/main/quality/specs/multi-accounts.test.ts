@@ -556,7 +556,7 @@ describe("SLOW multi-account specs", () => {
       fs.readFile("src/lib/slowTrading/cycle/accounts.ts", "utf8"),
       fs.readFile("src/lib/slowTrading/cycle/daily-pnl.ts", "utf8"),
       fs.readFile("src/pages/api/slow-trading/exchange-accounts.ts", "utf8"),
-      fs.readFile("src/lib/slowTrading/quick-backtest.ts", "utf8"),
+      fs.readFile("src/lib/dev/quick-backtest/index.ts", "utf8"),
       fs.readFile("src/lib/slowTrading/withdrawal.ts", "utf8"),
       fs.readFile("src/lib/slowTrading/storage/dashboard.ts", "utf8"),
       fs.readFile("src/lib/slowTrading/storage/history-files.ts", "utf8"),

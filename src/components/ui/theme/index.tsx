@@ -6,7 +6,7 @@ import {
   responsiveFontSizes
 } from "@mui/material/styles";
 import merge from "lodash/merge";
-import { tradeLog } from "@/lib/trading/helper/log";
+import { systemLog } from "@/lib/system/logging";
 
 export const THEMES = {
   LIGHT: "LIGHT",
@@ -232,7 +232,7 @@ export const createTheme = (config: ThemeConfig) => {
   let themeOptions = themesOptions[config.theme ?? THEMES.LIGHT];
 
   if (!themeOptions) {
-    tradeLog.warn(new Error(`The theme ${config.theme} is not valid`));
+    systemLog.warn(new Error(`The theme ${config.theme} is not valid`));
     themeOptions = themesOptions[THEMES.LIGHT];
   }
 

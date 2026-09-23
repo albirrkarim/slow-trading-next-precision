@@ -1,8 +1,5 @@
 import type { Leaderboards } from "@/components/dev/DynamicTrade/type-dynamic-report";
-import type {
-  BacktestConfigDynamic,
-  CommonTime,
-} from "@/lib/dynamic";
+import type { BacktestConfigDynamic, CommonTime } from "@/lib/dynamic";
 import type { DynamicTradeAlgorithm } from "@lib/brain/algorithms";
 import type { DecisionEngineVersionType } from "@lib/brain/algorithms/v4/decisions";
 import type {

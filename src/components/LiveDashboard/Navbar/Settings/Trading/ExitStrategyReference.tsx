@@ -3,7 +3,7 @@
 import RuleOutlinedIcon from "@mui/icons-material/RuleOutlined";
 import { Box, Grid, Stack, Typography } from "@mui/material";
 import type { Dispatch, SetStateAction } from "react";
-import type { SlowTradingAccountTradingConfig } from "@/lib/slowTrading";
+
 
 import PostAverageRescueExitSettings from "./PostAverageRescueExitSettings";
 import PostAverageStopLossSettings from "./PostAverageStopLossSettings";
@@ -12,6 +12,7 @@ import ReadMoreDialogButton from "../Components/ReadMoreDialogButton";
 import SettingsCheckbox from "../Components/SettingsCheckbox";
 import SettingsInfoField from "../Components/SettingsInfoField";
 import SettingsRuleAccordion from "../Components/SettingsRuleAccordion";
+import type { RuntimeAccountTradingConfig } from "@/lib/system/runtime";
 
 const STOP_LOSS_PLUS_INFO =
   "Trailing profit lock after TP tracking starts. With TP 2% and retrace 1%, the initial exit threshold is 1%. The threshold rises with every higher profit peak.";
@@ -85,9 +86,9 @@ export default function ExitStrategyReference({
   defaultAdverseDriftPct,
   setTradingConfig,
 }: {
-  tradingConfig: SlowTradingAccountTradingConfig;
+  tradingConfig: RuntimeAccountTradingConfig;
   defaultAdverseDriftPct: number;
-  setTradingConfig: Dispatch<SetStateAction<SlowTradingAccountTradingConfig>>;
+  setTradingConfig: Dispatch<SetStateAction<RuntimeAccountTradingConfig>>;
 }) {
   const takeProfitPct = tradingConfig.takeProfitPercent ?? 0;
   const stopLossPct = tradingConfig.stopLossPercent;
@@ -104,7 +105,7 @@ export default function ExitStrategyReference({
   const postAverageStopLoss = tradingConfig.postAverageStopLoss;
   const levelBasedPctDriftStopLoss =
     tradingConfig.levelBasedPctDriftStopLoss;
-  const updateTradingConfig = (patch: Partial<SlowTradingAccountTradingConfig>) => {
+  const updateTradingConfig = (patch: Partial<RuntimeAccountTradingConfig>) => {
     setTradingConfig((previous) => ({ ...previous, ...patch }));
   };
 

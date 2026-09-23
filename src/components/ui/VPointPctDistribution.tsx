@@ -1,8 +1,8 @@
 "use client";
 
-import type { VolatilityPoint } from "@/lib/dynamic";
-import vPointPctDistribution from "@/lib/dynamic/utils/vpoint-pct-distribution";
-import type { VPointPctDistributionOccurrence } from "@/lib/dynamic/utils/vpoint-pct-distribution";
+
+import vPointPctDistribution from "@/lib/system/utils/vpoint-pct-distribution";
+import type { VPointPctDistributionOccurrence } from "@/lib/system/utils/vpoint-pct-distribution";
 import {
   Box,
   LinearProgress,
@@ -17,6 +17,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useMemo, useState } from "react";
+import type { VolatilityPoint } from "@/lib/system/types";
 
 function formatOccurrenceDate(timestamp: number): string {
   return new Intl.DateTimeFormat("en-GB", {

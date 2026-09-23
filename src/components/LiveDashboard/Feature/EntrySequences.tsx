@@ -2,17 +2,17 @@
 
 import { DEFAULT_COLORS } from "@/components/client/constants";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
-import type { VolatilityPoint } from "@/lib/dynamic";
-import slowTradingClient, {
-    type SlowEntrySequenceCount,
-} from "@/lib/slowTrading/client";
+
+import type { RuntimeEntrySequenceCount } from "@/lib/system/trading";
 import { Box, Chip, Paper, Typography } from "@mui/material";
 import { useMemo } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import EntrySequenceHoldDurationChart from "./EntrySequenceHoldDurationChart";
 import entrySequenceCandidates from "./entry-sequence-candidates";
+import type { VolatilityPoint } from "@/lib/system/types";
+import { runtimeEntrySequences } from "@/lib/system/trading";
 
-interface EntrySequenceChartRow extends SlowEntrySequenceCount {
+interface EntrySequenceChartRow extends RuntimeEntrySequenceCount {
     [key: string]: number | string;
 }
 
@@ -68,7 +68,7 @@ function EntrySequenceMetricsContent({
     const resolvedMinActionableAbsoluteLevel =
         entrySequenceCandidates.threshold.resolve(minActionableAbsoluteLevel);
     const { entrySequenceCounts, entrySequenceIntervals } = useMemo(() => {
-        const rangedVolatilityMap = slowTradingClient.entrySequences.range.crop({
+        const rangedVolatilityMap = runtimeEntrySequences.range.crop({
             endTimeMs: endTime,
             startTimeMs: startTime,
             volatilityMap,
@@ -79,12 +79,12 @@ function EntrySequenceMetricsContent({
         });
 
         return {
-            entrySequenceCounts: slowTradingClient.entrySequences.count({
+            entrySequenceCounts: runtimeEntrySequences.count({
                 entrySignals,
                 volatilityMap: rangedVolatilityMap,
             }),
             entrySequenceIntervals:
-                slowTradingClient.entrySequences.intervals.collect({
+                runtimeEntrySequences.intervals.collect({
                     entrySignals,
                     volatilityMap: rangedVolatilityMap,
                 }),
@@ -131,7 +131,7 @@ function EntrySequenceMetricsContent({
                                 </Pie>
                                 <Tooltip
                                     formatter={(value, _name, item) => {
-                                        const payload = item.payload as SlowEntrySequenceCount;
+                                        const payload = item.payload as RuntimeEntrySequenceCount;
                                         return [
                                             `${Number(value)} (LONG ${payload.long}, SHORT ${payload.short})`,
                                             payload.symbol,

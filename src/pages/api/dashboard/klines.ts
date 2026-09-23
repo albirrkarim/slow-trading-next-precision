@@ -1,18 +1,17 @@
-import { KLINES_FOLDER, makeScopedFolder } from "@/components/api/constants";
-import type { MultiLinePair } from "@/components/api/dynamic";
 import {
   convertVolatilityToLeveledMarkers,
   convertVolatilityToMarkers,
   type Marker,
+  type MultiLinePair,
 } from "@/components/LiveDashboard/converter";
 import { buildTradeMarkersFromHistory } from "@/components/LiveDashboard/Shared/trade-chart-markers";
-import { FILES } from "@/components/storage";
-import { fetchKlinesFunction } from "@/lib/datasets/fetchKlines";
-import { detectVolatilityPoints, type VolatilityPoint } from "@/lib/dynamic";
-import type { ExchangeType } from "@/lib/exchange";
+import { TradingMode, type ExchangeType } from "@/lib/exchange";
 import { DEFAULT_EXCHANGE } from "@/lib/exchange/constants";
-import { type Kline } from "@/lib/exchange/platform/tokocrypto";
-import slowTrading from "@/lib/slowTrading";
+import type { IntervalKlines } from "@/lib/exchange/types";
+import { runtimeStorage } from "@/lib/system/storage";
+import type { Kline, VolatilityPoint } from "@/lib/system/types";
+import klineUtils from "@/lib/system/utils/klines";
+import vpoints from "@/lib/system/utils/vpoints";
 import moment from "moment-timezone";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -28,7 +27,7 @@ export default async function handler(
   }
 }
 
-export interface getKlinesReturn {
+export interface GetKlinesReturn {
   startKlines: string;
   endKlines: string;
   klines: Kline[];
@@ -104,7 +103,7 @@ export async function getStoredDashboardVolatilityPoints({
   symbol: string;
 }): Promise<VolatilityPoint[]> {
   // PROD:SAME_VOLATILITY_POINT
-  const storedPoints = await FILES.prod.volatilityPoints.get(exchange, symbol);
+  const storedPoints = await runtimeStorage.vpoints.read({ exchangeType: exchange, symbol });
   return filterVolatilityPointsForKlines(storedPoints, klines);
 }
 
@@ -116,7 +115,6 @@ export async function getKlines(req: NextApiRequest, res: NextApiResponse) {
     symbol = "BTC",
     range = "1year",
     interval = "5m",
-    upToDateKlines = false,
     volatility = false,
     volatilitySource,
     tradeHistory,
@@ -139,45 +137,26 @@ export async function getKlines(req: NextApiRequest, res: NextApiResponse) {
     Number.isFinite(parsedEndTime) &&
     parsedStartTime > 0 &&
     parsedEndTime > parsedStartTime;
-  const rangeForFetch = hasTimeWindow
-    ? `${moment.utc(parsedStartTime).format("DD_MMM_YYYY_HH_mm")}_to_${moment
-        .utc(parsedEndTime)
-        .format("DD_MMM_YYYY_HH_mm")}`
-    : range;
+
+  const { endTime: fetchEnd, startTime: fetchStart } = hasTimeWindow
+    ? { endTime: parsedEndTime, startTime: parsedStartTime }
+    : klineUtils.resolveRange({ range: pickStringParam(range) ?? "1year" });
 
   const TRADE_PAIR = `${symbolParam}_USDT`;
 
-  let klines = await fetchKlinesFunction({
-    symbol: TRADE_PAIR,
-    interval,
-    simpleTime: rangeForFetch,
-    ...(hasTimeWindow
-      ? {
-          startTime: parsedStartTime,
-          endTime: parsedEndTime,
-        }
-      : {}),
-    folder: makeScopedFolder({
-      range: rangeForFetch,
-      interval,
-      baseFolder:
-        KLINES_FOLDER + "/" + exchange + (marketType ? `/${marketType}` : ""),
-    }),
-    saveToFile: false,
-    exactDate: hasTimeWindow,
-    useCache: !upToDateKlines,
-    verbose: true,
+  const klines = await klineUtils.downloadRange({
+    closedOnly: hasTimeWindow,
+    endTime: fetchEnd,
     exchangeType: exchange,
+    interval: pickStringParam(interval) as IntervalKlines,
     marketType,
+    startTime: fetchStart,
+    symbol: TRADE_PAIR,
+    tradingMode:
+      marketType === "FUTURES" ? TradingMode.FUTURES : TradingMode.SPOT,
   });
 
-  if (hasTimeWindow) {
-    klines = klines.filter(
-      (item) => item[0] >= parsedStartTime && item[0] <= parsedEndTime,
-    );
-  }
-
-  const data: getKlinesReturn = {
+  const data: GetKlinesReturn = {
     startKlines: moment.utc(klines[0]?.[0]).format("YYYY-MM-DD HH:mm:ss"),
     endKlines: moment
       .utc(klines[klines.length - 1]?.[0])
@@ -201,7 +180,7 @@ export async function getKlines(req: NextApiRequest, res: NextApiResponse) {
             klines,
             symbol: symbolParam,
           })
-        : detectVolatilityPoints({ klines, symbol: symbolParam });
+        : vpoints.detectVPoints({ klines, symbol: symbolParam });
 
     const vMarkers = convertVolatilityToMarkers(volatilityPoints);
     markers.push(...vMarkers);
@@ -226,14 +205,17 @@ export async function getKlines(req: NextApiRequest, res: NextApiResponse) {
   }
 
   if (pickBooleanParam(tradeHistory)) {
-    const slowStorage = await slowTrading.storage.data.load({
-      includeHistory: true,
-    });
-    const activeMode = slowTrading.storage.mode.getActive(slowStorage);
-    const tradeRows = [
-      ...slowTrading.storage.history.getClosed(slowStorage, activeMode),
-      ...slowTrading.storage.history.getOpen(slowStorage, activeMode),
-    ];
+    const catalog = await runtimeStorage.catalog.ensure();
+    const closed = await runtimeStorage.history.readAll(catalog.mode);
+    const open = [];
+    for (const account of catalog.config.accounts) {
+      const state = await runtimeStorage.account.load({
+        accountSlug: account.slug,
+        mode: catalog.mode,
+      });
+      open.push(...state.positions.filter((position) => !position.closed));
+    }
+    const tradeRows = [...closed, ...open];
     const firstKlineTime = Number(klines[0]?.[0]) / 1000;
     const lastKlineTime = Number(klines.at(-1)?.[0]) / 1000;
     const tradeMarkers = buildTradeMarkersFromHistory(tradeRows, symbolParam);

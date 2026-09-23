@@ -2,8 +2,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import type { CoinTagState } from "@/lib/devBacktest/coins/tag-types";
 import coinTags from "@/lib/devBacktest/coins/tags";
-import slowTrading from "@/lib/slowTrading";
-import { tradeLog } from "@/lib/trading/helper/log";
+import storageSync from "@/lib/dev/storage-sync";
+import { systemLog } from "@/lib/system/logging";
+import { runtimeLogs } from "@/lib/system/storage";
 
 const DEFAULT_ONLINE_BASE_URL = "https://fast.reinventwp.com";
 
@@ -52,7 +53,7 @@ export default async function handler(
     }
 
     const host = req.headers.host;
-    if (!slowTrading.debugSync.isLocalPersistentStorageSyncAllowed(host)) {
+    if (!storageSync.isLocalPersistentStorageSyncAllowed(host)) {
       res.status(403).json({
         error:
           "Online coin metadata download is only allowed from localhost outside Railway.",
@@ -70,7 +71,7 @@ export default async function handler(
       state,
     });
   } catch (error: any) {
-    await slowTrading.storage.logs
+    await runtimeLogs
       .appendError({
         source: "api.slow-trading.debug.sync-online-coin-metadata-to-local",
         error,
@@ -79,7 +80,7 @@ export default async function handler(
         },
       })
       .catch((logError) => {
-        tradeLog.error(
+        systemLog.error(
           "[slow-trading] failed to write coin metadata sync error log",
           logError,
         );

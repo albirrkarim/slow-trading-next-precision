@@ -1,7 +1,7 @@
 "use client";
 
-import type { DynamicTradeConfig, VolatilityPoint } from "@/lib/dynamic";
-import type { SlowTradingHistoryPosition, SlowTradingMode } from "@/lib/slowTrading";
+
+
 
 import ArrowDownwardRoundedIcon from "@mui/icons-material/ArrowDownwardRounded";
 import ArrowUpwardRoundedIcon from "@mui/icons-material/ArrowUpwardRounded";
@@ -19,20 +19,23 @@ import { useEffect, useMemo, useState } from "react";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import openPositionPnlContribution from "./open-position-pnl-contribution";
 import OpenPositionItem from "./OpenPositionItem";
+import type { RuntimeHistoryPosition } from "@/lib/system/trading";
+import type { RuntimeMode , RuntimeEffectiveConfig } from "@/lib/system/runtime";
+import type { VolatilityPoint } from "@/lib/system/types";
 
 interface OpenPositionsProps {
   availableTags: string[];
   coinDescriptions: Record<string, string>;
   coinTags: Record<string, string[]>;
-  config: DynamicTradeConfig;
-  mode: SlowTradingMode;
-  exchangeType: DynamicTradeConfig["exchangeType"];
-  positions: SlowTradingHistoryPosition[];
+  config: RuntimeEffectiveConfig;
+  mode: RuntimeMode;
+  exchangeType: RuntimeEffectiveConfig["exchangeType"];
+  positions: RuntimeHistoryPosition[];
   spendableQuoteAsset: number;
   exitingSymbol?: string | null;
   onCoinDescriptionChange: (symbol: string, description: string) => void;
   onCoinTagsChange: (symbol: string, tags: string[]) => void;
-  onExit?: (position: SlowTradingHistoryPosition) => Promise<void>;
+  onExit?: (position: RuntimeHistoryPosition) => Promise<void>;
   tagColors: Record<string, string>;
   tagDescriptions: Record<string, string>;
   volatilityMap: Record<string, VolatilityPoint[]>;
@@ -59,7 +62,7 @@ function getPositionVolatilityPoints(
 
 /** Returns a stable copy of the positions ordered by current PnL percentage. */
 function sortPositionsByPnl(
-  positions: SlowTradingHistoryPosition[],
+  positions: RuntimeHistoryPosition[],
   order: PnlSortOrder,
 ) {
   const direction = order === "worst" ? 1 : -1;

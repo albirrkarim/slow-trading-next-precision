@@ -2,6 +2,7 @@ import fs from "fs-extra";
 import os from "os";
 import path from "path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { VolatilityPoint } from "@/lib/system/types";
 import { createTestPosition } from "../fixtures/position";
 
 let tmpRoot: string | null = null;
@@ -20,6 +21,7 @@ describe("slow specs storage", () => {
 
     delete process.env.PERSISTENT_STORAGE_ROOT;
     vi.doUnmock("@/lib/datasets/fetchKlines");
+    vi.doUnmock("@/lib/system/utils/klines");
     vi.doUnmock("@/components/storage");
     vi.resetModules();
   });
@@ -75,6 +77,103 @@ describe("slow specs storage", () => {
       conditions: [],
     });
     expect(loaded.modes.live.stageRuns).toEqual({});
+  });
+
+  it("round-trips the clean system runtime storage layout", async () => {
+    const { jsonFile, runtimeStorage, storageFiles } = await import(
+      "@/lib/system/storage"
+    );
+
+    await jsonFile.write.atomic(storageFiles.prod.config, {
+      management: {
+        decisionEngineVersion: "decision.v20",
+        description: "test",
+        exchangeType: "binance",
+        name: "test",
+        symbols: ["SUI"],
+        tradingMode: "spot",
+      },
+      runtime: { runnerEnabled: true, sandboxEnabled: true },
+    });
+    await jsonFile.write.atomic(storageFiles.prod.accounts, {
+      accounts: [
+        {
+          credentials: { apiKey: "test-key", apiSecret: "test-secret" },
+          enabled: true,
+          sandbox: { initialBalanceUSDT: 100 },
+          slug: "acc-1",
+          trading: {},
+        },
+      ],
+      updatedAt: 1,
+    });
+
+    const catalog = await runtimeStorage.catalog.load();
+    expect(catalog.mode).toBe("sandbox");
+    expect(catalog.config.management.symbols).toEqual(["SUI"]);
+    expect(catalog.config.accounts[0].slug).toBe("acc-1");
+
+    const position = createTestPosition({
+      account: "acc-1",
+      closed: {
+        feeUsdt: 0,
+        price: 1.1,
+        reason: "TAKE_PROFIT",
+        t: Date.UTC(2026, 5, 2),
+      },
+      entryTime: Date.UTC(2026, 5, 1),
+      symbol: "SUI",
+    });
+    await runtimeStorage.account.save({
+      accountSlug: "acc-1",
+      mode: "sandbox",
+      state: { balance: { quoteAsset: 42 }, positions: [position] },
+    });
+    const accountState = await runtimeStorage.account.load({
+      accountSlug: "acc-1",
+      mode: "sandbox",
+    });
+    expect(accountState.positions).toHaveLength(1);
+    expect(accountState.balance.quoteAsset).toBe(42);
+
+    // Shared history dedupes the same closed position appended twice.
+    await runtimeStorage.history.append({ mode: "sandbox", position });
+    await runtimeStorage.history.append({ mode: "sandbox", position });
+    expect(
+      await fs.readJSON(
+        storageFiles.prod.historyFile("sandbox", "SUI"),
+      ),
+    ).toHaveLength(1);
+
+    // vPoint files merge by id and keep the newest point payload.
+    const point: VolatilityPoint = {
+      id: "T_abc_01",
+      l: "T",
+      lvl: 1,
+      p: 1,
+      pct: 6,
+      t: Date.UTC(2026, 5, 1),
+      vb: 1,
+      vq: 1,
+    };
+    await runtimeStorage.vpoints.merge({
+      exchangeType: "binance",
+      points: [point],
+      symbol: "SUI",
+    });
+    await runtimeStorage.vpoints.merge({
+      exchangeType: "binance",
+      points: [{ ...point, usedByacc1: true } as VolatilityPoint],
+      symbol: "SUI",
+    });
+    const merged = await runtimeStorage.vpoints.read({
+      exchangeType: "binance",
+      symbol: "SUI",
+    });
+    expect(merged).toHaveLength(1);
+    expect(
+      (merged[0] as unknown as Record<string, unknown>).usedByacc1,
+    ).toBe(true);
   });
 
   it("stores account balances independently and aggregates selected accounts", async () => {
@@ -670,7 +769,7 @@ describe("slow specs storage", () => {
       [2_000, "9", "10", "8", "9", "10", 0, "90"],
       [3_000, "9", "10", "8", "9", "10", 0, "90"],
     ];
-    const getStoredVolatilityPoints = vi.fn(async () => [
+    const getStoredVolatilityPoints = vi.fn(async (_exchange?: string, _symbol?: string) => [
       {
         id: "T_outside_01_01_26_00_00",
         l: "T",
@@ -698,19 +797,33 @@ describe("slow specs storage", () => {
     ]);
     const fetchKlines = vi.fn(async () => klines);
 
-    vi.doMock("@/lib/datasets/fetchKlines", () => ({
-      fetchKlinesFunction: fetchKlines,
-    }));
+    vi.doMock("@/lib/system/utils/klines", async (importOriginal) => {
+      const actual =
+        await importOriginal<typeof import("@/lib/system/utils/klines")>();
+      return {
+        default: {
+          ...actual.default,
+          downloadRange: fetchKlines,
+        },
+      };
+    });
 
-    vi.doMock("@/components/storage", () => ({
-      FILES: {
-        prod: {
-          volatilityPoints: {
-            get: getStoredVolatilityPoints,
+    vi.doMock("@/lib/system/storage", async (importOriginal) => {
+      const actual = await importOriginal<
+        typeof import("@/lib/system/storage")
+      >();
+      return {
+        ...actual,
+        runtimeStorage: {
+          ...actual.runtimeStorage,
+          vpoints: {
+            ...actual.runtimeStorage.vpoints,
+            read: async (params: { exchangeType: string; symbol: string }) =>
+              getStoredVolatilityPoints(params.exchangeType, params.symbol),
           },
         },
-      },
-    }));
+      };
+    });
 
     const { getKlines } = await import("@/pages/api/dashboard/klines");
     const json = vi.fn();

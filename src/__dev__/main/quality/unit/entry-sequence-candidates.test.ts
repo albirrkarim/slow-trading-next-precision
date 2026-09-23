@@ -1,5 +1,5 @@
 import entrySequenceCandidates from "@/components/LiveDashboard/Feature/entry-sequence-candidates";
-import type { VolatilityPoint } from "@/lib/dynamic";
+import type { VolatilityPoint } from "@/lib/system/types";
 import { describe, expect, it } from "vitest";
 
 function point(lvl: number, t: number): VolatilityPoint {

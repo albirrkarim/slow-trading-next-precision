@@ -41,6 +41,7 @@ yarn-error.log*
 next-env.d.ts
 
 storage
+!src/lib/system/storage
 
 !src/lib/slowTrading/storage
 

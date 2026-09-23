@@ -1,4 +1,4 @@
-import type { InitialBalance } from "@/lib/trading";
+import type { UnifiedBalance } from "@/lib/exchange/types";
 import { requestPrivate } from "../utils";
 
 interface MarginUserAsset {
@@ -54,7 +54,7 @@ function toInitialBalance(params: {
   quoteAvailable: number;
   baseTotal?: number;
   quoteTotal?: number;
-}): InitialBalance {
+}): UnifiedBalance {
   const {
     baseAvailable,
     quoteAvailable,
@@ -91,7 +91,7 @@ function toMarginAssetBalance(asset: MarginUserAsset | undefined): {
 
 export async function getCrossMarginBalance(
   symbol: string,
-): Promise<InitialBalance | null> {
+): Promise<UnifiedBalance | null> {
   const parsed = parseSymbol(symbol);
   const assetOnly = symbol.replace(/_/g, "").toUpperCase();
   const response = await requestPrivate<CrossMarginAccountResponse>(
@@ -139,7 +139,7 @@ export async function getCrossMarginBalance(
 
 export async function getIsolatedMarginBalance(
   symbol: string,
-): Promise<InitialBalance | null> {
+): Promise<UnifiedBalance | null> {
   const parsed = parseSymbol(symbol);
   const normalized = symbol.replace(/_/g, "").toUpperCase();
   const response = await requestPrivate<IsolatedMarginAccountResponse>(

@@ -21,15 +21,9 @@ import { useCallback, useEffect, useState } from "react";
 import { endpoints } from "@/components/endpoints";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import TypographyTooltip from "@/components/ui/TypographyTooltip";
-import type {
-  SlowTradingDashboardState,
-  SlowTradingManualQueueCreateInput,
-  SlowTradingQueues,
-  SlowTradingSafeHavenQueueItem,
-  SlowTradingWithdrawalQueueItem,
-} from "@/lib/slowTrading";
-import slowTradingWithdrawalSchedule from "@/lib/slowTrading/withdrawal-schedule";
-import slowTradingSafeHavenSchedule from "@/lib/slowTrading/safe-haven-schedule";
+
+import runtimeWithdrawalSchedule from "@/lib/system/withdrawal/schedule";
+import runtimeSafeHavenSchedule from "@/lib/system/safehaven";
 
 import {
   SlowTradingErrorLogs,
@@ -41,13 +35,15 @@ import {
   SafeHavenQueueCreateDialog,
   WithdrawalQueueCreateDialog,
 } from "./SlowTradingQueueDialogs";
+import type { RuntimeDashboardState } from "@/lib/system/dashboard";
+import type { RuntimeManualQueueCreateInput, RuntimeQueues, RuntimeSafeHavenQueueItem, RuntimeWithdrawalQueueItem } from "@/lib/system/queue";
 
 const QUEUE_POLL_INTERVAL_MS = 30_000;
 const QUEUE_ATTEMPT_INTERVAL_MS = 5 * 60 * 1000;
 
 type SlowTradingQueueRow =
-  | SlowTradingSafeHavenQueueItem
-  | SlowTradingWithdrawalQueueItem;
+  | RuntimeSafeHavenQueueItem
+  | RuntimeWithdrawalQueueItem;
 
 function formatTime(timestamp: number) {
   return Number.isFinite(timestamp)
@@ -86,9 +82,9 @@ function getQueueAction(row: SlowTradingQueueRow): string {
 }
 
 function SafeHavenScheduleTooltip(props: {
-  dashboardState: SlowTradingDashboardState | null;
+  dashboardState: RuntimeDashboardState | null;
   now: number;
-  queues: SlowTradingSafeHavenQueueItem[];
+  queues: RuntimeSafeHavenQueueItem[];
 }) {
   const { dashboardState, now, queues } = props;
   if (!dashboardState || now <= 0) {
@@ -111,7 +107,7 @@ function SafeHavenScheduleTooltip(props: {
       )}
       {schedules.map((schedule) => {
         const pending = queues.find((item) => item.scheduleId === schedule.id);
-        const nextAt = slowTradingSafeHavenSchedule.timing.getNextOccurrenceAt(
+        const nextAt = runtimeSafeHavenSchedule.timing.getNextOccurrenceAt(
           schedule,
           dashboardState.activeMode,
           now,
@@ -150,9 +146,9 @@ function SafeHavenScheduleTooltip(props: {
 }
 
 function WithdrawalScheduleTooltip(props: {
-  dashboardState: SlowTradingDashboardState | null;
+  dashboardState: RuntimeDashboardState | null;
   now: number;
-  queues: SlowTradingWithdrawalQueueItem[];
+  queues: RuntimeWithdrawalQueueItem[];
 }) {
   const { dashboardState, now, queues } = props;
   if (!dashboardState || now <= 0) {
@@ -178,11 +174,11 @@ function WithdrawalScheduleTooltip(props: {
           (item) => item.scheduleId === schedule.id,
         );
         const nextEligibleAt =
-          slowTradingWithdrawalSchedule.timing.getNextOccurrenceAt(
+          runtimeWithdrawalSchedule.timing.getNextOccurrenceAt(
             schedule,
             now,
           );
-        const isDue = slowTradingWithdrawalSchedule.timing.isDue(schedule, now);
+        const isDue = runtimeWithdrawalSchedule.timing.isDue(schedule, now);
 
         return (
           <Stack key={schedule.id} spacing={0.25}>
@@ -222,7 +218,7 @@ function WithdrawalScheduleTooltip(props: {
 
 /** Estimates the Safe Haven amount that the monthly scheduler would request. */
 function getSuggestedSafeHavenAmountUSDT(
-  dashboardState: SlowTradingDashboardState | null,
+  dashboardState: RuntimeDashboardState | null,
 ): number {
   if (!dashboardState) {
     return 0;
@@ -402,10 +398,10 @@ function QueueSection(props: {
 }
 
 export default function SlowTradingQueuesPanel(props: {
-  dashboardState: SlowTradingDashboardState | null;
+  dashboardState: RuntimeDashboardState | null;
 }) {
   const { dashboardState } = props;
-  const [queues, setQueues] = useState<SlowTradingQueues>({
+  const [queues, setQueues] = useState<RuntimeQueues>({
     safeHaven: [],
     withdrawals: [],
   });
@@ -416,7 +412,7 @@ export default function SlowTradingQueuesPanel(props: {
 
   const loadQueues = useCallback(async () => {
     try {
-      const response = await axios.get<SlowTradingQueues>(
+      const response = await axios.get<RuntimeQueues>(
         endpoints.slow.prod.queue,
       );
       setQueues(response.data);
@@ -434,7 +430,7 @@ export default function SlowTradingQueuesPanel(props: {
   }, []);
 
   const createQueue = useCallback(
-    async (input: SlowTradingManualQueueCreateInput) => {
+    async (input: RuntimeManualQueueCreateInput) => {
       try {
         await axios.post(endpoints.slow.prod.queue, input);
         await loadQueues();

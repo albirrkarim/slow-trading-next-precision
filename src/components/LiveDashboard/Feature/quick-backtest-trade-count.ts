@@ -1,4 +1,4 @@
-import type { SlowQuickBacktestResult } from "@/lib/slowTrading";
+import type { RuntimeQuickBacktestResult } from "@/lib/dev/quick-backtest";
 
 export interface QuickBacktestTradeCountRow {
   [key: string]: number | string;
@@ -10,7 +10,7 @@ export interface QuickBacktestTradeCountRow {
  * Counts closed Quick Backtest trade-history rows by symbol for dashboard charts.
  */
 export function buildQuickBacktestTradeCountBySymbol(
-  history: SlowQuickBacktestResult["tradeHistory"],
+  history: RuntimeQuickBacktestResult["tradeHistory"],
 ): QuickBacktestTradeCountRow[] {
   const countBySymbol = new Map<string, number>();
 

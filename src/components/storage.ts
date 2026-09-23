@@ -1,92 +1,57 @@
 import fs from "fs-extra";
 import type { ExchangeType } from "@/lib/exchange";
-import { resolvePersistentStorageRoot } from "@/lib/persistent-storage-root";
-import type { PredictionEngineMemory, VolatilityPoint } from "@/lib/dynamic";
+import { storageFiles } from "@/lib/system/storage";
+import runtimeStorage from "@/lib/system/storage/runtime";
 import moment from "moment-timezone";
 
 const IS_RAILWAY = !!process.env.RAILWAY_ENVIRONMENT;
-const ACCOUNT_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-type StorageMode = "live" | "sandbox";
 
 /**
  * Both development and production
  */
-export const CACHE_DIR = resolvePersistentStorageRoot();
+export const CACHE_DIR = storageFiles.root;
 
 // PROD:STORAGE_SOURCE_OF_TRUTH
-export const PROD_DIR = `${CACHE_DIR}/prod`;
-export const DEV_DIR = `${CACHE_DIR}/dev`;
-
-/** Account slugs double as directory names; reject anything that escapes. */
-function accountDir(slug: string): string {
-  if (!ACCOUNT_SLUG_PATTERN.test(slug)) {
-    throw new Error(`Invalid exchange account slug: ${slug}`);
-  }
-
-  return `${PROD_DIR}/accounts/${slug}`;
-}
-
-function accountModeFiles(slug: string, mode: StorageMode) {
-  const dir = `${accountDir(slug)}/${mode}`;
-
-  return {
-    dir,
-    positions: `${dir}/positions.json`,
-    balance: `${dir}/balance.json`,
-    balanceSnapshots: `${dir}/balance_snapshots.json`,
-  };
-}
+export const PROD_DIR = storageFiles.prod.root;
+export const DEV_DIR = storageFiles.dev.root;
 
 const PROD_FILES = {
-  root: PROD_DIR,
-  accounts: `${PROD_DIR}/accounts.json`,
-  accountsRoot: `${PROD_DIR}/accounts`,
-  config: `${PROD_DIR}/config.json`,
-  notifications: `${PROD_DIR}/notifications.json`,
-  queue: `${PROD_DIR}/queue.json`,
-  status: `${PROD_DIR}/status.json`,
+  root: storageFiles.prod.root,
+  accounts: storageFiles.prod.accounts,
+  accountsRoot: storageFiles.prod.accountsRoot,
+  config: storageFiles.prod.config,
+  notifications: storageFiles.prod.notifications,
+  queue: storageFiles.prod.queue,
+  status: storageFiles.prod.status,
 
-  accountRoot: accountDir,
-  account: accountModeFiles,
+  accountRoot: storageFiles.prod.accountRoot,
+  account: storageFiles.prod.account,
 
   cache: {
-    ip: `${PROD_DIR}/cache/ip.json`,
-    marketCap: `${PROD_DIR}/cache/marketcap.json`,
-    notificationDedupe: `${PROD_DIR}/cache/notification-dedupe.json`,
-    ticker24h: (exchangeType: ExchangeType, marketType: string) =>
-      `${PROD_DIR}/cache/ticker-24h-${exchangeType}-${marketType.toLowerCase()}.json`,
+    ip: storageFiles.prod.cache.ip,
+    marketCap: storageFiles.prod.cache.marketCap,
+    notificationDedupe: storageFiles.prod.cache.notificationDedupe,
+    ticker24h: storageFiles.prod.cache.ticker24h,
   },
 
   logs: {
-    binanceCooldowns: `${PROD_DIR}/logs/binance_cooldowns.json`,
-    errors: `${PROD_DIR}/logs/errors.json`,
-    management: `${PROD_DIR}/logs/management.json`,
-    safeHaven: `${PROD_DIR}/logs/safe_haven.json`,
-    withdrawals: `${PROD_DIR}/logs/withdrawals.json`,
+    binanceCooldowns: storageFiles.prod.logs.binanceCooldowns,
+    errors: storageFiles.prod.logs.errors,
+    management: storageFiles.prod.logs.management,
+    safeHaven: storageFiles.prod.logs.safeHaven,
+    withdrawals: storageFiles.prod.logs.withdrawals,
   },
 
-  history: (mode: StorageMode) => `${PROD_DIR}/history/${mode}`,
-  historyFile: (mode: StorageMode, symbol: string) =>
-    `${PROD_DIR}/history/${mode}/${symbol}.json`,
+  history: storageFiles.prod.history,
+  historyFile: storageFiles.prod.historyFile,
 
-  volatility: (exchangeType: ExchangeType) =>
-    `${PROD_DIR}/volatility/${exchangeType}`,
+  volatility: storageFiles.prod.volatility,
 
   volatilityPoints: {
     get: async (
       exchangeType: ExchangeType,
       symbol: string,
-    ): Promise<VolatilityPoint[]> => {
-      try {
-        const memory = (await fs.readJson(
-          `${PROD_FILES.volatility(exchangeType)}/${symbol}.json`,
-        )) as PredictionEngineMemory;
-
-        return memory.lastVolatility;
-      } catch {
-        return [];
-      }
-    },
+    ) => runtimeStorage.vpoints.read({ exchangeType, symbol }),
   },
 
   getCachePrefix: (prefix: string) =>
@@ -94,10 +59,10 @@ const PROD_FILES = {
 } as const;
 
 const DEV_FILES = {
-  root: DEV_DIR,
-  leaderboards: `${DEV_DIR}/leaderboards.json`,
-  precisionTestCaseDir: `${DEV_DIR}/precision-test-case`,
-  precisionTestCaseActive: `${DEV_DIR}/precision-test-case.json`,
+  root: storageFiles.dev.root,
+  leaderboards: storageFiles.dev.leaderboards,
+  precisionTestCaseDir: storageFiles.dev.precisionTestCaseDir,
+  precisionTestCaseActive: storageFiles.dev.precisionTestCaseActive,
 } as const;
 
 export const FILES = {

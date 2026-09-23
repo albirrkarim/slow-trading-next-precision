@@ -17,14 +17,12 @@ import {
 } from "@mui/material";
 import moment from "moment-timezone";
 
-import slowTradingStages from "@/lib/slowTrading/stages";
-import type {
-  SlowTradingDashboardState,
-  SlowTradingStage,
-  SlowTradingStageRunStats,
-} from "@/lib/slowTrading/types";
+import { runtimeStages } from "@/lib/system/runtime";
+import type { RuntimeDashboardState } from "@/lib/system/dashboard";
+import type { RuntimeStage, RuntimeStageRunStats } from "@/lib/system/runtime";
 
-const STAGE_LABELS: Record<SlowTradingStage, string> = {
+
+const STAGE_LABELS: Record<RuntimeStage, string> = {
   "risk-sentinel": "Risk Sentinel",
   speedup: "Speedup",
   "standard-monitoring": "Standard Monitoring",
@@ -66,10 +64,10 @@ function formatCount(value: number, singular: string) {
 
 /** Selects the latest stage run, falling back to the legacy full-cycle fields. */
 function getLatestRun(
-  dashboardState: SlowTradingDashboardState,
-): Pick<SlowTradingStageRunStats, "t" | "ms"> | null {
+  dashboardState: RuntimeDashboardState,
+): Pick<RuntimeStageRunStats, "t" | "ms"> | null {
   const stageRuns = Object.values(dashboardState.stats.stageRuns ?? {}).filter(
-    (run): run is SlowTradingStageRunStats => Boolean(run),
+    (run): run is RuntimeStageRunStats => Boolean(run),
   );
   const latestStageRun = stageRuns.sort((left, right) => right.t - left.t)[0];
   const legacyRun = dashboardState.stats.lastRunAt
@@ -90,7 +88,7 @@ function getLatestRun(
 }
 
 /** Formats the newest completed run across stage and legacy cycle records. */
-function formatLastRunLabel(dashboardState: SlowTradingDashboardState) {
+function formatLastRunLabel(dashboardState: RuntimeDashboardState) {
   const latestRun = getLatestRun(dashboardState);
   if (!latestRun) {
     return "Last run: Never";
@@ -105,7 +103,7 @@ function formatLastRunLabel(dashboardState: SlowTradingDashboardState) {
     .join(" ");
 }
 
-function StagePerformanceTable({ run }: { run: SlowTradingStageRunStats }) {
+function StagePerformanceTable({ run }: { run: RuntimeStageRunStats }) {
   return (
     <Box sx={{ px: 1.5, py: 1 }}>
       <Typography display="block" sx={{ mb: 0.5 }} variant="caption">
@@ -150,9 +148,9 @@ function StagePerformanceTable({ run }: { run: SlowTradingStageRunStats }) {
 function StageRunsTable({
   dashboardState,
 }: {
-  dashboardState: SlowTradingDashboardState;
+  dashboardState: RuntimeDashboardState;
 }) {
-  const [expandedStage, setExpandedStage] = useState<SlowTradingStage | null>(
+  const [expandedStage, setExpandedStage] = useState<RuntimeStage | null>(
     null,
   );
 
@@ -191,7 +189,7 @@ function StageRunsTable({
           </TableRow>
         </TableHead>
         <TableBody>
-          {slowTradingStages.order.map((stage) => {
+          {runtimeStages.order.map((stage) => {
             const run = dashboardState.stats.stageRuns?.[stage];
             const isExpanded = expandedStage === stage;
             const label = STAGE_LABELS[stage];
@@ -264,7 +262,7 @@ function StageRunsTable({
 export default function NavbarStageRuns({
   dashboardState,
 }: {
-  dashboardState: SlowTradingDashboardState;
+  dashboardState: RuntimeDashboardState;
 }) {
   return (
     // PROD:STAGE_RUN_STATS

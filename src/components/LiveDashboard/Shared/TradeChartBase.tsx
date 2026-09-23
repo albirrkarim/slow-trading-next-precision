@@ -1,18 +1,18 @@
 "use client";
 
-import type { MultiLinePair } from "@/components/api/dynamic";
 import {
   convertVolatilityToLeveledMarkers,
   convertVolatilityToMarkers,
+  type Marker,
+  type MultiLinePair,
 } from "@/components/LiveDashboard/converter";
 import { endpoints } from "@/components/endpoints";
-import type { Marker } from "@/components/LiveDashboard/converter";
 import MultiLineTimelined from "@/components/ui/Chart/MultiLineTimelined";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import type { IntervalKlines } from "@/lib/exchange";
-import type { VolatilityPoint } from "@/lib/dynamic";
-import { tradeLog } from "@/lib/trading/helper/log";
-import type { Position } from "@/lib/trading/models";
+
+import { systemLog } from "@/lib/system/logging";
+import type { Position } from "@/lib/system/trading";
 import {
   Box,
   CircularProgress,
@@ -24,6 +24,7 @@ import axios from "axios";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import CurrencyChart from "./CurrencyChart";
+import type { VolatilityPoint } from "@/lib/system/types";
 
 type TrajectoryPoint = {
   price: number;
@@ -219,7 +220,7 @@ export default function TradeChartBase({
         setPriceSeries(undefined);
       }
     } catch (err) {
-      tradeLog.error("Failed to fetch klines for trade chart", err);
+      systemLog.error("Failed to fetch klines for trade chart", err);
       setError("Failed to load chart data");
     } finally {
       setLoading(false);

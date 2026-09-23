@@ -1,4 +1,4 @@
-import { tradeLog } from "@/lib/trading";
+import { systemLog } from "@/lib/system/logging";
 import { requestPublic } from "../utils";
 import moment from "moment-timezone";
 
@@ -154,7 +154,7 @@ export async function getKlines({
     );
   }
 
-  tradeLog.debug("get kline tokocrypto");
+  systemLog.debug("get kline tokocrypto");
 
   const formattedSymbol = symbolType === 1 ? symbol.replace(/_/g, "") : symbol;
 

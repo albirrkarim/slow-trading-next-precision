@@ -1,8 +1,8 @@
 import { DEFAULT_EXCHANGE } from "@/lib/exchange/constants";
 import exchangeFundingRate from "@/lib/exchange/funding-rate";
 import type { ExchangeType } from "@/lib/exchange/types";
-import slowTrading from "@/lib/slowTrading";
-import { tradeLog } from "@/lib/trading";
+import { systemLog } from "@/lib/system/logging";
+import { runtimeStorage } from "@/lib/system/storage";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 function normalizeSymbols(value: unknown): string[] {
@@ -28,25 +28,25 @@ export default async function handler(
     return;
   }
 
-  const storage = await slowTrading.storage.data.load({ modeScope: "active" });
+  const catalog = await runtimeStorage.catalog.ensure();
   const params = req.method === "GET" ? req.query : req.body;
   const symbols = normalizeSymbols(params.symbols);
   const requestedExchangeType = String(params.exchangeType || "").trim();
   const exchangeType = (
     requestedExchangeType ||
-    storage.config.exchangeType ||
+    catalog.config.management.exchangeType ||
     DEFAULT_EXCHANGE
   ) as ExchangeType;
 
   try {
     const fundingRateBySymbol = await exchangeFundingRate.latest.map({
       exchangeType,
-      tradingMode: storage.config.tradingMode,
-      symbols: symbols.length > 0 ? symbols : storage.config.symbols,
+      tradingMode: catalog.config.management.tradingMode,
+      symbols: symbols.length > 0 ? symbols : catalog.config.management.symbols,
     });
     res.json({ data: { fundingRateBySymbol } });
   } catch (error) {
-    tradeLog.error("Failed to refresh dashboard funding rates", error);
+    systemLog.error("Failed to refresh dashboard funding rates", error);
     res.status(502).json({
       message: "Failed to refresh dashboard funding rates",
     });

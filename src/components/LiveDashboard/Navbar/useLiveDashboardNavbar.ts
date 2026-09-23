@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 
 import { endpoints } from "@/components/endpoints";
-import { tradeLog } from "@/lib/trading/helper/log";
+import { systemLog } from "@/lib/system/logging";
 
 import {
   computeAutoEntryActive,
@@ -162,7 +162,7 @@ export function useLiveDashboardNavbar({
       handleClose?.();
       await onRefresh();
     } catch (error: any) {
-      tradeLog.error(error);
+      systemLog.error(error);
       alert(error.response?.data?.error ?? "Save config failed");
     } finally {
       setSavingConfig(false);
@@ -198,7 +198,7 @@ export function useLiveDashboardNavbar({
       setIsConfigDraftDirty(false);
       await onRefresh();
     } catch (error: any) {
-      tradeLog.error(error);
+      systemLog.error(error);
       alert(
         error?.response?.data?.message ??
           error?.response?.data?.error ??
@@ -215,7 +215,7 @@ export function useLiveDashboardNavbar({
       await axios.post<SlowTradingRunResponse>(endpoints.slow.prod.run, {});
       await onRefresh();
     } catch (error) {
-      tradeLog.error(error);
+      systemLog.error(error);
       alert("Run cycle failed");
     } finally {
       setRunningCycle(false);
@@ -230,7 +230,7 @@ export function useLiveDashboardNavbar({
       });
       await onRefresh();
     } catch (error: any) {
-      tradeLog.error(error);
+      systemLog.error(error);
       alert(
         error?.response?.data?.error ??
           `Failed to refresh live balance for ${accountSlug}`,
@@ -272,7 +272,7 @@ export function useLiveDashboardNavbar({
       });
       await onRefresh();
     } catch (error) {
-      tradeLog.error(error);
+      systemLog.error(error);
       alert("Reset sandbox failed");
     } finally {
       setResettingSandboxAccount(null);
@@ -308,7 +308,7 @@ export function useLiveDashboardNavbar({
       );
       setIsConfigDraftDirty(false);
     } catch (error: any) {
-      tradeLog.error(error);
+      systemLog.error(error);
       alert(
         error?.response?.data?.error ??
           error?.response?.data?.message ??
@@ -347,7 +347,7 @@ export function useLiveDashboardNavbar({
         `Storage pushed from this server to ${normalizedOnlineBaseUrl}.${backupPath}`,
       );
     } catch (error: any) {
-      tradeLog.error(error);
+      systemLog.error(error);
       alert(
         error?.response?.data?.error ??
           error?.response?.data?.message ??

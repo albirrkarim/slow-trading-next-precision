@@ -2,8 +2,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { coinMetadataSync } from "@/lib/devBacktest/coins/tag-sync";
 import coinTags from "@/lib/devBacktest/coins/tags";
-import slowTrading from "@/lib/slowTrading";
-import { tradeLog } from "@/lib/trading/helper/log";
+import storageSync from "@/lib/dev/storage-sync";
+import { systemLog } from "@/lib/system/logging";
+import { runtimeLogs } from "@/lib/system/storage";
 
 export default async function handler(
   req: NextApiRequest,
@@ -17,7 +18,7 @@ export default async function handler(
     }
 
     const host = req.headers.host;
-    if (!slowTrading.debugSync.isLocalCoinMetadataManualSyncAllowed(host)) {
+    if (!storageSync.isLocalCoinMetadataManualSyncAllowed(host)) {
       res.status(403).json({
         error:
           "Coin metadata broadcast is only allowed when APP_NAME=localhost on localhost outside Railway.",
@@ -39,7 +40,7 @@ export default async function handler(
       succeeded: results.filter((result) => result.success),
     });
   } catch (error: any) {
-    await slowTrading.storage.logs
+    await runtimeLogs
       .appendError({
         source: "api.slow-trading.debug.broadcast-coin-metadata",
         error,
@@ -48,7 +49,7 @@ export default async function handler(
         },
       })
       .catch((logError) => {
-        tradeLog.error(
+        systemLog.error(
           "[slow-trading] failed to write coin metadata broadcast error log",
           logError,
         );

@@ -3,8 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   appendError: vi.fn(async () => undefined),
-  buildStateRealtime: vi.fn(async () => ({ activeMode: "live" })),
-  load: vi.fn(async () => ({ storage: true })),
   syncOnlinePersistentStorageToLocal: vi.fn(async () => ({
     backupPath: "/storage-backups/backup",
     directoriesImported: 2,
@@ -13,23 +11,16 @@ const mocks = vi.hoisted(() => ({
   })),
 }));
 
-vi.mock("@/lib/slowTrading", () => ({
+vi.mock("@/lib/dev/storage-sync", () => ({
   default: {
-    debugSync: {
-      syncOnlinePersistentStorageToLocal:
-        mocks.syncOnlinePersistentStorageToLocal,
-    },
-    storage: {
-      dashboard: {
-        buildStateRealtime: mocks.buildStateRealtime,
-      },
-      data: {
-        load: mocks.load,
-      },
-      logs: {
-        appendError: mocks.appendError,
-      },
-    },
+    syncOnlinePersistentStorageToLocal:
+      mocks.syncOnlinePersistentStorageToLocal,
+  },
+}));
+
+vi.mock("@/lib/system/storage", () => ({
+  runtimeLogs: {
+    appendError: mocks.appendError,
   },
 }));
 
@@ -70,7 +61,5 @@ describe("persistent storage clone API", () => {
       filesImported: 3,
       storageRoot: "/storage",
     });
-    expect(mocks.load).not.toHaveBeenCalled();
-    expect(mocks.buildStateRealtime).not.toHaveBeenCalled();
   });
 });

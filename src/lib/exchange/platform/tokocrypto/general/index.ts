@@ -2,7 +2,7 @@ import path from "path";
 import { requestPublic } from "../utils";
 import type { GetSymbolsResponse } from "./general-type";
 import fs from "fs-extra";
-import { tradeLog } from "@/lib/trading/helper/log";
+import { systemLog } from "@/lib/system/logging";
 
 /**
  * Response structure for server time check.
@@ -121,10 +121,10 @@ export async function loadMinQtyCache() {
     if (await fs.pathExists(CACHE_PATH)) {
       const data = await fs.readJson(CACHE_PATH);
       Object.assign(minQtyCache, data);
-      tradeLog.log(`[Cache] Loaded ${Object.keys(minQtyCache).length} entries`);
+      systemLog.log(`[Cache] Loaded ${Object.keys(minQtyCache).length} entries`);
     }
   } catch (err) {
-    tradeLog.warn("[Cache] Failed to load cache:", (err as Error).message);
+    systemLog.warn("[Cache] Failed to load cache:", (err as Error).message);
   }
 }
 
@@ -133,9 +133,9 @@ export async function saveMinQtyCache() {
   try {
     await fs.ensureDir(path.dirname(CACHE_PATH));
     await fs.writeJson(CACHE_PATH, minQtyCache);
-    tradeLog.log(`[Cache] Saved ${Object.keys(minQtyCache).length} entries`);
+    systemLog.log(`[Cache] Saved ${Object.keys(minQtyCache).length} entries`);
   } catch (err) {
-    tradeLog.error("[Cache] Failed to save cache:", (err as Error).message);
+    systemLog.error("[Cache] Failed to save cache:", (err as Error).message);
   }
 }
 
@@ -172,7 +172,7 @@ export async function getMinQtyAndStepSize(
       );
       break; // success → exit retry loop
     } catch (err) {
-      tradeLog.warn(
+      systemLog.warn(
         `[Tokocrypto] Failed to fetch symbols (attempt ${attempt}):`,
         (err as Error).message,
       );

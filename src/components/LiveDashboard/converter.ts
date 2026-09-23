@@ -1,10 +1,6 @@
 import type { UTCTimestamp } from "lightweight-charts";
-import type {
-  TradeHistoryVolatility,
-  VolatilityPoint,
-} from "../../lib/dynamic";
-import type { TradeHistorySimple } from "../../lib/dynamic/backtest-volatility/type";
-import type { Position } from "../../lib/trading/models";
+import type { VolatilityPoint } from "@/lib/system/types";
+import type { Position } from "@/lib/system/trading";
 import { DEFAULT_COLORS } from "@/components/client/constants";
 import { green, red } from "@mui/material/colors";
 
@@ -18,17 +14,6 @@ export interface Marker {
   tooltipTitle?: string;
   tooltipText?: string;
 }
-
-export const convertTradeHistoryToMarkers = (
-  trades: TradeHistorySimple[],
-): Marker[] =>
-  trades.map((trade) => ({
-    time: Math.floor(trade.time / 1000) as UTCTimestamp,
-    position: trade.side === "BUY" ? "belowBar" : "aboveBar",
-    color: trade.side === "BUY" ? "green" : "red",
-    shape: trade.side === "BUY" ? "arrowUp" : "arrowDown",
-    text: trade.message,
-  }));
 
 export const convertVolatilityToMarkers = (
   vPoints: VolatilityPoint[],
@@ -51,6 +36,12 @@ export interface LeveledMarkers {
   text?: string;
 }
 
+/** Named leveled-marker series bundle consumed by multi-line charts. */
+export interface MultiLinePair {
+  series: LeveledMarkers[][];
+  names: string[];
+}
+
 export const convertVolatilityToLeveledMarkers = (
   symbol: string,
   points: VolatilityPoint[],
@@ -62,67 +53,6 @@ export const convertVolatilityToLeveledMarkers = (
     color: color ? color : point.l === "B" ? green[400] : red[400],
     text: `${symbol} ${point.id.split("_")[0]} - ${point.id.split("_")[1]} [${point.lvl}] - ${point.pct}% @ ${point.p} ${point.message ?? ""}`,
   }));
-
-/**
- * Convert trades -> leveled markers with the trade id embedded into the text.
- * - pivot & entry use trade.level
- * - exit uses event.exitLevel if provided
- * - every marker text starts with "[<id>]"
- */
-export function tradesToLeveledMarkers(
-  trades: TradeHistoryVolatility[],
-): LeveledMarkers[] {
-  const markers: LeveledMarkers[] = [];
-
-  for (const t of trades) {
-    const symbol = t.symbol ?? "UNKNOWN";
-    const tradeLevel = typeof t.entryLevel === "number" ? t.entryLevel : 0;
-    const tradeId =
-      t.entryId ?? `${symbol}_${Math.floor((t.entryTime ?? 0) / 1000)}`;
-
-    // entry marker (if present) — include id in text
-    const entryMs = t.entryTime;
-    if (typeof entryMs === "number") {
-      const entryTimeSec = Math.floor(entryMs / 1000) as UTCTimestamp;
-      const entryMsg = t.message?.trim() ?? `entry: ${t.entryPrice ?? "?"}`;
-      const entryText = `[${tradeId}] BUY ${symbol} — ${entryMsg}`;
-      markers.push({
-        time: entryTimeSec,
-        level: tradeLevel,
-        color: "blue",
-        text: entryText,
-      });
-    }
-
-    // exit marker (if present) — include id in text and use event.exitLevel if provided
-    const exitMs = t.exitTime;
-    if (typeof exitMs === "number") {
-      const exitTimeSec = Math.floor(exitMs / 1000) as UTCTimestamp;
-      const exitLevel =
-        typeof t.exitLevel === "number" ? t.exitLevel : tradeLevel;
-      const profit =
-        typeof t.netProfitPercent === "number" ? t.netProfitPercent : undefined;
-      const exitMsg =
-        t.message?.trim() ??
-        `exit: ${t.exitPrice ?? "?"}${
-          profit !== undefined ? ` | profit: ${profit.toFixed(2)}%` : ""
-        }`;
-      const exitColor =
-        profit !== undefined ? (profit >= 0 ? "green" : "red") : "black";
-      const exitText = `[${tradeId}] SELL ${symbol} — ${exitMsg}`;
-
-      markers.push({
-        time: exitTimeSec,
-        level: exitLevel,
-        color: exitColor,
-        text: exitText,
-      });
-    }
-  }
-
-  markers.sort((a, b) => a.time - b.time);
-  return markers;
-}
 
 interface LeveledMarkersPoint {
   symbol?: string;

@@ -1,5 +1,5 @@
 import { requestPrivate } from "../utils";
-import { tradeLog } from "@/lib/trading/helper/log";
+import { systemLog } from "@/lib/system/logging";
 
 /**
  * Request parameters for fetching all account orders.
@@ -114,7 +114,7 @@ export async function getLastOrder(
     // Orders are usually returned from newest to oldest
     return orders[0];
   } catch (err) {
-    tradeLog.error("Error fetching last BTC_USDT order:", err);
+    systemLog.error("Error fetching last BTC_USDT order:", err);
     return null;
   }
 }

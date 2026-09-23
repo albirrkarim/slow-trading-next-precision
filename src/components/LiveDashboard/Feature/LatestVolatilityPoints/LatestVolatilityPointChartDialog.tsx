@@ -2,15 +2,17 @@
 
 import TradeChartBase from "@/components/LiveDashboard/Shared/TradeChartBase";
 import ButtonDialog from "@/components/ui/ButtonDialog";
-import type { VolatilityPoint } from "@/lib/dynamic";
+
 import { TradingMode } from "@/lib/exchange/types";
-import type { SlowTradingDashboardState } from "@/lib/slowTrading";
+
 import ShowChartIcon from "@mui/icons-material/ShowChart";
 import { Box, IconButton, Typography } from "@mui/material";
 import moment from "moment-timezone";
+import type { RuntimeDashboardState } from "@/lib/system/dashboard";
+import type { VolatilityPoint } from "@/lib/system/types";
 
 function resolveMarketType(
-  tradingMode: SlowTradingDashboardState["config"]["tradingMode"],
+  tradingMode: RuntimeDashboardState["config"]["tradingMode"],
 ): "SPOT" | "FUTURES" {
   return tradingMode === TradingMode.FUTURES ? "FUTURES" : "SPOT";
 }
@@ -20,7 +22,7 @@ export default function LatestVolatilityPointChartDialog({
   point,
   symbol,
 }: {
-  dashboardState: SlowTradingDashboardState;
+  dashboardState: RuntimeDashboardState;
   point: VolatilityPoint;
   symbol: string;
 }) {

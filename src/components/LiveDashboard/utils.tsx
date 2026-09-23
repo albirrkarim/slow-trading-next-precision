@@ -1,11 +1,12 @@
 import { COLORS_BG } from "@/components/client/constants";
-import { type VolatilityPoint } from "@/lib/dynamic";
+
 import {
     convertVolatilityToLeveledMarkers,
     convertVolatilityToMarkers,
     type LeveledMarkers,
     type Marker,
 } from "@/components/LiveDashboard/converter";
+import type { VolatilityPoint } from "@/lib/system/types";
 
 export const makeSeries = (data: Record<string, VolatilityPoint[]>, COLORS = COLORS_BG) => {
     const series: LeveledMarkers[][] = [];

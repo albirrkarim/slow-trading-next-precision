@@ -1,15 +1,12 @@
-import type { EntryRecommendation } from "@/lib/brain/algorithms/type-execute";
-import type { AdaptiveAveragingConfig } from "@/lib/dynamic";
 import type { TradingMode } from "@/lib/exchange/types";
-import slowTradingClient, {
-  type SlowTradingDashboardState,
-} from "@/lib/slowTrading/client";
-import { resolveEntryLeverage } from "@/lib/trading/execute/entry-leverage";
-import type { TradingConfig } from "@/lib/trading/models";
-import postAverageStopLoss from "@/lib/trading/post-average-stop-loss";
-import levelBasedPctDriftStopLoss from "@/lib/trading/level-based-pct-drift-stop-loss";
 
-export interface TradingLivePreviewConfig extends TradingConfig {
+import { runtimeEntryLeverage , postAverageStopLoss , levelBasedPctDriftStopLoss , reserve, runtimeWorkerCapacity } from "@/lib/system/trading";
+
+import type { AdaptiveAveragingConfig, EntryRecommendation } from "@/lib/system/trading";
+import type { RuntimeDashboardState } from "@/lib/system/dashboard";
+import type { RuntimeEffectiveConfig } from "@/lib/system/runtime";
+
+export interface TradingLivePreviewConfig extends RuntimeEffectiveConfig {
   adaptiveAveraging?: AdaptiveAveragingConfig;
   enableWatchLogic?: boolean;
   entrySpareBufferEnabled?: boolean;
@@ -205,7 +202,7 @@ export function buildTradingLivePreviewAveragingSimulation(params: {
     const adversePrice =
       NORMALIZED_ENTRY_PRICE * (1 - adversePct / 100);
 
-    return slowTradingClient.watchReserve.averaging.calculateProjectedProfitPct({
+    return reserve.averaging.calculateProjectedProfitPct({
       addMarginUsdt,
       direction: "LONG",
       entryPrice: NORMALIZED_ENTRY_PRICE,
@@ -291,7 +288,7 @@ export function buildTradingLivePreviewAveragingSimulation(params: {
  */
 export function buildTradingLivePreview(params: {
   config: TradingLivePreviewConfig;
-  dashboardState: SlowTradingDashboardState;
+  dashboardState: RuntimeDashboardState;
   spendableAssumptionUsdt?: number;
 }): TradingLivePreviewData {
   const { config, dashboardState } = params;
@@ -304,7 +301,7 @@ export function buildTradingLivePreview(params: {
     params.spendableAssumptionUsdt !== undefined
       ? Math.max(0, params.spendableAssumptionUsdt)
       : liveSpendableUsdt;
-  const capacity = slowTradingClient.workerCapacity.calculate({
+  const capacity = runtimeWorkerCapacity.calculate({
     activePositions: dashboardState.openPositions,
     config,
     spendableUsdt,
@@ -350,7 +347,7 @@ export function buildTradingLivePreview(params: {
       ];
     },
   );
-  const leverage = resolveEntryLeverage({
+  const leverage = runtimeEntryLeverage.resolve({
     config,
     tradingMode: config.tradingMode,
     entrySignal: {
@@ -424,7 +421,7 @@ export function buildTradingLivePreview(params: {
     (reserveLevels > 0 || maxNextAveragingLevels > 0) &&
     Number.isFinite(pctAlloc) &&
     pctAlloc > 0
-      ? slowTradingClient.watchReserve.reserve.buildState({
+      ? reserve.state.build({
           baseMarginUsdt: capacity.entryMarginUsdt,
           direction: "LONG",
           entryLevel: 0,
@@ -457,19 +454,19 @@ export function buildTradingLivePreview(params: {
     ...averagingStepsUsdt,
   ].map<TradingLivePreviewExitStage>((_marginUsdt, index, marginParts) => {
     const cumulativeMarginUsdt =
-      slowTradingClient.watchReserve.money.roundUsdt(
+      reserve.money.roundUsdt(
         marginParts
           .slice(0, index + 1)
           .reduce((sum, marginUsdt) => sum + marginUsdt, 0),
       );
     const estimatedNotionalUsdt =
-      slowTradingClient.watchReserve.money.roundUsdt(
+      reserve.money.roundUsdt(
         cumulativeMarginUsdt * leverage,
       );
     const estimatedLossUsdt =
       stopLossPct === null
         ? null
-        : slowTradingClient.watchReserve.money.roundUsdt(
+        : reserve.money.roundUsdt(
             estimatedNotionalUsdt * (stopLossPct / 100),
           );
     const entryAbsoluteLevel = Math.max(
@@ -507,7 +504,7 @@ export function buildTradingLivePreview(params: {
     const levelBasedLossUsdt =
       levelBasedTriggerPrice === null
         ? null
-        : slowTradingClient.watchReserve.money.roundUsdt(
+        : reserve.money.roundUsdt(
             Math.max(
               0,
               (weightedEntryPrice - levelBasedTriggerPrice) *
@@ -520,7 +517,7 @@ export function buildTradingLivePreview(params: {
     );
     const postAveragePercentLossUsdt =
       (postAverageThreshold?.maxNetPnlPct ?? 0) < 0
-        ? slowTradingClient.watchReserve.money.roundUsdt(
+        ? reserve.money.roundUsdt(
             estimatedNotionalUsdt *
               (Math.abs(postAverageThreshold?.maxNetPnlPct ?? 0) / 100),
           )
@@ -548,7 +545,7 @@ export function buildTradingLivePreview(params: {
       estimatedLossUsdt,
       estimatedNotionalUsdt,
       estimatedProfitUsdt:
-        slowTradingClient.watchReserve.money.roundUsdt(
+        reserve.money.roundUsdt(
           estimatedNotionalUsdt * (takeProfitPct / 100),
         ),
       firstStopLoss,
@@ -587,7 +584,7 @@ export function buildTradingLivePreview(params: {
       estimatedTargetZoneLossUsdt:
         targetZoneStopLossPct === null
           ? null
-          : slowTradingClient.watchReserve.money.roundUsdt(
+          : reserve.money.roundUsdt(
               estimatedNotionalUsdt * (targetZoneStopLossPct / 100),
             ),
       marginPartsUsdt: marginParts.slice(0, index + 1),
@@ -632,7 +629,7 @@ export function buildTradingLivePreview(params: {
           ]
         : [],
     projectedBailoutUsdt: capacity.projectedBailoutBufferUsdt,
-    reserveBudgetUsdt: slowTradingClient.watchReserve.money.roundUsdt(
+    reserveBudgetUsdt: reserve.money.roundUsdt(
       Math.max(0, capacity.workerCostUsdt - capacity.entryMarginUsdt),
     ),
     reserveStepsUsdt,

@@ -7,8 +7,8 @@ import CopyToClipboardIconButton from "@/components/ui/CopyToClipboardIconButton
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import { EXCHANGE_COLOR_MAP } from "@/components/LiveDashboard/Shared/constants";
 import { NetProfitPercentHistorySparkline } from "@/components/LiveDashboard/Shared/NetProfitPercentHistorySparkline";
-import type { DynamicTradeConfig, VolatilityPoint } from "@/lib/dynamic";
-import type { SlowTradingHistoryPosition } from "@/lib/slowTrading";
+
+
 import moment from "moment-timezone";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
@@ -37,24 +37,27 @@ import OpenPositionLevelSequence from "./OpenPositionLevelSequence";
 import OpenPositionFundingRate from "./OpenPositionFundingRate";
 import openPositionDuration from "./open-position-duration";
 import openPositionPnlContribution from "./open-position-pnl-contribution";
-import positionData from "@/lib/trading/position";
+import { positionData  } from "@/lib/system/trading";
 import DisplayCoinSymbol from "./DisplayCoin";
+import type { RuntimeHistoryPosition } from "@/lib/system/trading";
+import type { RuntimeEffectiveConfig } from "@/lib/system/runtime";
+import type { VolatilityPoint } from "@/lib/system/types";
 
 interface OpenPositionItemProps {
   availableTags: string[];
   coinDescription: string;
   coinTags: string[];
-  config: DynamicTradeConfig;
+  config: RuntimeEffectiveConfig;
   currentVolatilityLevel?: number;
-  exchangeType: DynamicTradeConfig["exchangeType"];
+  exchangeType: RuntimeEffectiveConfig["exchangeType"];
   pnlContributionShare: number;
-  position: SlowTradingHistoryPosition;
+  position: RuntimeHistoryPosition;
   now?: number;
   spendableQuoteAsset: number;
   exitingSymbol?: string | null;
   onCoinDescriptionChange: (symbol: string, description: string) => void;
   onCoinTagsChange: (symbol: string, tags: string[]) => void;
-  onExit?: (position: SlowTradingHistoryPosition) => Promise<void>;
+  onExit?: (position: RuntimeHistoryPosition) => Promise<void>;
   tagColors: Record<string, string>;
   tagDescriptions: Record<string, string>;
   volatilityPoints: VolatilityPoint[];

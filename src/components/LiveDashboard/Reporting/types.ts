@@ -1,5 +1,7 @@
 "use client";
 
-import type { SlowTradingHistoryPosition } from "@/lib/slowTrading";
+import type { RuntimeHistoryPosition } from "@/lib/system/trading";
 
-export type SlowTradingReportRow = SlowTradingHistoryPosition;
+
+
+export type SlowTradingReportRow = RuntimeHistoryPosition;

@@ -3,7 +3,7 @@ import crypto from "crypto";
 import { BASE_URL } from "./config";
 import { getCurrentExchangeAccountSlug } from "@/lib/exchange/account-context";
 import { getOKXCredentials } from "@/lib/exchange/credentials";
-import { tradeLog } from "@/lib/trading/helper/log";
+import { systemLog } from "@/lib/system/logging";
 
 export async function delay(ms: number = 1100): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
@@ -103,11 +103,11 @@ export async function requestPrivate<T>(
     return response.data;
   } catch (error: any) {
     // show URL
-    tradeLog.log("URL:", url);
-    tradeLog.log("Method:", method);
-    tradeLog.log("Params:", params);
-    tradeLog.log("Body:", body);
-    tradeLog.error("OKX API Error:", error.response?.data || error.message);
+    systemLog.log("URL:", url);
+    systemLog.log("Method:", method);
+    systemLog.log("Params:", params);
+    systemLog.log("Body:", body);
+    systemLog.error("OKX API Error:", error.response?.data || error.message);
     throw error;
   }
 }
@@ -129,7 +129,7 @@ export async function requestPublic<T>(
     const response = await axios.get(`${domain}${endpoint}`, { params });
     return response.data;
   } catch (error: any) {
-    tradeLog.error(
+    systemLog.error(
       "OKX Public API Error:",
       error.response?.data || error.message,
     );

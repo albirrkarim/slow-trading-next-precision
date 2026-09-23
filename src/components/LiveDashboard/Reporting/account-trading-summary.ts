@@ -1,14 +1,12 @@
-import { DEFAULT_DYNAMIC_TRADE_CONFIG_PRODUCTION } from "@/lib/dynamic/constants";
-import slowTradingAccountConfig from "@/lib/slowTrading/account-config";
-import type { SlowTradingAccountTradingConfig } from "@/lib/slowTrading/types";
+import { runtimeDefaults } from "@/lib/system/runtime";
+import type { RuntimeAccountTradingConfig } from "@/lib/system/runtime";
+
 
 type SummaryRecord = Record<string, unknown>;
 
 const NO_CHANGE = Symbol("NO_CHANGE");
-const DEFAULT_ACCOUNT_TRADING_CONFIG: SlowTradingAccountTradingConfig = {
-  ...slowTradingAccountConfig.trading.fromEffectiveConfig(
-    DEFAULT_DYNAMIC_TRADE_CONFIG_PRODUCTION,
-  ),
+const DEFAULT_ACCOUNT_TRADING_CONFIG: RuntimeAccountTradingConfig = {
+  ...runtimeDefaults.trading.create(),
   enableWatchLogic: false,
   entrySpareBufferEnabled: true,
   maxEntryMargin: 0,
@@ -88,7 +86,7 @@ function getChangedValue(
 
 /** Builds the display-only account config containing only custom values. */
 export function getCustomAccountTradingConfig(
-  trading: SlowTradingAccountTradingConfig,
+  trading: RuntimeAccountTradingConfig,
 ): SummaryRecord {
   const { notes: _notes, ...tradingValues } = trading;
   const { notes: _defaultNotes, ...defaultValues } =

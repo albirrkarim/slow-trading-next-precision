@@ -6,28 +6,26 @@ import { Box, MenuItem, TextField, Typography } from "@mui/material";
 
 import { TradesTableSection } from "@/components/LiveDashboard/Reporting/TradesTableSection";
 import type { ExchangeType } from "@/lib/exchange";
-import type {
-  SlowQuickBacktestResult,
-  SlowTradingAccount,
-} from "@/lib/slowTrading";
+import type { RuntimeQuickBacktestResult } from "@/lib/dev/quick-backtest";
+import type { RuntimeAccountConfig } from "@/lib/system/runtime";
 
 const COMBINED_ACCOUNT_VALUE = "";
 
 interface QuickBacktestTradeHistoryProps {
   accounts: Array<
-    Pick<SlowTradingAccount, "name" | "slug"> & {
-      trading?: Pick<SlowTradingAccount["trading"], "notes">;
+    Pick<RuntimeAccountConfig, "name" | "slug"> & {
+      trading?: Pick<RuntimeAccountConfig["trading"], "notes">;
     }
   >;
   exchangeType: ExchangeType;
-  history: SlowQuickBacktestResult["tradeHistory"];
+  history: RuntimeQuickBacktestResult["tradeHistory"];
 }
 
 /** Filters Quick Backtest history to one account while preserving combined order. */
 export function filterQuickBacktestTradeHistory(
-  history: SlowQuickBacktestResult["tradeHistory"],
+  history: RuntimeQuickBacktestResult["tradeHistory"],
   accountSlug: string,
-): SlowQuickBacktestResult["tradeHistory"] {
+): RuntimeQuickBacktestResult["tradeHistory"] {
   if (!accountSlug) {
     return history;
   }

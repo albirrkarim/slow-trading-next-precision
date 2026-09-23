@@ -1,15 +1,14 @@
 "use client";
 
 import { endpoints } from "@/components/endpoints";
-import type {
-  SlowTradingDashboardState,
-  SlowTradingMode,
-} from "@/lib/slowTrading";
+
 import { TextField } from "@mui/material";
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { useSnackbar } from "notistack";
 import type { SlowTradingReportRow } from "./types";
+import type { RuntimeDashboardState } from "@/lib/system/dashboard";
+import type { RuntimeMode } from "@/lib/system/runtime";
 
 export default function TradeHistoryNotesField({
   mode,
@@ -17,8 +16,8 @@ export default function TradeHistoryNotesField({
   readOnly,
   row,
 }: {
-  mode: SlowTradingMode;
-  onHistoryChange: (history: SlowTradingDashboardState["history"]) => void;
+  mode: RuntimeMode;
+  onHistoryChange: (history: RuntimeDashboardState["history"]) => void;
   readOnly: boolean;
   row: SlowTradingReportRow;
 }) {
@@ -43,7 +42,7 @@ export default function TradeHistoryNotesField({
     try {
       // PROD:TRADE_HISTORY_NOTES
       const response = await axios.patch<{
-        state?: SlowTradingDashboardState;
+        state?: RuntimeDashboardState;
       }>(endpoints.slow.prod.history, {
         account: row.account,
         mode,

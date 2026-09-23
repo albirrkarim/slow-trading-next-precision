@@ -25,15 +25,16 @@ import { useSnackbar } from "notistack";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { endpoints } from "@/components/endpoints";
-import type { SlowTradingMcpPermission } from "@/lib/slowTrading/types";
+
 
 import SettingsDialogSection from "../Components/SettingsDialogSection";
 import SettingsDialogMcpToolPreview, {
   type McpToolCatalogItem,
 } from "./SettingsDialogMcpToolPreview";
+import type { RuntimeMcpPermission } from "@/lib/system/runtime";
 
 const MCP_PERMISSIONS: Array<{
-  key: SlowTradingMcpPermission;
+  key: RuntimeMcpPermission;
   label: string;
   description: string;
 }> = [
@@ -79,7 +80,7 @@ interface McpTokenRecord {
   id: string;
   name: string;
   enabled: boolean;
-  permissions: SlowTradingMcpPermission[];
+  permissions: RuntimeMcpPermission[];
   secretAvailable: boolean;
   createdAt: number;
   lastUsedAt?: number;
@@ -105,8 +106,8 @@ function formatTimestamp(timestamp?: number) {
 }
 
 function hasPermission(
-  permissions: SlowTradingMcpPermission[],
-  permission: SlowTradingMcpPermission,
+  permissions: RuntimeMcpPermission[],
+  permission: RuntimeMcpPermission,
 ) {
   return permissions.includes(permission);
 }
@@ -154,7 +155,7 @@ export default function SettingsDialogMcpTab() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [newTokenName, setNewTokenName] = useState("ChatGPT connector");
   const [newTokenPermissions, setNewTokenPermissions] =
-    useState<SlowTradingMcpPermission[]>(allPermissionKeys);
+    useState<RuntimeMcpPermission[]>(allPermissionKeys);
   const [visibleTokens, setVisibleTokens] = useState<Record<string, string>>({});
   const [origin, setOrigin] = useState("");
 
@@ -295,8 +296,8 @@ export default function SettingsDialogMcpTab() {
   };
 
   const togglePermission = (
-    permissions: SlowTradingMcpPermission[],
-    permission: SlowTradingMcpPermission,
+    permissions: RuntimeMcpPermission[],
+    permission: RuntimeMcpPermission,
   ) =>
     hasPermission(permissions, permission)
       ? permissions.filter((item) => item !== permission)

@@ -1,24 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import slowTrading, { type SlowTradingMode } from "@/lib/slowTrading";
-import { tradeLog } from "@/lib/trading/helper/log";
+import { systemDashboard } from "@/lib/system/dashboard";
+import { systemLog } from "@/lib/system/logging";
 
-function parseMode(value: unknown): SlowTradingMode | null {
+import { runtimeLogs, runtimeStorage } from "@/lib/system/storage";
+import type { RuntimeMode } from "@/lib/system/runtime";
+
+function parseMode(value: unknown): RuntimeMode | null {
   return value === "live" || value === "sandbox" ? value : null;
-}
-
-async function loadCombinedDashboardState() {
-  const catalog = await slowTrading.storage.data.load({ modeScope: "active" });
-  const storages = [];
-  for (const account of catalog.accounts) {
-    storages.push(
-      await slowTrading.storage.data.load({
-        account: account.slug,
-        includeHistory: true,
-      }),
-    );
-  }
-  return slowTrading.storage.dashboard.buildCombinedStateRealtime(storages);
 }
 
 export default async function handler(
@@ -39,11 +28,11 @@ export default async function handler(
     }
 
     if (req.method === "DELETE" && req.body?.clearAll === true) {
-      const { deletedCount } = await slowTrading.storage.history.clear(mode);
+      const { deletedCount } = await runtimeStorage.history.clear(mode);
       res.status(200).json({
         success: true,
         deletedCount,
-        state: await loadCombinedDashboardState(),
+        state: await systemDashboard.state.buildCombined(),
       });
       return;
     }
@@ -56,8 +45,6 @@ export default async function handler(
 
     const identity = {
       account: String(req.body?.account || "").trim(),
-      mode,
-      symbol,
       entryId:
         typeof req.body?.entryId === "string" ? req.body.entryId : undefined,
       entryTime:
@@ -81,11 +68,11 @@ export default async function handler(
         return;
       }
 
-      const { updated } =
-        await slowTrading.storage.history.updateNotes({
-          ...identity,
-          notes: req.body.notes,
-        });
+      const { updated } = await runtimeStorage.history.updateNotes(
+        mode,
+        symbol,
+        { ...identity, notes: req.body.notes },
+      );
 
       if (!updated) {
         res.status(404).json({ error: `Trade history row not found for ${symbol}` });
@@ -94,13 +81,16 @@ export default async function handler(
 
       res.status(200).json({
         success: true,
-        state: await loadCombinedDashboardState(),
+        state: await systemDashboard.state.buildCombined(),
       });
       return;
     }
 
-    const { deleted } =
-      await slowTrading.storage.history.deleteEntry(identity);
+    const { deleted } = await runtimeStorage.history.deleteEntry(
+      mode,
+      symbol,
+      identity,
+    );
 
     if (!deleted) {
       res.status(404).json({ error: `Trade history row not found for ${symbol}` });
@@ -110,20 +100,22 @@ export default async function handler(
     res.status(200).json({
       success: true,
       deletedCount: 1,
-      state: await loadCombinedDashboardState(),
+      state: await systemDashboard.state.buildCombined(),
     });
   } catch (error: any) {
-    await slowTrading.storage.logs.appendError({
-      source: "api.slow-trading.history",
-      error,
-      details: {
-        method: req.method,
-        mode: req.body?.mode,
-        symbol: req.body?.symbol,
-      },
-    }).catch((logError) => {
-      tradeLog.error("[slow-trading] failed to write history error log", logError);
-    });
+    await runtimeLogs
+      .appendError({
+        source: "api.slow-trading.history",
+        error,
+        details: {
+          method: req.method,
+          mode: req.body?.mode,
+          symbol: req.body?.symbol,
+        },
+      })
+      .catch((logError) => {
+        systemLog.error("[slow-trading] failed to write history error log", logError);
+      });
     res.status(500).json({
       error: error?.message ?? "Failed to update slow trading history",
     });

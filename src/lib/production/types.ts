@@ -1,10 +1,10 @@
-import type { FetchKlinesFunction } from "@/lib/datasets/type";
 import type { IExchange } from "@/lib/exchange";
 import type {
   RuntimeClock,
   RuntimeEngineAdapter,
   RuntimeEngineState,
 } from "@/lib/precision/types";
+import type { FetchKlines } from "@/lib/system/types";
 
 /** Dependencies used to build the production environment adapter. */
 export interface ProductionAdapterOptions {
@@ -26,6 +26,14 @@ export interface ProductionAdapterOptions {
   onNewVPoint?: RuntimeEngineAdapter["onNewVPoint"];
   /** Optional notification delivery hook. */
   onNotif?: RuntimeEngineAdapter["onNotif"];
+  /** Environment-owned risk-sentinel stage body. */
+  onRiskSentinel?: RuntimeEngineAdapter["onRiskSentinel"];
+  /** Environment-owned management stage body. */
+  onManagement?: RuntimeEngineAdapter["onManagement"];
+  /** Persists per-stage run stats. */
+  onStageStats?: RuntimeEngineAdapter["onStageStats"];
+  /** Persists the whole-tick cycle summary. */
+  onCycleComplete?: RuntimeEngineAdapter["onCycleComplete"];
   /** Optional account-aware balance reader used by runtime refreshes. */
   getBalance?: (
     accountSlug?: string,
@@ -50,7 +58,7 @@ export interface ProductionStateOptions
 
 /** Production market reader after adapting the exchange API to runtime requests. */
 export interface ProductionMarket {
-  getKlines: FetchKlinesFunction;
+  getKlines: FetchKlines;
 }
 
 /** Factory input for a managed production runtime instance. */

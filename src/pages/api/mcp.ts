@@ -1,7 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import slowTrading from "@/lib/slowTrading";
-import { tradeLog } from "@/lib/trading/helper/log";
+// Coin tag backends still live in devBacktest until the coin-tags capability
+// relocates to src/lib/dev — register them as external MCP tool handlers.
+import coinTags from "@/lib/devBacktest/coins/tags";
+import { coinMetadataSync } from "@/lib/devBacktest/coins/tag-sync";
+import type { CoinTagState } from "@/lib/devBacktest/coins/tag-types";
+import { runtimeMcp } from "@/lib/system/mcp";
+import type { RuntimeMcpAuthenticatedToken } from "@/lib/system/mcp";
+import { systemLog } from "@/lib/system/logging";
+import { runtimeLogs } from "@/lib/system/storage";
+
 
 interface JsonRpcRequest {
   jsonrpc?: "2.0";
@@ -64,9 +72,83 @@ function buildToolCallResult(payload: unknown) {
   };
 }
 
+function pickCoinMetadata(state: CoinTagState, symbol?: string) {
+  const normalizedSymbol = symbol?.trim().toUpperCase().replace(/_?USDT$/, "");
+  if (!normalizedSymbol) return state;
+
+  return {
+    coinDescriptions: state.coinDescriptions[normalizedSymbol]
+      ? {
+          [normalizedSymbol]: state.coinDescriptions[normalizedSymbol],
+        }
+      : {},
+    coinTags: {
+      [normalizedSymbol]: state.coinTags[normalizedSymbol] ?? [],
+    },
+    tags: state.tags,
+  };
+}
+
+runtimeMcp.tools.registerHandler("slow_tags_list", () => coinTags.list());
+runtimeMcp.tools.registerHandler("slow_tags_create", ({ args }) => {
+  const state = coinTags.create(
+    String(args.text ?? ""),
+    String(args.color ?? ""),
+    String(args.description ?? ""),
+    Object.hasOwn(args, "filters") ? args.filters : undefined,
+  );
+  void coinMetadataSync.broadcast(state);
+  return state;
+});
+runtimeMcp.tools.registerHandler("slow_tags_update", ({ args }) => {
+  const state = coinTags.update(
+    Number(args.tagId),
+    String(args.text ?? ""),
+    String(args.color ?? ""),
+    String(args.description ?? ""),
+    Object.hasOwn(args, "filters") ? args.filters : undefined,
+  );
+  void coinMetadataSync.broadcast(state);
+  return state;
+});
+runtimeMcp.tools.registerHandler("slow_tags_delete", ({ args }) => {
+  const state = coinTags.delete(Number(args.tagId));
+  void coinMetadataSync.broadcast(state);
+  return state;
+});
+runtimeMcp.tools.registerHandler("slow_coin_metadata_get", ({ args }) =>
+  pickCoinMetadata(coinTags.list(), String(args.symbol ?? "")),
+);
+runtimeMcp.tools.registerHandler("slow_coin_metadata_update", ({ args }) => {
+  const symbol = String(args.symbol ?? "");
+  let state = coinTags.list();
+  if (Object.hasOwn(args, "description")) {
+    state = coinTags.setDescription(symbol, String(args.description ?? ""));
+  }
+  if (Object.hasOwn(args, "tags")) {
+    const tagTexts = Array.isArray(args.tags) ? args.tags.map(String) : [];
+    state = coinTags.set(symbol, tagTexts);
+  }
+  void coinMetadataSync.broadcast(state);
+  return pickCoinMetadata(state, symbol);
+});
+runtimeMcp.tools.registerHandler(
+  "slow_coin_metadata_broadcast",
+  async ({ args }) => {
+    const state = coinTags.list();
+    const peers = Array.isArray(args.peers)
+      ? args.peers.map(String)
+      : coinMetadataSync.manualPeers;
+    return {
+      peers,
+      results: await coinMetadataSync.broadcastToPeers(state, peers),
+    };
+  },
+);
+
 async function handleMcpRequest(
   request: JsonRpcRequest,
-  auth: NonNullable<Awaited<ReturnType<typeof slowTrading.mcp.tokens.authenticate>>>,
+  auth: RuntimeMcpAuthenticatedToken,
 ) {
   if (!request || typeof request !== "object" || !request.method) {
     return jsonRpcError(request?.id, -32600, "Invalid JSON-RPC request");
@@ -77,17 +159,17 @@ async function handleMcpRequest(
   }
 
   if (request.method === "initialize") {
-    const appName = slowTrading.mcp.identity.getAppName();
+    const appName = runtimeMcp.identity.getAppName();
     return jsonRpcResult(request.id, {
       protocolVersion:
         String(request.params?.protocolVersion ?? "").trim() || "2024-11-05",
       capabilities: {
         tools: {},
       },
-      instructions: slowTrading.mcp.identity.getInstructions(),
+      instructions: runtimeMcp.identity.getInstructions(),
       appName,
       serverInfo: {
-        name: slowTrading.mcp.identity.getServerName(),
+        name: runtimeMcp.identity.getServerName(),
         version: "0.1.0",
         appName,
       },
@@ -100,7 +182,7 @@ async function handleMcpRequest(
 
   if (request.method === "tools/list") {
     return jsonRpcResult(request.id, {
-      tools: slowTrading.mcp.tools.list(auth),
+      tools: runtimeMcp.tools.list(auth),
     });
   }
 
@@ -110,7 +192,7 @@ async function handleMcpRequest(
       request.params?.arguments && typeof request.params.arguments === "object"
         ? (request.params.arguments as Record<string, unknown>)
         : {};
-    const payload = await slowTrading.mcp.tools.call({
+    const payload = await runtimeMcp.tools.call({
       auth,
       name,
       arguments: args,
@@ -136,7 +218,7 @@ export default async function mcpHandler(
   res.setHeader("Cache-Control", "no-store");
 
   if (req.method === "GET") {
-    const appName = slowTrading.mcp.identity.getAppName();
+    const appName = runtimeMcp.identity.getAppName();
     res.status(200).json({
       name: `slow-trading-next MCP (${appName})`,
       appName,
@@ -155,7 +237,7 @@ export default async function mcpHandler(
 
   const rawToken = getBearerToken(req);
   const auth = rawToken
-    ? await slowTrading.mcp.tokens.authenticate(rawToken)
+    ? await runtimeMcp.tokens.authenticate(rawToken)
     : null;
   if (!auth) {
     res.status(401).json({
@@ -188,15 +270,17 @@ export default async function mcpHandler(
 
     res.status(200).json(Array.isArray(body) ? responses : responses[0]);
   } catch (error: any) {
-    await slowTrading.storage.logs.appendError({
-      source: "api.mcp",
-      error,
-      details: {
-        method: req.method,
-      },
-    }).catch((logError) => {
-      tradeLog.error("[slow-trading] failed to write MCP error log", logError);
-    });
+    await runtimeLogs
+      .appendError({
+        source: "api.mcp",
+        error,
+        details: {
+          method: req.method,
+        },
+      })
+      .catch((logError) => {
+        systemLog.error("[slow-trading] failed to write MCP error log", logError);
+      });
     res.status(500).json({
       error: error?.message ?? "Failed to handle MCP request",
     });

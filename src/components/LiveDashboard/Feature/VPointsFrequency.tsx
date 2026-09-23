@@ -5,8 +5,10 @@ import { useMemo } from "react";
 
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import VPointPctDistribution from "@/components/ui/VPointPctDistribution";
-import type { VolatilityPoint } from "@/lib/dynamic";
-import slowTradingClient from "@/lib/slowTrading/client";
+import type { VolatilityPoint } from "@/lib/system/types";
+import { runtimeEntrySequences } from "@/lib/system/trading";
+
+
 
 export interface VPointLevelFrequency {
   count: number;
@@ -48,7 +50,7 @@ function getRangedVPoints({
   startTime?: number;
   volatilityMap: Record<string, VolatilityPoint[]>;
 }): VolatilityPoint[] {
-  const rangedVolatilityMap = slowTradingClient.entrySequences.range.crop({
+  const rangedVolatilityMap = runtimeEntrySequences.range.crop({
     endTimeMs: endTime,
     startTimeMs: startTime,
     volatilityMap,

@@ -1,6 +1,6 @@
 "use client";
 
-import type { SlowTradingDashboardState } from "@/lib/slowTrading";
+
 import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
 import {
   Box,
@@ -18,12 +18,13 @@ import { SummarySection } from "./SummarySection";
 import { TradesTableSection } from "./TradesTableSection";
 import MaxUpDistributionChart from "./MaxUpDistributionChart";
 import { endpoints } from "@/components/endpoints";
+import type { RuntimeDashboardState } from "@/lib/system/dashboard";
 
 type TradeHistoryView = "all" | "losses" | "profits";
 
 /** Identifies a losing closed trade using USDT PnL with percent fallback. */
 function isLosingTrade(
-  trade: SlowTradingDashboardState["history"][number],
+  trade: RuntimeDashboardState["history"][number],
 ): boolean {
   if (typeof trade.pnl.netUsdt === "number" && Number.isFinite(trade.pnl.netUsdt)) {
     return trade.pnl.netUsdt < 0;
@@ -38,7 +39,7 @@ function isLosingTrade(
 
 /** Identifies a profitable closed trade using USDT PnL with percent fallback. */
 function isProfitableTrade(
-  trade: SlowTradingDashboardState["history"][number],
+  trade: RuntimeDashboardState["history"][number],
 ): boolean {
   if (typeof trade.pnl.netUsdt === "number" && Number.isFinite(trade.pnl.netUsdt)) {
     return trade.pnl.netUsdt > 0;
@@ -55,7 +56,7 @@ export default function SlowTradingReporting({
   dashboardState,
   onRefresh,
 }: {
-  dashboardState: SlowTradingDashboardState;
+  dashboardState: RuntimeDashboardState;
   onRefresh?: () => Promise<void>;
 }) {
   const { enqueueSnackbar } = useSnackbar();
@@ -101,7 +102,7 @@ export default function SlowTradingReporting({
     try {
       const response = await axios.delete<{
         deletedCount?: number;
-        state?: SlowTradingDashboardState;
+        state?: RuntimeDashboardState;
       }>(endpoints.slow.prod.history, {
         data: {
           clearAll: true,

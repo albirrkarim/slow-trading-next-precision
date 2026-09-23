@@ -1,6 +1,6 @@
-import type { InitialBalance } from "@/lib/trading";
+import type { UnifiedBalance } from "@/lib/exchange/types";
 import { requestPrivate } from "../utils";
-import { tradeLog } from "@/lib/trading/helper/log";
+import { systemLog } from "@/lib/system/logging";
 import binanceRequestCoordinator from "../request-coordinator";
 
 /**
@@ -65,7 +65,7 @@ export async function getAsset(asset: string): Promise<AssetBalance | null> {
     };
   } catch (error) {
     if (binanceRequestCoordinator.error.isRateLimit(error)) throw error;
-    tradeLog.error(`Error fetching balance for ${asset}:`, error);
+    systemLog.error(`Error fetching balance for ${asset}:`, error);
     return null;
   }
 }
@@ -85,7 +85,7 @@ export async function getAsset(asset: string): Promise<AssetBalance | null> {
  */
 export async function getBalance(
   symbol: string,
-): Promise<InitialBalance | null> {
+): Promise<UnifiedBalance | null> {
   // 1. Try treating it as a single asset first (e.g. "USDT")
   // Optimistic check: if it has no separator and length is short?
   // Or just try getAsset? getAsset logs error if fails, so might be noisy if we try every pair.
@@ -135,7 +135,7 @@ export async function getBalance(
           total: asset.total,
         };
       }
-      tradeLog.error("Error parsing symbol for balance:", symbol);
+      systemLog.error("Error parsing symbol for balance:", symbol);
       return null;
     }
   }

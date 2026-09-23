@@ -1,10 +1,11 @@
 import type { Marker } from "@/components/LiveDashboard/converter";
-import type { SlowTradingHistoryPosition } from "@/lib/slowTrading";
+
 import { blue, orange, purple } from "@mui/material/colors";
 import type { UTCTimestamp } from "lightweight-charts";
+import type { RuntimeHistoryPosition } from "@/lib/system/trading";
 
 type TradeMarkerPosition = Pick<
-  SlowTradingHistoryPosition,
+  RuntimeHistoryPosition,
   "closed" | "opened" | "pnl" | "symbol"
 >;
 

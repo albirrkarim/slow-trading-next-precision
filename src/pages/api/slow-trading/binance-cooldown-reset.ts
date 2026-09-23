@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import slowTrading from "@/lib/slowTrading";
-import { tradeLog } from "@/lib/trading/helper/log";
+import { systemLog } from "@/lib/system/logging";
+import { runtimeBinanceHealth, runtimeLogs } from "@/lib/system/storage";
 
 export default async function handler(
   req: NextApiRequest,
@@ -15,16 +15,16 @@ export default async function handler(
 
   try {
     // PROD:BINANCE_MANUAL_COOLDOWN_RESET
-    const health = await slowTrading.binanceHealth.reset();
+    const health = await runtimeBinanceHealth.reset();
     res.status(200).json(health);
   } catch (error) {
-    await slowTrading.storage.logs
+    await runtimeLogs
       .appendError({
         source: "api.slow-trading.binance-cooldown-reset",
         error,
       })
       .catch((logError) => {
-        tradeLog.error(
+        systemLog.error(
           "[slow-trading] failed to write Binance cooldown reset error log",
           logError,
         );

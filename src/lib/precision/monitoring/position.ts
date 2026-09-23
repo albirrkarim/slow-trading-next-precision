@@ -1,5 +1,5 @@
-import slowTrading from "@/lib/slowTrading";
-import type { Position } from "@/lib/trading/models";
+import positions from "../utils/positions";
+import type { Position } from "@/lib/system/trading";
 
 import defaultDecision from "../defaultDecision";
 import type {
@@ -25,29 +25,7 @@ function assertMatchingPosition(
 
 /** Updates fee-aware PnL and its bounded configured history bucket. */
 function updatePnl(context: RuntimeContext, position: Position): void {
-  const markPrice = context.state.markPriceMap[position.symbol.toUpperCase()];
-  if (!markPrice) {
-    throw new Error(`Runtime mark price not found for ${position.symbol}.`);
-  }
-
-  if (
-    !slowTrading.reporting.pnl.applyFloatingMetrics(
-      position,
-      markPrice.price,
-      context.state.config.management.exchangeType,
-    )
-  ) {
-    return;
-  }
-
-  slowTrading.reporting.pnl.applyObservation(position, {
-    bucketMs: slowTrading.reporting.history.bucket.resolveMs(
-      context.state.config.runtime.pnlHistoryBucketMinutes,
-    ),
-    pct: position.pnl.netPct ?? 0,
-    replaceWithinBucket: true,
-    timeMs: context.state.currentTime,
-  });
+  positions.updatePnl(context, position);
 }
 
 /** Reclassifies a still-open position for its next monitoring pass. */
@@ -55,39 +33,7 @@ function updateMonitoringStage(
   context: RuntimeContext,
   position: Position,
 ): void {
-  const accountConfig = context.helper.getAccountConfig(position.account);
-  const volatilityPoints =
-    context.state.vPointsMap[position.symbol.toUpperCase()] ?? [];
-  const reasons = slowTrading.stages.position.getSpeedupReasons({
-    latestVolatilityPoint: volatilityPoints.at(-1),
-    negativePnlThresholdPct:
-      context.state.config.runtime.speedupStageNegativePnlThresholdPct,
-    positivePnlThresholdPct:
-      context.state.config.runtime.speedupStagePositivePnlThresholdPct,
-    position,
-    takeProfitOffsetPct:
-      context.state.config.runtime.speedupStageTakeProfitOffsetPct,
-    takeProfitPercent: accountConfig.takeProfitPercent,
-    useStopLossPlus: accountConfig.useStopLossPlus,
-    volatilityPoints,
-  });
-  const stage = reasons.length > 0 ? "speedup" : "standard";
-  const reason =
-    reasons.length > 0
-      ? slowTrading.stages.position.describeSpeedupReasons(reasons)
-      : slowTrading.stages.position.describeStandardReason({
-          negativePnlThresholdPct:
-            context.state.config.runtime.speedupStageNegativePnlThresholdPct,
-          positivePnlThresholdPct:
-            context.state.config.runtime.speedupStagePositivePnlThresholdPct,
-          position,
-        });
-
-  position.lastMonitoringStage = {
-    lastUpdated: context.state.currentTime,
-    reason,
-    stage,
-  };
+  positions.updateMonitoringStage(context, position);
 }
 
 /**
@@ -179,9 +125,9 @@ async function averaging(
 
   // F. Mark the averaging volatility point as used only after the action and
   // accounting have both succeeded.
-  slowTrading.watchReserve.volatilityPoint.markAccountUsed({
+  positions.markVPointUsed({
     accountSlug: decision.accountSlug,
-    entrySignal: decision.recommendation,
+    recommendation: decision.recommendation,
     volatilityPoints: context.state.vPointsMap[decision.symbol],
   });
 

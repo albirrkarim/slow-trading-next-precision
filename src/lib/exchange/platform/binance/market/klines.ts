@@ -82,7 +82,7 @@ export async function getKlines({
     limit: Math.min(limit, 1000), // Binance max is 1000
   };
 
-  // tradeLog.debug("get kline binance")
+  // systemLog.debug("get kline binance")
 
   if (startTime) params.startTime = startTime;
   if (endTime) params.endTime = endTime;

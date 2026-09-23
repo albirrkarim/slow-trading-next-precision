@@ -38,7 +38,7 @@ describe("slow trading notifications", () => {
       SLOW_NOTIFICATION_TYPE_INFO,
       createDefaultDashboardNotificationConfig,
       normalizeDashboardNotificationConfig,
-    } = await import("@/lib/notification/config");
+    } = await import("@/lib/system/notification/config");
     const config = createDefaultDashboardNotificationConfig("SLOW");
 
     expect(config.telegram.types).toContainEqual({
@@ -93,7 +93,7 @@ describe("slow trading notifications", () => {
 
   it("filters management additions and removals independently per channel", async () => {
     const { createDefaultDashboardNotificationConfig } = await import(
-      "@/lib/notification/config"
+      "@/lib/system/notification/config"
     );
     const {
       buildSlowTradingManagementActions,
@@ -145,7 +145,7 @@ describe("slow trading notifications", () => {
 
   it("notifies at the configured absolute level and resets below it", async () => {
     const { createDefaultDashboardNotificationConfig } = await import(
-      "@/lib/notification/config"
+      "@/lib/system/notification/config"
     );
     const { notifyHighVolatilityLevels } = await import(
       "@/lib/slowTrading/notifications"
@@ -223,7 +223,7 @@ describe("slow trading notifications", () => {
 
   it("notifies strictly after one hour from the first target vPoint", async () => {
     const { createDefaultDashboardNotificationConfig } = await import(
-      "@/lib/notification/config"
+      "@/lib/system/notification/config"
     );
     const {
       notifyStalePositions,
@@ -324,7 +324,7 @@ describe("slow trading notifications", () => {
 
   it("notifies strictly after the configured hours from position entry", async () => {
     const { createDefaultDashboardNotificationConfig } = await import(
-      "@/lib/notification/config"
+      "@/lib/system/notification/config"
     );
     const {
       LONG_OPEN_POSITION_THRESHOLD_MS,
@@ -379,7 +379,7 @@ describe("slow trading notifications", () => {
 
   it("evaluates notification parameters independently for each channel", async () => {
     const { createDefaultDashboardNotificationConfig } = await import(
-      "@/lib/notification/config"
+      "@/lib/system/notification/config"
     );
     const {
       notifyHighVolatilityLevels,

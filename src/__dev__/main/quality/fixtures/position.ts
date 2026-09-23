@@ -2,7 +2,7 @@ import { TradingMode } from "@/lib/exchange";
 import type {
   Position,
   PositionAveragingState,
-} from "@/lib/trading/models";
+} from "@/lib/system/trading/types";
 
 type TestClosedPosition = Omit<
   NonNullable<Position["closed"]>,

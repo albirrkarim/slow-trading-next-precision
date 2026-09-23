@@ -1,6 +1,6 @@
 "use client";
 
-import { formatDuration as formatExactDuration } from "@/lib/dynamic/client";
+import format from "@/lib/system/utils/format";
 import { Box, Typography } from "@mui/material";
 import {
   Cell,
@@ -18,7 +18,7 @@ const COLORS = {
 
 function formatDuration(durationMs: number) {
   if (!Number.isFinite(durationMs) || durationMs <= 0) return "—";
-  return formatExactDuration(durationMs);
+  return format.duration(durationMs);
 }
 
 function formatPct(value: number) {

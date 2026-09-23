@@ -125,13 +125,16 @@ the precision runtime's `state.openPositions` serializes directly.
 
 | File | Writer | When |
 |---|---|---|
-| `accounts/<slug>/<mode>/positions.json` | `saveSlowTradingModeState` via `mode-files.ts` | after entry/averaging/exit |
+| `accounts/<slug>/<mode>/positions.json` | `runtimeStorage.account.save` (`jsonFile.write.atomic`) | after entry/averaging/exit |
 | `accounts/<slug>/<mode>/balance.json` | same boundary | same |
-| `status.json` / `notifications.json` | same boundary — mode slice replaced wholesale | every save |
-| `history/<mode>/<SYMBOL>.json` | `persistClosedPositionsToHistoryFiles` (`update.atomic` merge) | on position close |
-| `accounts/<slug>/<mode>/balance_snapshots.json` | snapshot writer | daily |
-| `volatility/<exchange>/<SYMBOL>.json` | `onNewVPoint` + `onStateChange` flush | new point / marker set |
+| `status.json` | `runtimeStorage.status.save` — mode slice replaced wholesale | every save |
+| `notifications.json` | notification state writer — mode slice replaced wholesale | every save |
+| `history/<mode>/<SYMBOL>.json` | `runtimeStorage.history.append` (`update.atomic` merge) | on position close |
+| `accounts/<slug>/<mode>/balance_snapshots.json` | `runtimeBalanceSnapshots.upsert` | daily |
+| `volatility/<exchange>/<SYMBOL>.json` | `runtimeStorage.vpoints.merge` | new point / marker set |
+| `config.json` / `accounts.json` | `runtimeStorage.catalog.save` / `update` | on settings change |
 | `queue.json` | queue persistence | on enqueue/dequeue |
+| `logs/*.json` | `runtimeLogs.append*` / `runtimeBinanceHealth` persistence | on event |
 | `cache/*` | cache writers | on refresh/expiry |
 
 Per-account files mean account 1's write can never clobber account 2 —

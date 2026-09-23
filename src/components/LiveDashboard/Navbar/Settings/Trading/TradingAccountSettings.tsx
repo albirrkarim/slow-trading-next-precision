@@ -1,7 +1,7 @@
 "use client";
 
-import adaptiveAveraging from "@/lib/trading/adaptive-averaging";
-import type { SlowTradingAccountTradingConfig } from "@/lib/slowTrading";
+import { adaptiveAveraging  } from "@/lib/system/trading";
+
 import {
     Grid,
     Stack
@@ -13,13 +13,14 @@ import SettingsInfoField from "../Components/SettingsInfoField";
 import type { DashboardState } from "../settings-types";
 import type { Dispatch, SetStateAction } from "react";
 import ExitStrategyReference from "./ExitStrategyReference";
-import { VOLATILITY_THRESHOLD } from "@/lib/brain/constants";
+import { VOLATILITY_THRESHOLD } from "@/lib/system/constants";
+import type { RuntimeAccountTradingConfig } from "@/lib/system/runtime";
 
 
 interface SettingsDialogTradingTabProps {
-    tradingConfig: SlowTradingAccountTradingConfig;
+    tradingConfig: RuntimeAccountTradingConfig;
     dashboardState?: DashboardState;
-    setTradingConfig: Dispatch<SetStateAction<SlowTradingAccountTradingConfig>>;
+    setTradingConfig: Dispatch<SetStateAction<RuntimeAccountTradingConfig>>;
 }
 
 

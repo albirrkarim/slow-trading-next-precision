@@ -7,22 +7,21 @@ import DailyPnlCalendarDialog, {
   type DailyPnlCalendarBalanceSnapshot,
 } from "@/components/LiveDashboard/Shared/DailyPnlCalendarDialog";
 import { endpoints } from "@/components/endpoints";
-import type {
-  SlowTradingDashboardAccountSummary,
-  SlowTradingHistoryPosition,
-  SlowTradingMode,
-} from "@/lib/slowTrading";
+import type { RuntimeDashboardAccountSummary } from "@/lib/system/dashboard";
+import type { RuntimeHistoryPosition } from "@/lib/system/trading";
+import type { RuntimeMode } from "@/lib/system/runtime";
+
 
 export interface DailyPnlCalendarWrapperProps {
-  accountSummaries: SlowTradingDashboardAccountSummary[];
-  activeMode: SlowTradingMode;
-  history: SlowTradingHistoryPosition[];
+  accountSummaries: RuntimeDashboardAccountSummary[];
+  activeMode: RuntimeMode;
+  history: RuntimeHistoryPosition[];
 }
 
 /** Selects the enabled-account history and summed starting balance. */
 export function selectEnabledAccountCalendarInputs(params: {
-  accountSummaries: SlowTradingDashboardAccountSummary[];
-  history: SlowTradingHistoryPosition[];
+  accountSummaries: RuntimeDashboardAccountSummary[];
+  history: RuntimeHistoryPosition[];
 }) {
   // PROD:MULTI_ACCOUNT_DAILY_BALANCE_SNAPSHOTS
   const enabledAccountSlugs = new Set(

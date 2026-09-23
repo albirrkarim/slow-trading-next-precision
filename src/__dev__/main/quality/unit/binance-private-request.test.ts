@@ -23,8 +23,8 @@ vi.mock("@/lib/exchange/credentials", () => ({
   }),
 }));
 
-vi.mock("@lib/trading", () => ({
-  tradeLog: {
+vi.mock("@/lib/system/logging", () => ({
+  systemLog: {
     error: vi.fn(),
   },
 }));

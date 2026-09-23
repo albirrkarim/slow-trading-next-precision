@@ -1,6 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import slowTrading from "@/lib/slowTrading";
-import { tradeLog } from "@/lib/trading/helper/log";
+
+import { systemDashboard } from "@/lib/system/dashboard";
+import runtimeAccounts from "@/lib/system/runtime/accounts";
+import { systemLog } from "@/lib/system/logging";
+import { runtimeLogs, runtimeStorage } from "@/lib/system/storage";
 
 export default async function handler(
   req: NextApiRequest,
@@ -17,24 +20,39 @@ export default async function handler(
       typeof req.body?.initialBalanceUSDT === "number"
         ? req.body.initialBalanceUSDT
         : undefined;
-    const nextStorage = await slowTrading.storage.data.resetSandbox({
-      account:
-        typeof req.body?.account === "string" ? req.body.account : undefined,
+    const requestedAccount =
+      typeof req.body?.account === "string" ? req.body.account : undefined;
+    const catalog = await runtimeStorage.catalog.ensure();
+    const account =
+      catalog.config.accounts.find(
+        (item) => item.slug === runtimeAccounts.slug.normalize(requestedAccount),
+      ) ?? catalog.config.accounts[0];
+    if (!account) {
+      res.status(400).json({ error: "No accounts configured" });
+      return;
+    }
+
+    await runtimeStorage.catalog.account.resetSandbox({
+      account: account.slug,
       initialBalanceUSDT: initialBalance,
     });
     res
       .status(200)
-      .json(await slowTrading.storage.dashboard.buildStateRealtime(nextStorage));
+      .json(
+        await systemDashboard.state.buildRealtime({ account: account.slug }),
+      );
   } catch (error: any) {
-    await slowTrading.storage.logs.appendError({
-      source: "api.slow-trading.reset",
-      error,
-      details: {
-        method: req.method,
-      },
-    }).catch((logError) => {
-      tradeLog.error("[slow-trading] failed to write reset error log", logError);
-    });
+    await runtimeLogs
+      .appendError({
+        source: "api.slow-trading.reset",
+        error,
+        details: {
+          method: req.method,
+        },
+      })
+      .catch((logError) => {
+        systemLog.error("[slow-trading] failed to write reset error log", logError);
+      });
     res.status(500).json({
       error: error?.message ?? "Failed to reset sandbox state",
     });

@@ -42,10 +42,6 @@ vi.mock("@/lib/precision", () => ({
   },
 }));
 
-vi.mock("@/lib/precision/action/simulated", () => ({
-  default: { execute: vi.fn() },
-}));
-
 const config = {
   management: { exchangeType: "binance", symbols: ["SUI"] },
   runtime: {},

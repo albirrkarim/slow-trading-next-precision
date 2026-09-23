@@ -1,12 +1,9 @@
 import { Button, Paper, Stack, Typography } from "@mui/material";
 import DialogBlur from "@/components/ui/DialogBlur";
-import type {
-  NotificationChannel,
-  NotificationTypeConfig,
-  SlowNotificationKey,
-} from "@/lib/notification/config";
-import { SLOW_NOTIFICATION_TYPE_INFO } from "@/lib/notification/config";
-import notificationExamples from "@/lib/notification/examples";
+import type { SlowNotificationKey } from "@/lib/system/notification/config";
+import { SLOW_NOTIFICATION_TYPE_INFO } from "@/lib/system/notification/config";
+import notificationExamples from "@/lib/system/notification/examples";
+import type { NotificationChannel, NotificationTypeConfig } from "@/lib/system/notification";
 
 export interface NotificationExampleSelection {
   channel: NotificationChannel;

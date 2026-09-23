@@ -9,13 +9,13 @@ import { describe, expect, it, vi } from "vitest";
 import QuickBacktestTradeHistory, {
   filterQuickBacktestTradeHistory,
 } from "@/components/LiveDashboard/Feature/QuickBacktestTradeHistory";
-import type { SlowQuickBacktestResult } from "@/lib/slowTrading";
+import type { RuntimeQuickBacktestResult } from "@/lib/dev/quick-backtest";
 
 vi.mock("@/components/LiveDashboard/Reporting/TradesTableSection", () => ({
   TradesTableSection: ({
     history,
   }: {
-    history: SlowQuickBacktestResult["tradeHistory"];
+    history: RuntimeQuickBacktestResult["tradeHistory"];
   }) => (
     <div data-testid="quick-backtest-history">
       {history.map((trade) => trade.symbol).join(",")}
@@ -27,7 +27,7 @@ const history = [
   { account: "account-1", symbol: "AAVE" },
   { account: "account-2", symbol: "LINK" },
   { account: "account-1", symbol: "SUI" },
-] as SlowQuickBacktestResult["tradeHistory"];
+] as RuntimeQuickBacktestResult["tradeHistory"];
 
 describe("Quick Backtest account history filter", () => {
   it("keeps the combined order and filters by the position account slug", () => {

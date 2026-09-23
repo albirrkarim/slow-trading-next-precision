@@ -3,7 +3,7 @@
 import { endpoints } from "@/components/endpoints";
 import { TradesTableSection } from "@/components/LiveDashboard/Reporting/TradesTableSection";
 import SidebarButton from "@/components/ui/SidebarButton";
-import { timeMsToReadable } from "@/lib/datasets/utils";
+import format from "@/lib/system/utils/format";
 import type {
     PrecisionCheckerRunResult,
     PrecisionCheckerTestCaseSummary,
@@ -27,8 +27,8 @@ import { useEffect, useState } from "react";
 const TRADE_TIME_FORMAT = "DD MMM YYYY HH:mm";
 
 function testCaseLabel(testCase: PrecisionCheckerTestCaseSummary): string {
-    const start = timeMsToReadable(testCase.startTime, TRADE_TIME_FORMAT);
-    const end = timeMsToReadable(testCase.endTime, TRADE_TIME_FORMAT);
+    const start = format.timeMsToReadable(testCase.startTime, TRADE_TIME_FORMAT);
+    const end = format.timeMsToReadable(testCase.endTime, TRADE_TIME_FORMAT);
     return `${testCase.mode} · ${start} → ${end} · ${testCase.tradeCount} trades`;
 }
 

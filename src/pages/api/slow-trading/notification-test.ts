@@ -1,5 +1,8 @@
-import { notif, type NotificationChannel } from "@/lib/notification";
+
+
 import type { NextApiRequest, NextApiResponse } from "next";
+import { systemNotifDelivery } from "@/lib/system/notification";
+import type { NotificationChannel } from "@/lib/system/notification";
 
 function pickChannel(value: unknown): NotificationChannel | null {
   return value === "telegram" || value === "email" ? value : null;
@@ -23,7 +26,7 @@ export default async function handler(
 
   try {
     const appName = String(process.env.APP_NAME ?? "SLOW").trim() || "SLOW";
-    await notif.send(
+    await systemNotifDelivery.send(
       {
         subject: "[TEST] Notification test",
         body: `Test ${channel} notification from ${appName} at ${new Date().toISOString()}`,

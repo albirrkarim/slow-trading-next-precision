@@ -14,8 +14,8 @@ import {
   Typography,
 } from "@mui/material";
 
-import levelBasedPctDriftStopLoss from "@/lib/trading/level-based-pct-drift-stop-loss";
-import type { LevelBasedPctDriftStopLossConfig } from "@/lib/trading/models";
+import { levelBasedPctDriftStopLoss } from "@/lib/system/trading";
+import type { LevelBasedPctDriftStopLossConfig } from "@/lib/system/trading";
 
 export default function LevelBasedPctDriftStopLossSettings({
   onChange,

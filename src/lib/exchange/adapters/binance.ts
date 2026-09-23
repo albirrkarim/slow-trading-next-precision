@@ -29,7 +29,7 @@ import {
 } from "@/lib/exchange/platform/binance/balance-alert";
 import { resolveStartTime } from "../utils";
 import { getMarketCapUSDForSymbol } from "../market-cap";
-import { tradeLog } from "@/lib/trading/helper/log";
+import { systemLog } from "@/lib/system/logging";
 import exchangeExit from "../ensure-closed";
 import binanceFuturesFunding from "@/lib/exchange/platform/binance/futures/funding";
 import binanceRequestCoordinator from "@/lib/exchange/platform/binance/request-coordinator";
@@ -367,7 +367,7 @@ export class BinanceExchange implements IExchange {
         (error?.response?.data?.code === -11001 || error?.code === -11001) &&
         tradingMode === TradingMode.MARGIN_ISOLATED
       ) {
-        tradeLog.log(
+        systemLog.log(
           `Isolated margin account for ${binanceSymbol} does not exist. creating...`,
         );
 
@@ -376,7 +376,7 @@ export class BinanceExchange implements IExchange {
         const created = await createIsolatedMarginAccount(binanceSymbol);
 
         if (created) {
-          tradeLog.log(
+          systemLog.log(
             `Isolated margin account created for ${binanceSymbol}. Retrying order in 2s...`,
           );
           // Wait for propagation
@@ -574,7 +574,7 @@ export class BinanceExchange implements IExchange {
 
       // If Spot returns empty, try Futures
       if (Array.isArray(klines) && klines.length === 0) {
-        tradeLog.log(
+        systemLog.log(
           `[Binance] Spot klines empty for ${binanceSymbol}, trying Futures...`,
         );
         const { getFuturesKlines } =
@@ -590,7 +590,7 @@ export class BinanceExchange implements IExchange {
         error?.code === -1121 ||
         error?.message?.includes("Invalid symbol")
       ) {
-        tradeLog.log(
+        systemLog.log(
           `[Binance] Spot klines failed for ${binanceSymbol}, trying Futures...`,
         );
         const { getFuturesKlines } =
@@ -806,7 +806,7 @@ export class BinanceExchange implements IExchange {
     const success = await setFuturesLeverage(binanceSymbol, leverage);
 
     if (success) {
-      tradeLog.log(`Set ${binanceSymbol} leverage to ${leverage}x (ISOLATED)`);
+      systemLog.log(`Set ${binanceSymbol} leverage to ${leverage}x (ISOLATED)`);
     }
 
     return success;
@@ -934,7 +934,7 @@ export class BinanceExchange implements IExchange {
     const mode =
       options?.tradingMode || this.defaultTradingMode || TradingMode.FUTURES;
 
-    tradeLog.log("[Binance] Closing position for", symbol);
+    systemLog.log("[Binance] Closing position for", symbol);
 
     if (mode === TradingMode.FUTURES) {
       const { requestPrivate } =
@@ -948,7 +948,7 @@ export class BinanceExchange implements IExchange {
       );
 
       if (!position || position.amount === 0) {
-        tradeLog.log(`No open position found for ${symbol}`);
+        systemLog.log(`No open position found for ${symbol}`);
         throw new Error(`No open position found for ${symbol}`);
       }
 
@@ -963,7 +963,7 @@ export class BinanceExchange implements IExchange {
         reduceOnly: true, // Important: only close existing position
       };
 
-      tradeLog.log(
+      systemLog.log(
         `[Binance] Closing ${position.side} position for ${symbol} with ${closeSide} order`,
       );
 
@@ -974,7 +974,7 @@ export class BinanceExchange implements IExchange {
         FUTURES_BASE_URL,
       );
 
-      tradeLog.log(`[Binance] Successfully closed position for ${symbol}`);
+      systemLog.log(`[Binance] Successfully closed position for ${symbol}`);
       return true;
     }
 

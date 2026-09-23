@@ -14,8 +14,8 @@ import {
   Typography,
 } from "@mui/material";
 
-import type { PostAverageStopLossConfig } from "@/lib/trading/models";
-import postAverageStopLoss from "@/lib/trading/post-average-stop-loss";
+import type { PostAverageStopLossConfig } from "@/lib/system/trading";
+import { postAverageStopLoss } from "@/lib/system/trading";
 
 export default function PostAverageStopLossSettings({
   onChange,

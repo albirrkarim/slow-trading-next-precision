@@ -1,8 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import slowTrading from "@/lib/slowTrading";
-import { tradeLog } from "@/lib/trading/helper/log";
-import type { PersistentStorageExportBundle } from "@/lib/slowTrading/debug-sync";
+import storageSync from "@/lib/dev/storage-sync";
+import { systemLog } from "@/lib/system/logging";
+import { runtimeLogs } from "@/lib/system/storage";
+import type { PersistentStorageExportBundle } from "@/lib/dev/storage-sync";
 
 export const config = {
   api: {
@@ -24,12 +25,12 @@ export default async function handler(
     }
 
     // PROD:SYNC_LOCAL_TO_ONLINE
-    const result = await slowTrading.debugSync.importPersistentStorageBundle(
+    const result = await storageSync.importPersistentStorageBundle(
       req.body as PersistentStorageExportBundle,
     );
     res.status(200).json(result);
   } catch (error: any) {
-    await slowTrading.storage.logs
+    await runtimeLogs
       .appendError({
         source: "api.slow-trading.debug.import",
         error,
@@ -38,7 +39,7 @@ export default async function handler(
         },
       })
       .catch((logError) => {
-        tradeLog.error(
+        systemLog.error(
           "[slow-trading] failed to write debug import error log",
           logError,
         );

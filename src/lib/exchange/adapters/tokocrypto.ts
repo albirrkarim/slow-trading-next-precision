@@ -21,7 +21,7 @@ import type {
 } from "../types";
 import { UnifiedOrderSide, UnifiedOrderType, TradingMode } from "../types";
 import { resolveStartTime } from "../utils";
-import { tradeLog } from "@/lib/trading";
+import { systemLog } from "@/lib/system/logging";
 import { delay } from "../platform/tokocrypto/utils";
 import {
   getMarketCapUSDForSymbol,
@@ -140,10 +140,10 @@ export class TokocryptoAdapter implements IExchange {
     }
 
     if (params.tradeType == "EXIT" && params.quantity) {
-      tradeLog.debug("params.quantity", params.quantity);
+      systemLog.debug("params.quantity", params.quantity);
       // make sure the quantity is not more than we have
       const balance = await this.getBalance(params.symbol);
-      tradeLog.debug("balance", balance);
+      systemLog.debug("balance", balance);
       if (balance) {
         if (params.quantity > balance.baseAsset) {
           params.quantity = balance.baseAsset;
@@ -370,7 +370,7 @@ export class TokocryptoAdapter implements IExchange {
    * Set Leverage
    */
   async setLeverage(_symbol: string, _leverage: number): Promise<boolean> {
-    tradeLog.warn(`Tokocrypto does not support leverage (Spot Only).`);
+    systemLog.warn(`Tokocrypto does not support leverage (Spot Only).`);
     return false;
   }
 

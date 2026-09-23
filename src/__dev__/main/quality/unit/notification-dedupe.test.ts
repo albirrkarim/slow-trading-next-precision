@@ -44,9 +44,9 @@ describe("notification dedupe", () => {
 
   it("prefixes email subjects with APP_NAME", async () => {
     process.env.APP_NAME = "wealth.reinventwp.com";
-    const { notif } = await import("@/lib/notification");
+    const { systemNotifDelivery } = await import("@/lib/system/notification/delivery");
 
-    await notif.email({
+    await systemNotifDelivery.email({
       subject: "[TEST] hello",
       body: "test body",
     });
@@ -62,11 +62,11 @@ describe("notification dedupe", () => {
   });
 
   it("sends a dashboard notification only once for the same dedupe key", async () => {
-    const { FILES } = await import("@/components/storage");
-    const { notif } = await import("@/lib/notification");
+    const { default: storageFiles } = await import("@/lib/system/storage/files");
+    const { systemNotifDelivery } = await import("@/lib/system/notification/delivery");
 
-    await fs.ensureDir(path.dirname(FILES.prod.config));
-    await fs.writeJSON(FILES.prod.config, {
+    await fs.ensureDir(path.dirname(storageFiles.prod.config));
+    await fs.writeJSON(storageFiles.prod.config, {
       runtime: {
         notification: {
           telegram: {
@@ -94,11 +94,11 @@ describe("notification dedupe", () => {
       message: "same volatility point",
     };
 
-    await notif.central(payload);
-    await notif.central(payload);
+    await systemNotifDelivery.central(payload);
+    await systemNotifDelivery.central(payload);
 
     expect(axiosPostMock).toHaveBeenCalledTimes(1);
-    expect(await fs.pathExists(FILES.prod.cache.notificationDedupe)).toBe(true);
+    expect(await fs.pathExists(storageFiles.prod.cache.notificationDedupe)).toBe(true);
   });
 
   it("sends email through the n8n CRM proxy", async () => {
@@ -106,9 +106,9 @@ describe("notification dedupe", () => {
     process.env.N8N_EMAIL_PROXY_TOKEN = "proxy-token";
     process.env.N8N_EMAIL_PROXY_URL =
       "https://crm.reinventwp.com/webhook/trading-email-proxy";
-    const { notif } = await import("@/lib/notification");
+    const { systemNotifDelivery } = await import("@/lib/system/notification/delivery");
 
-    await notif.email({
+    await systemNotifDelivery.email({
       body: "body text",
       subject: "[DAILY] report",
     });
@@ -133,9 +133,9 @@ describe("notification dedupe", () => {
   it("bounds Telegram delivery with the notification request timeout", async () => {
     process.env.TELEGRAM_BOT_TOKEN = "bot-token";
     process.env.TELEGRAM_CHAT_ID = "chat-id";
-    const { notif } = await import("@/lib/notification");
+    const { systemNotifDelivery } = await import("@/lib/system/notification/delivery");
 
-    await notif.telegram({ body: "body text", subject: "subject" });
+    await systemNotifDelivery.telegram({ body: "body text", subject: "subject" });
 
     // PROD:NOTIFICATION_REQUEST_TIMEOUT
     expect(axiosPostMock).toHaveBeenCalledWith(
@@ -159,9 +159,9 @@ describe("notification dedupe", () => {
       .mockRejectedValueOnce(new Error("temporary failure 2"))
       .mockRejectedValueOnce(new Error("temporary failure 3"))
       .mockResolvedValueOnce({ data: { ok: true } });
-    const { notif } = await import("@/lib/notification");
+    const { systemNotifDelivery } = await import("@/lib/system/notification/delivery");
 
-    const delivery = notif.email({ body: "body text", subject: "subject" });
+    const delivery = systemNotifDelivery.email({ body: "body text", subject: "subject" });
     await firstAttemptStarted;
     await vi.advanceTimersByTimeAsync(15_000);
 
@@ -180,15 +180,15 @@ describe("notification dedupe", () => {
       markFirstAttemptStarted();
       return Promise.reject(new Error("CRM unavailable"));
     });
-    const { FILES } = await import("@/components/storage");
-    const { notif } = await import("@/lib/notification");
-    const { tradeLog } = await import("@/lib/trading/helper/log");
+    const { default: storageFiles } = await import("@/lib/system/storage/files");
+    const { systemNotifDelivery } = await import("@/lib/system/notification/delivery");
+    const { systemLog } = await import("@/lib/system/logging");
     const errorLogSpy = vi
-      .spyOn(tradeLog, "error")
+      .spyOn(systemLog, "error")
       .mockImplementation(() => undefined);
 
-    await fs.ensureDir(path.dirname(FILES.prod.config));
-    await fs.writeJSON(FILES.prod.config, {
+    await fs.ensureDir(path.dirname(storageFiles.prod.config));
+    await fs.writeJSON(storageFiles.prod.config, {
       runtime: {
         notification: {
           telegram: { enabled: false, types: [] },
@@ -200,7 +200,7 @@ describe("notification dedupe", () => {
       },
     });
 
-    const delivery = notif.central({
+    const delivery = systemNotifDelivery.central({
       dashboard: "SLOW",
       key: "NOTIF_ERROR",
       dedupeKey: "failed-delivery",
@@ -217,8 +217,8 @@ describe("notification dedupe", () => {
       "[notification] email delivery failed after 3 retries",
       expect.any(Error),
     );
-    expect(await fs.pathExists(FILES.prod.cache.notificationDedupe)).toBe(false);
-    const errors = await fs.readJSON(FILES.prod.logs.errors);
+    expect(await fs.pathExists(storageFiles.prod.cache.notificationDedupe)).toBe(false);
+    const errors = await fs.readJSON(storageFiles.prod.logs.errors);
     expect(errors).toEqual([
       expect.objectContaining({
         source: "notification.email",

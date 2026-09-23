@@ -6,10 +6,7 @@ import SpeedRoundedIcon from "@mui/icons-material/SpeedRounded";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import { Alert, Box, Chip, Tooltip } from "@mui/material";
 
-import type {
-  Position,
-  PositionLastMonitoringStage,
-} from "@/lib/trading/models";
+import type { Position, PositionLastMonitoringStage } from "@/lib/system/trading";
 
 export type PositionLevelSequenceState =
   | "current"

@@ -1,5 +1,5 @@
-import type { VolatilityPoint } from "@/lib/dynamic";
-import slowTrading from "@/lib/slowTrading";
+import type { VolatilityPoint } from "@/lib/system/types";
+import { runtimeEntrySequences } from "@/lib/system/trading";
 import {
   buildDashboardVolatilityCacheWindow,
   filterDashboardEntrySignalResponse,
@@ -22,7 +22,7 @@ function point(id: string, t: number): VolatilityPoint {
 
 describe("dashboard volatility response", () => {
   it("returns only the selected range plus each symbol's latest point", () => {
-    const response = slowTrading.entrySequences.range.crop({
+    const response = runtimeEntrySequences.range.crop({
       startTimeMs: 200,
       endTimeMs: 300,
       volatilityMap: {

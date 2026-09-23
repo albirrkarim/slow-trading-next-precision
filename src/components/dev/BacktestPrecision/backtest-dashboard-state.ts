@@ -2,10 +2,9 @@ import type {
   ConfigDraft,
   DashboardState,
 } from "@/components/LiveDashboard/Navbar/navbar-types";
-import { VOLATILITY_THRESHOLD } from "@/lib/brain/constants";
-import { DEFAULT_DYNAMIC_TRADE_CONFIG_PRODUCTION } from "@/lib/dynamic/constants";
-import slowTradingAccountConfig from "@/lib/slowTrading/account-config";
-import blackSwan from "@/lib/trading/black-swan";
+import { VOLATILITY_THRESHOLD } from "@/lib/system/constants";
+import { runtimeAccountConfig, runtimeDefaults } from "@/lib/system/runtime";
+import { blackSwan } from "@/lib/system/trading/black-swan";
 
 function normalizeStartingBalance(value: number): number {
   return Number.isFinite(value) ? Math.max(0, value) : 0;
@@ -65,15 +64,17 @@ export function buildBacktestDashboardState(
     },
     blackSwan: blackSwan.state.create(),
     config: selectedAccount
-      ? slowTradingAccountConfig.trading.toEffectiveConfig(
+      ? runtimeAccountConfig.trading.toEffective(
           {
-            ...DEFAULT_DYNAMIC_TRADE_CONFIG_PRODUCTION,
+            ...runtimeDefaults.management.create(),
+            ...runtimeDefaults.trading.create(),
             ...configDraft.management,
           },
           selectedAccount,
         )
       : {
-          ...DEFAULT_DYNAMIC_TRADE_CONFIG_PRODUCTION,
+          ...runtimeDefaults.management.create(),
+          ...runtimeDefaults.trading.create(),
           ...configDraft.management,
         },
     globalConfig: { volatilityThresholdPct: VOLATILITY_THRESHOLD },

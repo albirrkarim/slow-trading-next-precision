@@ -1,7 +1,5 @@
-import { timeMsToReadable } from "@/lib/datasets/utils";
-import { isDevBacktestEnabled } from "@/lib/env/devBacktest";
-import type { SlowTradingSettingsConfig } from "@/lib/slowTrading";
-import { tradeLog } from "@/lib/trading";
+import systemConfig from "@/lib/system/config";
+import systemTime from "@/lib/system/time";
 import type { NextApiRequest, NextApiResponse } from "next";
 import type { BacktestPrecisionParams } from "./precision-api-types";
 import { precisionBacktest } from "../backtest";
@@ -10,7 +8,7 @@ export default async function backtestPrecisionHandler(
   req: NextApiRequest,
   res: NextApiResponse,
 ) {
-  if (!isDevBacktestEnabled()) {
+  if (!systemConfig.devBacktest.isEnabled()) {
     res.status(404).json({ error: "Not found" });
     return;
   }
@@ -35,42 +33,31 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
     verbose = true,
   } = params;
 
-  const settingsConfig = config as unknown as SlowTradingSettingsConfig;
-
   let { range, startTime, endTime } = params;
 
   if (startTime && endTime && range == "custom") {
-    range = `${timeMsToReadable(startTime)}_to_${timeMsToReadable(endTime)}`;
+    range = `${systemTime.formatReadable(startTime)}_to_${systemTime.formatReadable(endTime)}`;
   } else {
     startTime = undefined;
     endTime = undefined;
   }
 
-  const tradeLogSession = tradeLog.startSession({
-    categories: ["debug"],
+  const enabledAccounts = config.accounts.filter(
+    (account) => account.enabled,
+  );
+  if (enabledAccounts.length === 0) {
+    throw new Error("Enable at least one SLOW account before backtesting.");
+  }
+
+  const result = await precisionBacktest({
+    ...params,
+    range,
+    endTime,
+    startTime,
+    upToDateDecisionBacktest,
+    upToDateKlines,
     verbose: Boolean(verbose),
   });
 
-  try {
-    const enabledAccounts = settingsConfig.accounts.filter(
-      (account) => account.enabled,
-    );
-    if (enabledAccounts.length === 0) {
-      throw new Error("Enable at least one SLOW account before backtesting.");
-    }
-
-    const result = await precisionBacktest({
-      ...params,
-      range,
-      endTime,
-      startTime,
-      upToDateDecisionBacktest,
-      upToDateKlines,
-      verbose: Boolean(verbose),
-    });
-
-    res.json(result);
-  } finally {
-    tradeLog.endSession(tradeLogSession);
-  }
+  res.json(result);
 }

@@ -14,8 +14,8 @@ import {
   Typography,
 } from "@mui/material";
 
-import type { PostAverageRescueExitConfig } from "@/lib/trading/models";
-import postAverageRescue from "@/lib/trading/post-average-rescue";
+import type { PostAverageRescueExitConfig } from "@/lib/system/trading";
+import { postAverageRescue } from "@/lib/system/trading";
 
 interface PostAverageRescueExitSettingsProps {
   onChange: (config: PostAverageRescueExitConfig) => void;

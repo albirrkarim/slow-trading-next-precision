@@ -1,6 +1,6 @@
 "use client";
 
-import type { SlowEntrySequenceInterval } from "@/lib/slowTrading/client";
+import type { RuntimeEntrySequenceInterval } from "@/lib/system/trading";
 import { Box, Typography, useTheme } from "@mui/material";
 import { useMemo } from "react";
 import {
@@ -20,7 +20,7 @@ const HOUR_MS = 60 * MINUTE_MS;
 const DAY_MS = 24 * HOUR_MS;
 
 /** Returns the non-negative duration of one entry sequence. */
-function getHoldDurationMs(interval: SlowEntrySequenceInterval): number {
+function getHoldDurationMs(interval: RuntimeEntrySequenceInterval): number {
   return Math.max(0, interval.endTimeMs - interval.startTimeMs);
 }
 
@@ -39,7 +39,7 @@ function formatHoldDuration(durationMs: number): string {
 export default function EntrySequenceHoldDurationChart({
   intervals,
 }: {
-  intervals: SlowEntrySequenceInterval[];
+  intervals: RuntimeEntrySequenceInterval[];
 }) {
   const theme = useTheme();
   const data = useMemo(
@@ -48,7 +48,7 @@ export default function EntrySequenceHoldDurationChart({
   );
   const longestInterval = useMemo(
     () =>
-      intervals.reduce<SlowEntrySequenceInterval | null>(
+      intervals.reduce<RuntimeEntrySequenceInterval | null>(
         (longest, interval) =>
           !longest || getHoldDurationMs(interval) > getHoldDurationMs(longest)
             ? interval

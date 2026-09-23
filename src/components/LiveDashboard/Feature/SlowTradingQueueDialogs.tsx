@@ -13,14 +13,13 @@ import {
 import { useEffect, useState } from "react";
 
 import ButtonDialog from "@/components/ui/ButtonDialog";
-import type {
-  SlowTradingManualQueueCreateInput,
-  SlowTradingWithdrawalSchedule,
-} from "@/lib/slowTrading";
+import type { RuntimeManualQueueCreateInput } from "@/lib/system/queue";
+import type { RuntimeWithdrawalSchedule } from "@/lib/system/runtime";
+
 
 interface QueueCreateDialogProps {
   disabled?: boolean;
-  onCreate: (input: SlowTradingManualQueueCreateInput) => Promise<void>;
+  onCreate: (input: RuntimeManualQueueCreateInput) => Promise<void>;
 }
 
 export function SafeHavenQueueCreateDialog(
@@ -112,7 +111,7 @@ export function WithdrawalQueueCreateDialog(
     activeMode: "live" | "sandbox";
     autoEnabled: boolean;
     exchangeType: string;
-    schedules: SlowTradingWithdrawalSchedule[];
+    schedules: RuntimeWithdrawalSchedule[];
   },
 ) {
   const {

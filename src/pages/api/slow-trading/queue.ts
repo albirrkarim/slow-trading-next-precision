@@ -1,21 +1,19 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import slowTrading, {
-  type SlowTradingManualQueueCreateInput,
-  type SlowTradingQueueItem,
-  type SlowTradingQueues,
-} from "@/lib/slowTrading";
-import type { SlowTradingQueueKind } from "@/lib/slowTrading/queue";
-import { tradeLog } from "@/lib/trading/helper/log";
+import { runtimeQueue } from "@/lib/system/queue";
+import type { RuntimeManualQueueCreateInput, RuntimeQueueItem, RuntimeQueueKind, RuntimeQueues } from "@/lib/system/queue";
+import { systemLog } from "@/lib/system/logging";
+import { runtimeLogs } from "@/lib/system/storage";
 
-type SlowTradingQueueResponse =
-  | SlowTradingQueues
-  | SlowTradingQueueItem
-  | { deleted: boolean; id: string; kind: SlowTradingQueueKind }
+
+type RuntimeQueueResponse =
+  | RuntimeQueues
+  | RuntimeQueueItem
+  | { deleted: boolean; id: string; kind: RuntimeQueueKind }
   | { error: string };
 
 /** Parses the dashboard queue discriminator. */
-function parseQueueKind(value: unknown): SlowTradingQueueKind | null {
+function parseQueueKind(value: unknown): RuntimeQueueKind | null {
   const raw = Array.isArray(value) ? value[0] : value;
   if (raw === "safe_haven" || raw === "withdrawal") {
     return raw;
@@ -26,19 +24,19 @@ function parseQueueKind(value: unknown): SlowTradingQueueKind | null {
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<SlowTradingQueueResponse>,
+  res: NextApiResponse<RuntimeQueueResponse>,
 ) {
   try {
     if (req.method === "GET") {
-      res.status(200).json(await slowTrading.queue.items.load());
+      res.status(200).json(await runtimeQueue.items.load());
       return;
     }
 
     if (req.method === "POST") {
-      const body = (req.body ?? {}) as Partial<SlowTradingManualQueueCreateInput>;
+      const body = (req.body ?? {}) as Partial<RuntimeManualQueueCreateInput>;
 
       if (body.kind === "safe_haven") {
-        const item = await slowTrading.queue.items.createManual({
+        const item = await runtimeQueue.items.createManual({
           kind: "safe_haven",
           amountUSDT: Number(body.amountUSDT),
         });
@@ -47,7 +45,7 @@ export default async function handler(
       }
 
       if (body.kind === "withdrawal") {
-        const item = await slowTrading.queue.items.createManual({
+        const item = await runtimeQueue.items.createManual({
           kind: "withdrawal",
           scheduleId: String(body.scheduleId ?? "").trim(),
         });
@@ -74,7 +72,7 @@ export default async function handler(
         return;
       }
 
-      const deleted = await slowTrading.queue.items.cancel(kind, id);
+      const deleted = await runtimeQueue.items.cancel(kind, id);
       if (!deleted) {
         res.status(404).json({ error: "Queue item was not found." });
         return;
@@ -87,7 +85,7 @@ export default async function handler(
     res.setHeader("Allow", ["GET", "POST", "DELETE"]);
     res.status(405).json({ error: `Method ${req.method} Not Allowed` });
   } catch (error) {
-    await slowTrading.storage.logs
+    await runtimeLogs
       .appendError({
         source: "api.slow-trading.queue",
         error,
@@ -96,7 +94,7 @@ export default async function handler(
         },
       })
       .catch((logError) => {
-        tradeLog.error(
+        systemLog.error(
           "[slow-trading] failed to write queue API error log",
           logError,
         );

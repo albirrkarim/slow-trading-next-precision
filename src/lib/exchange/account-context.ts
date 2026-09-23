@@ -1,9 +1,9 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import type { ExchangeType } from "./types";
+import { DEFAULT_EXCHANGE_ACCOUNT_SLUG } from "./types";
+import type { ExchangeAccountSlug, ExchangeAccountType } from "./types";
 
-export type ExchangeAccountSlug = string;
-export type ExchangeAccountType = ExchangeType;
-export const DEFAULT_EXCHANGE_ACCOUNT_SLUG: ExchangeAccountSlug = "binance-1";
+export type { ExchangeAccountSlug, ExchangeAccountType } from "./types";
+export { DEFAULT_EXCHANGE_ACCOUNT_SLUG };
 
 export interface BinanceCredentials {
   apiKey: string;

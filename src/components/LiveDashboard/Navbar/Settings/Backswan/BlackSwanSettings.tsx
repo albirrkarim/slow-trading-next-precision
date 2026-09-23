@@ -16,10 +16,7 @@ import {
   Typography,
 } from "@mui/material";
 import Link from "next/link";
-import blackSwanModel, {
-  type BlackSwanConfig,
-  type BlackSwanStatus,
-} from "@/lib/trading/black-swan";
+import blackSwanModel, {type BlackSwanConfig, type BlackSwanStatus} from "@/lib/system/trading/black-swan";
 import SettingsDialogSection from "../Components/SettingsDialogSection";
 import SettingsInfoField from "../Components/SettingsInfoField";
 import BlackSwanSavingsPreview from "./BlackSwanSavingsPreview";

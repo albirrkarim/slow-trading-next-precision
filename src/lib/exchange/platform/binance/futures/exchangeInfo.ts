@@ -1,4 +1,4 @@
-import { tradeLog } from "@/lib/trading/helper/log";
+import { systemLog } from "@/lib/system/logging";
 import { requestPublic } from "../utils";
 import binanceRequestCoordinator from "../request-coordinator";
 
@@ -65,7 +65,7 @@ export async function getFuturesSymbolInfo(
     return null;
   } catch (e) {
     if (binanceRequestCoordinator.error.isRateLimit(e)) throw e;
-    tradeLog.error("Failed to fetch futures exchange info", e);
+    systemLog.error("Failed to fetch futures exchange info", e);
     return null;
   }
 }

@@ -1,7 +1,7 @@
-import type { InitialBalance } from "@/lib/trading";
+import type { UnifiedBalance } from "@/lib/exchange/types";
 import type { BaseCurrency } from "../constants";
 import { requestPrivate } from "../utils";
-import { tradeLog } from "@/lib/trading/helper/log";
+import { systemLog } from "@/lib/system/logging";
 
 
 interface AccountAssetInfo {
@@ -69,7 +69,7 @@ export async function asset(symbol: string): Promise<AccountAssetInfo | null> {
 
 export async function getBalance(
   symbol: string
-): Promise<InitialBalance | null> {
+): Promise<UnifiedBalance | null> {
   const sym = symbol.split("_"); // Split "BTC_USDT" into ["BTC", "USDT"]
 
   const baseAsset = sym[0]; // BTC
@@ -79,7 +79,7 @@ export async function getBalance(
   const quote = await asset(quoteAsset);
 
   if (!base || !quote) {
-    tradeLog.error("Error fetching balances");
+    systemLog.error("Error fetching balances");
     return null;
   }
 

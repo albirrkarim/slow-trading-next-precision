@@ -1,5 +1,5 @@
 import { requestPrivate } from "../utils";
-import { tradeLog } from "@/lib/trading/helper/log";
+import { systemLog } from "@/lib/system/logging";
 
 /**
  * OKX Asset Balance Response (Funding Account)
@@ -57,7 +57,7 @@ export async function getFundingBalances(ccy?: string): Promise<FundingAssetBala
             total: parseFloat(item.bal)
         }));
     } catch (error) {
-        tradeLog.error(`Error fetching funding balance${ccy ? ` for ${ccy}` : ''}:`, error);
+        systemLog.error(`Error fetching funding balance${ccy ? ` for ${ccy}` : ''}:`, error);
         return [];
     }
 }
