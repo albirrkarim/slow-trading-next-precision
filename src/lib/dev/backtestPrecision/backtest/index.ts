@@ -15,6 +15,7 @@ import {
   createInitialBalance,
   createInitialVPointsMap,
   createProgressLogger,
+  snapshotAggregateBalance,
 } from "./utils";
 import type { BacktestPrecisionResult } from "./backtest-precision-types";
 
@@ -103,6 +104,17 @@ export async function precisionBacktest(
   };
   let clockTime = state.currentTime;
   const history: RuntimeEngineState["openPositions"] = [];
+  const balanceSnapshots: BacktestPrecisionResult["balanceSnapshots"] = [];
+  const captureBalance = () => {
+    const snapshot = snapshotAggregateBalance(state.balance, state.currentTime);
+    const last = balanceSnapshots[balanceSnapshots.length - 1];
+    if (last && last.t === snapshot.t) {
+      balanceSnapshots[balanceSnapshots.length - 1] = snapshot;
+    } else {
+      balanceSnapshots.push(snapshot);
+    }
+  };
+  captureBalance();
   const logProgress = createProgressLogger(
     clockTime,
     endTime,
@@ -154,17 +166,16 @@ export async function precisionBacktest(
       return true;
     },
     onAction: async (decision, context) => {
-      if (decision.type === "entry") {
-        return entryAction.execute(context, decision);
-      }
-      if (decision.type === "averaging") {
-        return tradingAveraging.execute(context, decision);
-      }
-      if (decision.type === "exit") {
-        return tradingExit.execute(context, decision);
-      }
-
-      return null;
+      const executed =
+        decision.type === "entry"
+          ? await entryAction.execute(context, decision)
+          : decision.type === "averaging"
+            ? await tradingAveraging.execute(context, decision)
+            : decision.type === "exit"
+              ? await tradingExit.execute(context, decision)
+              : null;
+      captureBalance();
+      return executed;
     },
     onExit: async (position) => {
       history.push(position);
@@ -177,6 +188,7 @@ export async function precisionBacktest(
 
   const engine = new RuntimeEngine(state, adapter);
   await engine.start();
+  captureBalance();
 
   const resultVPointsMap = Object.fromEntries(
     [
@@ -197,5 +209,6 @@ export async function precisionBacktest(
     exchangeType: params.config.management.exchangeType,
     vPointsMap: resultVPointsMap,
     positions: [...history, ...state.openPositions],
+    balanceSnapshots,
   };
 }

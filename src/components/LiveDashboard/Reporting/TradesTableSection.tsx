@@ -25,6 +25,7 @@ import moment from "moment";
 import { useMemo, useState } from "react";
 import { useSnackbar } from "notistack";
 import TradeChartBase from "@/components/LiveDashboard/Shared/TradeChartBase";
+import format from "@/lib/system/utils/format";
 import { NetProfitPercentHistorySparkline } from "@/components/LiveDashboard/Shared/NetProfitPercentHistorySparkline";
 import PositionLevelSequence, {
   buildHistoryPositionLevelSequence,
@@ -290,12 +291,12 @@ function TradeChartDialog({
                 <Typography variant="body2">
                   <strong>Entry:</strong> {row.exposure.averageEntryPrice?.toFixed(6)} @{" "}
                   {row.opened.t
-                    ? new Date(row.opened.t).toLocaleString()
+                    ? format.timeForLog(row.opened.t)
                     : "—"}
                 </Typography>
                 <Typography variant="body2">
                   <strong>Exit:</strong> {row.closed?.price?.toFixed(6)} @{" "}
-                  {row.closed?.t ? new Date(row.closed?.t).toLocaleString() : "—"}
+                  {row.closed?.t ? format.timeForLog(row.closed.t) : "—"}
                 </Typography>
                 <Typography
                   variant="body2"
@@ -467,7 +468,7 @@ export function TradesTableSection({
 
     if (
       !confirm(
-        `Delete trade history for ${row.symbol} entered at ${row.opened.t ? new Date(row.opened.t).toLocaleString() : "unknown time"}?`,
+        `Delete trade history for ${row.symbol} entered at ${row.opened.t ? format.timeForLog(row.opened.t) : "unknown time"}?`,
       )
     ) {
       return;

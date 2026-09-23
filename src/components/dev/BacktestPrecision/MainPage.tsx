@@ -19,6 +19,7 @@ import { useEffect, useState } from "react";
 import { delayExecution } from "../../client/utils";
 import { endpoints } from "../../endpoints";
 import PrecisionBTestConfig, { DEFAULT_BACKTEST_CONFIG } from "./Config";
+import BacktestBalanceChart from "./BalanceChart";
 import BacktestDailyPnlCalendar from "./DailyPnlCalendar";
 import type { BacktestConfig } from "./types";
 import VPointsResult from "./VPointsResult";
@@ -268,6 +269,9 @@ export default function DynamicTradeAnalytics() {
                     <BacktestDailyPnlCalendar
                         positions={data.positions}
                         settings={backtestConfig.settings}
+                    />
+                    <BacktestBalanceChart
+                        snapshots={data.balanceSnapshots}
                     />
                 </Box>
             )}

@@ -2,6 +2,7 @@ import type { RuntimeEngineState } from "@/lib/precision/types";
 import type { FetchKlines } from "@/lib/system/types";
 import vpoints from "@/lib/system/utils/vpoints";
 import type { BacktestPrecisionParams } from "../api/precision-api-types";
+import type { BacktestBalanceSnapshot } from "./backtest-precision-types";
 
 /** Logs logical backtest progress once per UTC day and once at completion. */
 export function createProgressLogger(
@@ -59,6 +60,34 @@ export function createInitialBalance(
   }
 
   return balance;
+}
+
+/** Sums every account balance summary into one aggregate snapshot point. */
+export function snapshotAggregateBalance(
+  balance: RuntimeEngineState["balance"],
+  t: number,
+): BacktestBalanceSnapshot {
+  const totals = {
+    available: 0,
+    locked: 0,
+    reserved: 0,
+    safeHaven: 0,
+    spendable: 0,
+    startingBalance: 0,
+    total: 0,
+  };
+
+  for (const summary of Object.values(balance)) {
+    totals.available += summary.available;
+    totals.locked += summary.locked;
+    totals.reserved += summary.reserved;
+    totals.safeHaven += summary.safeHaven;
+    totals.spendable += summary.spendable;
+    totals.startingBalance += summary.startingBalance;
+    totals.total += summary.total;
+  }
+
+  return { t, ...totals };
 }
 
 /** Creates volatility history using only candles closed by the runtime start. */
