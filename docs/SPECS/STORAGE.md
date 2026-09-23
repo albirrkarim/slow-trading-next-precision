@@ -123,8 +123,6 @@ formation from those klines with the shared detector
 across runs (leaderboards, precision test cases) live under the `dev/`
 storage root.
 
-TC: `BTEST:BACKTEST_VOLATILITY_DATASET`
-
 ## C.6 Backtest Market Selection
 
 The backtest must use market data from the market selected by its trading

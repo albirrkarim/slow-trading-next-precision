@@ -19,13 +19,4 @@ rebuild. `BOTH:` means the behavior must exist in backtest AND production;
   planned, or remove them as legacy. If kept, `BOTH:SAFE_HAVEN_QUEUE` should
   also become `PROD:` (spec text scopes it to "live and sandbox modes").
 
-## Implemented but missing source markers
-
-- [ ] `BTEST:BACKTEST_VOLATILITY_DATASET`, `BTEST:BACKTEST_MARKET_TYPE` —
-  implemented in `src/lib/dev/backtestPrecision/backtest/data.ts` +
-  `storage/datasets/PRECISION_BACKTEST/`; no markers.
-- [ ] `BOTH:BALANCE_AVAILABLE` / `BALANCE_SPENDABLE` / `BALANCE_RESERVED` /
-  `BALANCE_LOCKED` / `BALANCE_SAFE_HAVEN` — updated in shared
-  `monitoring/position.ts` + `entry-action.ts`; no markers.
-
 

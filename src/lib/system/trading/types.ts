@@ -360,11 +360,17 @@ export interface AdaptiveAveragingConfig {
 
 /** Account balance summary shared by the runtime and dashboard surfaces. */
 export interface BalanceSummary {
+  // BOTH:BALANCE_AVAILABLE — exchange free quote = spendable + reserved +
+  // safeHaven.
   available: number;
+  // BOTH:BALANCE_RESERVED — virtual reserve held for averaging open positions.
   reserved: number;
+  // BOTH:BALANCE_SPENDABLE — virtual; available - reserved - safeHaven.
   spendable: number;
+  // BOTH:BALANCE_SAFE_HAVEN — virtual; protected amount excluded from spendable.
   safeHaven: number;
   startingBalance: number;
+  // BOTH:BALANCE_LOCKED — total margin held by active open positions.
   locked: number;
   total: number;
 }

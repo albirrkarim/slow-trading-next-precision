@@ -34,6 +34,8 @@ function getDayFile(symbol: string, time: number): string {
 }
 
 /** Maps the configured trading mode to the exchange market type. */
+// BTEST:BACKTEST_MARKET_TYPE — futures runs fetch Futures klines, spot runs
+// fetch Spot klines; datasets stay market-specific.
 function resolveMarketType(params: BacktestPrecisionParams): MarketType {
   return params.config.management.tradingMode === "futures"
     ? "FUTURES"
