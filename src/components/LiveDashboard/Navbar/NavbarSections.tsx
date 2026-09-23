@@ -217,7 +217,7 @@ export function NavbarIdentitySection({
               <Chip
                 size="small"
                 icon={<AccountCircleIcon fontSize="small" />}
-                label={`${account.name} · ${account.activeMode.toUpperCase()}`}
+                label={account.name}
                 variant="outlined"
                 color="default"
                 sx={{ maxWidth: 150 }}
