@@ -2,10 +2,12 @@ import { createHash } from "crypto";
 import fs from "fs-extra";
 import path from "path";
 import { jsonFile } from "@/lib/system/storage";
+import sanitize from "@/lib/system/storage/sanitize";
 import type { ExchangeType } from "@/lib/system/types";
+import type { BacktestPrecisionParams } from "./precision-api-types";
 import type { BacktestPrecisionResult } from "../backtest/backtest-precision-types";
 
-const CACHE_VERSION = 2;
+const CACHE_VERSION = 3;
 
 // Local-only cache — `storage/persistent` syncs between instances, so
 // results live under the gitignored `storage/cache/` next to `datasets/`.
@@ -20,10 +22,9 @@ const RESULT_FIELDS = [
 
 interface BacktestResultCacheMeta {
   createdAt: number;
-  endTime?: number;
   exchangeType: ExchangeType;
-  range: string;
-  startTime?: number;
+  /** Effective request params with credential values masked out. */
+  params: Record<string, unknown>;
   v: number;
 }
 
@@ -101,13 +102,16 @@ async function read(
   }
 }
 
-/** Persists one result key per file so each artifact is inspectable alone. */
+/**
+ * Persists one result key per file so each artifact is inspectable alone.
+ * `meta.json` records the effective request params — the full inference input
+ * — with credential values masked, so a cached run can be reproduced and
+ * debugged without re-deriving what produced it.
+ */
 async function write(params: {
-  endTime?: number;
   key: string;
-  range: string;
+  params: BacktestPrecisionParams;
   result: BacktestPrecisionResult;
-  startTime?: number;
 }): Promise<void> {
   const dir = cacheDir(params.key);
   for (const field of RESULT_FIELDS) {
@@ -117,15 +121,16 @@ async function write(params: {
     );
   }
 
+  // `initialState` is a full runtime snapshot — far too large for meta, and
+  // precision-checker replays never reach this writer anyway.
+  const { initialState: _initialState, ...requestParams } = params.params;
   const meta: BacktestResultCacheMeta = {
     createdAt: Date.now(),
-    endTime: params.endTime,
     exchangeType: params.result.exchangeType,
-    range: params.range,
-    startTime: params.startTime,
+    params: sanitize.maskSecrets(requestParams) as Record<string, unknown>,
     v: CACHE_VERSION,
   };
-  await jsonFile.write.atomic(path.join(dir, "meta.json"), meta);
+  await fs.outputJson(path.join(dir, "meta.json"), meta, { spaces: 2 });
 }
 
 const backtestResultCache = {

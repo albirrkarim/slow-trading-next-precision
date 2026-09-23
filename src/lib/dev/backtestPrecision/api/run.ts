@@ -96,11 +96,17 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
   if (useCache) {
     try {
       await backtestResultCache.write({
-        endTime,
         key: cacheKey,
-        range,
+        params: {
+          ...params,
+          endTime,
+          range,
+          startTime,
+          upToDateDecisionBacktest,
+          upToDateKlines,
+          verbose,
+        },
         result,
-        startTime,
       });
       body.cachePath = cachePath;
     } catch (error) {

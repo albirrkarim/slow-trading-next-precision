@@ -7,6 +7,7 @@ import type {
 import type { RuntimeMode } from "../runtime/types";
 import storageFiles from "./files";
 import jsonFile from "./json-file";
+import sanitize from "./sanitize";
 
 /** Persistent operational error log triage state. */
 export type RuntimeErrorStatus = "new" | "dismissed" | "solved";
@@ -151,31 +152,6 @@ function toJsonSafeValue(value: unknown): unknown {
   }
 }
 
-const SECRET_PATH_SEGMENT =
-  /token|secret|password|api.?key|chat.?id|private|credential/i;
-const MASKED_VALUE = "••••••";
-
-/** Checks whether any config path segment names a credential to mask. */
-function isSensitivePath(path: string): boolean {
-  return path.split(".").some((segment) => SECRET_PATH_SEGMENT.test(segment));
-}
-
-/** Replaces credential values anywhere inside a stored config value. */
-function maskSecrets(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map(maskSecrets);
-  }
-  if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value).map(([key, entry]) => [
-        key,
-        SECRET_PATH_SEGMENT.test(key) ? MASKED_VALUE : maskSecrets(entry),
-      ]),
-    );
-  }
-  return value;
-}
-
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
@@ -275,22 +251,22 @@ async function appendConfig(params: {
     id: createLogId("config"),
     createdAt: params.timestamp ?? Date.now(),
     changes: params.changes.map((change) => {
-      const sensitive = isSensitivePath(change.path);
+      const sensitive = sanitize.isSensitivePath(change.path);
       return {
         path: change.path,
         ...(change.previous === undefined
           ? {}
           : {
               previous: sensitive
-                ? MASKED_VALUE
-                : maskSecrets(toJsonSafeValue(change.previous)),
+                ? sanitize.MASKED_VALUE
+                : sanitize.maskSecrets(toJsonSafeValue(change.previous)),
             }),
         ...(change.next === undefined
           ? {}
           : {
               next: sensitive
-                ? MASKED_VALUE
-                : maskSecrets(toJsonSafeValue(change.next)),
+                ? sanitize.MASKED_VALUE
+                : sanitize.maskSecrets(toJsonSafeValue(change.next)),
             }),
       };
     }),
