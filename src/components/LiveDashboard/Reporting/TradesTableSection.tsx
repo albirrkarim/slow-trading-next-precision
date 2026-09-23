@@ -294,6 +294,9 @@ function TradeChartDialog({
             header={
               <>
                 <Typography variant="body2">
+                  <strong>Account:</strong> {row.account}
+                </Typography>
+                <Typography variant="body2">
                   <strong>Entry:</strong> {row.exposure.averageEntryPrice?.toFixed(6)} @{" "}
                   {row.opened.t
                     ? format.timeForLog(row.opened.t)
