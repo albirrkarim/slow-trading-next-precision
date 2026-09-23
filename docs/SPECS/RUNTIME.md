@@ -174,21 +174,12 @@ dark dashboard themes.
 
 TC: `PROD:STAGE_RUN_STATS`
 
-The trading and Management stages may use shared volatility memory. The existing vPoint
-sync throttle remains authoritative; a one-minute Speedup interval does not
-force new five-minute klines or bypass volatility throttling.
-
-- Kline syncing is throttled according to the latest volatility point's
-  distance from `config.minActionableAbsoluteLevel`: points three or more
-  absolute levels below the actionable level sync after 6 hours, points two
-  levels below it sync after 4 hours, and points one level below or at/above it
-  keep the normal 5-minute vPoint sync cadence. This preserves the previous level `0`/`1`/`2`
-  behavior when the actionable level is `3`. A volatility memory without a
-  previous sync time syncs immediately. An empty volatility memory that already
-  completed a no-point sync retries after 6 hours instead of refetching six
-  months of klines every cycle.
-
-TC: `BOTH:VOLATILITY_LEVEL_SYNC_THROTTLE`
+The trading and Management stages may use shared volatility memory. Each
+symbol's vPoint sync is incremental: the runtime remembers the last processed
+kline open time per symbol and interval, so a pass fetches only the candles
+since that cursor instead of re-reading the whole detection window. A
+one-minute Speedup interval still uses 1-minute klines; standard passes use
+5-minute klines.
 
 Capture Entry feeds its eligible coins' latest shared volatility data into the
 the Multi entry gate and may execute entry logic when automatic entry is enabled.

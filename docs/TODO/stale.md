@@ -16,11 +16,6 @@ rebuild. `BOTH:` means the behavior must exist in backtest AND production;
 - [ ] `BOTH:SAFE_HAVEN_QUEUE` (RUNTIME.md) — the spec text itself scopes it to
   "live and sandbox modes"; the withdrawal/safe-haven queue never runs in
   backtest. Should be `PROD:`.
-- [ ] `BOTH:VOLATILITY_LEVEL_SYNC_THROTTLE` (RUNTIME.md) — documented level-
-  distance kline sync throttle (6h / 4h / 5min by distance from
-  `minActionableAbsoluteLevel`) has NO implementation anywhere — no
-  `lastSync`/level-distance sync code exists. Either implement or mark the
-  section as planned.
 
 ## `PROD:` markers on code that is actually shared (should be `BOTH:`)
 
@@ -53,7 +48,6 @@ rebuild. `BOTH:` means the behavior must exist in backtest AND production;
 - [ ] `BOTH:BALANCE_AVAILABLE` / `BALANCE_SPENDABLE` / `BALANCE_RESERVED` /
   `BALANCE_LOCKED` / `BALANCE_SAFE_HAVEN` — updated in shared
   `monitoring/position.ts` + `entry-action.ts`; no markers.
-- [ ] `BOTH:VOLATILITY_LEVEL_SYNC_THROTTLE` — missing impl AND marker.
 
 ## Verified correct as `PROD:` (no change)
 
