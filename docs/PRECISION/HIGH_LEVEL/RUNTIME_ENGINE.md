@@ -32,9 +32,10 @@ averaging, exit, accounting, and position-update rules. Differences belong in
 the environment adapters, such as historical versus current data and simulated
 versus actual fills.
 
-V1 reuses Multi's proven behavior from `src/lib/slowTrading` and
-`src/lib/trading`. It does not redesign strategy rules or introduce an event
-framework. Multi is the V1 strategy; Hedge and Streak follow in V2.
+V1 reuses Multi's proven behavior, dissolved into `src/lib/system/trading/`
+and `src/lib/system/utils/`. It does not redesign strategy rules or
+introduce an event framework. Multi is the V1 strategy; Hedge and Streak
+follow in V2.
 
 TC: `BOTH:SHARED_RUNTIME_ENGINE`
 

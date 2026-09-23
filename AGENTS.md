@@ -4,7 +4,7 @@ These instructions apply to the whole repository.
 
 ## Pre-Implementation
 
-- Read `docs/slow/SPECS/_SPECS.md` before changing SLOW trading behavior.
+- Read `docs/SPECS/_SPECS.md` before changing trading behavior.
 - Read the relevant TypeScript JSDoc/type comments before changing a model, config, API, storage shape, exchange adapter, trading executor, or dashboard component.
 - Check both backtest and production/live flows before deciding where a behavior belongs.
 
@@ -51,10 +51,13 @@ export type * from "./types";
 - Do not add JSDoc to React components unless it is genuinely needed.
 - Prefer `condition && <Component />` for JSX conditional rendering instead of `condition ? <Component /> : null`.
 - Keep implementation boundaries clear:
-  - `src/lib/dynamic/**` is backtest/dynamic simulation logic.
-  - `src/lib/slowTrading/**` is SLOW persistent/runtime orchestration.
-  - `src/lib/trading/execute/**` is entry, exit, averaging, and execution accounting.
+  - `src/lib/precision/**` is the shared runtime engine for backtest, sandbox, and live.
+  - `src/lib/production/**` is the live/sandbox environment adapter.
+  - `src/lib/dev/**` is dev-page and backtest tooling.
+  - `src/lib/system/trading/**` is the Multi strategy (entry, exit, averaging, reserve, reporting).
+  - `src/lib/system/**` is shared runtime, storage, notification, and utility code.
   - `src/lib/exchange/**` is exchange abstraction and adapter logic.
+- API route families mirror `src/pages/api/`: `system/` (dashboard ops), `market/` (market data), `dev/` (dev tools), `pin`, `mcp`. Client calls go through `src/components/endpoints/` — the registry key path mirrors the URL path; never hardcode `/api/` literals in components.
 - Do not introduce broad refactors while fixing a specific behavior.
 
 ## Efficiency and Storage

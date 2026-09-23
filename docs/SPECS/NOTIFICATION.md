@@ -75,9 +75,8 @@ Notification type settings use a rich route-local shape:
 }
 ```
 
-Telegram and Email may use different parameters. Existing storage is converted
-once through `/api/alter/notification`; runtime normalization only accepts the
-rich type shape.
+Telegram and Email may use different parameters. Runtime normalization only
+accepts the rich type shape; there is no migration endpoint.
 
 TC: `PROD:NOTIF_STALE_POSITION`
 

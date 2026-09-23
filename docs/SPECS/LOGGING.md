@@ -1,4 +1,4 @@
-I need it record, and showing to the UI page /slow on the bottomest using the headermetrics component, only when i click expand so it will load the data and showing to the UI as table.
+I need it record, and showing to the UI page `/` on the bottomest using the headermetrics component, only when i click expand so it will load the data and showing to the UI as table.
 
 - Error Logging
 
@@ -33,9 +33,8 @@ diagnostic details.
 
 TC: `PROD:ERROR_LOG_COPY`
 
-Legacy records are migrated explicitly through
-`/api/alter/error-log-status`, which assigns `"new"` only when `status` is
-missing. Runtime log loading does not normalize legacy records.
+Every error is written with `status: "new"`; there is no legacy shape.
+Status updates go through `PATCH /api/system/logs`.
 
 - Coin Management Log
 
@@ -49,7 +48,7 @@ persistent management record.
 
 TC: `PROD:MANAGEMENT_LOG`
 
-The `/slow` dashboard displays `Coin Management Logs` immediately below
+The `/` dashboard displays `Coin Management Logs` immediately below
 `Error Logs`. It uses `HeaderMetrics`, requests data only when first expanded,
 and presents the records as a table. Operators can permanently delete one row
 or use `Delete All`; both actions require confirmation.

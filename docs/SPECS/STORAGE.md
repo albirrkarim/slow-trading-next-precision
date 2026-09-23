@@ -6,14 +6,20 @@ This document defines the required SLOW storage behavior.
 
 TC : `PROD:STORAGE_SOURCE_OF_TRUTH`
 
-Everything in the UI of Slow Trading must be loaded from files under:
+Everything in the UI must be loaded from files under the instance storage
+root:
 
-`storage/persistent/instances/[PORT]/slow`
+`storage/persistent/instances/[PORT]/{prod,dev}`
 
-This folder is the source-of-truth root for slow trading. The data may be split into multiple files such as config, memory, history, volatility cache, and priceNorm cache.
+`prod/` holds the live and sandbox runtime state; `dev/` holds backtest and
+precision-checker artifacts. Account-owned data lives under
+`prod/accounts/[slug]/`; genuinely shared data (catalog `config.json` +
+`accounts.json`, public caches) stays at the `prod/` root. This root is the
+source of truth. The data may be split into multiple files such as config,
+memory, history, volatility cache, and market caches.
 
 The latest successful public instance-IP check is stored compactly in
-`slow/ip.json` as `{ "ip": string, "t": number }`. The navbar reads this
+`prod/cache/ip.json` as `{ "ip": string, "t": number }`. The navbar reads this
 snapshot, shows `t` as the last-checked time, and copies the IP to the clipboard
 when its chip is activated. The file is updated only by the startup check, not
 by trading cycles.
@@ -66,27 +72,23 @@ TC: `BOTH:MONTHLY_TRADE_SHARPE`
 
 ### C.3.2 Multi-account Daily Balance Snapshots
 
-Each account writes its own live and sandbox UTC-day balance snapshot. The
-Daily PnL Calendar aggregates snapshots, starting balances, and closed-trade
-history for enabled accounts only. For an account without a snapshot on an
-observed day, the calendar carries forward that account's latest earlier
-balance; it does not include an account before that account's first snapshot.
-
-The former mode-wide snapshot file is a read-only compatibility fallback and
-is used only while none of the enabled accounts has account-scoped snapshot
-data. It must not be assigned to a particular account or combined with new
-account-scoped data.
+Each account writes its own live and sandbox UTC-day balance snapshot under
+`prod/accounts/[slug]/`. The Daily PnL Calendar aggregates snapshots,
+starting balances, and closed-trade history for enabled accounts only. For an
+account without a snapshot on an observed day, the calendar carries forward
+that account's latest earlier balance; it does not include an account before
+that account's first snapshot.
 
 TC: `PROD:MULTI_ACCOUNT_DAILY_BALANCE_SNAPSHOTS`
 
 ## C.4 Live Exchange Account Storage
 
-SLOW stores live exchange accounts in `accounts.json`, separate from strategy
-`config.json`. Each account has a stable `id`, dashboard label, exchange
-`type`, and credentials for that exchange. `runtime.exchangeAccountId` in
-`config.json` selects which saved account is used for private live calls.
-Existing exchange environment credentials may seed the default saved accounts
-on first boot and remain a fallback when no stored account context is active.
+The catalog keeps live exchange accounts in `prod/accounts.json`, separate
+from shared strategy/runtime config in `prod/config.json`. Each account has a
+stable `slug`, dashboard label, exchange `type`, and credentials for that
+exchange; every enabled account runs its own private calls in each cycle.
+`retiredSlugs` reserves deleted account slugs forever so a removed account's
+folder can never collide with a new one.
 
 Loading accounts is read-only when `accounts.json` already exists. Explicit
 account, config, and memory saves stage complete JSON in a unique temporary file
@@ -114,41 +116,29 @@ TC: `PROD:MULTI_ACCOUNT_TRADING_NOTES`
 
 ## C.5 Backtest Storage
 
-The dynamic backtest reads compact volatility events from
-`storage/datasets/UI_TEMP/VOLATILITY/[exchange]/[range]`. Missing files are
-created there from in-memory klines. Backtests do not create or depend on the
-legacy `UI_TEMP/KLINES` and `UI_TEMP/COMMON_TIME` datasets.
+The Precision backtest reads its 1-minute kline dataset from
+`storage/datasets/PRECISION_BACKTEST/1m/[symbol]`, and reconstructs vPoint
+formation from those klines with the shared detector
+(`src/lib/system/utils/vpoints.ts`). Backtest artifacts that must persist
+across runs (leaderboards, precision test cases) live under the `dev/`
+storage root.
 
 TC: `BTEST:BACKTEST_VOLATILITY_DATASET`
 
 ## C.6 Backtest Market Selection
 
-The dynamic backtest must use volatility data from the market selected by its
-trading mode. Futures backtests use Futures volatility points and Spot
-backtests use Spot volatility points. If a compatible volatility cache is
-missing, its source klines are fetched from only the selected market.
+The backtest must use market data from the market selected by its trading
+mode. Futures runs use Futures klines and Spot runs use Spot klines; source
+klines are fetched from only the selected market.
 
 TC: `BTEST:BACKTEST_MARKET_TYPE`
 
 ## C.7 Canonical Position Storage
 
-Production, sandbox, history, and dynamic backtest storage use the same nested
-`Position` contract defined in `docs/slow/OPTIMIZATION/DATA_TYPE.md`.
-Runtime code does not read the former flat position keys.
-
-The hard-cutover migration is exposed at `/api/alter/position`:
-
-- `GET /api/alter/position?dryRun=true` scans and validates without writing.
-- `POST /api/alter/position` migrates every validated changed file as compact
-  JSON.
-- The position migration only selects mode memory, legacy state, symbol history,
-  and dynamic-backtest files. It must never select SLOW `config.json`,
-  `accounts.json`, or other operational configuration files.
-- Changed files are replaced atomically and retain a timestamped
-  `.position-alter.<id>.bak` recovery copy.
-- All changed files are prepared and validated before replacement begins.
-- A failed replacement restores the staged backups.
-- Re-running the endpoint after migration is idempotent.
+Production, sandbox, history, and backtest storage use the same `Position`
+contract defined in `src/lib/system/trading/types.ts`. There is no legacy
+flat-position format and no migration endpoint — the system has not been
+deployed, so storage starts canonical.
 
 TC: `PROD:CANONICAL_POSITION_STORAGE`
 
@@ -173,11 +163,7 @@ intermediate volatility-point path as `position.vPoints`. Each item reuses
 The array excludes the entry point already stored in `opened.vPoint` and the
 exit point stored in `closed.vPoint`. An empty array means the path was captured
 successfully but no intermediate vPoint occurred. An omitted field means the
-path belongs to legacy data or could not be recovered.
-
-`/api/alter/position` backfills recoverable closed histories from persisted
-volatility sources while retaining its dry-run, compact JSON, backup, atomic
-replacement, rollback, and idempotency guarantees.
+path could not be recovered.
 
 TC: `BOTH:POSITION_VPOINT_PATH`
 
@@ -207,10 +193,9 @@ one in-progress calculation. This is part of the existing assignment loop and
 does not introduce a separate bootstrap queue or storage format.
 
 Account balances, positions, decisions, orders, and mode memory remain outside
-the shared volatility calculation. Production entry consumption is recorded on
-the shared per-symbol volatility point as the dynamic marker
+the shared volatility calculation. Entry consumption is recorded on the shared
+per-symbol volatility point as the dynamic marker
 `vPoint["usedBy" + account.slug]`; these account markers are merged and
-persisted by point id. The legacy point-wide `used` marker remains for
-backtest compatibility and is not used by production.
+persisted by point id.
 
 TC: `PROD:VOLATILITY_INCREMENTAL_PERSISTENCE`

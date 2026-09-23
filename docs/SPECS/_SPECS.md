@@ -28,7 +28,26 @@ Information:
   It may apply to live mode, sandbox mode, or both, depending on the TC name.
   For example, `PROD:*_SANDBOX` means the production/runtime sandbox mode.
 
-## A. Runtime Behavior (runtime.test.ts)
+## Where the behavior lives now
+
+After the Precision rebuild, one shared runtime engine drives backtest,
+sandbox, and live. The spec sections map to these roots:
+
+| Spec | Implementation |
+|---|---|
+| Runtime behavior (A) | `src/lib/precision/` (shared engine), `src/lib/production/` (live/sandbox adapter) |
+| Trading features (B) | `src/lib/system/trading/` (entry, averaging, exit, reserve, reporting) |
+| Storage (C) | `src/lib/system/storage/` — account-scoped under `storage/persistent/instances/[PORT]/{prod,dev}/` |
+| Notification (D) | `src/lib/system/notification/` — `central` port + `delivery` wired at `src/instrumentation.ts` |
+| Logging (E) | `src/lib/system/logging/`, `src/lib/system/storage/logs.ts` |
+| Debugging (F) | `src/lib/dev/` surfaces behind `/dev/*` pages |
+| Decision engine (H) | Dissolved — Multi is the default strategy inside `src/lib/system/trading/` |
+| Production cycle (I) | `src/lib/production/stages.ts` + `src/lib/precision/monitoring/` |
+
+Tests live under `src/__dev__/main/quality/` (`unit/`, `specs/`, `ui/`,
+`precision/`). TC markers are still written in source and test files.
+
+## A. Runtime Behavior
 
 readmore `RUNTIME.md`
 
@@ -36,11 +55,11 @@ readmore `RUNTIME.md`
 
 readmore `TRADING.md`
 
-## C. Storage (storage.test.ts)
+## C. Storage
 
 readmore `STORAGE.md`
 
-## D. Notification (notif.test.ts)
+## D. Notification
 
 readmore `NOTIFICATION.md`
 
@@ -52,14 +71,10 @@ readmore `LOGGING.md`
 
 readmore `DEBUGGING.md`
 
-# G. Edge Cases
-
-readmore `EDGE_CASES.md`
-
-# H. Decision Engine
+## H. Decision Engine
 
 readmore `DECISION_ENGINE.md`
 
-# I. Production Cycle Architecture
+## I. Production Cycle Architecture
 
 readmore `CYCLE.md`

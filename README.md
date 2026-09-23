@@ -1,6 +1,8 @@
 # Slow Trading
 
-see [README_SLOW.md](./docs/README_SLOW.md) for the detailed documentation of slow trading.
+see [docs/PRECISION/_PRECISION.md](./docs/PRECISION/_PRECISION.md) for the
+architecture backbone and [docs/SPECS/_SPECS.md](./docs/SPECS/_SPECS.md) for
+the behavioral specification.
 
 Try to debug memory consumtion
 

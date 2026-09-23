@@ -2,7 +2,7 @@
 
 This document defines the required SLOW trading features and behavior.
 
-## B.1 Watch Mechanism (watch.test.ts)
+## B.1 Watch Mechanism
 
 TC: `BOTH:WATCH_MECHANISM`
 
@@ -21,7 +21,7 @@ Behavior expected:
 `Max Entry Margin` = 0
 `Enable Watch Logic` to see the effect of the watch mechanism.
 
-### B.1.1 Adaptive Averaging (watch.test.ts)
+### B.1.1 Adaptive Averaging (`src/lib/system/trading/averaging.ts`)
 
 TC: `BOTH:ADAPTIVE_AVERAGING`
 
@@ -231,7 +231,7 @@ Required tests:
 
 Planned TC: `BOTH:AVERAGING_PAUSES_DURING_TARGET_CONFIRMATION_GAP`
 
-## B.2 Adjust Entry Amount Based on the Balance and Reserve Mechanism (entry.test.ts)
+## B.2 Adjust Entry Amount Based on the Balance and Reserve Mechanism (`src/lib/system/trading/entry.ts`, `reserve.ts`)
 
 TC: `BOTH:ADJUST_ENTRY_AMOUNT`
 
@@ -388,7 +388,7 @@ reserved: $56
 
 locked: $7
 
-## B.3 Entry Rules (entry.test.ts)
+## B.3 Entry Rules (`src/lib/system/trading/entry.ts`)
 
 ### B.3.1 Maximum Open Positions Entry Guard
 
@@ -546,7 +546,7 @@ TC: `BOTH:ALWAYS_HAVE_SPENDABLE_TO_BAILING_OUT`
 
 ### B.3.6 it should using same leverage calculation between backtest and the production
 
-so it params entrySignal and dynamicTradeConfig.maxLeverage
+so it params entrySignal and config.maxLeverage
 
 `config.exactLeverage` defaults to `0`. When it is a positive value, both
 backtest and production futures entries must use that exact integer leverage,
@@ -588,12 +588,12 @@ TC: `PROD:LATE_ENTRY_VPOINT_PRICE_DRIFT_PCT`
 
 ### B.3.8 Averaging not allowed in low level
 
-Averaging should not run on absolute level `1` or `0`. Entry uses `config.minActionableAbsoluteLevel`; setting it to `1` allows decision.v19
-and decision.v20 to enter on absolute level `1`.
+Averaging should not run on absolute level `1` or `0`. Entry uses `config.minActionableAbsoluteLevel`; setting it to `1` allows the Multi entry
+gate to enter on absolute level `1`.
 
 TC: `PROD:LOW_LEVEL_NO_ACTION_AVERAGING`
 
-## B.4 Exit (exit.test.ts)
+## B.4 Exit (`src/lib/system/trading/exit.ts`)
 
 The exit behavior may vary based on user-defined config. The codebase must be able to consume these exit configs:
 

@@ -33,17 +33,21 @@ END CYCLE
 Public market analysis is shared. Private account decisions, exchange calls,
 orders, and persistence remain isolated and sequential.
 
-The implementation is organized under `src/lib/slowTrading/cycle/`:
+The implementation lives in the Precision runtime:
 
-- `coordinator.ts` owns shared preparation and sequential account iteration.
-- `index.ts` executes one account against the prepared shared snapshot and
-  exposes the queued public cycle API.
-- `shared-market.ts` owns the per-cycle public market snapshot and lazy shared
-  price, funding-rate, and 24-hour-volume loaders.
-- `accounts.ts` loads eligible account scopes and combines their results.
-- `planning.ts`, `entry.ts`, `monitoring.ts`, and `finalize.ts` retain focused
-  account-stage responsibilities.
-- `types.ts` defines the plan, runtime, request, and result boundaries.
+- `src/lib/precision/RuntimeEngine.ts` owns the stage schedule and the
+  serialized account iteration shared by production, sandbox, and backtest.
+- `src/lib/production/stages.ts` binds the scheduled stages (monitoring,
+  management, black swan) to the production adapter.
+- `src/lib/precision/monitoring/` holds the per-stage account passes:
+  `entry.ts` (capture entry), `position.ts` (speedup/standard monitoring,
+  averaging, exit), `schedule.ts`, and `manual.ts` (operator-initiated
+  passes).
+- `src/lib/system/dashboard/` and `src/lib/system/utils/` supply the shared
+  market snapshot (vPoints, funding, 24-hour volume) prepared once per
+  stage.
+- `src/lib/system/storage/` persists account-scoped state after each
+  account's pass.
 
 ## 1. Design Principle
 
@@ -88,7 +92,7 @@ SLOW has one shared market context:
 - Exchange: Binance.
 - Trading mode: Futures.
 - Coin list: the shared configured symbols.
-- Strategy and decision-engine configuration: shared by all accounts.
+- Strategy configuration: shared by all accounts.
 
 Therefore, every stage cycle builds at most one shared public market snapshot.
 Account credentials do not create separate market contexts. Each account still
@@ -100,14 +104,13 @@ The shared phase owns public or account-independent inputs such as:
 
 - Volatility/vPoint cache refresh.
 - Public klines used for the stage time and market analysis.
-- Price-normalization market inputs.
 - Public 24-hour volume and market-cap snapshots.
 - Public funding-rate snapshots.
 - Black Swan BTC and market-breadth evidence.
-- Raw market features or decision-engine candidates when they do not depend on
+- Raw market features or strategy candidates when they do not depend on
   account memory.
 
-If a decision-engine step reads account positions, used vPoint ids, closed
+If a strategy step reads account positions, used vPoint ids, closed
 history, balance memory, or another account-owned value, that step remains in
 the account phase. Shared market data may be passed into it as immutable input.
 
@@ -166,7 +169,7 @@ When at least one account has an open position, Speedup and Standard
 Monitoring prepare shared volatility once for the union of those open-position
 symbols. Each account then classifies its positions against that same snapshot.
 This ordering is required because volatility is stored in the shared
-`slow/<exchange>/volatility/` cache and intentionally removed from compact
+`prod/volatility/<exchange>/` cache and intentionally removed from compact
 account memory after persistence. Stage classification must not treat that
 missing transient account field as an empty volatility history.
 

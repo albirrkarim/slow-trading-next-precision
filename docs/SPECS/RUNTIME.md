@@ -8,7 +8,7 @@ Production and backtest should use the same configured threshold when their
 volatility points are expected to be comparable. Changing this threshold
 changes how frequently volatility points form; it does not change
 `config.minActionableAbsoluteLevel`, which separately controls which completed
-vPoint levels decision.v19 and decision.v20 may treat as actionable.
+vPoint levels the Multi entry gate may treat as actionable.
 
 The SLOW navbar displays the server-resolved global value as `Vol: <value>%`.
 The browser receives this value through the dashboard state and does not read
@@ -18,7 +18,7 @@ TC: `PROD:GLOBAL_VOLATILITY_THRESHOLD`
 
 ### A.0.1 Daily PnL Browser Title
 
-The `/slow` browser-tab title is `<APP_NAME> | <current UTC-day net PnL USD>`.
+The `/` browser-tab title is `<APP_NAME> | <current UTC-day net PnL USD>`.
 It uses the same closed-trade UTC-day calculation as the navbar and Daily PnL
 Calendar, formats positive and zero values with `+` and negative values with
 `-`, and refreshes whenever the dashboard state refreshes. Missing or blank
@@ -191,7 +191,7 @@ force new five-minute klines or bypass volatility throttling.
 TC: `BOTH:VOLATILITY_LEVEL_SYNC_THROTTLE`
 
 Capture Entry feeds its eligible coins' latest shared volatility data into the
-decision engine and may execute entry logic when automatic entry is enabled.
+the Multi entry gate and may execute entry logic when automatic entry is enabled.
 It does not run open-position monitoring.
 
 Automatic entry also has a UTC-day USDT PnL stop, configured by
@@ -259,7 +259,7 @@ USDT extrema:
 - `position.pnl.maxUpUsdt` is the highest observed `netUsdt`.
 - `position.pnl.maxDownUsdt` is the lowest observed `netUsdt`.
 - The first finite observation initializes both fields. Production monitoring,
-  exchange-side close reconciliation, dynamic backtests, and quick-backtest
+  exchange-side close reconciliation, backtests, and quick-backtest
   history must preserve the same semantics.
 - Trade History exposes both values as sortable **Max Up USD** and
   **Max Down USD** columns.
@@ -340,7 +340,7 @@ simulation behavior.
 
 TC: `PROD:CONFIRM_FUTURES_EXIT_ON_EXCHANGE`
 
-### A.3 Balance (balance.test.ts)
+### A.3 Balance (`src/lib/system/storage/`, `production/stages.ts`)
 
 We have implement many categorize the balance into:
 
@@ -586,7 +586,7 @@ TC: `PROD:MULTI_ACCOUNT_TRADING_NOTES`
 The dashboard also counts historical entry sequences per coin for the current
 vPoint time range. Dashboard candidate signals require
 `abs(level) >= config.minActionableAbsoluteLevel`, resolved with the same
-minimum/default rules as decision.v19 and decision.v20. Multiple candidate signals inside the
+minimum/default rules as the Multi entry gate. Multiple candidate signals inside the
 same directional non-zero sequence count once; level zero or a defensive sign
 change ends the sequence. LONG and SHORT counts are shown together in the
 latest-vPoint table and a per-coin pie chart. Both views display the resolved
@@ -625,12 +625,9 @@ the coin, level, and whether it is ready or blocked, followed by the same
 server-generated reason used by the entry decision flow. The browser does not
 reimplement or translate decision reasons.
 
-For decision.v19, diagnostics distinguish an already-used vPoint, missing BTC
-market context, classifier rejection, waiting for a projected faster exit,
-another immediate candidate winning the fastest-exit selection, and the
-selected ready candidate. For decision.v20, diagnostics distinguish an
-already-used vPoint, BTC context exclusion, and every qualifying ready
-candidate without requiring Speed timing or BTC price normalization. Shared
+Diagnostics distinguish an already-used vPoint, BTC context exclusion, and
+every qualifying ready candidate without requiring Speed timing or BTC price
+normalization. Shared
 pre-execution checks take precedence for a
 disabled runner or auto-entry setting, an existing open position, Spot SHORT
 restriction, live symbol auto-removal at its configured absolute level,
@@ -659,7 +656,7 @@ TC: `PROD:WORKER_NEEDED_ESTIMATION`
 
 ### A.7 Quick Backtest
 
-The `/slow` dashboard shows a demand-only "Quick Backtest" report below the
+The `/` dashboard shows a demand-only "Quick Backtest" report below the
 Volatility Points chart. The simulation input is the currently visible/cropped
 volatility points plus the active SLOW trade config and user-entered starting
 USDT amount. It does not mutate live/sandbox SLOW memory and it does not run
@@ -746,7 +743,7 @@ not add an entry guard.
 
 When `autoRemoveSymbolMinVPointPct > 0`, the Management cycle reads every
 configured symbol's complete volatility memory from
-`slow/<exchange>/volatility/<symbol>.json`. It checks every stored point, not
+`prod/volatility/<exchange>/<symbol>.json`. It checks every stored point, not
 only the latest or the pruned runtime sequence. TOP and BOTTOM `pct` fields are
 both positive movement magnitudes. A coin is removed when any valid stored
 point has `pct >= autoRemoveSymbolMinVPointPct`; equality is included. Missing,
@@ -906,7 +903,7 @@ The Safe Haven and Withdrawal sections provide a `Create Queue` button using a
 
 ### Dashboard
 
-The `/slow` dashboard displays two responsive columns:
+The `/` dashboard displays two responsive columns:
 
 - `Safe Haven`
   - scheduling tooltip;
@@ -951,7 +948,7 @@ wallet's latest network and address.
 
 Queue data is stored as compact JSON at:
 
-`storage/persistent/instances/3010/slow/queue.json`
+`storage/persistent/instances/3010/prod/queue.json`
 
-This corresponds to `${PERSISTENT_STORAGE_ROOT}/slow/queue.json` for other
+This corresponds to `${PERSISTENT_STORAGE_ROOT}/prod/queue.json` for other
 instances.

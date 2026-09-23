@@ -105,7 +105,7 @@ by all enabled accounts.
 | Stage clock candle | Klines for the first selected symbol, 5m interval | Each eligible stage cycle | Until the next aligned 5-minute boundary |
 | Position-sync price | Klines, 5m interval | Each selected live open-position symbol before private position reconciliation | 5-second per-symbol latest-price cache plus stage single-flight |
 | Reporting price | Klines, 5m interval | Each monitored position symbol | Separate 5-second per-symbol cache plus stage single-flight |
-| Latest decision-v19 context | Klines through `buildLatestKlineBySymbol` | Capture-entry preparation when decision engine v19 is active | Stage-shared result |
+| Latest kline context | Klines through the shared latest-kline loader | Capture-entry preparation | Stage-shared result |
 | Funding rate | Futures `/fapi/v1/premiumIndex` without a symbol | When futures reporting needs funding | One all-symbol response cached 5 minutes |
 | 24-hour volume | Futures `/fapi/v1/ticker/24hr` or spot `/api/v3/ticker/24hr` without a symbol | Entry context/dashboard initialization | One all-symbol response cached 10 minutes and persisted |
 | Entry authorization balance | Futures `/fapi/v2/balance` or spot `/api/v3/account` | Once per live account pass only when at least one entry signal survives the final guards | Reused by all serialized entry candidates; local value is adjusted after each successful order |
@@ -204,7 +204,7 @@ message, and the two-minute fallback. No public or private REST callback may run
 while the gate is active.
 
 Cooldown incidents are stored compactly in
-`slow/logs/binance_cooldowns.json`, bounded to 500 entries. One continuous ban
+`prod/logs/binance_cooldowns.json`, bounded to 500 entries. One continuous ban
 is one incident. Repeated detections update its latest end/reason/endpoint and
 increment `occurrences` instead of creating notification spam. Each incident
 stores:
