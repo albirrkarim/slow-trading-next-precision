@@ -252,24 +252,32 @@ export interface RuntimeEngineAdapter {
   onExit: (position: Position, context: RuntimeContext) => Promise<void>;
 
   /**
-   * Persists the environment's account state after a successful action.
+   * Persists one account's environment state after the shared runtime has
+   * mutated it.
    *
-   * The runtime invokes this hook only after `onAction` has returned a
-   * position and the shared monitoring code has applied its own mutation:
+   * The runtime invokes this hook in two situations:
    *
-   * 1. `onAction` executes or simulates the order.
-   * 2. The runtime updates `state.openPositions` and `state.balance`.
-   * 3. This hook persists that now-consistent state.
+   * 1. After `onAction` has returned a position and the shared monitoring
+   *    code has applied its own mutation (`state.openPositions`,
+   *    `state.balance`, vPoint `usedBy` markers). Entry and averaging
+   *    actions use this path.
+   * 2. After each monitoring pass refreshes a still-open position's PnL
+   *    history and monitoring-stage classification, so the persisted row
+   *    stays realtime instead of waiting for the next trade action.
    *
-   * Entry and averaging actions use this hook. Exit persistence is handled by
-   * `onExit`, which is called after the closed position has been removed from
-   * `state.openPositions` and its margin has been released. Backtest adapters
-   * can omit this hook because their result is already retained in memory.
+   * Exit persistence is handled by `onExit`, which is called after the
+   * closed position has been removed from `state.openPositions` and its
+   * margin has been released. Backtest adapters can omit this hook because
+   * their result is already retained in memory.
    *
    * @param context - The shared runtime context containing the updated state,
    * adapter, and helper operations.
+   * @param accountSlug - The account whose open positions and balance changed.
    */
-  onStateChange?: (context: RuntimeContext) => Promise<void>;
+  onStateChange?: (
+    context: RuntimeContext,
+    accountSlug: string,
+  ) => Promise<void>;
 
   /**
    * To send notification outside

@@ -97,7 +97,7 @@ async function executeDecision(
     recommendation: decision.entrySignal,
     volatilityPoints: context.state.vPointsMap[decision.symbol],
   });
-  await context.adapter.onStateChange?.(context);
+  await context.adapter.onStateChange?.(context, decision.accountSlug);
 
   return position;
 }

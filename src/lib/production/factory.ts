@@ -164,8 +164,6 @@ function createActionHandlers(
   RuntimeEngineAdapter,
   "onAction" | "onExit" | "onStateChange" | "onStrategy"
 > {
-  let pendingAccountSlug: string | undefined;
-
   const onStrategy: RuntimeEngineAdapter["onStrategy"] = async (
     decision,
     context,
@@ -178,7 +176,6 @@ function createActionHandlers(
     const accountRuntime = accountRuntimes.get(decision.accountSlug);
     if (!accountRuntime) return null;
 
-    pendingAccountSlug = decision.accountSlug;
     const executeSafely = async <T>(
       fn: () => T | Promise<T>,
     ): Promise<T | null> => {
@@ -285,18 +282,15 @@ function createActionHandlers(
           error,
         );
       });
-    pendingAccountSlug = undefined;
   };
 
   const onStateChange: RuntimeEngineAdapter["onStateChange"] = async (
     context,
+    accountSlug,
   ) => {
-    const accountSlug = pendingAccountSlug;
-    if (!accountSlug) return;
     const accountRuntime = accountRuntimes.get(accountSlug);
     if (!accountRuntime) return;
     await persistAccount(context, accountRuntime);
-    pendingAccountSlug = undefined;
     // Entries and averagings mark `usedBy<slug>` on vPoints right before this
     // hook fires; flushing the retained window writes those markers to disk.
     await onVPointsChanged(context.state.vPointsMap);

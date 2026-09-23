@@ -63,6 +63,10 @@ async function monitorPosition(context: RuntimeContext, position: Position) {
 
   // D. Decide goes to speedup stage or back to standard stage vice versa
   updateMonitoringStage(context, monitoredPosition);
+
+  // E. telling outside to adapter onStateChange, because of the pnl history and last update
+  // should be updated to the storage.
+  await context.adapter.onStateChange?.(context, monitoredPosition.account);
 }
 
 async function averaging(
@@ -132,7 +136,7 @@ async function averaging(
     volatilityPoints: context.state.vPointsMap[decision.symbol],
   });
 
-  await context.adapter.onStateChange?.(context);
+  await context.adapter.onStateChange?.(context, decision.accountSlug);
 
   return updatedPosition;
 }
