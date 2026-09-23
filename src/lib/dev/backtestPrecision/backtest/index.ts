@@ -7,6 +7,7 @@ import type { VolatilityPoint } from "@/lib/system/types";
 import vpoints from "@/lib/system/utils/vpoints";
 import { getFeeCalculator } from "@/lib/exchange/fees";
 import tradingAveraging from "@/lib/system/trading/averaging";
+import runtimeDailyPnlLimit from "@/lib/system/trading/daily-pnl-limit";
 import entryAction from "@/lib/system/trading/entry-action";
 import tradingExit from "@/lib/system/trading/exit";
 import type { BacktestPrecisionParams } from "../api/precision-api-types";
@@ -167,6 +168,21 @@ export async function precisionBacktest(
         context.state.currentTime >= entryCutoffTime
       ) {
         return false;
+      }
+
+      // BOTH:AUTO_ENTRY_DAILY_PNL_LIMIT_USDT — mirrors the production
+      // isActionAllowed veto: automatic entries pause once the current UTC
+      // day's closed net PnL reaches the configured stop. `history` holds
+      // this run's closed positions, matching production's persisted daily
+      // history read. Manual forced entries are exempt, same as production.
+      if (decision.type === "entry" && !decision.manual) {
+        const evaluation = runtimeDailyPnlLimit.guard.evaluate({
+          currentTimeMs: context.state.currentTime,
+          positions: history,
+          thresholdUsdt:
+            context.state.config.runtime.autoEntryDailyPnlLimitUSDT,
+        });
+        if (evaluation.reached) return false;
       }
 
       return true;

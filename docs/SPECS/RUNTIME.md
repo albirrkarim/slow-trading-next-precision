@@ -205,7 +205,11 @@ show `DAILY_PNL_LIMIT_REACHED`. If later exits raise the current day's net PnL
 above the threshold, automatic entry can resume; the value resets naturally at
 the next UTC day.
 
-TC: `PROD:AUTO_ENTRY_DAILY_PNL_LIMIT_USDT`
+Production reads the day's closed PnL from persisted live+sandbox history and
+vetoes entries in `onStrategy`; the backtest adapter evaluates the same rule
+over its closed-position history, so backtest entries pause identically.
+
+TC: `BOTH:AUTO_ENTRY_DAILY_PNL_LIMIT_USDT`
 
 The production standalone server must bootstrap the SLOW runner when the Node
 process starts. Restarting or redeploying a Railway container must not require
