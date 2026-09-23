@@ -11,8 +11,8 @@ const mocks = vi.hoisted(() => ({
   root: `/tmp/precision-checker-${process.pid}`,
 }));
 
-vi.mock("@/lib/persistent-storage-root", () => ({
-  resolvePersistentStorageRoot: () => mocks.root,
+vi.mock("@/lib/system/storage/root", () => ({
+  default: { resolve: () => mocks.root },
 }));
 
 vi.mock("@/lib/dev/backtestPrecision/backtest", () => ({

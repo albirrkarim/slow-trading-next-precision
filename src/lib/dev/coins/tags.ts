@@ -1,4 +1,4 @@
-import { resolvePersistentStorageRoot } from "@/lib/persistent-storage-root";
+import storageRoot from "@/lib/system/storage/root";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -449,7 +449,7 @@ let defaultStore: ReturnType<typeof createCoinTagStore> | undefined;
 
 function getDefaultStore() {
   defaultStore ??= createCoinTagStore(
-    path.join(resolvePersistentStorageRoot(), "dev", "coin-tags.sqlite"),
+    path.join(storageRoot.resolve(), "dev", "coin-tags.sqlite"),
   );
   return defaultStore;
 }
