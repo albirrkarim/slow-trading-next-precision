@@ -49,12 +49,6 @@ const sidebarSections = [
                 icon: <ShowChartIcon />,
                 description: "Inspect one symbol with chart context, volatility rails, and simulated trade behavior for debugging.",
             },
-            {
-                text: "Backtest V Points Rails",
-                href: "/dev/backtest-vrails",
-                icon: <ShowChartIcon />,
-                description: "Inspect one symbol with chart context, volatility rails, and simulated trade behavior for debugging.",
-            },
         ],
     },
 ] as const;
