@@ -859,7 +859,8 @@ TC: `BOTH:POST_AVERAGE_STOP_LOSS`
 
 ### B.4.9 SL Plus
 
-SL Plus exists only in production. When enabled, `takeProfitPercent` is the
+SL Plus runs in the shared exit evaluation, so it applies identically to
+live, sandbox, and backtest. When enabled, `takeProfitPercent` is the
 activation threshold for trailing profit protection instead of immediate TP.
 
 Dashboard Settings exposes `stopLossPlusTrigger` beneath the StopLoss+ switch.
@@ -868,12 +869,14 @@ one-percentage-point retrace. The exit calculation divides the stored value by
 100 before comparing it with the net-gain ratio. The control retains its value
 but is disabled while StopLoss+ is off.
 
-Production starts recording peak gain once `takeProfitPercent` is reached.
-Once active, `stopLossPlusTrigger` is the allowed retrace from the recorded
-peak. The initial minimum exit threshold is `takeProfitPercent -
-stopLossPlusTrigger`; for example, TP `2%` with a `1%` retrace initially exits
-around `1%`. The threshold rises with every higher recorded peak. Execution
-timing and slippage can produce a realized fill below the calculated threshold.
+The position's recorded peak net gain (`pnl.maxUpPct`) is refreshed on every
+monitoring pass before the exit evaluation runs. Once that recorded peak
+reaches `takeProfitPercent`, SL Plus is armed; `stopLossPlusTrigger` is the
+allowed retrace from the recorded peak. The initial minimum exit threshold is
+`takeProfitPercent - stopLossPlusTrigger`; for example, TP `2%` with a `1%`
+retrace initially exits around `1%`. The threshold rises with every higher
+recorded peak. Execution timing and slippage can produce a realized fill below
+the calculated threshold.
 
 The Trading live preview includes an exit-threshold chart on a signed net-PnL
 percent axis. It shows Entry, the combined TP and StopLoss+ activation
@@ -889,7 +892,7 @@ keeps its `TC:` identifier and current config status visible; expanding it
 shows the trigger description so operators can identify which strategy may
 cause an exit.
 
-TC: `PROD:SL_PLUS`
+TC: `BOTH:SL_PLUS`
 
 ### B.4.10 Exit sideways positions to free workers for stronger candidates
 

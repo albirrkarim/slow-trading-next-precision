@@ -375,7 +375,7 @@ export default function ExitStrategyReference({
             name="StopLoss+ trailing exit"
             number={9}
             status={stopLossPlusEnabled ? "Enabled" : "Disabled"}
-            tc="PROD:SL_PLUS"
+            tc="BOTH:SL_PLUS"
           >
             <Grid alignItems="flex-start" container spacing={1.5}>
               <Grid size={{ xs: 12 }}>

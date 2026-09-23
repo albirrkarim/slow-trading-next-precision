@@ -962,4 +962,85 @@ describe("multi strategy exit", () => {
     );
     expect(adjacentExecuted?.vPoints).toEqual([]);
   });
+
+  it("stop loss plus exits once the recorded peak retraces past the trigger", async () => {
+    // BOTH:SL_PLUS — the trailing peak is the persisted pnl.maxUpPct, which
+    // updatePnl refreshes before every exit evaluation in every mode.
+    const position = makePosition();
+    position.pnl.maxUpPct = 1.5;
+    const context = makeContext(
+      ["a1"],
+      { SUI: [makePoint(-1, 0)] },
+      {
+        accountTrading: {
+          stopLossPlusTrigger: 0.5,
+          takeProfitPercent: 1,
+          useStopLossPlus: true,
+        },
+        currentTime: 5_000,
+        markPriceMap: { SUI: { lastUpdated: 5_000, price: 100.9 } },
+      },
+    );
+
+    // Net +0.9% vs recorded peak +1.5% -> -0.6pp retrace > 0.5 trigger.
+    const decision = await strategy.decisions.findExit(context, position);
+
+    expect(decision).not.toBeNull();
+    if (!decision) return;
+    expect(decision.tradeDecision.action).toBe("SELL");
+    expect(decision.tradeDecision.category).toBe("[STOP_LOSS_PLUS_TP]");
+    expect(decision.tradeDecision.reason).toContain("Peak 1.50%");
+
+    const executed = strategy.actions.executeExit(context, decision);
+
+    expect(executed).not.toBeNull();
+    if (!executed) return;
+    expect(executed.closed?.reason).toBe("STOP_LOSS_PLUS_TP");
+    expect(executed.closed?.price).toBe(100.9);
+    expect(executed.pnl.netPct).toBeCloseTo(0.9, 6);
+    expect(position.closed).toBeUndefined();
+  });
+
+  it("stop loss plus holds while the retrace stays inside the trigger", async () => {
+    const position = makePosition();
+    position.pnl.maxUpPct = 1.5;
+    const context = makeContext(
+      ["a1"],
+      { SUI: [makePoint(-1, 0)] },
+      {
+        accountTrading: {
+          stopLossPlusTrigger: 0.5,
+          takeProfitPercent: 1,
+          useStopLossPlus: true,
+        },
+        currentTime: 5_000,
+        markPriceMap: { SUI: { lastUpdated: 5_000, price: 101.3 } },
+      },
+    );
+
+    // Net +1.3% -> -0.2pp retrace stays inside the 0.5 trigger.
+    expect(await strategy.decisions.findExit(context, position)).toBeNull();
+  });
+
+  it("stop loss plus stays disarmed before the take-profit peak", async () => {
+    const position = makePosition();
+    // Peak 0.8% never reached TP 1%, so a big drawdown still cannot trigger.
+    position.pnl.maxUpPct = 0.8;
+    const context = makeContext(
+      ["a1"],
+      { SUI: [makePoint(-1, 0)] },
+      {
+        accountTrading: {
+          stopLossPlusTrigger: 0.5,
+          takeProfitPercent: 1,
+          useStopLossPlus: true,
+        },
+        currentTime: 5_000,
+        markPriceMap: { SUI: { lastUpdated: 5_000, price: 100.1 } },
+      },
+    );
+
+    // Net +0.1% -> -0.7pp from peak would exceed the trigger if armed.
+    expect(await strategy.decisions.findExit(context, position)).toBeNull();
+  });
 });

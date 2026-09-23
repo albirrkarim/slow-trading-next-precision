@@ -854,43 +854,33 @@ function evaluateExit(params: {
   }
 
   // C.2 STOP LOSS PLUS
-  // PROD:SL_PLUS
+  // BOTH:SL_PLUS
   const useSLPlus =
     config.useStopLossPlus === undefined ? true : config.useStopLossPlus;
 
   if (useSLPlus) {
     const stopLossPlusTrigger = (config.stopLossPlusTrigger ?? 1) / 100;
-    const memKey = `${symbol}-peakGain`;
+    // The trailing peak is the persisted net-PnL maximum: updatePnl refreshes
+    // pnl.maxUpPct before every evaluation, so the armed peak survives across
+    // cycles and replays identically in every mode. Percent -> netGain ratio.
+    const peakGain = Number.isFinite(position.pnl.maxUpPct)
+      ? (position.pnl.maxUpPct as number) / 100
+      : undefined;
 
-    // Precision replays evaluate a cloned memory, so peak state is local to
-    // this evaluation and never persists across cycles — identical to the
-    // legacy bridge, which discarded the cloned model memory every call.
-    const memory: Record<string, number | undefined> = {};
-
-    // Track peak gain once take profit threshold hit
-    if (netGain >= config.takeProfitPercent / 100) {
-      if (memory[memKey] == undefined) {
-        memory[memKey] = netGain;
-      }
-    }
-
-    // Update peak gain memory
-    if (memory[memKey] !== undefined) {
-      const peakGain: number = memory[memKey] ?? netGain;
-      if (netGain > peakGain) {
-        memory[memKey] = netGain;
-      }
-
+    // Arms once the recorded peak has reached the take-profit threshold, then
+    // exits when the current net gain retraces past the configured trigger.
+    if (
+      peakGain !== undefined &&
+      peakGain >= config.takeProfitPercent / 100
+    ) {
       // If price retraces from peak by stopLossPlusTrigger → SELL
       const drawdown = netGain - peakGain;
       if (drawdown <= -stopLossPlusTrigger) {
-        delete memory[memKey]; // reset memory
-
         const reason = `[SELL] ${readableTime} - ${
           TRADE_MESSAGE.sell.SL_PLUS
         } Locked profit at ${(netGain * 100).toFixed(
           2,
-        )}% | Price ${price} | SELL (entry ${totalUSDT.toFixed(
+        )}% | Peak ${(peakGain * 100).toFixed(2)}% | Price ${price} | SELL (entry ${totalUSDT.toFixed(
           2,
         )} | now ${netCurrentUSDT.toFixed(2)} | Profit ${netProfitUSDT.toFixed(
           2,
