@@ -29,9 +29,12 @@ function timeMsToReadable(
   return moment(timeMs).format(format);
 }
 
-/** Formats a millisecond timestamp for log display like "04 Aug 2026 19:55". */
+/**
+ * Formats a millisecond timestamp for log/chart display like
+ * "04 Aug 2026 19:55 UTC". Always UTC so it matches kline/chart times.
+ */
 function timeForLog(timeMs?: number): string {
-  return timeMsToReadable(timeMs, "DD MMM YYYY HH:mm");
+  return moment.utc(timeMs).format("DD MMM YYYY HH:mm [UTC]");
 }
 
 /** Formats a vPoint ref for log display like "B_9b1 (lvl 3)". */

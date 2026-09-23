@@ -77,6 +77,7 @@ const metricTooltipSlotProps = {
 const TRADE_TIME_FORMAT = "DD MMM YYYY HH:mm";
 const TRADE_TIME_SAME_MONTH_FORMAT = "DD MMM HH:mm";
 const DAY_MS = 24 * 60 * 60 * 1000;
+const TRADE_CHART_CONTEXT_MS = 30 * DAY_MS;
 const HOLD_DURATION_COLOR_RANGES: RangedValueColorRange[] = [
   {
     color: "success.main",
@@ -257,6 +258,8 @@ function TradeChartDialog({
   history: SlowTradingReportRow[];
   row: SlowTradingReportRow;
 }) {
+  const tradeEndMs = row.closed?.t ?? row.opened.t;
+
   return (
     <ButtonDialog
       title="Chart"
@@ -284,6 +287,8 @@ function TradeChartDialog({
               (exchangeType === "tokocrypto" ? "SPOT" : "FUTURES")
             }
             markers={buildTradeMarkersFromHistory(history, row.symbol)}
+            startTimeMs={row.opened.t - TRADE_CHART_CONTEXT_MS}
+            endTimeMs={tradeEndMs + TRADE_CHART_CONTEXT_MS}
             volatilitySource="storage"
             customVolatilityPoints={getVolatilityPoints?.(row.symbol)}
             header={
