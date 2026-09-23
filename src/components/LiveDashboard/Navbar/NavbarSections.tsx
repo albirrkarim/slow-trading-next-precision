@@ -4,15 +4,10 @@ import type { ReactElement, ReactNode } from "react";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import HistoryIcon from "@mui/icons-material/History";
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import {
-  Alert,
   Box,
-  Button,
   Chip,
-  CircularProgress,
   IconButton,
-  Stack,
   Tooltip,
   Typography,
 } from "@mui/material";
@@ -386,8 +381,6 @@ interface NavbarActionsSectionProps {
   reinitializing: boolean;
   resetSandbox: (accountSlug: string) => Promise<void>;
   resettingSandboxAccount: string | null;
-  runCycle: () => Promise<void>;
-  runningCycle: boolean;
   saveConfig: (handleClose?: () => void) => Promise<void>;
   savingConfig: boolean;
   pushLocalStorageToOnline: (onlineBaseUrl: string) => Promise<void>;
@@ -415,8 +408,6 @@ export function NavbarActionsSection({
   resettingSandboxAccount,
   pushLocalStorageToOnline,
   pushingOnlineStorage,
-  runCycle,
-  runningCycle,
   saveConfig,
   savingConfig,
   safeHavenUSDT,
@@ -539,113 +530,6 @@ export function NavbarActionsSection({
           />
 
           <DarkToggle />
-
-          <ButtonDialog
-            title="Run Cycle"
-            titleLong="Confirm Run Cycle"
-            maxWidth="sm"
-            customButton={(handleOpen) => (
-              <IconButton
-                onClick={handleOpen}
-                disabled={runningCycle}
-                title={runningCycle ? "Running cycle..." : "Review run cycle"}
-                color="inherit"
-              >
-                {runningCycle ? (
-                  <CircularProgress size={18} color="inherit" />
-                ) : (
-                  <PlayArrowIcon />
-                )}
-              </IconButton>
-            )}
-          >
-            {(handleClose) => (
-              <Stack spacing={2} sx={{ p: 1 }}>
-                <Alert
-                  severity={
-                    dashboardState.activeMode === "live" ? "warning" : "info"
-                  }
-                >
-                  {dashboardState.activeMode === "live"
-                    ? "LIVE mode: confirming may execute real exchange entry, exit, averaging, and reporting logic."
-                    : "SANDBOX mode: confirming runs the simulated cycle for the active sandbox state."}
-                </Alert>
-
-                <Typography variant="body2">
-                  The runner will execute one SLOW cycle immediately. In the
-                  background it refreshes runtime storage, updates volatility
-                  and signals as needed, checks balances and open positions,
-                  applies entry/exit logic, writes reports, and persists the
-                  latest mode state.
-                </Typography>
-
-                <Box
-                  sx={{
-                    display: "grid",
-                    gap: 1.5,
-                    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                  }}
-                >
-                  <Box>
-                    <Typography color="text.secondary" variant="caption">
-                      Mode
-                    </Typography>
-                    <Typography fontWeight={700} variant="body2">
-                      {dashboardState.activeMode.toUpperCase()}
-                    </Typography>
-                  </Box>
-                  <Box>
-                    <Typography color="text.secondary" variant="caption">
-                      Coins
-                    </Typography>
-                    <Typography fontWeight={700} variant="body2">
-                      {dashboardState.config.symbols.length.toLocaleString()}
-                    </Typography>
-                  </Box>
-                  <Box>
-                    <Typography color="text.secondary" variant="caption">
-                      Auto entry
-                    </Typography>
-                    <Typography fontWeight={700} variant="body2">
-                      {dashboardState.runtime.autoEntryEnabled ? "On" : "Off"}
-                    </Typography>
-                  </Box>
-                  <Box>
-                    <Typography color="text.secondary" variant="caption">
-                      Auto exit
-                    </Typography>
-                    <Typography fontWeight={700} variant="body2">
-                      {dashboardState.runtime.autoExitEnabled ? "On" : "Off"}
-                    </Typography>
-                  </Box>
-                </Box>
-
-                <Box
-                  sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}
-                >
-                  <Button onClick={handleClose} disabled={runningCycle}>
-                    Cancel
-                  </Button>
-                  <Button
-                    color={
-                      dashboardState.activeMode === "live" ? "error" : "primary"
-                    }
-                    disabled={runningCycle}
-                    onClick={async () => {
-                      await runCycle();
-                      handleClose();
-                    }}
-                    startIcon={
-                      runningCycle ? <CircularProgress size={16} /> : undefined
-                    }
-                    variant="contained"
-                  >
-                    {runningCycle ? "Running..." : "Run cycle now"}
-                  </Button>
-                </Box>
-              </Stack>
-            )}
-          </ButtonDialog>
         </>
       ) : null}
 

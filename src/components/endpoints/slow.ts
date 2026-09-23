@@ -12,7 +12,6 @@ export const slowEndpoints = {
     entry: `${DASHBOARD_UI_API}/slow-trading/entry`,
     entryDiagnostics: `${DASHBOARD_UI_API}/slow-trading/entry-diagnostics`,
     exit: `${DASHBOARD_UI_API}/slow-trading/exit`,
-    run: `${DASHBOARD_UI_API}/slow-trading/run`,
     reset: `${DASHBOARD_UI_API}/slow-trading/reset`,
     withdraw: `${DASHBOARD_UI_API}/slow-trading/withdraw`,
     balanceRefresh: `${DASHBOARD_UI_API}/slow-trading/balance-refresh`,

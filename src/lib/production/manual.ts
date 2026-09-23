@@ -9,21 +9,6 @@ function normalizeSymbol(symbol: string): string {
 }
 
 /**
- * Runs one unconditional pass over the production runtime: monitoring stages
- * plus the default entry capture, regardless of the stage schedule.
- */
-async function runPass(params?: {
-  bypass?: boolean;
-}): Promise<RuntimeManualPassResult> {
-  const runtime = singleton.get();
-  return runtime.runManual(
-    (context) =>
-      monitoring.manual.run(context, { bypass: params?.bypass }),
-    { overrideRunnerGate: true },
-  );
-}
-
-/**
  * Forces an operator entry on one symbol for one account. The decision is
  * level-gated like a normal signal unless `bypass` relaxes it to any
  * non-neutral latest point.
@@ -74,7 +59,6 @@ async function forceExit(params: {
 const productionManual = {
   entry: forceEntry,
   exit: forceExit,
-  run: runPass,
 } as const;
 
 export default productionManual;

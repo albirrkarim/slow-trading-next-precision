@@ -33,8 +33,6 @@ export default function LiveDashboardNavbar({
     openSettingsDialog,
     resetSandbox,
     resettingSandboxAccount,
-    runCycle,
-    runningCycle,
     saveConfig,
     safeHavenUSDT,
     savingConfig,
@@ -114,8 +112,6 @@ export default function LiveDashboardNavbar({
         onSettingsDialogOpen={openSettingsDialog}
         resetSandbox={resetSandbox}
         resettingSandboxAccount={resettingSandboxAccount}
-        runCycle={runCycle}
-        runningCycle={runningCycle}
         saveConfig={saveConfig}
         pushLocalStorageToOnline={pushLocalStorageToOnline}
         pushingOnlineStorage={pushingOnlineStorage}

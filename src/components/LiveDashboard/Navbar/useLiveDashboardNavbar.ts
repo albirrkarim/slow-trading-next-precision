@@ -20,15 +20,6 @@ import type {
   LiveDashboardNavbarProps,
 } from "./navbar-types";
 
-interface SlowTradingRunResponse {
-  mode: "live" | "sandbox";
-  reports: Array<{ message: string }>;
-  executedEntrySignals: number;
-  availableQuoteAsset: number;
-  lastRunAt?: number;
-  skipped?: boolean;
-}
-
 interface SlowTradingWithdrawTryResponse {
   message: string;
 }
@@ -85,7 +76,6 @@ export function useLiveDashboardNavbar({
 }: UseLiveDashboardNavbarArgs) {
   const [configDraft, setConfigDraftState] = useState<ConfigDraft | null>(null);
   const [safeHavenUSDT, setSafeHavenUSDT] = useState(0);
-  const [runningCycle, setRunningCycle] = useState(false);
   const [refreshingBalanceAccount, setRefreshingBalanceAccount] = useState<
     string | null
   >(null);
@@ -206,19 +196,6 @@ export function useLiveDashboardNavbar({
       );
     } finally {
       setTryingWithdraw(false);
-    }
-  };
-
-  const runCycle = async () => {
-    setRunningCycle(true);
-    try {
-      await axios.post<SlowTradingRunResponse>(endpoints.slow.prod.run, {});
-      await onRefresh();
-    } catch (error) {
-      systemLog.error(error);
-      alert("Run cycle failed");
-    } finally {
-      setRunningCycle(false);
     }
   };
 
@@ -381,8 +358,6 @@ export function useLiveDashboardNavbar({
     refreshingBalanceAccount,
     resetSandbox,
     resettingSandboxAccount,
-    runCycle,
-    runningCycle,
     saveConfig,
     safeHavenUSDT,
     savingConfig,
