@@ -151,29 +151,18 @@ TC: `BOTH:MULTI_ACCOUNT_PRIVATE_STATE_ISOLATION`
 
 ## 5. Stage Eligibility and Market I/O
 
-The coordinator must first use account state to determine whether a stage has
-any possible work. Exact Speedup and Standard classification may additionally
-depend on shared volatility, so that partition happens after the shared market
-snapshot is available and before any account execution begins.
+Speedup and Standard classification may depend on shared volatility, so
+positions are classified inside the monitoring pass against the shared market
+snapshot.
 
 ### 5.1 Speedup and Standard Monitoring
 
-When no eligible account owns an open position for the stage:
-
-- Do not fetch public klines, volatility, prices, or funding for that stage.
-- Do not call private balance or position endpoints.
-- Persist the required compact successful empty-stage statistics for each
-  account whose stage pass must be recorded.
-
-When at least one account has an open position, Speedup and Standard
-Monitoring prepare shared volatility once for the union of those open-position
-symbols. Each account then classifies its positions against that same snapshot.
-This ordering is required because volatility is stored in the shared
+Speedup and Standard Monitoring refresh one shared market snapshot for the
+configured symbols on every due pass, and each account classifies its open
+positions against that same snapshot. Volatility is stored in the shared
 `prod/volatility/<exchange>/` cache and intentionally removed from compact
-account memory after persistence. Stage classification must not treat that
-missing transient account field as an empty volatility history.
-
-TC: `PROD:EMPTY_MONITORING_NO_MARKET_IO`
+account memory after persistence, so classification must not treat the absent
+transient account field as an empty volatility history.
 
 TC: `BOTH:SPEEDUP_STAGE_SHARED_VOLATILITY_CLASSIFICATION`
 

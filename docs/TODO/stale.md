@@ -19,25 +19,6 @@ rebuild. `BOTH:` means the behavior must exist in backtest AND production;
   planned, or remove them as legacy. If kept, `BOTH:SAFE_HAVEN_QUEUE` should
   also become `PROD:` (spec text scopes it to "live and sandbox modes").
 
-## `PROD:` markers on code that is actually shared — resolved
-
-- Relabeled to `BOTH:` in docs and source: `GLOBAL_VOLATILITY_THRESHOLD`,
-  `SPEEDUP_STAGE_SHARED_VOLATILITY_CLASSIFICATION`, `MONITORING_OPEN_POSITION`,
-  `TRADE_HISTORY_EXIT_MONITORING_STAGE`, `TRADE_HISTORY_ACCOUNT_CHIP`,
-  `TRADE_HISTORY_JSON_TREE`, `MULTI_ACCOUNT_SHARED_MARKET_PREPARATION`,
-  `MULTI_ACCOUNT_SEQUENTIAL_ACCOUNT_EXECUTION`,
-  `MULTI_ACCOUNT_PRIVATE_STATE_ISOLATION`, `ATOMIC_PERSISTENT_JSON`,
-  `CANONICAL_POSITION_STORAGE`. Each was verified running in the shared
-  precision path (or shared UI/storage) in backtest before relabeling.
-- `SPEEDUP_STAGE` / `STANDARD_MONITORING_STAGE` / `CAPTURE_ENTRY_STAGE`
-  relabeled `BOTH:` and the marked paragraphs rewritten to match the Precision
-  engine: fixed dispatch order, `isDue` minute-boundary scheduling (wall clock
-  in production, candle timestamps in backtest), single run-queue
-  serialization, and `stageRuns`/`lastRun*` persistence noted as
-  production-only adapter hooks. `MANAGEMENT_STAGE` stays `PROD:` — the engine
-  only dispatches it when the adapter implements `onManagement`, which backtest
-  omits.
-
 ## Implemented but missing source markers
 
 - [ ] `BTEST:BACKTEST_VOLATILITY_DATASET`, `BTEST:BACKTEST_MARKET_TYPE` —
@@ -47,28 +28,4 @@ rebuild. `BOTH:` means the behavior must exist in backtest AND production;
   `BALANCE_LOCKED` / `BALANCE_SAFE_HAVEN` — updated in shared
   `monitoring/position.ts` + `entry-action.ts`; no markers.
 
-## Verified correct as `PROD:` (no change)
 
-- All `BINANCE_*` (exchange cooldowns, request coordinator, balance budgets),
-  all `NOTIF_*` (notifications never fire in backtest), all LOGGING TCs,
-  `AUTO_REMOVE_*` (management-stage), `FUTURES_*`,
-  `SYNC_ENTRY_POSITION_FROM_EXCHANGE`, `CONFIRM_FUTURES_EXIT_ON_EXCHANGE`,
-  `MCP_*`, `RUNNER_BOOTSTRAP_ON_SERVER_START`,
-  `CYCLE_PERFORMANCE_SECTION_DURATION`, `EMPTY_MONITORING_NO_MARKET_IO`,
-  `QUICK_BACKTEST_VISIBLE_VPOINTS` (dashboard sim, not the precision backtest),
-  `ENTRY_DECISION_DIAGNOSTICS`, `AVAILABLE_ENTRY_WORKERS`,
-  `WORKER_NEEDED_ESTIMATION`, `VOLATILITY_INCREMENTAL_PERSISTENCE`,
-  `DASHBOARD_PERSISTED_BALANCE`, `MANUAL_ACCOUNT_BALANCE_REFRESH`,
-  `MONITORING_POSITION_FUNDING_RATE`, `OPEN_POSITION_FUNDING_RATE_UI`,
-  `MULTI_ACCOUNT_DAILY_BALANCE_SNAPSHOTS`, `SYNC_ONLINE_TO_LOCAL`,
-  `HISTORY_CONFIG_INDEPENDENT`, `TRADE_HISTORY_NOTES`, `INSTANCE_IP_STORAGE`,
-  `NAVBAR_INSTANCE_IP_COPY`,
-  `OPEN_POSITION_STALE_MONITORING_WARNING`, `DAILY_PNL_META_TITLE`,
-  `MULTI_ACCOUNT_TRADING_CONFIG_SUMMARY`, `MULTI_ACCOUNT_TRADING_NOTES`,
-  `HISTORICAL_ENTRY_SEQUENCES`, `VPOINTS_FREQUENCY`, `VPOINTS_LEVEL_MAX_DD`,
-  `SAME_VOLATILITY_POINT`, `LATEST_VOLATILITY_*`, `MARKET_CAP_*`,
-  `STAGE_RUN_STATS`, `SLOW_RUNTIME_MEMORY_LEAN`, `TOTAL_ASSET`,
-  `TRADING_ENTRY_LIVE_PREVIEW`, `TRADING_ACCOUNT_SCOPED_LIVE_PREVIEW`,
-  `AUTO_REMOVE_MARKET_CAP_INPUT_PREVIEW`, `BLACK_SWAN_*` (evidence capture +
-  account fan-out are production stage concerns; the shared engine only reads
-  the protective flag through `onStrategy`).
