@@ -57,7 +57,6 @@ export default function BacktestBalanceChart(props: {
 
   return (
     <HeaderMetrics
-      defaultExpanded
       rememberExpand="backtest-precision:balance"
       title={
         <Typography variant="body1" sx={{ fontWeight: "bold" }}>
