@@ -49,6 +49,25 @@ function countExitReasons(
     );
 }
 
+/** Counts closed positions by coin symbol within one pnl-sign bucket. */
+function countSymbols(
+    positions: Position[],
+    profit: boolean,
+): ExitReasonSlice[] {
+    const counts = new Map<string, number>();
+    for (const position of positions) {
+        if (!position.closed) continue;
+        const isProfit = (position.pnl.netUsdt ?? 0) > 0;
+        if (isProfit !== profit) continue;
+        const symbol = position.symbol.replace(/_USDT$/, "").toUpperCase();
+        counts.set(symbol, (counts.get(symbol) ?? 0) + 1);
+    }
+    return Array.from(counts, ([reason, count]) => ({ count, reason })).sort(
+        (left, right) =>
+            right.count - left.count || left.reason.localeCompare(right.reason),
+    );
+}
+
 /** Realized per-account pnl from the first to the last balance snapshot. */
 function summarizeAccounts(
     snapshots: Record<string, BacktestBalanceSnapshot[]>,
@@ -224,6 +243,8 @@ export default function BacktestResultSummary(props: {
                     slug,
                     profit: countExitReasons(own, true),
                     loss: countExitReasons(own, false),
+                    profitCoins: countSymbols(own, true),
+                    lossCoins: countSymbols(own, false),
                 };
             }),
         [accountSlugs, positions],
@@ -406,33 +427,43 @@ export default function BacktestResultSummary(props: {
                                 No positions.
                             </Typography>
                         )}
-                        {slicesByAccount.map(({ slug, profit, loss }) => (
-                            <Box key={slug} sx={{ mb: 1.5 }}>
-                                <Typography
-                                    variant="body2"
-                                    color="text.secondary"
-                                    sx={{ fontWeight: "bold", mb: 0.5 }}
-                                >
-                                    {nameBySlug.get(slug)?.trim() || slug}
-                                </Typography>
-                                <Box
-                                    sx={{
-                                        display: "flex",
-                                        flexWrap: "wrap",
-                                        gap: 2,
-                                    }}
-                                >
-                                    <ExitReasonPie
-                                        data={profit}
-                                        title="Profit exits"
-                                    />
-                                    <ExitReasonPie
-                                        data={loss}
-                                        title="Loss exits"
-                                    />
+                        {slicesByAccount.map(
+                            ({ slug, profit, loss, profitCoins, lossCoins }) => (
+                                <Box key={slug} sx={{ mb: 1.5 }}>
+                                    <Typography
+                                        variant="body2"
+                                        color="text.secondary"
+                                        sx={{ fontWeight: "bold", mb: 0.5 }}
+                                    >
+                                        {nameBySlug.get(slug)?.trim() || slug}
+                                    </Typography>
+                                    <Box
+                                        sx={{
+                                            display: "flex",
+                                            flexWrap: "wrap",
+                                            gap: 2,
+                                        }}
+                                    >
+                                        <ExitReasonPie
+                                            data={profit}
+                                            title="Profit exits"
+                                        />
+                                        <ExitReasonPie
+                                            data={loss}
+                                            title="Loss exits"
+                                        />
+                                        <ExitReasonPie
+                                            data={profitCoins}
+                                            title="Profit coins"
+                                        />
+                                        <ExitReasonPie
+                                            data={lossCoins}
+                                            title="Loss coins"
+                                        />
+                                    </Box>
                                 </Box>
-                            </Box>
-                        ))}
+                            ),
+                        )}
                     </>
                 )}
             </HeaderMetrics>
