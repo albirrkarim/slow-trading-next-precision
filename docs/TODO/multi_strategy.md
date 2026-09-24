@@ -76,11 +76,101 @@ like known as StreakStrategyLogic or etc...
 2. Streak needs a pending-reentry record (`PositionPendingReentry`:
    pairId/role/direction/anchor vPoint) — either a `state.pendingReentries`
    slot or strategy-owned state.
+
+
+   
 3. Config needs `management.openDirection` ("ONE_WAY" | "BOTH"), per-account
    `trading.entryLegs`, and `futuresPositionMode` for hedge-mode validation.
+
+
+
+
 4. `usedBy<slug>` is a boolean per account — Streak needs per-leg marks
    (e.g. `usedBy<slug>` storing role), since one vPoint can be MAIN's
    averaging point and COUNTER's entry anchor.
+
+I think it will be 
+
+vpoint.used: string[] 
+
+it will depend on the strategy it choose
+
+["accountslug1", "accountslug2"]
+
+["accountslug1_mainleg", "accountslug2_counterleg"]
+
+#### 4. Design — strategy-owned usage markers
+
+Replace the dynamic `usedBy<slug>: true` keys (and the deprecated `used:
+boolean`) with one array field of opaque marker strings:
+
+```ts
+interface VolatilityPoint {
+  /**
+   * Usage markers written by the active strategy after an action succeeds.
+   * Marker format is strategy-chosen; the runtime only stores and matches
+   * the raw strings. Absent/empty = unused.
+   */
+  usedBy?: string[];
+}
+```
+
+Name it `usedBy` (not `used`) to avoid colliding with the deprecated boolean
+`used` field during migration — old data has `used: true`, new code expects
+an array.
+
+**Marker convention** — strategy picks the format; `:` is the separator
+since account slugs may contain `_`:
+
+```
+"multi"                // one-way strategies: account consumed the point
+"main:MAIN"            // hedge/streak: account + leg consumed the point
+"main:COUNTER"
+```
+
+For Hedge/Streak one vPoint can carry both leg markers —
+`["main:MAIN", "main:COUNTER"]` — because the same point can be MAIN's
+averaging step and COUNTER's entry anchor (streak FAQ: "unused means unused
+for entry for some leg; averaging doesn't count"). Whether averaging writes
+a marker at all is the strategy's choice; streak marks entries only.
+
+**Who writes markers** — keep the engine marker-agnostic:
+
+- The shared runtime owns a dumb primitive: `usage.mark(point, marker)`,
+  `usage.has(point, marker)`, `usage.reset(point)`.
+- Each `RuntimeDecision` carries `vPointUsage?: string[]` — the markers to
+  write on success. The decision producer (strategy) computes them, e.g.
+  hedge emits `["main:MAIN", "main:COUNTER"]` for a pair entry.
+- The engine writes markers only after `onAction` returns and shared
+  accounting succeeds — same timing guarantee as today
+  (`BOTH:AVERAGING_CONSUMES_VOLATILITY_POINT`), just moved from
+  "derived from accountSlug" to "supplied by the decision".
+- Eligibility predicates ("is this vPoint free for me?") move into the
+  strategy's decision producer — it calls `usage.has` with its own marker
+  format. Default/multi strategy emits `[accountSlug]`, preserving current
+  `BOTH:ENTRY_ONLY_IN_UNIQUE_VOLATILITY_POINT_ID` behavior.
+
+**Consumers to update** — `usedBy<slug>` isn't runtime-internal only:
+
+- `system/utils/vpoints.ts` — merge/reset logic scans `usedBy*` keys →
+  copy/clear the `usedBy` array instead (also keep deleting legacy
+  `used`/`usedBy*` keys once, for storage compat).
+- `system/storage/runtime.ts` `resetVolatilityPointUsage` — same.
+- `system/mcp/engine-state.ts` — currently reports `usedBy: Record<slug,
+  ids[]>`; switch to listing raw markers per point (optionally grouped by
+  the `slug` prefix before `:`).
+- `components/LiveDashboard/Feature/LatestVolatilityPoints` — reads
+  `usedBy${slug}` → membership check `usedBy.includes(slug)` or
+  `startsWith(`${slug}:`)`.
+- `production/factory.ts` — writes `usedBy<slug>` around fills → supply
+  markers through the decision instead.
+
+**No Precision Checker impact** — positions persist only `vPoint = {id,
+lvl}` refs, never the marker state, and markers are already excluded from
+datasets.
+
+**Storage** — `usedBy: string[]` is compact-JSON friendly and reset becomes
+`point.usedBy = []` (or delete) instead of scanning dynamic keys.
 
 ### RuntimeEngine API (`src/lib/precision/`)
 
