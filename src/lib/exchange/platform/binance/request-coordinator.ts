@@ -1,5 +1,6 @@
 import type { AxiosResponse } from "axios";
 import { systemLog } from "@/lib/system/logging";
+import { systemNotif } from "@/lib/system/notification";
 
 const MINUTE_MS = 60_000;
 const DEFAULT_COOLDOWN_MS = 2 * MINUTE_MS;
@@ -389,6 +390,7 @@ async function activateCooldown(
       retryAt: nextState.retryAt,
       startedAt: nextState.startedAt,
     });
+    notifyCooldownActivated(nextState, now, message);
   }
 
   return new BinanceCooldownError({
@@ -398,6 +400,53 @@ async function activateCooldown(
     retryAt: nextState.retryAt,
     status: getErrorStatus(error),
   });
+}
+
+/**
+ * Reports a newly activated or extended cooldown once per reopen time. The
+ * dedupe key carries `retryAt`, so repeated callers observing the same
+ * cooldown never send a second notification. Fire-and-forget: delivery must
+ * never block the shared request queue.
+ */
+function notifyCooldownActivated(
+  state: BinanceCooldownState,
+  detectedAt: number,
+  reason: string,
+): void {
+  const remainingMinutes = Math.max(
+    1,
+    Math.ceil((state.retryAt - detectedAt) / 60_000),
+  );
+  const reopenWib = `${new Date(state.retryAt).toLocaleString("en-GB", {
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    month: "short",
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+  })} WIB`;
+
+  // PROD:NOTIF_BINANCE_COOLDOWN
+  void systemNotif
+    .central({
+      dashboard: "SLOW",
+      dedupeKey: `binance-cooldown:${state.retryAt}`,
+      key: "NOTIF_BINANCE_COOLDOWN",
+      message: [
+        `Binance cooldown: ${remainingMinutes} minutes`,
+        `Open again: ${reopenWib} (Jakarta time)`,
+        `Reason: ${reason}`,
+      ].join("\n"),
+      title:
+        `[BINANCE COOLDOWN] ${remainingMinutes} minutes · ` +
+        `opens ${reopenWib}`,
+    })
+    .catch((error) => {
+      systemLog.error(
+        "Failed to send Binance cooldown notification",
+        error,
+      );
+    });
 }
 
 function observeResponse(

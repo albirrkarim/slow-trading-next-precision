@@ -434,9 +434,19 @@ against clean APIs; non-goal pages remain in legacy code until deletion.
       positions through the shared monitor, and notifies transitions.
       `management` upserts per-account daily balance snapshots, evaluates
       the combined live+sandbox daily-PnL entry stop into
-      `status.dailyPnlLimitState`, and sends the completed-day performance
+      `status.dailyPnlLimitState`, sends the completed-day performance
       report once per channel (`status.dailyPerformanceNotified`,
-      `status.dailyPnlLimitNotified`). Every stage reports measured
+      `status.dailyPnlLimitNotified`), and runs the post-exit
+      notification monitors (`monitorNotif` — high-volatility zone
+      transitions persisted in `notifications.json`, stale-position and
+      long-open alerts deduped per position). Trade notifications emit
+      from `production/factory.ts` `onAction` via `tradeNotif` —
+      entry/averaging/exit plus their `*_FAILED` variants — gated by the
+      adapter `onNotif` contract with `[SANDBOX]` subject prefixes. The
+      Binance request coordinator notifies `NOTIF_BINANCE_COOLDOWN` once
+      per cooldown activation, and engine stage/cycle failures report
+      `NOTIF_ERROR` hourly-bucketed alongside the errors.json record.
+      Every stage reports measured
       `stageRuns` stats via `onStageStats` and the tick summary via
       `onCycleComplete` into `status.lastRun*`. The production
       `onStrategy` gate now blocks entries and averaging while Black Swan

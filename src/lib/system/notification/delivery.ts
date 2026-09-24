@@ -310,7 +310,12 @@ async function send(
   return delivered;
 }
 
-async function central(payload: NotifCentralParam): Promise<void> {
+/**
+ * Routes one notification through the configured channels.
+ * Resolves `false` only when a delivery was attempted and failed; dedupe
+ * suppression and unconfigured channels resolve `true` (already handled).
+ */
+async function central(payload: NotifCentralParam): Promise<boolean> {
   const normalizedDedupeKey = payload.dedupeKey
     ? normalizeDedupeKey(payload.dedupeKey)
     : null;
@@ -320,7 +325,7 @@ async function central(payload: NotifCentralParam): Promise<void> {
       inFlightDedupeKeys.has(normalizedDedupeKey!) ||
       (await wasNotificationAlreadySent(payload.dedupeKey))
     ) {
-      return;
+      return true;
     }
 
     inFlightDedupeKeys.add(normalizedDedupeKey!);
@@ -337,7 +342,7 @@ async function central(payload: NotifCentralParam): Promise<void> {
           : configuredChannels;
 
     if (channels.length === 0) {
-      return;
+      return true;
     }
 
     const delivered = await send(
@@ -354,6 +359,8 @@ async function central(payload: NotifCentralParam): Promise<void> {
         subject: payload.title,
       });
     }
+
+    return delivered;
   } finally {
     if (normalizedDedupeKey) {
       inFlightDedupeKeys.delete(normalizedDedupeKey);

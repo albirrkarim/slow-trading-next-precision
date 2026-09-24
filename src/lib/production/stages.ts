@@ -4,7 +4,10 @@ import type {
   RuntimeContext,
   RuntimeStageRunPatch,
 } from "@/lib/precision/types";
-import { systemNotif } from "@/lib/system/notification";
+import {
+  monitorNotif,
+  systemNotif,
+} from "@/lib/system/notification";
 import { systemLog } from "@/lib/system/logging";
 import {
   getChannelsForNotification,
@@ -330,7 +333,7 @@ async function notifyDailyPnlLimit(params: {
     if (alreadyNotified || !enabled) continue;
 
     try {
-      await systemNotif.central({
+      const sent = await systemNotif.central({
         channel,
         dashboard: "SLOW",
         dedupeKey: [
@@ -351,8 +354,11 @@ async function notifyDailyPnlLimit(params: {
           "Automatic exits and manual entries remain available.",
           `Time: ${new Date(params.currentTimeMs).toISOString()}`,
         ].join("\n"),
-        title: `[DAILY PNL] Auto-entry paused (${params.evaluation.day} UTC)`,
+        title:
+          `${params.mode === "sandbox" ? "[SANDBOX] " : ""}` +
+          `[DAILY PNL] Auto-entry paused (${params.evaluation.day} UTC)`,
       });
+      if (!sent) continue;
       await runtimeStorage.status.update(params.mode, (current) => {
         current.dailyPnlLimitNotified = {
           ...(current.dailyPnlLimitNotified ?? {}),
@@ -501,8 +507,9 @@ async function runManagement(
       `End balance: ${formatBalanceUsdt(balance.endBalance)}`,
     ].join("\n");
 
+    const deliveredChannels: NotificationChannel[] = [];
     for (const channel of pendingChannels) {
-      await systemNotif.central({
+      const sent = await systemNotif.central({
         channel,
         dashboard: "SLOW",
         dedupeKey: [
@@ -516,21 +523,32 @@ async function runManagement(
         message,
         title,
       });
+      if (sent) {
+        deliveredChannels.push(channel);
+      }
     }
 
-    await runtimeStorage.status.update(mode, (current) => {
-      const marked = { ...(current.dailyPerformanceNotified ?? {}) };
-      for (const channel of pendingChannels) {
-        marked[channel] = day;
-      }
-      current.dailyPerformanceNotified = marked;
-    });
+    if (deliveredChannels.length > 0) {
+      await runtimeStorage.status.update(mode, (current) => {
+        const marked = { ...(current.dailyPerformanceNotified ?? {}) };
+        for (const channel of deliveredChannels) {
+          marked[channel] = day;
+        }
+        current.dailyPerformanceNotified = marked;
+      });
+    }
   }
 
   // 4. Safe Haven + withdrawal queue sweep: auto-queue due schedules, then
   // attempt pending items (Safe Haven before withdrawals).
   // PROD:SAFE_HAVEN_QUEUE / PROD:WITHDRAW_QUEUE / PROD:SAFE_HAVEN_SCHEDULE_QUEUE
   const queue = await runtimeQueue.process.run({ mode, now });
+
+  // 5. Post-exit monitoring notifications: high-volatility level transitions
+  // plus stale/long-open position alerts. Runs after this cycle's standard
+  // monitoring so only positions that survived exit processing are eligible.
+  // PROD:NOTIF_HIGH_VOLATILITY / NOTIF_STALE_POSITION / NOTIF_LONG_OPEN_POSITION
+  await monitorNotif.run({ context, mode });
 
   return {
     reports: 0,

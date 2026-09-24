@@ -1,4 +1,5 @@
 import systemLog from "../system/logging";
+import { systemNotif } from "../system/notification";
 import type {
   RuntimeCycleSectionSummary,
   RuntimeStage,
@@ -23,11 +24,37 @@ function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
 }
 
-/** Persists a stage/cycle failure to the error log without breaking the loop. */
+/**
+ * Persists a stage/cycle failure to the error log without breaking the loop,
+ * and reports it once per hour bucket through the NOTIF_ERROR channel so an
+ * operational fault is visible without spamming on every failing pass.
+ */
 async function recordRuntimeError(source: string, error: unknown) {
   await runtimeLogs
     ?.appendError?.({ source, error })
     ?.catch(() => undefined);
+
+  const message = error instanceof Error ? error.message : String(error);
+  const hourBucket = Math.floor(Date.now() / 3_600_000);
+  await systemNotif
+    .central({
+      dashboard: "SLOW",
+      dedupeKey: `slow-operational-error:${source}:${message}:${hourBucket}`,
+      // PROD:NOTIF_ERROR
+      key: "NOTIF_ERROR",
+      message: JSON.stringify(
+        {
+          details: { source },
+          error: message,
+          source,
+          stack: error instanceof Error ? error.stack : undefined,
+        },
+        null,
+        2,
+      ),
+      title: `[ERROR] ${source}`,
+    })
+    .catch(() => undefined);
 }
 
 export class RuntimeEngine {

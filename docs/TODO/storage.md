@@ -51,10 +51,11 @@ instances/<port>/
                                             ←   accounts' shared history, blackSwan uses global
                                             ←   config + market evidence, lastRun* describes the
                                             ←   system cycle
-    notifications.json                    ← {mode: {highVolatility, dailyPerformance,
-                                            ←   dailyPnlLimit*NotificationState}} — global send
-                                            ←   dedupe; authoritative dedupe also lives in
-                                            ←   cache/notification-dedupe.json by dedupeKey
+    notifications.json                    ← {mode: {highVolatility}} — per-channel
+                                            ←   transition state for re-armable alerts;
+                                            ←   once-only send markers live in status.json
+                                            ←   (dailyPerformanceNotified, dailyPnlLimitNotified)
+                                            ←   and cache/notification-dedupe.json by dedupeKey
 
     accounts/<slug>/<mode>/               ← everything this account+mode owns
       positions.json                      ← Position[] flat — exactly what state.openPositions is

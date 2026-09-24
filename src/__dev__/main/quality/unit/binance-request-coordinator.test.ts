@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  central: vi.fn(async () => true),
   error: vi.fn(),
 }));
 
@@ -8,6 +9,10 @@ vi.mock("@/lib/system/logging", () => ({
   systemLog: {
     error: mocks.error,
   },
+}));
+
+vi.mock("@/lib/system/notification", () => ({
+  systemNotif: { central: mocks.central },
 }));
 
 import binanceRequestCoordinator, {
@@ -114,6 +119,17 @@ describe("Binance request coordinator", () => {
       startedAt: Date.now(),
     });
     expect(mocks.error).toHaveBeenCalledTimes(1);
+
+    // PROD:NOTIF_BINANCE_COOLDOWN — one send per activated cooldown; the
+    // blocked second request observed the same cooldown and did not resend.
+    expect(mocks.central).toHaveBeenCalledTimes(1);
+    expect(mocks.central).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dedupeKey: `binance-cooldown:${bannedUntil}`,
+        key: "NOTIF_BINANCE_COOLDOWN",
+        title: expect.stringContaining("[BINANCE COOLDOWN]"),
+      }),
+    );
   });
 
   it("hydrates a persisted cooldown before invoking a REST callback", async () => {

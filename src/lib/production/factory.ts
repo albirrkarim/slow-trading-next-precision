@@ -28,6 +28,7 @@ import blackSwan from "@/lib/system/trading/black-swan";
 import runtimeDailyPnlLimit from "@/lib/system/trading/daily-pnl-limit";
 import entryAction from "@/lib/system/trading/entry-action";
 import tradingExit from "@/lib/system/trading/exit";
+import { tradeNotif } from "@/lib/system/notification";
 import type { BalanceSummary, Position } from "@/lib/system/trading";
 import vpoints from "@/lib/system/utils/vpoints";
 import adapter from "./adapter";
@@ -176,12 +177,14 @@ function createActionHandlers(
     const accountRuntime = accountRuntimes.get(decision.accountSlug);
     if (!accountRuntime) return null;
 
+    let actionError: unknown;
     const executeSafely = async <T>(
       fn: () => T | Promise<T>,
     ): Promise<T | null> => {
       try {
         return await fn();
       } catch (error) {
+        actionError = error;
         systemLog.error(
           `[Precision Runtime] ${decision.type} failed for ` +
             `${decision.accountSlug}/${decision.symbol}`,
@@ -224,20 +227,25 @@ function createActionHandlers(
 
     // Sandbox shares the exact simulated fills used by backtest — one code
     // path for position math; only the fill source differs from live.
+    let position: Position | null;
     if (accountRuntime.mode === "sandbox") {
       if (decision.type === "entry") {
-        return executeSafely(() => entryAction.execute(context, decision));
+        position = await executeSafely(() =>
+          entryAction.execute(context, decision),
+        );
+      } else if (decision.type === "averaging") {
+        position = await executeSafely(() =>
+          tradingAveraging.execute(context, decision),
+        );
+      } else {
+        position = await executeSafely(() =>
+          tradingExit.execute(context, decision),
+        );
       }
-      if (decision.type === "averaging") {
-        return executeSafely(() => tradingAveraging.execute(context, decision));
-      }
-      return executeSafely(() => tradingExit.execute(context, decision));
-    }
-
-    // Live places real exchange orders, then applies the executed fill through
-    // the same position math the simulation uses.
-    if (decision.type === "entry") {
-      return executeSafely(() =>
+    } else if (decision.type === "entry") {
+      // Live places real exchange orders, then applies the executed fill
+      // through the same position math the simulation uses.
+      position = await executeSafely(() =>
         runInAccount(() =>
           execution.entry({
             context,
@@ -246,9 +254,8 @@ function createActionHandlers(
           }),
         ),
       );
-    }
-    if (decision.type === "averaging") {
-      return executeSafely(() =>
+    } else if (decision.type === "averaging") {
+      position = await executeSafely(() =>
         runInAccount(() =>
           execution.averaging({
             context,
@@ -257,16 +264,48 @@ function createActionHandlers(
           }),
         ),
       );
+    } else {
+      position = await executeSafely(() =>
+        runInAccount(() =>
+          execution.exit({
+            context,
+            decision,
+            exchange: accountRuntime.exchange,
+          }),
+        ),
+      );
     }
-    return executeSafely(() =>
-      runInAccount(() =>
-        execution.exit({
+
+    // PROD:NOTIF_ENTRY / NOTIF_EXIT / NOTIF_AVERAGE + *_FAILED variants.
+    // Delivery is environment-registered; a notification failure must never
+    // mask the execution result.
+    try {
+      if (position) {
+        await tradeNotif.executed({
           context,
           decision,
-          exchange: accountRuntime.exchange,
-        }),
-      ),
-    );
+          mode: accountRuntime.mode,
+          position,
+        });
+      } else {
+        await tradeNotif.failed({
+          context,
+          decision,
+          error:
+            actionError ??
+            new Error(`${decision.type} execution produced no position`),
+          mode: accountRuntime.mode,
+        });
+      }
+    } catch (notifError) {
+      systemLog.error(
+        `[Precision Runtime] ${decision.type} notification failed for ` +
+          `${decision.accountSlug}/${decision.symbol}`,
+        notifError,
+      );
+    }
+
+    return position;
   };
 
   const onExit: RuntimeEngineAdapter["onExit"] = async (position, context) => {

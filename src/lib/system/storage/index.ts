@@ -4,6 +4,7 @@ export { default as runtimeBalanceSnapshots } from "./balance-snapshots";
 export { default as runtimeBinanceHealth } from "./binance-health";
 export { default as runtimeInstanceIp } from "./instance-ip";
 export { default as runtimeLogs } from "./logs";
+export { default as runtimeNotifications } from "./notifications";
 export { default as runtimeStorage } from "./runtime";
 export { default as storageFiles } from "./files";
 export { default as storageRoot } from "./root";
@@ -19,6 +20,10 @@ export type {
   RuntimeSystemStatus,
 } from "./runtime";
 export type { RuntimeBalanceSnapshot } from "./balance-snapshots";
+export type {
+  HighVolatilityZone,
+  RuntimeNotificationState,
+} from "./notifications";
 export type {
   RuntimeBinanceCooldownLogEntry,
   RuntimeConfigChange,

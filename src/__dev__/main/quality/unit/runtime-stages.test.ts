@@ -5,8 +5,9 @@ const NOW = Date.UTC(2026, 8, 3, 10, 4);
 
 const mocks = vi.hoisted(() => ({
   appendError: vi.fn(async () => undefined),
-  central: vi.fn(async () => undefined),
+  central: vi.fn(async () => true),
   monitor: vi.fn(async () => undefined),
+  monitorNotifRun: vi.fn(async () => undefined),
   readCombined: vi.fn(async () => []),
   readRange: vi.fn(async (_params?: any) => [] as any[]),
   statusByMode: {} as Record<string, any>,
@@ -14,6 +15,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/system/notification", () => ({
+  monitorNotif: { run: mocks.monitorNotifRun },
   systemNotif: { central: mocks.central },
 }));
 
@@ -418,6 +420,7 @@ describe("productionStages.riskSentinel", () => {
 describe("productionStages.management", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.central.mockResolvedValue(true);
     mocks.statusByMode = {};
     mocks.readRange.mockResolvedValue([]);
     mocks.readCombined.mockResolvedValue([]);
@@ -498,6 +501,8 @@ describe("productionStages.management", () => {
       expect.objectContaining({
         channel: "telegram",
         key: "NOTIF_DAILY_PNL_LIMIT",
+        // PROD:NOTIF_DAILY_PNL_LIMIT — sandbox subjects carry the prefix.
+        title: expect.stringMatching(/^\[SANDBOX\] /),
       }),
     );
     expect(status?.dailyPnlLimitNotified?.telegram?.b).toBe(true);
@@ -511,7 +516,35 @@ describe("productionStages.management", () => {
     );
     expect(status?.dailyPerformanceNotified?.telegram).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 
+    // Post-exit notification monitors run inside the management stage.
+    expect(mocks.monitorNotifRun).toHaveBeenCalledWith(
+      expect.objectContaining({ mode: "sandbox" }),
+    );
+
     expect(patch?.summary).toMatch(/entry stop reached/);
+  });
+
+  it("does not mark the channel when delivery fails", async () => {
+    mocks.readRange.mockImplementation(async ({ mode }: any) =>
+      mode === "live"
+        ? ([
+            {
+              account: "acc-1",
+              closed: { t: NOW - MINUTE_MS },
+              opened: { t: NOW - 2 * MINUTE_MS },
+              pnl: { netPct: -6, netUsdt: -60 },
+            },
+          ] as any)
+        : [],
+    );
+    mocks.central.mockResolvedValue(false);
+
+    await productionStages.management(contextWith());
+    const status = mocks.statusByMode.sandbox;
+
+    // A failed delivery stays unmarked so the next pass retries the send.
+    expect(status?.dailyPnlLimitNotified?.telegram).toBeUndefined();
+    expect(status?.dailyPerformanceNotified?.telegram).toBeUndefined();
   });
 
   it("does not notify when the daily-PnL stop is not reached", async () => {

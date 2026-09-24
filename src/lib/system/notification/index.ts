@@ -22,7 +22,7 @@ export interface SystemNotificationPayload {
 
 type NotificationSender = (
   payload: SystemNotificationPayload,
-) => Promise<void> | void;
+) => Promise<boolean | void> | boolean | void;
 
 const fallbackSender: NotificationSender = (payload) => {
   systemLog.warn(`[notification] ${payload.title}\n${payload.message}`);
@@ -40,9 +40,16 @@ function reset(): void {
   sender = fallbackSender;
 }
 
-/** Sends one notification through the registered environment sender. */
-async function central(payload: SystemNotificationPayload): Promise<void> {
-  await sender(payload);
+/**
+ * Sends one notification through the registered environment sender.
+ * Resolves `false` only when a delivery was attempted and failed; dedupe
+ * suppression, unconfigured channels, and logging-fallback delivery all
+ * count as handled (`true`), so callers may safely mark sent-state on it.
+ */
+async function central(
+  payload: SystemNotificationPayload,
+): Promise<boolean> {
+  return (await sender(payload)) !== false;
 }
 
 const systemNotif = {
@@ -57,3 +64,5 @@ export { systemNotif };
 export type * from "./config";
 export { default as systemNotifDelivery } from "./delivery";
 export { default as runtimeNotifManagement } from "./management";
+export { default as monitorNotif } from "./monitors";
+export { default as tradeNotif } from "./trades";
