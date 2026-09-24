@@ -31,6 +31,7 @@ export type {
 } from "./entry-diagnostics";
 export { default as pnl } from "./pnl";
 export { default as adaptiveAveraging } from "./adaptive-averaging";
+export { default as autoRemove } from "./auto-remove";
 export { default as averaging } from "./averaging";
 export { default as blackSwan } from "./black-swan";
 export { default as runtimeDailyPerformance } from "./daily-performance";

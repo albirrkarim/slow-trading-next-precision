@@ -33,7 +33,7 @@ function create(
     >
   > = {};
   const getSymbols = () =>
-    entry.getSymbols(state.config);
+    entry.getSymbols(state.config, state.openPositions);
   const marketType =
     state.config.management.tradingMode === "futures" ? "FUTURES" : "SPOT";
 

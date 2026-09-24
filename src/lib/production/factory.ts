@@ -24,6 +24,7 @@ import {
 } from "@/lib/system/storage";
 import type { RuntimeAccountModeState } from "@/lib/system/storage";
 import tradingAveraging from "@/lib/system/trading/averaging";
+import autoRemove from "@/lib/system/trading/auto-remove";
 import blackSwan from "@/lib/system/trading/black-swan";
 import runtimeDailyPnlLimit from "@/lib/system/trading/daily-pnl-limit";
 import entryAction from "@/lib/system/trading/entry-action";
@@ -134,6 +135,34 @@ async function isActionAllowed(
   }
 
   if (!accountRuntime.account.enabled) return false;
+
+  // PROD:AUTO_REMOVE_LATEST_CONFIG_ENTRY_GUARD — the management cycle may
+  // have removed this coin or tightened the minimum price after the signal
+  // was prepared, so the entry guard re-reads the persisted catalog at the
+  // execution boundary. Both checks also block forced entries.
+  const latestCatalog = await runtimeStorage.catalog
+    .load()
+    .catch(() => undefined);
+  if (latestCatalog) {
+    const configuredSymbols = new Set(
+      latestCatalog.config.management.symbols.map(autoRemove.symbol.normalize),
+    );
+    if (!configuredSymbols.has(autoRemove.symbol.normalize(decision.symbol))) {
+      return false;
+    }
+    // BOTH:BLOCK_ENTRY_BELOW_AUTO_REMOVE_MIN_PRICE
+    if (
+      autoRemove.price.isBelowMinimum({
+        minimumPrice:
+          latestCatalog.config.runtime.autoRemoveSymbolMinPrice,
+        price:
+          runtimeState.markPriceMap[decision.symbol.toUpperCase()]?.price,
+      })
+    ) {
+      return false;
+    }
+  }
+
   if (manual) return true;
   if (!runtimeState.config.runtime.autoEntryEnabled) return false;
 
@@ -451,6 +480,27 @@ function createProductionFactory(): ProductionRuntimeFactory {
 
     if (accountRuntimes.size === 0) {
       throw new Error("Precision production runtime has no loadable accounts.");
+    }
+
+    // PROD:AUTO_REMOVE_COIN_WITH_OPEN_POSITION — a coin removed from Symbols
+    // while its position stays open must keep its volatility seed and market
+    // sync so Speedup/Standard Monitoring can still manage the trade.
+    for (const position of openPositions) {
+      const accountRuntime = accountRuntimes.get(position.account);
+      if (!accountRuntime) continue;
+      const normalized = autoRemove.symbol.normalize(position.symbol);
+      if (!normalized) continue;
+      symbolExchangeMap.set(
+        normalized,
+        accountRuntime.exchange.exchangeType,
+      );
+      vPointSources.set(
+        `${accountRuntime.exchange.exchangeType}:${normalized}`,
+        {
+          exchangeType: accountRuntime.exchange.exchangeType,
+          symbol: normalized,
+        },
+      );
     }
 
     // PROD:VPOINTS_BOOTSTRAP_FROM_STORAGE

@@ -5,8 +5,9 @@ import type {
 import { TradingMode } from "@/lib/exchange/types";
 import type { RuntimeConfig } from "../runtime";
 import type { VolatilityPoint } from "../types";
+import autoRemove from "./auto-remove";
 import lateEntryVPointDrift from "./late-entry-vpoint-drift";
-import type { EntryRecommendation } from "./types";
+import type { EntryRecommendation, Position } from "./types";
 
 const DEFAULT_MIN_ACTIONABLE_ABSOLUTE_LEVEL = 2;
 
@@ -139,6 +140,12 @@ function evaluateRecommendations(
   const recommendations: EntryRecommendation[] = [];
   const resolvedMinActionableAbsoluteLevel =
     resolveMinActionableAbsoluteLevel(minActionableAbsoluteLevel);
+  const autoRemoveAbsLevel = Math.max(
+    0,
+    Math.floor(
+      Number(context.state.config.runtime.autoRemoveSymbolAbsLevel) || 0,
+    ),
+  );
   const volatilityPointsMap = createAccountVolatilityMap(context, accountSlug);
 
   for (const [symbol, points] of Object.entries(volatilityPointsMap)) {
@@ -157,6 +164,16 @@ function evaluateRecommendations(
     currentPoint.symbol = symbol;
 
     if (symbol === "BTC") {
+      continue;
+    }
+
+    // BOTH:AUTO_REMOVE_COIN_ABOVE_SOME_ABS_LEVEL — the management cycle
+    // retires a coin whose latest vPoint reaches this level, so a signal at
+    // or above it must not become a new entry.
+    if (
+      autoRemoveAbsLevel > 0 &&
+      Math.abs(currentPoint.lvl) >= autoRemoveAbsLevel
+    ) {
       continue;
     }
 
@@ -185,6 +202,13 @@ async function findDecisions(
 ): Promise<RuntimeEntryDecision[]> {
   const decisions: RuntimeEntryDecision[] = [];
   const { config, openPositions, vPointsMap } = context.state;
+  const configuredSymbols = new Set(
+    config.management.symbols.map(autoRemove.symbol.normalize),
+  );
+  const autoRemoveMinPrice = Math.max(
+    0,
+    Number(config.runtime.autoRemoveSymbolMinPrice) || 0,
+  );
 
   for (const account of config.accounts) {
     if (!account.enabled || !context.state.balance[account.slug]) continue;
@@ -211,13 +235,25 @@ async function findDecisions(
     );
 
     for (const entrySignal of recommendations) {
-      const symbol = String(entrySignal.symbol || "")
-        .trim()
-        .toUpperCase();
+      const symbol = autoRemove.symbol.normalize(entrySignal.symbol);
       if (!symbol) continue;
+      // BOTH:AUTO_REMOVE_CONFIGURED_SYMBOL_GUARD — a coin the management
+      // cycle removed from the configured list cannot produce new entries.
+      if (!configuredSymbols.has(symbol)) continue;
       if (
         config.management.tradingMode === TradingMode.SPOT &&
         entrySignal.l !== "B"
+      ) {
+        continue;
+      }
+      // BOTH:BLOCK_ENTRY_BELOW_AUTO_REMOVE_MIN_PRICE — decision-time check
+      // on the latest mark; the execution boundary re-checks it against the
+      // freshest catalog and mark before the fill.
+      if (
+        autoRemove.price.isBelowMinimum({
+          minimumPrice: autoRemoveMinPrice,
+          price: context.state.markPriceMap[symbol]?.price,
+        })
       ) {
         continue;
       }
@@ -265,16 +301,28 @@ async function findDecisions(
   return decisions;
 }
 
-/** Builds the execution symbol list: configured symbols plus BTC context. */
-function getSymbols(config: RuntimeConfig): string[] {
-  const out = Array.from(
-    new Set([
-      ...config.management.symbols.map((symbol) => symbol.toUpperCase()),
-      "BTC",
-    ]),
+/**
+ * Builds the execution symbol list: configured symbols, symbols that still
+ * carry an open position, plus BTC context. A coin the management cycle
+ * removed keeps its market sync while its position stays managed.
+ */
+function getSymbols(
+  config: RuntimeConfig,
+  positions?: Position[],
+): string[] {
+  const out = new Set(
+    config.management.symbols.map((symbol) => symbol.toUpperCase()),
   );
-  out.sort((a, b) => a.localeCompare(b));
-  return out;
+  // PROD:AUTO_REMOVE_COIN_WITH_OPEN_POSITION
+  for (const position of positions ?? []) {
+    if (!position.closed) {
+      out.add(autoRemove.symbol.normalize(position.symbol));
+    }
+  }
+  out.add("BTC");
+  const list = [...out];
+  list.sort((a, b) => a.localeCompare(b));
+  return list;
 }
 
 const entry = {

@@ -1,10 +1,13 @@
 import { RuntimeEngine } from "@/lib/precision";
 import type {
   RuntimeContext,
+  RuntimeEngineAdapter,
   RuntimeEngineState,
 } from "@/lib/precision/types";
 import { systemLog } from "@/lib/system/logging";
-import { runtimeLogs } from "@/lib/system/storage";
+import { runtimeStages } from "@/lib/system/runtime";
+import { runtimeLogs, runtimeStorage } from "@/lib/system/storage";
+import coinManagement from "./coin-management";
 import factoryModule from "./factory";
 import type { ProductionRuntimeFactory } from "./types";
 
@@ -12,12 +15,15 @@ function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
 }
 
+const MINUTE_MS = 60_000;
 const READY_WAIT_MS = 100;
 const READY_WAIT_ATTEMPTS = 100;
 const RESTART_BASE_MS = 30_000;
 const RESTART_MAX_MS = 5 * 60_000;
 /** Crashes after this uptime count as a healthy engine that hit a fault. */
 const HEALTHY_RUN_MS = 10 * 60_000;
+/** Poll cadence for the out-of-queue coin-management pass. */
+const COIN_MANAGEMENT_TICK_MS = 30_000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -30,9 +36,13 @@ class ProductionRuntime {
   private runPromise?: Promise<void>;
   private state?: RuntimeEngineState;
   private engine?: RuntimeEngine;
+  private adapter?: RuntimeEngineAdapter;
   private restartTimer?: ReturnType<typeof setTimeout>;
   private restartAttempts = 0;
   private startedAt = 0;
+  private coinManagementTimer?: ReturnType<typeof setInterval>;
+  private coinManagementRunning = false;
+  private lastCoinManagementBoundary = -1;
 
   /** Starts the engine once; repeated calls share the same in-flight run. */
   start(factory: ProductionRuntimeFactory): Promise<void> {
@@ -54,6 +64,8 @@ class ProductionRuntime {
         state,
       });
       if (controller.signal.aborted) return;
+      this.adapter = adapter;
+      this.startCoinManagementLoop();
 
       try {
         const engine = new RuntimeEngine(state, adapter);
@@ -64,6 +76,7 @@ class ProductionRuntime {
       }
     })().finally(() => {
       this.engine = undefined;
+      this.adapter = undefined;
       this.controller = undefined;
       this.runPromise = undefined;
     });
@@ -106,11 +119,72 @@ class ProductionRuntime {
     }, delayMs);
   }
 
+  /**
+   * Arms the coin auto-removal pass on the independently configured
+   * management cadence. Its data evaluation runs outside the engine's
+   * serialized stage queue; only the short commit enters `runExclusive`.
+   */
+  private startCoinManagementLoop() {
+    if (this.coinManagementTimer) return;
+    this.coinManagementTimer = setInterval(() => {
+      void this.tickCoinManagement().catch(async (error) => {
+        systemLog.error(
+          "[Precision Runtime] coin-management pass failed",
+          error,
+        );
+        await runtimeLogs
+          .appendError({
+            source: "management-cycle.auto-remove",
+            error,
+          })
+          .catch(() => undefined);
+      });
+    }, COIN_MANAGEMENT_TICK_MS);
+    this.coinManagementTimer.unref?.();
+  }
+
+  /** Runs the auto-removal pass once per management boundary while live. */
+  private async tickCoinManagement() {
+    if (this.coinManagementRunning) return;
+    const engine = this.engine;
+    const adapter = this.adapter;
+    if (!engine?.isReady() || !adapter) return;
+
+    const catalog = await runtimeStorage.catalog
+      .load()
+      .catch(() => undefined);
+    const runtimeConfig = catalog?.config.runtime;
+    if (!catalog || !runtimeConfig?.runnerEnabled) return;
+
+    const intervalMinutes = runtimeStages.interval.getMinutes(
+      runtimeConfig,
+      "management",
+    );
+    const now = Date.now();
+    if (Math.floor(now / MINUTE_MS) % intervalMinutes !== 0) return;
+    const boundary = Math.floor(now / (intervalMinutes * MINUTE_MS));
+    if (boundary === this.lastCoinManagementBoundary) return;
+    this.lastCoinManagementBoundary = boundary;
+
+    this.coinManagementRunning = true;
+    try {
+      await coinManagement.run({
+        getKlines: (params) => adapter.market.getKlines(params),
+        runExclusive: (task) => engine.runExclusive(task),
+      });
+    } finally {
+      this.coinManagementRunning = false;
+    }
+  }
+
   /** Stops the current production engine and lets its clock exit cleanly. */
   stop(): void {
     clearTimeout(this.restartTimer);
     this.restartTimer = undefined;
     this.restartAttempts = 0;
+    clearInterval(this.coinManagementTimer);
+    this.coinManagementTimer = undefined;
+    this.lastCoinManagementBoundary = -1;
     this.controller?.abort();
   }
 

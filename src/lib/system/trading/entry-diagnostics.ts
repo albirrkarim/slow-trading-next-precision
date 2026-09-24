@@ -7,6 +7,7 @@ import runtimeDailyPnlLimit from "./daily-pnl-limit";
 import entryAction from "./entry-action";
 import tradingEntry from "./entry";
 import lateEntryVPointDrift from "./late-entry-vpoint-drift";
+import autoRemove from "./auto-remove";
 import type { BalanceSummary, EntryRecommendation } from "./types";
 
 /** Current explanation for an actionable coin's entry outcome. */
@@ -107,6 +108,50 @@ function explainMissingDecision(
     };
   }
 
+  // BOTH:AUTO_REMOVE_COIN_ABOVE_SOME_ABS_LEVEL — mirrors the signal-time
+  // filter so the dashboard shows the same block the pipeline applied.
+  const runtimeConfig = context.state.config.runtime;
+  const autoRemoveAbsLevel = Math.max(
+    0,
+    Math.floor(Number(runtimeConfig.autoRemoveSymbolAbsLevel) || 0),
+  );
+  const lastLevel = Number(lastPoint?.lvl);
+  if (
+    autoRemoveAbsLevel > 0 &&
+    Number.isFinite(lastLevel) &&
+    Math.abs(lastLevel) >= autoRemoveAbsLevel
+  ) {
+    return {
+      code: "AUTO_REMOVE_ABSOLUTE_LEVEL",
+      reason:
+        `Blocked because auto-removal will remove ${symbol} at absolute ` +
+        `level ${Math.abs(lastLevel)} (configured threshold ` +
+        `${autoRemoveAbsLevel}).`,
+    };
+  }
+
+  // BOTH:BLOCK_ENTRY_BELOW_AUTO_REMOVE_MIN_PRICE — mirrors the
+  // decision-time minimum-price filter in entry.findDecisions.
+  const autoRemoveMinPrice = Math.max(
+    0,
+    Number(runtimeConfig.autoRemoveSymbolMinPrice) || 0,
+  );
+  const latestPrice = context.state.markPriceMap[symbol]?.price;
+  if (
+    autoRemove.price.isBelowMinimum({
+      minimumPrice: autoRemoveMinPrice,
+      price: latestPrice,
+    })
+  ) {
+    return {
+      code: "AUTO_REMOVE_MIN_PRICE",
+      reason:
+        `Blocked because ${symbol}'s current price ${latestPrice} USDT is ` +
+        `below the configured coin-management minimum of ` +
+        `${autoRemoveMinPrice} USDT.`,
+    };
+  }
+
   // BOTH:LATE_ENTRY_VPOINT_PRICE_DRIFT_PCT — mirrors the decision-time gate
   // so the dashboard explains the same block the pipeline applied.
   const drift = lateEntryVPointDrift.evaluate({
@@ -166,6 +211,27 @@ function explainRejectedPlan(
       code: "MARK_PRICE_UNAVAILABLE",
       reason:
         "Blocked because the current market price required by entry funding is unavailable.",
+    };
+  }
+
+  // BOTH:BLOCK_ENTRY_BELOW_AUTO_REMOVE_MIN_PRICE — mirrors the plan-time
+  // guard; unlike drift it blocks manual entries too.
+  const autoRemoveMinPrice = Math.max(
+    0,
+    Number(context.state.config.runtime.autoRemoveSymbolMinPrice) || 0,
+  );
+  if (
+    autoRemove.price.isBelowMinimum({
+      minimumPrice: autoRemoveMinPrice,
+      price: mark.price,
+    })
+  ) {
+    return {
+      code: "AUTO_REMOVE_MIN_PRICE",
+      reason:
+        `Blocked because ${decision.symbol}'s latest price ${mark.price} ` +
+        `USDT is below the configured coin-management minimum of ` +
+        `${autoRemoveMinPrice} USDT.`,
     };
   }
 

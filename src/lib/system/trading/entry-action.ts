@@ -17,6 +17,7 @@ import type {
 } from "./types";
 import { TradingMode } from "@/lib/exchange/types";
 
+import autoRemove from "./auto-remove";
 import runtimeEntryLeverage from "./leverage";
 import lateEntryVPointDrift from "./late-entry-vpoint-drift";
 import reserve from "./reserve";
@@ -331,6 +332,27 @@ function buildPlan(
     decision.accountSlug,
   );
   const signal = decision.entrySignal;
+
+  // BOTH:BLOCK_ENTRY_BELOW_AUTO_REMOVE_MIN_PRICE — execution-time check on
+  // the latest mark. Unlike the drift guard this also blocks forced manual
+  // entries: the configured minimum is an absolute coin-quality floor.
+  const autoRemoveMinPrice = Math.max(
+    0,
+    Number(context.state.config.runtime.autoRemoveSymbolMinPrice) || 0,
+  );
+  if (
+    autoRemove.price.isBelowMinimum({
+      minimumPrice: autoRemoveMinPrice,
+      price: mark.price,
+    })
+  ) {
+    systemLog.info(
+      `Entry blocked because ${symbol}'s latest price ${mark.price} USDT ` +
+        `is below the configured coin-management minimum of ` +
+        `${autoRemoveMinPrice} USDT.`,
+    );
+    return null;
+  }
 
   // BOTH:LATE_ENTRY_VPOINT_PRICE_DRIFT_PCT — final execution check on the
   // freshest mark, after the decision-time gate in entry.findDecisions.
