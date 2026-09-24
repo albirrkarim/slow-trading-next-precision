@@ -189,12 +189,13 @@ export class RuntimeEngine {
       // engine either.
       await adapter
         .onStageStats(stage, stats, this.context)
-        .catch((statsError) =>
+        .catch(async (statsError) => {
           systemLog.error(
             `[Precision Runtime] failed to record ${stage} stats`,
             statsError,
-          ),
-        );
+          );
+          await recordRuntimeError(`runtime.stats.${stage}`, statsError);
+        });
     }
 
     return { ms, n: 1, s: stage, stats };
@@ -314,12 +315,13 @@ export class RuntimeEngine {
             },
             this.context,
           )
-          .catch((cycleError) =>
+          .catch(async (cycleError) => {
             systemLog.error(
               "[Precision Runtime] failed to record cycle stats",
               cycleError,
-            ),
-          );
+            );
+            await recordRuntimeError("runtime.stats.cycle", cycleError);
+          });
       }
     } finally {
       this.processing = false;

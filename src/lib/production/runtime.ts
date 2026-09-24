@@ -4,6 +4,7 @@ import type {
   RuntimeEngineState,
 } from "@/lib/precision/types";
 import { systemLog } from "@/lib/system/logging";
+import { runtimeLogs } from "@/lib/system/storage";
 import factoryModule from "./factory";
 import type { ProductionRuntimeFactory } from "./types";
 
@@ -68,10 +69,13 @@ class ProductionRuntime {
     });
 
     // Supervisor: an unexpected exit (bootstrap fault or a failure that
-    // escaped the stage guards) schedules a restart with capped backoff.
-    // A stop() abort or a clean clock finish never restarts.
-    this.runPromise.catch((error) => {
+    // escaped the stage guards) is recorded, then schedules a restart with
+    // capped backoff. A stop() abort or a clean clock finish never restarts.
+    this.runPromise.catch(async (error) => {
       if (controller.signal.aborted || isAbortError(error)) return;
+      await runtimeLogs
+        ?.appendError?.({ source: "runtime.engine", error })
+        ?.catch(() => undefined);
       // An engine that stayed up long enough gets a fresh backoff budget.
       if (Date.now() - this.startedAt > HEALTHY_RUN_MS) {
         this.restartAttempts = 0;
