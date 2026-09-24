@@ -9,11 +9,14 @@ import type {
 } from "@/lib/dev/backtestPrecision/api/precision-api-types";
 import { systemLog } from "@/lib/system/logging";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import SaveIcon from "@mui/icons-material/Save";
 import {
     Alert,
     Box,
     CircularProgress,
     IconButton,
+    Snackbar,
+    Tooltip,
     Typography
 } from "@mui/material";
 import axios from "axios";
@@ -24,6 +27,7 @@ import { endpoints } from "../../endpoints";
 import PrecisionBTestConfig, { DEFAULT_BACKTEST_CONFIG } from "./Config";
 import BacktestBalanceChart from "./BalanceChart";
 import BacktestDailyPnlCalendar from "./DailyPnlCalendar";
+import Leaderboards from "./Leaderboards";
 import type { BacktestConfig } from "./types";
 import VPointsResult from "./VPointsResult";
 
@@ -81,6 +85,11 @@ export default function DynamicTradeAnalytics() {
     const [data, setData] = useState<BacktestPrecisionResponse | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+    const [savingLeaderboard, setSavingLeaderboard] = useState(false);
+    const [saveNotice, setSaveNotice] = useState<{
+        severity: "error" | "success";
+        text: string;
+    } | null>(null);
 
     // persist view config to localStorage (existing behavior)
     useEffect(() => {
@@ -180,6 +189,50 @@ export default function DynamicTradeAnalytics() {
         }
     };
 
+    /** Persists the current run into storage/leaderboards/<hash>.json. */
+    const saveToLeaderboards = async () => {
+        if (!data) return;
+        setSavingLeaderboard(true);
+        setSaveNotice(null);
+        try {
+            await axios.post(endpoints.dev.backtestPrecisionLeaderboards, {
+                backtestConfig,
+                cachePath: data.cachePath,
+                label:
+                    backtestConfig.name ||
+                    backtestConfig.description ||
+                    backtestConfig.range,
+                result: data.cachePath
+                    ? undefined
+                    : {
+                          balanceSnapshots: data.balanceSnapshots,
+                          exchangeType: data.exchangeType,
+                          positions: data.positions,
+                          vPointsMap: data.vPointsMap,
+                      },
+            });
+            setSaveNotice({ severity: "success", text: "Saved to leaderboards." });
+        } catch (e) {
+            setSaveNotice({
+                severity: "error",
+                text: axios.isAxiosError(e)
+                    ? (e.response?.data?.error ?? e.message)
+                    : "Save failed",
+            });
+        } finally {
+            setSavingLeaderboard(false);
+        }
+    };
+
+    const applySavedConfig = (config: BacktestConfig) => {
+        setBacktestConfig(normalizeBacktestConfig(config));
+    };
+
+    const runSavedConfig = async (config: BacktestConfig) => {
+        applySavedConfig(config);
+        await execute(config);
+    };
+
     return (
         <Box>
             <Box
@@ -261,6 +314,28 @@ export default function DynamicTradeAnalytics() {
                         >
                             {loading ? <CircularProgress size={20} /> : <PlayArrowIcon />}
                         </IconButton>
+
+                        <Tooltip title="Save run to leaderboards">
+                            <span>
+                                <IconButton
+                                    aria-label="Save to leaderboards"
+                                    disabled={!data || savingLeaderboard}
+                                    onClick={() => void saveToLeaderboards()}
+                                    size="small"
+                                >
+                                    {savingLeaderboard ? (
+                                        <CircularProgress size={18} />
+                                    ) : (
+                                        <SaveIcon fontSize="small" />
+                                    )}
+                                </IconButton>
+                            </span>
+                        </Tooltip>
+
+                        <Leaderboards
+                            onApplyConfig={applySavedConfig}
+                            onRunConfig={runSavedConfig}
+                        />
                     </Box>
                 </Box>
             </Box>
@@ -326,6 +401,21 @@ export default function DynamicTradeAnalytics() {
                     result={data}
                 />
             )}
+
+            <Snackbar
+                anchorOrigin={{ horizontal: "center", vertical: "bottom" }}
+                autoHideDuration={4000}
+                onClose={() => setSaveNotice(null)}
+                open={saveNotice !== null}
+            >
+                <Alert
+                    onClose={() => setSaveNotice(null)}
+                    severity={saveNotice?.severity ?? "success"}
+                    variant="filled"
+                >
+                    {saveNotice?.text}
+                </Alert>
+            </Snackbar>
         </Box>
     );
 }
