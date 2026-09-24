@@ -261,7 +261,7 @@ export default function ExitStrategyReference({
           </SettingsRuleAccordion>
 
           <SettingsRuleAccordion
-            behavior="After averaging, exits at the first active fee-aware net PnL percentage or USDT loss boundary selected for the completed averaging count."
+            behavior="After averaging, exits at the first active fee-aware net PnL percentage, USDT, or last-averaging vPoint adverse-drift loss boundary selected for the completed averaging count."
             name="Post-average stop loss"
             number={7}
             status={postAverageStopLoss?.enabled ? "Enabled" : "Disabled"}

@@ -211,6 +211,9 @@ function normalizePostAverageStopLossConfig(
     if (!Number.isFinite(minAveragingCount)) continue;
 
     thresholds.set(minAveragingCount, {
+      adverseDriftPct: normalizePostAverageDriftBoundary(
+        threshold.adverseDriftPct,
+      ),
       maxNetPnlPct: normalizePostAverageLossBoundary(threshold.maxNetPnlPct),
       maxNetPnlUsdt: normalizePostAverageLossBoundary(threshold.maxNetPnlUsdt),
       minAveragingCount,
@@ -223,6 +226,85 @@ function normalizePostAverageStopLossConfig(
       (left, right) => left.minAveragingCount - right.minAveragingCount,
     ),
   };
+}
+
+function normalizePostAverageDriftBoundary(value: unknown): number {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? Math.max(0, numericValue) : 0;
+}
+
+/**
+ * Resolves the adverse-drift anchor: the price of the vPoint latest at the
+ * most recent completed averaging execution, falling back to that fill's own
+ * price (or the last USED reserve step for legacy positions) when no matching
+ * vPoint remains in the window.
+ */
+function resolveLastAveragingAnchorPrice(
+  position?: Pick<Position, "strategy"> | null,
+  volatilityPoints?: VolatilityPoint[],
+): number | undefined {
+  const averaging = position?.strategy.averaging;
+  if (!averaging) return undefined;
+
+  const execution = Array.isArray(averaging.executions)
+    ? averaging.executions.at(-1)
+    : undefined;
+  const usedStep = Array.isArray(averaging.steps)
+    ? [...averaging.steps]
+        .reverse()
+        .find((step) => step.status === "USED")
+    : undefined;
+
+  const anchorT = execution?.t ?? usedStep?.usedAt;
+  const anchorLevel = execution?.level ?? usedStep?.level;
+  const fillPrice = execution?.price ?? usedStep?.usedPrice;
+
+  const eligible = (volatilityPoints ?? []).filter(
+    (point) =>
+      Number.isFinite(point?.t) && anchorT !== undefined && point.t <= anchorT,
+  );
+  const vPoint =
+    [...eligible].reverse().find((point) => point.lvl === anchorLevel) ??
+    eligible.at(-1);
+
+  const anchorPrice = vPoint?.p ?? fillPrice;
+  return typeof anchorPrice === "number" &&
+    Number.isFinite(anchorPrice) &&
+    anchorPrice > 0
+    ? anchorPrice
+    : undefined;
+}
+
+/** Calculates adverse price distance from an anchor price. */
+function calculateAdverseDistancePercent({
+  anchorPrice,
+  currentPrice,
+  direction,
+}: {
+  anchorPrice?: number;
+  currentPrice?: number;
+  direction?: Position["direction"];
+}) {
+  if (
+    !(
+      typeof anchorPrice === "number" &&
+      Number.isFinite(anchorPrice) &&
+      anchorPrice > 0
+    ) ||
+    !(
+      typeof currentPrice === "number" &&
+      Number.isFinite(currentPrice) &&
+      currentPrice > 0
+    )
+  ) {
+    return 0;
+  }
+
+  if (direction === "SHORT") {
+    return ((currentPrice - anchorPrice) / anchorPrice) * 100;
+  }
+
+  return ((anchorPrice - currentPrice) / anchorPrice) * 100;
 }
 
 /** Selects the greatest configured averaging tier already reached. */
@@ -242,17 +324,26 @@ function getPostAverageStopLossThreshold(
   return selected;
 }
 
-/** Evaluates independent fee-aware percent and USDT loss boundaries. */
+/**
+ * Evaluates independent fee-aware percent, USDT, and last-averaging vPoint
+ * adverse-drift loss boundaries.
+ */
 function evaluatePostAverageStopLoss({
   config,
+  currentPrice,
+  direction,
   netPnlPercent,
   netPnlUsdt,
   position,
+  volatilityPoints,
 }: {
   config?: PostAverageStopLossConfig;
+  currentPrice?: number;
+  direction?: Position["direction"];
   netPnlPercent: number;
   netPnlUsdt: number;
   position?: Pick<Position, "strategy"> | null;
+  volatilityPoints?: VolatilityPoint[];
 }) {
   const completedAveragingCount = countCompletedAveraging(position);
   const threshold = getPostAverageStopLossThreshold(
@@ -261,15 +352,29 @@ function evaluatePostAverageStopLoss({
   );
   const percentEnabled = (threshold?.maxNetPnlPct ?? 0) < 0;
   const usdtEnabled = (threshold?.maxNetPnlUsdt ?? 0) < 0;
+  const driftBoundary = Math.max(0, threshold?.adverseDriftPct ?? 0);
+  const driftEnabled = driftBoundary > 0;
+  const anchorPrice = driftEnabled
+    ? resolveLastAveragingAnchorPrice(position, volatilityPoints)
+    : undefined;
+  const adverseDriftPct = calculateAdverseDistancePercent({
+    anchorPrice,
+    currentPrice,
+    direction,
+  });
   const hitPercent =
     percentEnabled && netPnlPercent <= (threshold?.maxNetPnlPct ?? 0);
   const hitUsdt = usdtEnabled && netPnlUsdt <= (threshold?.maxNetPnlUsdt ?? 0);
+  const hitDrift = driftEnabled && adverseDriftPct >= driftBoundary;
 
   return {
+    adverseDriftPct,
+    anchorPrice,
     completedAveragingCount,
+    hitDrift,
     hitPercent,
     hitUsdt,
-    shouldExit: hitPercent || hitUsdt,
+    shouldExit: hitPercent || hitUsdt || hitDrift,
     threshold,
   };
 }
@@ -771,14 +876,24 @@ function evaluateExit(params: {
 
   const postAverageLoss = evaluatePostAverageStopLoss({
     config: config.postAverageStopLoss,
+    currentPrice: price,
+    direction: position.direction,
     netPnlPercent: netGain * 100,
     netPnlUsdt: netProfitUSDT,
     position,
+    volatilityPoints,
   });
 
   // BOTH:POST_AVERAGE_STOP_LOSS
   if (postAverageLoss.shouldExit) {
     const threshold = postAverageLoss.threshold!;
+    const triggers = [
+      postAverageLoss.hitPercent ? "pct" : "",
+      postAverageLoss.hitUsdt ? "usdt" : "",
+      postAverageLoss.hitDrift ? "drift" : "",
+    ]
+      .filter(Boolean)
+      .join("+");
     const reason =
       `[SELL] ${readableTime} ${
         TRADE_MESSAGE.sell.POST_AVERAGE_STOP_LOSS
@@ -786,10 +901,15 @@ function evaluateExit(params: {
         postAverageLoss.completedAveragingCount
       } averaging execution(s)` +
       ` | Net PnL ${(netGain * 100).toFixed(2)}% / ${netProfitUSDT.toFixed(2)} USDT` +
-      ` | Threshold ${threshold.maxNetPnlPct}% / ${threshold.maxNetPnlUsdt} USDT` +
-      ` | Trigger ${postAverageLoss.hitPercent ? "pct" : ""}${
-        postAverageLoss.hitPercent && postAverageLoss.hitUsdt ? "+" : ""
-      }${postAverageLoss.hitUsdt ? "usdt" : ""}`;
+      ` | Threshold ${threshold.maxNetPnlPct}% / ${threshold.maxNetPnlUsdt} USDT / ${
+        threshold.adverseDriftPct ?? 0
+      }% drift` +
+      ` | Trigger ${triggers}` +
+      (postAverageLoss.hitDrift
+        ? ` | Drift ${postAverageLoss.adverseDriftPct.toFixed(
+            2,
+          )}% from avg vPoint ${postAverageLoss.anchorPrice}`
+        : "");
 
     const lastPosition = sellClone({
       closeReason: "POST_AVERAGE_STOP_LOSS",

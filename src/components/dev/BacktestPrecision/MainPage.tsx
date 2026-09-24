@@ -24,7 +24,6 @@ import { endpoints } from "../../endpoints";
 import PrecisionBTestConfig, { DEFAULT_BACKTEST_CONFIG } from "./Config";
 import BacktestBalanceChart from "./BalanceChart";
 import BacktestDailyPnlCalendar from "./DailyPnlCalendar";
-import BacktestResultSummary from "./ResultSummary";
 import type { BacktestConfig } from "./types";
 import VPointsResult from "./VPointsResult";
 

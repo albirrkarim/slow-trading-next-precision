@@ -48,6 +48,7 @@ export default function PostAverageStopLossSettings({
       thresholds: [
         ...config.thresholds,
         {
+          adverseDriftPct: 0,
           maxNetPnlPct: 0,
           maxNetPnlUsdt: 0,
           minAveragingCount: largestCount + 1,
@@ -72,9 +73,10 @@ export default function PostAverageStopLossSettings({
       />
 
       <Typography color="text.secondary" variant="caption">
-        The greatest averaging count reached selects one row. Percentage and
-        USDT are independent loss boundaries; set either value to 0 to disable
-        that boundary.
+        The greatest averaging count reached selects one row. Percentage,
+        USDT, and adverse drift from the last averaging&apos;s vPoint are
+        independent loss boundaries; set any value to 0 to disable that
+        boundary.
       </Typography>
 
       {config.thresholds.map((threshold, index) => (
@@ -84,7 +86,7 @@ export default function PostAverageStopLossSettings({
           key={`${threshold.minAveragingCount}-${index}`}
           spacing={1}
         >
-          <Grid size={{ xs: 12, sm: 3 }}>
+          <Grid size={{ xs: 12, sm: 2 }}>
             <TextField
               disabled={!config.enabled}
               fullWidth
@@ -105,7 +107,7 @@ export default function PostAverageStopLossSettings({
               value={threshold.minAveragingCount}
             />
           </Grid>
-          <Grid size={{ xs: 12, sm: 4 }}>
+          <Grid size={{ xs: 12, sm: 3 }}>
             <TextField
               disabled={!config.enabled}
               fullWidth
@@ -124,7 +126,7 @@ export default function PostAverageStopLossSettings({
               value={threshold.maxNetPnlPct}
             />
           </Grid>
-          <Grid size={{ xs: 10, sm: 4 }}>
+          <Grid size={{ xs: 10, sm: 3 }}>
             <TextField
               disabled={!config.enabled}
               fullWidth
@@ -141,6 +143,28 @@ export default function PostAverageStopLossSettings({
               }}
               type="number"
               value={threshold.maxNetPnlUsdt}
+            />
+          </Grid>
+          <Grid size={{ xs: 10, sm: 3 }}>
+            <TextField
+              disabled={!config.enabled}
+              fullWidth
+              helperText="0 disables drift"
+              label="VPoint Adverse Drift (%)"
+              onChange={(event) =>
+                updateThreshold(index, {
+                  adverseDriftPct: Math.max(
+                    0,
+                    Number(event.target.value) || 0,
+                  ),
+                })
+              }
+              size="small"
+              slotProps={{
+                htmlInput: { inputMode: "decimal", min: 0, step: 0.1 },
+              }}
+              type="number"
+              value={threshold.adverseDriftPct ?? 0}
             />
           </Grid>
           <Grid size={{ xs: 2, sm: 1 }}>

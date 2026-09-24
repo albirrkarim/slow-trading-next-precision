@@ -329,6 +329,11 @@ export interface PostAverageStopLossThreshold {
   maxNetPnlPct: number;
   /** Negative fee-aware net USDT boundary; zero disables it. */
   maxNetPnlUsdt: number;
+  /**
+   * Positive adverse price-drift percentage measured from the vPoint latest
+   * when the most recent averaging execution completed; zero disables it.
+   */
+  adverseDriftPct?: number;
 }
 
 /** Configures tiered post-average loss boundaries enabled after averaging. */

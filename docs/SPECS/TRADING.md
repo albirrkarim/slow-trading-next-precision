@@ -836,16 +836,29 @@ rows:
 {
   enabled: true,
   thresholds: [
-    { minAveragingCount: 2, maxNetPnlPct: -2, maxNetPnlUsdt: 0 },
+    {
+      minAveragingCount: 2,
+      maxNetPnlPct: -2,
+      maxNetPnlUsdt: 0,
+      adverseDriftPct: 0,
+    },
   ],
 }
 ```
 
 System selects the row with the greatest `minAveragingCount` less than or equal
 to the completed averaging count. The original entry is not an averaging
-execution. `maxNetPnlPct` and `maxNetPnlUsdt` are independent fee-aware net PnL
-loss boundaries: a value of `0` disables only that boundary, and the position
-exits when either active negative boundary is reached.
+execution. `maxNetPnlPct`, `maxNetPnlUsdt`, and `adverseDriftPct` are
+independent loss boundaries: a value of `0` disables only that boundary, and
+the position exits when any active boundary is reached.
+
+`adverseDriftPct` is a positive percentage measuring adverse price drift from
+the vPoint that was latest when the most recent completed averaging execution
+filled — preferring a same-level vPoint, then the newest vPoint at or before
+the fill time, then the fill price itself when no vPoint remains in the
+window. For LONG positions adverse drift is the current price below the
+anchor; for SHORT positions it is the current price above the anchor. The
+boundary fires when that adverse drift reaches the configured percentage.
 
 Production, sandbox, and volatility-point backtest share the same evaluator.
 When a vPoint rail crosses this rule and another stop at once, the backtest

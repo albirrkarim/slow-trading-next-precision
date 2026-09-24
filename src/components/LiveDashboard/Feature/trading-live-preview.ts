@@ -526,12 +526,41 @@ export function buildTradingLivePreview(params: {
       (postAverageThreshold?.maxNetPnlUsdt ?? 0) < 0
         ? Math.abs(postAverageThreshold?.maxNetPnlUsdt ?? 0)
         : null;
-    const postAverageFirstLossUsdt =
-      postAveragePercentLossUsdt === null
-        ? postAverageUsdtLossUsdt
-        : postAverageUsdtLossUsdt === null
-          ? postAveragePercentLossUsdt
-          : Math.min(postAveragePercentLossUsdt, postAverageUsdtLossUsdt);
+    const postAverageDriftPct = Math.max(
+      0,
+      postAverageThreshold?.adverseDriftPct ?? 0,
+    );
+    const postAverageDriftTriggerPrice =
+      postAverageDriftPct > 0
+        ? levelBasedPctDriftStopLoss.triggerPrice.resolve(
+            stagePrices[index],
+            postAverageDriftPct,
+            "LONG",
+          )
+        : null;
+    const postAverageDriftLossUsdt =
+      postAverageDriftTriggerPrice === null
+        ? null
+        : reserve.money.roundUsdt(
+            Math.max(
+              0,
+              (weightedEntryPrice - postAverageDriftTriggerPrice) *
+                estimatedQuantity,
+            ),
+          );
+    const postAverageFirstLossUsdt = [
+      postAveragePercentLossUsdt,
+      postAverageUsdtLossUsdt,
+      postAverageDriftLossUsdt,
+    ].reduce<number | null>(
+      (lowest, candidate) =>
+        candidate === null
+          ? lowest
+          : lowest === null
+            ? candidate
+            : Math.min(lowest, candidate),
+      null,
+    );
     const firstStopLoss = resolveTradingLivePreviewFirstStopLoss({
       estimatedHardStopLossUsdt: estimatedLossUsdt,
       netUsdtStopLossUsdt: stopLossUSDT,
@@ -563,6 +592,13 @@ export function buildTradingLivePreview(params: {
           : null,
       postAverageStopLoss: postAverageThreshold
         ? {
+            adverseDriftPct: postAverageThreshold.adverseDriftPct ?? 0,
+            driftAnchorPrice:
+              postAverageDriftTriggerPrice === null
+                ? null
+                : stagePrices[index],
+            driftTriggerPrice: postAverageDriftTriggerPrice,
+            estimatedDriftLossUsdt: postAverageDriftLossUsdt,
             estimatedPercentLossUsdt: postAveragePercentLossUsdt,
             maxNetPnlPct: postAverageThreshold.maxNetPnlPct,
             maxNetPnlUsdt: postAverageThreshold.maxNetPnlUsdt,
