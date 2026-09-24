@@ -4,6 +4,7 @@ import type {
   RuntimeStage,
   RuntimeStageRunStats,
 } from "../system/runtime";
+import { runtimeLogs } from "../system/storage";
 import { createRuntimeHelper, type RuntimeHelper } from "./helper";
 import monitoring from "./monitoring";
 import preview from "./utils/preview";
@@ -18,6 +19,17 @@ import type {
  * This runtime is used on both in backtest and the production
  * BOTH:SHARED_RUNTIME_ENGINE
  */
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError";
+}
+
+/** Persists a stage/cycle failure to the error log without breaking the loop. */
+async function recordRuntimeError(source: string, error: unknown) {
+  await runtimeLogs
+    ?.appendError?.({ source, error })
+    ?.catch(() => undefined);
+}
+
 export class RuntimeEngine {
   state: RuntimeEngineState;
 
@@ -61,16 +73,27 @@ export class RuntimeEngine {
       const clock = this.adapter.clock;
 
       while (!(await clock.finished())) {
-        const nextTime = monitoring.schedule.getNextTime(
-          this.state,
-          this.adapter,
-        );
+        try {
+          const nextTime = monitoring.schedule.getNextTime(
+            this.state,
+            this.adapter,
+          );
 
-        await clock.advanceTo(nextTime);
+          await clock.advanceTo(nextTime);
 
-        this.state.currentTime = clock.now();
+          this.state.currentTime = clock.now();
 
-        await this.enqueue(() => this.runDueStages());
+          await this.enqueue(() => this.runDueStages());
+        } catch (error) {
+          // Shutdown still propagates; every other failure keeps the loop alive
+          // so one bad pass can never permanently stop the engine.
+          if (isAbortError(error)) throw error;
+          systemLog.error(
+            "[Precision Runtime] cycle failed — engine continues",
+            error,
+          );
+          await recordRuntimeError("runtime.cycle", error);
+        }
       }
     } finally {
       this.ready = false;
@@ -106,7 +129,10 @@ export class RuntimeEngine {
 
   /**
    * Runs one stage while counting the positions its actions produced and
-   * measuring its wall-clock duration for the persisted run stats.
+   * measuring its wall-clock duration for the persisted run stats. A thrown
+   * stage body is recorded as a failed pass instead of aborting the cycle —
+   * transient exchange errors (e.g. a Binance rate-limit cooldown) must never
+   * kill the engine loop.
    */
   private async runStage(
     stage: RuntimeStage,
@@ -131,22 +157,44 @@ export class RuntimeEngine {
     };
 
     const startedAt = Date.now();
-    const patch = await body(context);
+    let patch: RuntimeStageRunPatch | void = undefined;
+    let failed: unknown;
+    try {
+      patch = await body(context);
+    } catch (error) {
+      if (isAbortError(error)) throw error;
+      failed = error;
+      systemLog.error(`[Precision Runtime] ${stage} pass failed`, error);
+      await recordRuntimeError(`runtime.stage.${stage}`, error);
+    }
     const ms = Date.now() - startedAt;
-    const stats = {
+    const stats: RuntimeStageRunStats = {
       ms,
       performance: {
         sections: [{ ms, n: 1, s: stage }],
         totalMs: ms,
       },
       reports: patch?.reports ?? reports,
-      summary: patch?.summary ?? `${stage} pass completed`,
+      summary: failed
+        ? `${stage} pass failed: ${
+            failed instanceof Error ? failed.message : String(failed)
+          }`
+        : (patch?.summary ?? `${stage} pass completed`),
       symbols: patch?.symbols ?? symbols,
       t: this.state.currentTime,
     };
 
     if (adapter.onStageStats) {
-      await adapter.onStageStats(stage, stats, this.context);
+      // Stats persistence is adapter-owned; a write failure must not kill the
+      // engine either.
+      await adapter
+        .onStageStats(stage, stats, this.context)
+        .catch((statsError) =>
+          systemLog.error(
+            `[Precision Runtime] failed to record ${stage} stats`,
+            statsError,
+          ),
+        );
     }
 
     return { ms, n: 1, s: stage, stats };
@@ -245,26 +293,33 @@ export class RuntimeEngine {
           n: stage.n,
           s: stage.s,
         }));
-        await this.adapter.onCycleComplete(
-          {
-            ms: totalMs,
-            performance: {
-              sections: [...sections].sort((left, right) => right.ms - left.ms),
-              totalMs,
+        await this.adapter
+          .onCycleComplete(
+            {
+              ms: totalMs,
+              performance: {
+                sections: [...sections].sort((left, right) => right.ms - left.ms),
+                totalMs,
+              },
+              reports: stages.reduce(
+                (total, stage) => total + stage.stats.reports,
+                0,
+              ),
+              summary: `${stages.length} stage(s) completed`,
+              symbols: stages.reduce(
+                (total, stage) => total + stage.stats.symbols,
+                0,
+              ),
+              t: this.state.currentTime,
             },
-            reports: stages.reduce(
-              (total, stage) => total + stage.stats.reports,
-              0,
+            this.context,
+          )
+          .catch((cycleError) =>
+            systemLog.error(
+              "[Precision Runtime] failed to record cycle stats",
+              cycleError,
             ),
-            summary: `${stages.length} stage(s) completed`,
-            symbols: stages.reduce(
-              (total, stage) => total + stage.stats.symbols,
-              0,
-            ),
-            t: this.state.currentTime,
-          },
-          this.context,
-        );
+          );
       }
     } finally {
       this.processing = false;

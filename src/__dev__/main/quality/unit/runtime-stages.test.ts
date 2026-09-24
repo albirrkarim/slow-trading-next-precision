@@ -4,6 +4,7 @@ const MINUTE_MS = 60_000;
 const NOW = Date.UTC(2026, 8, 3, 10, 4);
 
 const mocks = vi.hoisted(() => ({
+  appendError: vi.fn(async () => undefined),
   central: vi.fn(async () => undefined),
   monitor: vi.fn(async () => undefined),
   readCombined: vi.fn(async () => []),
@@ -38,6 +39,9 @@ vi.mock("@/lib/system/storage", () => ({
   runtimeBalanceSnapshots: {
     readCombined: mocks.readCombined,
     upsert: mocks.upsert,
+  },
+  runtimeLogs: {
+    appendError: mocks.appendError,
   },
   runtimeStorage: {
     catalog: { load: vi.fn(async () => null) },
@@ -205,6 +209,83 @@ describe("RuntimeEngine environment stages", () => {
     expect(cycles).toHaveLength(1);
     expect(cycles[0].performance.sections).toHaveLength(4);
     expect(cycles[0].summary).toMatch(/4 stage\(s\) completed/);
+  });
+
+  it("keeps the engine alive when a stage body throws", async () => {
+    const state = createState();
+    const stageStats: Array<{ stage: string; stats: any }> = [];
+    const cycles: any[] = [];
+
+    const adapter = createAdapter(state, {
+      onCycleComplete: async (stats) => {
+        cycles.push(stats);
+      },
+      onManagement: async () => {
+        throw new Error("management exploded");
+      },
+      onStageStats: async (stage, stats) => {
+        stageStats.push({ stage, stats });
+      },
+    });
+
+    const engine = new RuntimeEngine(state, adapter);
+    await engine.start();
+
+    // The failing stage recorded a failed pass instead of aborting the loop,
+    // and the stages after it still ran.
+    expect(stageStats.map((item) => item.stage)).toEqual([
+      "standard-monitoring",
+      "management",
+      "capture-entry",
+    ]);
+    const management = stageStats.find(
+      (item) => item.stage === "management",
+    )?.stats;
+    expect(management?.summary).toMatch(
+      /management pass failed: management exploded/,
+    );
+    expect(mocks.appendError).toHaveBeenCalledWith(
+      expect.objectContaining({ source: "runtime.stage.management" }),
+    );
+    expect(cycles).toHaveLength(1);
+  });
+
+  it("survives a cycle-level failure and keeps scheduling", async () => {
+    const state = createState();
+    let finishedCalls = 0;
+    let advanceCalls = 0;
+    const stageStats: string[] = [];
+    const adapter = createAdapter(state, {
+      clock: {
+        advanceTo(time) {
+          advanceCalls += 1;
+          if (advanceCalls === 1) {
+            throw new Error("advance exploded");
+          }
+          state.currentTime = time;
+        },
+        finished() {
+          finishedCalls += 1;
+          return finishedCalls > 2;
+        },
+        now() {
+          return state.currentTime;
+        },
+      },
+      onStageStats: async (stage) => {
+        stageStats.push(stage);
+      },
+    });
+
+    const engine = new RuntimeEngine(state, adapter);
+    await engine.start();
+
+    expect(advanceCalls).toBe(2);
+    expect(mocks.appendError).toHaveBeenCalledWith(
+      expect.objectContaining({ source: "runtime.cycle" }),
+    );
+    // The second iteration ran normally after the failed first one.
+    expect(stageStats).toContain("standard-monitoring");
   });
 
   it("includes environment-stage boundaries in getNextTime only when the hooks exist", () => {

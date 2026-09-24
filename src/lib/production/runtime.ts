@@ -3,6 +3,7 @@ import type {
   RuntimeContext,
   RuntimeEngineState,
 } from "@/lib/precision/types";
+import { systemLog } from "@/lib/system/logging";
 import factoryModule from "./factory";
 import type { ProductionRuntimeFactory } from "./types";
 
@@ -12,6 +13,10 @@ function isAbortError(error: unknown): boolean {
 
 const READY_WAIT_MS = 100;
 const READY_WAIT_ATTEMPTS = 100;
+const RESTART_BASE_MS = 30_000;
+const RESTART_MAX_MS = 5 * 60_000;
+/** Crashes after this uptime count as a healthy engine that hit a fault. */
+const HEALTHY_RUN_MS = 10 * 60_000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -24,14 +29,21 @@ class ProductionRuntime {
   private runPromise?: Promise<void>;
   private state?: RuntimeEngineState;
   private engine?: RuntimeEngine;
+  private restartTimer?: ReturnType<typeof setTimeout>;
+  private restartAttempts = 0;
+  private startedAt = 0;
 
   /** Starts the engine once; repeated calls share the same in-flight run. */
   start(factory: ProductionRuntimeFactory): Promise<void> {
     if (this.runPromise) return this.runPromise;
 
+    clearTimeout(this.restartTimer);
+    this.restartTimer = undefined;
+
     const controller = new AbortController();
     this.controller = controller;
     this.factory = factory;
+    this.startedAt = Date.now();
 
     this.runPromise = (async () => {
       const state = await factory.createState();
@@ -55,11 +67,46 @@ class ProductionRuntime {
       this.runPromise = undefined;
     });
 
+    // Supervisor: an unexpected exit (bootstrap fault or a failure that
+    // escaped the stage guards) schedules a restart with capped backoff.
+    // A stop() abort or a clean clock finish never restarts.
+    this.runPromise.catch((error) => {
+      if (controller.signal.aborted || isAbortError(error)) return;
+      // An engine that stayed up long enough gets a fresh backoff budget.
+      if (Date.now() - this.startedAt > HEALTHY_RUN_MS) {
+        this.restartAttempts = 0;
+      }
+      this.scheduleRestart();
+    });
+
     return this.runPromise;
+  }
+
+  /** Schedules the next engine restart with exponential backoff. */
+  private scheduleRestart() {
+    if (this.restartTimer || !this.factory) return;
+    const delayMs = Math.min(
+      RESTART_BASE_MS * 2 ** this.restartAttempts,
+      RESTART_MAX_MS,
+    );
+    this.restartAttempts += 1;
+    systemLog.error(
+      `[Precision Runtime] scheduling engine restart in ${Math.round(
+        delayMs / 1000,
+      )}s (attempt ${this.restartAttempts})`,
+    );
+    this.restartTimer = setTimeout(() => {
+      this.restartTimer = undefined;
+      const factory = this.factory;
+      if (factory) void this.start(factory);
+    }, delayMs);
   }
 
   /** Stops the current production engine and lets its clock exit cleanly. */
   stop(): void {
+    clearTimeout(this.restartTimer);
+    this.restartTimer = undefined;
+    this.restartAttempts = 0;
     this.controller?.abort();
   }
 
