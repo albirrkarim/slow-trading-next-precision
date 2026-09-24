@@ -1,4 +1,5 @@
 import runtimeMcpBalance from "./balance";
+import runtimeMcpEngineState from "./engine-state";
 import runtimeMcpFinanceSummary from "./finance-summary";
 import runtimeMcpHistory from "./history";
 import runtimeMcpTradeHistoryPagination from "./history-pagination";
@@ -168,6 +169,30 @@ const toolDefinitions: RuntimeMcpToolDefinition[] = [
     }),
   },
   {
+    name: "slow_engine_state_read",
+    description:
+      "Read the Precision runtime engine state: lifecycle flags, config with account credentials and token secrets stripped, per-account balances, open positions with their entry/close volatility-point ids, mark prices with staleness, and per-symbol volatility points including which account consumed each point id (usedBy markers). When the engine is stopped, stateSource reports retained or hydrated instead of live. Use to debug entry blocks such as VOLATILITY_POINT_USED.",
+    permission: "engine_state.read",
+    readOnlyHint: true,
+    inputSchema: jsonSchema({
+      symbol: {
+        type: "string",
+        description:
+          "Optional coin symbol, for example LINK or LINK_USDT. Returns the recent volatility-point array for that symbol.",
+      },
+      vPointsLimit: {
+        type: "number",
+        description:
+          "Maximum volatility points returned for the requested symbol, taken from the end of the array. Defaults to 200, maximum 1000.",
+      },
+      includePnlHistory: {
+        type: "boolean",
+        description:
+          "Include each position's pnl.history points (bounded). Defaults to false.",
+      },
+    }),
+  },
+  {
     name: "slow_finance_summary",
     description:
       "Summarize realized net USDT P&L across every enabled exchange account from closed SLOW trades inside one bounded UTC date range. Disabled accounts, balance changes, and open-position unrealized P&L are excluded.",
@@ -295,6 +320,15 @@ async function call(params: {
       },
       runtimeMcpIdentity.getAppName(),
     );
+  }
+
+  if (params.name === "slow_engine_state_read") {
+    // PROD:MCP_ENGINE_STATE
+    return runtimeMcpEngineState.read({
+      includePnlHistory: args.includePnlHistory === true,
+      symbol: String(args.symbol ?? ""),
+      vPointsLimit: Number(args.vPointsLimit) || undefined,
+    });
   }
 
   if (params.name === "slow_trade_history_read") {

@@ -26,6 +26,7 @@ const RUNTIME_MCP_PERMISSIONS: RuntimeMcpPermission[] = [
   "balance.read",
   "trade_history.read",
   "monitoring.read",
+  "engine_state.read",
 ];
 const MCP_PERMISSION_SET = new Set<string>(RUNTIME_MCP_PERMISSIONS);
 

@@ -86,7 +86,8 @@ export type RuntimeMcpPermission =
   | "coin_metadata.broadcast"
   | "balance.read"
   | "trade_history.read"
-  | "monitoring.read";
+  | "monitoring.read"
+  | "engine_state.read";
 
 /** Persisted MCP token record. Secrets are stored only as hashes plus encrypted reveal data. */
 export interface RuntimeMcpTokenRecord {

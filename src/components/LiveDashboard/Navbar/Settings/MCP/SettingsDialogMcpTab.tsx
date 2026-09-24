@@ -74,6 +74,18 @@ const MCP_PERMISSIONS: Array<{
       label: "Trade history read",
       description: "Read closed history and open positions.",
     },
+    {
+      key: "monitoring.read",
+      label: "Monitoring read",
+      description:
+        "Read the credential-free monitoring snapshot: config, schedules, and operational logs.",
+    },
+    {
+      key: "engine_state.read",
+      label: "Engine state read",
+      description:
+        "Read the live runtime engine memory: positions, mark prices, and volatility-point usage markers.",
+    },
   ];
 
 interface McpTokenRecord {

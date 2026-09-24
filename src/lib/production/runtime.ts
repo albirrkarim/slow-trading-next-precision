@@ -119,6 +119,21 @@ class ProductionRuntime {
     return this.runPromise !== undefined;
   }
 
+  /** Reports the managed engine's lifecycle flags and the restart supervisor. */
+  status(): {
+    processing: boolean;
+    ready: boolean;
+    restartPending: boolean;
+    running: boolean;
+  } {
+    return {
+      processing: this.engine?.isProcessing() ?? false,
+      ready: this.engine?.isReady() ?? false,
+      restartPending: this.restartTimer !== undefined,
+      running: this.isRunning(),
+    };
+  }
+
   /** Returns the mutable state owned by the currently loaded runtime. */
   getState(): RuntimeEngineState | undefined {
     return this.state;

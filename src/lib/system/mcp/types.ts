@@ -13,6 +13,7 @@ export const RUNTIME_MCP_PERMISSIONS: RuntimeMcpPermission[] = [
   "balance.read",
   "trade_history.read",
   "monitoring.read",
+  "engine_state.read",
 ];
 
 export interface RuntimeMcpToolDefinition {

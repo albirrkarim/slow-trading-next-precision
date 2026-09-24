@@ -429,6 +429,22 @@ TC: `PROD:MCP_BALANCE`
 
 TC: `PROD:MULTI_ACCOUNT_COMBINED_MCP_BALANCE`
 
+**MCP engine-state contract**
+
+The read-only `slow_engine_state_read` tool exposes the Precision engine
+state serialized against the scheduled stages: lifecycle flags
+(`running`, `ready`, `processing`, `restartPending`), config with account
+credentials and MCP token secrets stripped, per-account balances, open
+positions with their entry/close volatility-point ids, mark prices with
+staleness, and per-symbol volatility points including which account
+consumed each point id (`usedBy<slug>` markers). `stateSource` reports
+`live` when the running engine serves its memory, `retained` when a
+stopped engine's loaded state answers, or `hydrated` when the snapshot
+was built from persisted storage for the call. An optional `symbol`
+argument returns the recent volatility-point array for that symbol.
+
+TC: `PROD:MCP_ENGINE_STATE`
+
 ### A.4 Use same Volatility Point array data
 
 All views of volatility points on this dashboard productin must using the same source of truth volatility points.
