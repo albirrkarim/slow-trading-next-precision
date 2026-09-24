@@ -405,11 +405,22 @@ function retainRecent(params: {
   );
 }
 
+/** Removes legacy and account-scoped entry usage markers from one point. */
+function resetUsage(point: VolatilityPoint): void {
+  delete point.used;
+  for (const key of Object.keys(point)) {
+    if (key.startsWith("usedBy")) {
+      delete (point as VolatilityPoint & Record<string, unknown>)[key];
+    }
+  }
+}
+
 const vpoints = {
   createMemory,
   detectVPoints,
   mergeById,
   processKline,
+  resetUsage,
   retainRecent,
 } as const;
 

@@ -1,6 +1,7 @@
 import type { ExchangeType } from "@/lib/exchange/types";
 import { DEFAULT_EXCHANGE } from "@/lib/exchange/constants";
 import { resolveMarketTypeForTradingMode } from "@/lib/exchange/utils";
+import production from "@/lib/production";
 import { windowsMs } from "@/lib/system/constants";
 import { runtimeStorage, storageFiles } from "@/lib/system/storage";
 import type { VolatilityPoint } from "@/lib/system/types";
@@ -196,11 +197,31 @@ async function keepTheVolatilityUpdated(
   }
 
   try {
+    // Clearing persisted markers alone is not enough: the running engine owns
+    // separate in-memory vPointsMap objects whose surviving `usedBy<slug>`
+    // flags would be merged back into the files on the next state-change
+    // flush. Reset the live copies first, serialized with the engine's
+    // scheduled stages, so later flushes persist the cleared state.
+    if (removeUsed && symbols.length > 0) {
+      try {
+        await production.runtime.get().runManual(async (context) => {
+          for (const rawSymbol of symbols) {
+            const points =
+              context.state.vPointsMap[String(rawSymbol).toUpperCase()];
+            for (const point of points ?? []) {
+              reserve.vpoints.resetUsage(point);
+            }
+          }
+        });
+      } catch (error) {
+        systemLog.warn(
+          "[volatility] failed to reset in-memory vPoint usage markers",
+          error,
+        );
+      }
+    }
+
     const volatilityMap: Record<string, VolatilityPoint[]> = {};
-
-    // const files = await fs.readdir(storageFiles.prod.volatility(exchangeType));
-
-    // systemLog.log("files ", files);
 
     systemLog.log("tradeLog categories", systemLog.categories);
 
@@ -252,10 +273,11 @@ async function keepTheVolatilityUpdated(
           reserve.vpoints.resetUsage(item);
         }
 
-        await runtimeStorage.vpoints.merge({
+        // mergeById cannot clear usage keys — absent fields survive the
+        // spread — so the strip runs atomically on the file's own contents.
+        await runtimeStorage.vpoints.resetUsage({
           exchangeType: exchangeType as ExchangeType,
           symbol,
-          points: volatilityMap[symbol],
         });
       }
     }
@@ -265,31 +287,6 @@ async function keepTheVolatilityUpdated(
       startTimeMs,
       volatilityMap,
     });
-
-    // OPTIMIZED FOR LOT OF COINS SO BETTER TO NOT SHOW
-    // D. Get historical entry signal for the bounded dashboard response.
-    // const getRecommendations =
-    //   GET_RECOMMENDATIONS_MAP[
-    //     slowStorage.config.decisionEngineVersion ?? "decision.v14"
-    //   ] ?? getRecommendationsProduction;
-
-    // const historicalEntrySignal = await getHistoricalEntrySignal({
-    //   volatilityMap: responseVolatilityMap,
-    //   getRecommendations,
-    //   exchangeType,
-    // });
-
-    // const responseEntrySignals = filterDashboardEntrySignalResponse({
-    //   endTimeMs,
-    //   entrySignals: historicalEntrySignal,
-    //   startTimeMs,
-    // });
-
-    // convert into series
-    // const leveledMarkers = convertVolatilityToLeveledMarkers(
-    //   "SIGNAL",
-    //   responseEntrySignals,
-    // );
 
     const output = {
       status: true,

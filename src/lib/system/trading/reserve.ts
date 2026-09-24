@@ -7,6 +7,7 @@ import type {
 import adaptiveAveraging from "./adaptive-averaging";
 import type { VolatilityPoint } from "../types";
 import { VOLATILITY_THRESHOLD } from "../constants";
+import vpoints from "../utils/vpoints";
 
 const EXTREME_VPOINT_THRESHOLD_MULTIPLIER = 1.5;
 const DEFAULT_ADAPTIVE_AVERAGING_TARGET_MOVE_PCT = VOLATILITY_THRESHOLD;
@@ -996,12 +997,7 @@ function markEntrySignalVolatilityPointUsed(params: {
 
 /** Removes legacy and account-scoped entry usage markers from one point. */
 function resetEntryVolatilityPointUsage(point: VolatilityPoint): void {
-  delete point.used;
-  for (const key of Object.keys(point)) {
-    if (key.startsWith("usedBy")) {
-      delete (point as VolatilityPoint & Record<string, unknown>)[key];
-    }
-  }
+  vpoints.resetUsage(point);
 }
 
 const reserve = {

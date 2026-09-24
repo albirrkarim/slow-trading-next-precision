@@ -460,6 +460,38 @@ async function mergeVPoints(params: {
   );
 }
 
+/**
+ * Removes every entry-usage marker (`used`, `usedBy<slug>`) from one symbol's
+ * persisted volatility file. The strip runs inside the atomic update on the
+ * file's own contents — a merge cannot clear these keys because absent fields
+ * are preserved by spread.
+ */
+async function resetVPointsUsage(params: {
+  exchangeType: ExchangeType;
+  symbol: string;
+}): Promise<void> {
+  const symbol = params.symbol.toUpperCase();
+  await jsonFile.update.atomic(
+    storageFiles.prod.volatilityFile(params.exchangeType, symbol),
+    (current) => {
+      const persisted = isRecord(current) ? current : undefined;
+      const existing = Array.isArray(persisted?.lastVolatility)
+        ? (persisted.lastVolatility as VolatilityPoint[])
+        : [];
+
+      for (const point of existing) {
+        vpoints.resetUsage(point);
+      }
+
+      return {
+        ...persisted,
+        symbol,
+        lastVolatility: existing,
+      };
+    },
+  );
+}
+
 /** Grouped runtime storage operations over the persistent layout. */
 const runtimeStorage = {
   catalog: runtimeCatalog,
@@ -485,6 +517,7 @@ const runtimeStorage = {
   vpoints: {
     merge: mergeVPoints,
     read: readVPoints,
+    resetUsage: resetVPointsUsage,
   },
 } as const;
 
