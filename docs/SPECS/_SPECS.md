@@ -57,7 +57,7 @@ readmore `TRADING.md`
 
 ## C. Storage
 
-readmore `STORAGE.md`
+readmore `TECHNICAL/STORAGE.md`
 
 ## D. Notification
 
