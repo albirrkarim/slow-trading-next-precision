@@ -34,6 +34,8 @@ export interface BacktestLeaderboardMetrics {
   gainPct: number;
   /** Per-position deepest dip vs deployed notional: -pnl.maxDownPct / 100. */
   maxFloatingDrawdown: LeaderboardRange;
+  /** Per-position worst USDT dip, un-normalized: -pnl.maxDownUsdt. */
+  maxFloatingDrawdownUsdt: LeaderboardRange;
   /** Per-position worst USDT dip / mean total balance: -pnl.maxDownUsdt / avgTotal. */
   maxPortfolioDrawdown: LeaderboardRange;
   /** Realized monthly profit / month-start total, in percent. */

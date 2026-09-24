@@ -92,6 +92,9 @@ describe("backtest leaderboards metrics", () => {
         // -maxDownPct/100 per position → {0.10, 0.04}
         expect(metrics.maxFloatingDrawdown.max).toBeCloseTo(0.1, 3);
         expect(metrics.maxFloatingDrawdown.avg).toBeCloseTo(0.07, 3);
+        // -maxDownUsdt per position → {20, 10}
+        expect(metrics.maxFloatingDrawdownUsdt.max).toBeCloseTo(20, 3);
+        expect(metrics.maxFloatingDrawdownUsdt.avg).toBeCloseTo(15, 3);
         // mean total = 990 → -maxDownUsdt/990 → {20/990, 10/990}
         expect(metrics.maxPortfolioDrawdown.max).toBeCloseTo(20 / 990, 3);
         expect(metrics.maxPortfolioDrawdown.avg).toBeCloseTo(15 / 990, 3);

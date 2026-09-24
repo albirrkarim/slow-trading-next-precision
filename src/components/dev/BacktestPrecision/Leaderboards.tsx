@@ -64,6 +64,11 @@ function formatNumber(value: number | undefined) {
     return value.toFixed(2);
 }
 
+function formatUsdt(value: number | undefined) {
+    if (value == null || Number.isNaN(value)) return "-";
+    return value < 0 ? `-$${Math.abs(value).toFixed(2)}` : `$${value.toFixed(2)}`;
+}
+
 function formatTime(t?: number) {
     if (!t) return "-";
     return new Date(t).toLocaleString();
@@ -178,7 +183,7 @@ const HEADER_GROUPS: HeaderGroup[] = [
         id: "leaderboard.maxPortfolioDrawdown",
         label: "Portfolio DD",
         align: "center",
-        tooltip: "Worst unrealized USDT dip each position ever reached, as a share of the portfolio.\n−pnl.maxDownUsdt / mean total balance, per position.\nLower is better — negative means a position never went underwater.\nSource: positions[].pnl.maxDownUsdt ÷ mean balanceSnapshots.total.",
+        tooltip: "Worst unrealized USDT dip each position ever reached, as a share of the portfolio.\n−pnl.maxDownUsdt / mean total balance, per position.\nUnlike Floating DD 'usd', each dip is normalized by portfolio size.\nLower is better — negative means a position never went underwater.\nSource: positions[].pnl.maxDownUsdt ÷ mean balanceSnapshots.total.",
         children: [
             {
                 id: "leaderboard.maxPortfolioDrawdown.avg",
@@ -196,17 +201,27 @@ const HEADER_GROUPS: HeaderGroup[] = [
         id: "leaderboard.maxFloatingDrawdown",
         label: "Floating DD",
         align: "center",
-        tooltip: "Deepest dip each position ever saw relative to its own deployed notional.\n−pnl.maxDownPct / 100, where maxDownPct is the lowest fee-aware netPct observed while the position was open.\nWhere Portfolio DD measures drag on total balance, this ranks how deep individual trades dipped against their own notional.\nLower is better.\nSource: positions[].pnl.maxDownPct — the exact running minimum kept every monitoring pass (more accurate than the bucketed pnl.history).",
+        tooltip: "Deepest dip each position ever saw, shown in two units.\npct — −pnl.maxDownPct / 100: dip vs the position's own deployed notional.\nusd — −pnl.maxDownUsdt: raw USDT loss at its worst.\navg = mean across positions · max = worst single trade. Lower is better.\nSource: positions[].pnl.maxDownPct / maxDownUsdt — exact running extrema kept every monitoring pass (more accurate than the bucketed pnl.history).",
         children: [
             {
                 id: "leaderboard.maxFloatingDrawdown.avg",
-                label: "avg",
-                tooltip: "Mean deepest dip across positions — the typical worst-case vs deployed notional.\nSource: positions[].pnl.maxDownPct.",
+                label: "avg pct",
+                tooltip: "Mean deepest dip across positions, as a share of each position's own notional — the typical worst-case per trade.\nSource: −positions[].pnl.maxDownPct / 100.",
             },
             {
                 id: "leaderboard.maxFloatingDrawdown.max",
-                label: "max",
-                tooltip: "Worst single position — the deepest any trade dipped vs its own notional.\nSource: positions[].pnl.maxDownPct.",
+                label: "max pct",
+                tooltip: "Worst single position — the deepest any trade dipped vs its own notional.\nSource: −positions[].pnl.maxDownPct / 100.",
+            },
+            {
+                id: "leaderboard.maxFloatingDrawdownUsdt.avg",
+                label: "avg usd",
+                tooltip: "Mean worst USDT dip across positions — the typical worst-case loss per trade, un-normalized.\nSource: −positions[].pnl.maxDownUsdt.",
+            },
+            {
+                id: "leaderboard.maxFloatingDrawdownUsdt.max",
+                label: "max usd",
+                tooltip: "Worst single trade — the most one position ever lost while open.\nSource: −positions[].pnl.maxDownUsdt.",
             },
         ],
     },
@@ -313,6 +328,11 @@ const SCORE_FIELDS = new Set([
     "leaderboard.capitalEfficiency.score",
 ]);
 
+const USD_FIELDS = new Set([
+    "leaderboard.maxFloatingDrawdownUsdt.avg",
+    "leaderboard.maxFloatingDrawdownUsdt.max",
+]);
+
 const DURATION_FIELDS = new Set([
     "leaderboard.emptyBalance.min",
     "leaderboard.emptyBalance.avg",
@@ -332,12 +352,14 @@ const TABLE_COLSPAN =
 const INVERT_FIELDS = new Set([
     ...FRACTION_FIELDS,
     ...DURATION_FIELDS,
+    ...USD_FIELDS,
 ]);
 
 function formatCell(fieldId: string, value: unknown): string {
     if (typeof value !== "number" || Number.isNaN(value)) return "-";
     if (DURATION_FIELDS.has(fieldId)) return msToHuman(value);
     if (FRACTION_FIELDS.has(fieldId)) return formatPct(value, true);
+    if (USD_FIELDS.has(fieldId)) return formatUsdt(value);
     if (SCORE_FIELDS.has(fieldId)) return formatPct(value, true);
     if (PLAIN_FIELDS.has(fieldId)) return formatNumber(value);
     return formatPct(value);

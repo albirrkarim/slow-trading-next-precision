@@ -102,6 +102,20 @@ function rangeOf(values: number[]): LeaderboardRange {
   };
 }
 
+/** Maps a per-position extrema field into a range, skipping missing values. */
+function extremaRange(
+  positions: Position[],
+  read: (position: Position) => number | undefined,
+  normalize: (value: number) => number,
+): LeaderboardRange {
+  return rangeOf(
+    positions
+      .map(read)
+      .filter((value): value is number => Number.isFinite(value))
+      .map(normalize),
+  );
+}
+
 /**
  * Per-position worst USDT dip relative to the mean combined total.
  * Sourced from the running `pnl.maxDownUsdt` extrema — no history scan.
@@ -115,11 +129,11 @@ function portfolioDrawdown(
     .map((point) => point.total);
   if (totals.length === 0) return { avg: 0, max: 0, min: 0 };
   const meanTotal = totals.reduce((a, b) => a + b, 0) / totals.length;
-  const values = positions
-    .map((position) => position.pnl.maxDownUsdt)
-    .filter((value): value is number => Number.isFinite(value))
-    .map((usdt) => -usdt / meanTotal);
-  return rangeOf(values);
+  return extremaRange(
+    positions,
+    (position) => position.pnl.maxDownUsdt,
+    (usdt) => -usdt / meanTotal,
+  );
 }
 
 /**
@@ -128,11 +142,20 @@ function portfolioDrawdown(
  * beats the bounded, bucketed `pnl.history` series on accuracy and cost.
  */
 function floatingDrawdown(positions: Position[]): LeaderboardRange {
-  const values = positions
-    .map((position) => position.pnl.maxDownPct)
-    .filter((value): value is number => Number.isFinite(value))
-    .map((pct) => -pct / 100);
-  return rangeOf(values);
+  return extremaRange(
+    positions,
+    (position) => position.pnl.maxDownPct,
+    (pct) => -pct / 100,
+  );
+}
+
+/** Per-position worst USDT dip, un-normalized: -`pnl.maxDownUsdt`. */
+function floatingDrawdownUsdt(positions: Position[]): LeaderboardRange {
+  return extremaRange(
+    positions,
+    (position) => position.pnl.maxDownUsdt,
+    (usdt) => -usdt,
+  );
 }
 
 /** Durations the combined spendable balance stayed below the trading minimum. */
@@ -422,6 +445,7 @@ export function computeLeaderboardMetrics(input: {
     emptyBalance: emptyBalanceDurations(timeline),
     gainPct,
     maxFloatingDrawdown: floatingDrawdown(positions),
+    maxFloatingDrawdownUsdt: floatingDrawdownUsdt(positions),
     maxPortfolioDrawdown: portfolioDrawdown(positions, timeline),
     monthlyGain: monthly.gains,
     positionsClosed: closed.length,
