@@ -92,7 +92,7 @@ describe("Binance request coordinator", () => {
       ),
     ).rejects.toMatchObject({
       code: -1003,
-      retryAt: bannedUntil,
+      retryAt: bannedUntil + 10 * 60_000,
     });
 
     const blockedRequest = vi.fn().mockResolvedValue(response({ ok: true }));
@@ -113,9 +113,11 @@ describe("Binance request coordinator", () => {
     expect(blockedRequest).not.toHaveBeenCalled();
     expect(binanceRequestCoordinator.cooldown.get()).toMatchObject({
       endpoint: "/fapi/v1/klines",
+      exchangeRetryAt: bannedUntil,
       kind: "public",
       reason: `Way too many requests; IP banned until ${bannedUntil}`,
-      retryAt: bannedUntil,
+      retryAt: bannedUntil + 10 * 60_000,
+      settleMs: 10 * 60_000,
       startedAt: Date.now(),
     });
     expect(mocks.error).toHaveBeenCalledTimes(1);
@@ -125,11 +127,85 @@ describe("Binance request coordinator", () => {
     expect(mocks.central).toHaveBeenCalledTimes(1);
     expect(mocks.central).toHaveBeenCalledWith(
       expect.objectContaining({
-        dedupeKey: `binance-cooldown:${bannedUntil}`,
+        dedupeKey: `binance-cooldown:${bannedUntil + 10 * 60_000}`,
         key: "NOTIF_BINANCE_COOLDOWN",
         title: expect.stringContaining("[BINANCE COOLDOWN]"),
       }),
     );
+  });
+
+  it("keeps the gate closed for a spare settle window after the ban ends", async () => {
+    const bannedUntil = Date.now() + 20 * 60_000;
+    await expect(
+      binanceRequestCoordinator.request.run(
+        {
+          domain: "https://fapi.binance.com",
+          endpoint: "/fapi/v1/klines",
+          kind: "public",
+        },
+        vi.fn().mockRejectedValue({
+          response: {
+            data: {
+              code: -1003,
+              msg: `Way too many requests; IP banned until ${bannedUntil}`,
+            },
+            status: 418,
+          },
+        }),
+      ),
+    ).rejects.toBeInstanceOf(BinanceCooldownError);
+
+    // PROD:BINANCE_BAN_SETTLE — the ban just ended but the spare settle
+    // window still blocks new requests locally.
+    vi.setSystemTime(bannedUntil + 1_000);
+    const duringSettle = vi.fn().mockResolvedValue(response({ ok: true }));
+    await expect(
+      binanceRequestCoordinator.request.run(
+        {
+          domain: "https://fapi.binance.com",
+          endpoint: "/fapi/v1/time",
+          kind: "public",
+        },
+        duringSettle,
+      ),
+    ).rejects.toBeInstanceOf(BinanceCooldownError);
+    expect(duringSettle).not.toHaveBeenCalled();
+
+    vi.setSystemTime(bannedUntil + 10 * 60_000);
+    const afterSettle = vi.fn().mockResolvedValue(response({ ok: true }));
+    await binanceRequestCoordinator.request.run(
+      {
+        domain: "https://fapi.binance.com",
+        endpoint: "/fapi/v1/time",
+        kind: "public",
+      },
+      afterSettle,
+    );
+    expect(afterSettle).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not add spare settle time to plain 429 rate limits", async () => {
+    await expect(
+      binanceRequestCoordinator.request.run(
+        {
+          domain: "https://fapi.binance.com",
+          endpoint: "/fapi/v1/klines",
+          kind: "public",
+        },
+        vi.fn().mockRejectedValue({
+          response: {
+            data: { code: -1003, msg: "Too many requests" },
+            status: 429,
+          },
+        }),
+      ),
+    ).rejects.toMatchObject({ retryAt: Date.now() + 2 * 60_000 });
+
+    // PROD:BINANCE_BAN_SETTLE — settle applies to real IP bans only.
+    const cooldown = binanceRequestCoordinator.cooldown.get();
+    expect(cooldown).toMatchObject({ retryAt: Date.now() + 2 * 60_000 });
+    expect(cooldown?.exchangeRetryAt).toBeUndefined();
+    expect(cooldown?.settleMs).toBeUndefined();
   });
 
   it("hydrates a persisted cooldown before invoking a REST callback", async () => {

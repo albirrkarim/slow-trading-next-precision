@@ -28,6 +28,10 @@ export interface RuntimeBinanceCooldownLogEntry {
   id: string;
   t: number;
   end: number;
+  /** Exchange-communicated ban end before the spare settle window. */
+  banEnd?: number;
+  /** Spare settle window appended after an IP ban, in milliseconds. */
+  settle?: number;
   endpoint: string;
   kind: BinanceRequestKind;
   reason: string;

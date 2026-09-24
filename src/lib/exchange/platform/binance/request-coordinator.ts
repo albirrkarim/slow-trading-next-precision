@@ -4,6 +4,7 @@ import { systemNotif } from "@/lib/system/notification";
 
 const MINUTE_MS = 60_000;
 const DEFAULT_COOLDOWN_MS = 2 * MINUTE_MS;
+const BAN_SETTLE_MS = 10 * MINUTE_MS;
 const BASE_REQUEST_GAP_MS = 350;
 const HIGH_USAGE_REQUEST_GAP_MS = 1_000;
 const CRITICAL_USAGE_REQUEST_GAP_MS = 2_000;
@@ -28,6 +29,10 @@ export interface BinanceCooldownState {
   reason: string;
   retryAt: number;
   startedAt: number;
+  /** Exchange-communicated ban end (`banned until` or Retry-After) before the spare settle window. */
+  exchangeRetryAt?: number;
+  /** Spare settle window appended after an IP ban before requests resume. */
+  settleMs?: number;
 }
 
 export interface BinanceCooldownPersistence {
@@ -347,10 +352,15 @@ async function activateCooldown(
     now,
   );
   const bannedUntil = resolveBannedUntilMs(message);
+  const isBan = getErrorStatus(error) === 418 || bannedUntil !== undefined;
+  const exchangeUntil = Math.max(retryAfter ?? 0, bannedUntil ?? 0);
+  // PROD:BINANCE_BAN_SETTLE — an IP ban earns spare settle time after the
+  // exchange's own ban end so the first post-ban burst cannot instantly
+  // re-trigger a longer ban.
+  const settleMs = isBan ? BAN_SETTLE_MS : 0;
   const retryAt = Math.max(
-    now + DEFAULT_COOLDOWN_MS,
-    retryAfter ?? 0,
-    bannedUntil ?? 0,
+    now + DEFAULT_COOLDOWN_MS + settleMs,
+    exchangeUntil + settleMs,
     runtime.cooldown?.retryAt ?? 0,
   );
   const enteredOrExtended =
@@ -362,6 +372,8 @@ async function activateCooldown(
     reason: message,
     retryAt,
     startedAt: runtime.cooldown?.startedAt ?? now,
+    ...(isBan && exchangeUntil > 0 ? { exchangeRetryAt: exchangeUntil } : {}),
+    ...(settleMs ? { settleMs } : {}),
   };
 
   if (runtime.persistence) {
@@ -436,6 +448,11 @@ function notifyCooldownActivated(
         `Binance cooldown: ${remainingMinutes} minutes`,
         `Open again: ${reopenWib} (Jakarta time)`,
         `Reason: ${reason}`,
+        ...(state.settleMs
+          ? [
+              `Spare: +${Math.round(state.settleMs / 60_000)}m settle after the exchange ban ends`,
+            ]
+          : []),
       ].join("\n"),
       title:
         `[BINANCE COOLDOWN] ${remainingMinutes} minutes · ` +

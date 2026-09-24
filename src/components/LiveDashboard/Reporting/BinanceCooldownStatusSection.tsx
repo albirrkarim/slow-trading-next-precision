@@ -46,6 +46,12 @@ export default function BinanceCooldownStatusSection({
   const [resetting, setResetting] = useState(false);
   const health = state.binanceHealth ?? { current: null, logs: [] };
   const active = Boolean(health.current && health.current.retryAt > now);
+  const settling = Boolean(
+    active &&
+      health.current?.settleMs &&
+      health.current.exchangeRetryAt &&
+      health.current.exchangeRetryAt <= now,
+  );
 
   useEffect(() => {
     const initialTimeoutId = window.setTimeout(() => setNow(Date.now()), 0);
@@ -92,7 +98,10 @@ export default function BinanceCooldownStatusSection({
         title={
           <Stack alignItems="center" direction="row" flexWrap="wrap" gap={1}>
             {active ? (
-              <WarningAmberRoundedIcon color="error" fontSize="small" />
+              <WarningAmberRoundedIcon
+                color={settling ? "warning" : "error"}
+                fontSize="small"
+              />
             ) : (
               <CheckCircleOutlineIcon color="success" fontSize="small" />
             )}
@@ -100,8 +109,8 @@ export default function BinanceCooldownStatusSection({
               Binance REST Health
             </Typography>
             <Chip
-              color={active ? "error" : "success"}
-              label={active ? "COOLDOWN" : "HEALTHY"}
+              color={active ? (settling ? "warning" : "error") : "success"}
+              label={active ? (settling ? "SETTLING" : "COOLDOWN") : "HEALTHY"}
               size="small"
             />
             {active && health.current && (
@@ -149,14 +158,28 @@ export default function BinanceCooldownStatusSection({
             >
               {health.current && active ? (
                 <Box>
-                  <Typography color="error.main" fontWeight={700} variant="body2">
-                    All Binance REST requests are blocked locally until the ban ends.
+                  <Typography
+                    color={settling ? "warning.main" : "error.main"}
+                    fontWeight={700}
+                    variant="body2"
+                  >
+                    {settling
+                      ? "Binance ban ended — requests stay paused for a spare settle window."
+                      : "All Binance REST requests are blocked locally until the ban ends."}
                   </Typography>
                   <Typography color="text.secondary" variant="body2">
                     Start: {formatJakartaTime(health.current.startedAt)} WIB
                   </Typography>
+                  {health.current.exchangeRetryAt && (
+                    <Typography color="text.secondary" variant="body2">
+                      Ban end: {formatJakartaTime(health.current.exchangeRetryAt)} WIB
+                    </Typography>
+                  )}
                   <Typography color="text.secondary" variant="body2">
-                    End: {formatJakartaTime(health.current.retryAt)} WIB
+                    Requests resume: {formatJakartaTime(health.current.retryAt)} WIB
+                    {health.current.settleMs
+                      ? ` (+${Math.round(health.current.settleMs / 60_000)}m spare)`
+                      : ""}
                   </Typography>
                   <Typography color="text.secondary" variant="body2">
                     Trigger: {health.current.kind} {health.current.endpoint}
@@ -189,6 +212,9 @@ export default function BinanceCooldownStatusSection({
                   <Typography color="text.secondary" variant="caption">
                     {log.kind} {log.endpoint} · {log.occurrences} detection
                     {log.occurrences === 1 ? "" : "s"}
+                    {log.settle
+                      ? ` · +${Math.round(log.settle / 60_000)}m spare`
+                      : ""}
                   </Typography>
                   <Typography
                     display="block"

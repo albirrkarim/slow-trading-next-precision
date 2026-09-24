@@ -35,6 +35,8 @@ function toCooldownState(
     reason: incident.reason,
     retryAt: incident.end,
     startedAt: incident.t,
+    ...(incident.banEnd ? { exchangeRetryAt: incident.banEnd } : {}),
+    ...(incident.settle ? { settleMs: incident.settle } : {}),
   };
 }
 
@@ -64,6 +66,17 @@ const persistence: BinanceCooldownPersistence = {
               occurrences: latest.occurrences + 1,
               reason: params.state.reason,
               status: params.status ?? latest.status,
+              ...(params.state.exchangeRetryAt
+                ? {
+                    banEnd: Math.max(
+                      latest.banEnd ?? 0,
+                      params.state.exchangeRetryAt,
+                    ),
+                  }
+                : {}),
+              ...(params.state.settleMs
+                ? { settle: params.state.settleMs }
+                : {}),
             }
           : {
               code: params.code,
@@ -77,6 +90,12 @@ const persistence: BinanceCooldownPersistence = {
               reason: params.state.reason,
               status: params.status,
               t: params.detectedAt,
+              ...(params.state.exchangeRetryAt
+                ? { banEnd: params.state.exchangeRetryAt }
+                : {}),
+              ...(params.state.settleMs
+                ? { settle: params.state.settleMs }
+                : {}),
             };
 
         return [

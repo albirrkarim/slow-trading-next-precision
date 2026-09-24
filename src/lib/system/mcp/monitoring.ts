@@ -57,6 +57,8 @@ function boundedLogs(
       id: entry.id,
       startAt: iso(entry.t),
       endAt: iso(entry.end),
+      banEndAt: iso(entry.banEnd),
+      settleMs: entry.settle ?? null,
       endpoint: entry.endpoint,
       kind: entry.kind,
       occurrences: entry.occurrences,
