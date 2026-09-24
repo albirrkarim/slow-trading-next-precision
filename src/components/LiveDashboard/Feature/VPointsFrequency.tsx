@@ -7,6 +7,7 @@ import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import VPointPctDistribution from "@/components/ui/VPointPctDistribution";
 import type { VolatilityPoint } from "@/lib/system/types";
 import { runtimeEntrySequences } from "@/lib/system/trading";
+import format from "@/lib/system/utils/format";
 
 
 
@@ -324,13 +325,40 @@ function VPointsFrequencyContent({
   startTime?: number;
   volatilityMap: Record<string, VolatilityPoint[]>;
 }) {
-  const { points, summary } = useMemo(() => {
-    const rangedPoints = getRangedVPoints({
-      endTime,
-      startTime,
-      volatilityMap,
-    });
-    return {
+  const { maxPctSymbol, maxPctAt, minPctSymbol, minPctAt, points, summary } =
+    useMemo(() => {
+      const rangedMap = runtimeEntrySequences.range.crop({
+        endTimeMs: endTime,
+        startTimeMs: startTime,
+        volatilityMap,
+      });
+      const rangedPoints = Object.values(rangedMap).flat();
+      let maxPct = Number.NEGATIVE_INFINITY;
+      let minPct = Number.POSITIVE_INFINITY;
+      let maxSymbol: string | null = null;
+      let minSymbol: string | null = null;
+      let maxAt: number | null = null;
+      let minAt: number | null = null;
+      for (const [symbol, symbolPoints] of Object.entries(rangedMap)) {
+        for (const point of symbolPoints) {
+          if (!Number.isFinite(point.pct)) continue;
+          if (point.pct > maxPct) {
+            maxPct = point.pct;
+            maxSymbol = symbol;
+            maxAt = point.t;
+          }
+          if (point.pct < minPct) {
+            minPct = point.pct;
+            minSymbol = symbol;
+            minAt = point.t;
+          }
+        }
+      }
+      return {
+        maxPctSymbol: maxSymbol,
+        maxPctAt: maxAt,
+        minPctSymbol: minSymbol,
+        minPctAt: minAt,
       points: rangedPoints,
       // PROD:VPOINTS_FREQUENCY
       // PROD:VPOINTS_SUMMARY_PCT
@@ -374,11 +402,11 @@ function VPointsFrequencyContent({
       >
         {(
           [
-            ["Max", summary.pct.max],
-            ["Avg", summary.pct.avg],
-            ["Min", summary.pct.min],
+            ["Max", summary.pct.max, maxPctSymbol, maxPctAt],
+            ["Avg", summary.pct.avg, null, null],
+            ["Min", summary.pct.min, minPctSymbol, minPctAt],
           ] as const
-        ).map(([label, value]) => (
+        ).map(([label, value, symbol, at]) => (
           <Paper
             key={label}
             sx={{ minWidth: 0, px: 1, py: 0.75, textAlign: "center" }}
@@ -389,6 +417,18 @@ function VPointsFrequencyContent({
             </Typography>
             <Typography fontWeight={700} noWrap variant="body2">
               {formatVPointPct(value)}
+            </Typography>
+            <Typography
+              color="text.secondary"
+              display="block"
+              noWrap
+              title={symbol ?? undefined}
+              variant="caption"
+            >
+              {symbol ? symbol.replace(/_USDT$/, "") : " "}
+            </Typography>
+            <Typography color="text.secondary" display="block" variant="caption">
+              {at ? format.timeForLog(at) : " "}
             </Typography>
           </Paper>
         ))}

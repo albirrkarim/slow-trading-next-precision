@@ -28,7 +28,7 @@ export default function VolatilityRails({
 
   return (
     <HeaderMetrics
-      defaultExpanded
+      defaultExpanded={false}
       headerCanBeClicked
       rememberExpand="precision-backtest-volatility-rails"
       sx={{ mb: 1 }}

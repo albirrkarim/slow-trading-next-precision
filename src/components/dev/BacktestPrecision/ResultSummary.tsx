@@ -103,8 +103,8 @@ function ExitReasonPie(props: { data: ExitReasonSlice[]; title: string }) {
                                         <Cell
                                             fill={
                                                 DEFAULT_COLORS[
-                                                    index %
-                                                        DEFAULT_COLORS.length
+                                                index %
+                                                DEFAULT_COLORS.length
                                                 ]
                                             }
                                             key={item.reason}
@@ -135,8 +135,8 @@ function ExitReasonPie(props: { data: ExitReasonSlice[]; title: string }) {
                                     sx={{
                                         bgcolor:
                                             DEFAULT_COLORS[
-                                                index %
-                                                    DEFAULT_COLORS.length
+                                            index %
+                                            DEFAULT_COLORS.length
                                             ],
                                         flexShrink: 0,
                                         height: 12,
@@ -236,6 +236,7 @@ export default function BacktestResultSummary(props: {
     return (
         <>
             <HeaderMetrics
+                defaultExpanded
                 rememberExpand="backtest-precision:account-pnl"
                 title={
                     <Typography variant="body1" sx={{ fontWeight: "bold" }}>
@@ -261,7 +262,7 @@ export default function BacktestResultSummary(props: {
                                 const winRatePct =
                                     closedCount > 0
                                         ? ((winLoss?.wins ?? 0) / closedCount) *
-                                          100
+                                        100
                                         : null;
                                 return (
                                     <TableRow key={row.slug}>
