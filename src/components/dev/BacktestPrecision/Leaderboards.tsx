@@ -178,17 +178,17 @@ const HEADER_GROUPS: HeaderGroup[] = [
         id: "leaderboard.maxPortfolioDrawdown",
         label: "Portfolio DD",
         align: "center",
-        tooltip: "Unrealized-loss drag on the whole portfolio, measured per balance snapshot.\n(total − floating) / total, where floating = total + open-position PnL.\nLower is better — it can even go negative when open trades are in profit.\nSource: balanceSnapshots.total vs floating PnL reconstructed from positions[].pnl.history.",
+        tooltip: "Worst unrealized USDT dip each position ever reached, as a share of the portfolio.\n−pnl.maxDownUsdt / mean total balance, per position.\nLower is better — negative means a position never went underwater.\nSource: positions[].pnl.maxDownUsdt ÷ mean balanceSnapshots.total.",
         children: [
             {
                 id: "leaderboard.maxPortfolioDrawdown.avg",
                 label: "avg",
-                tooltip: "Mean portfolio drag across every balance snapshot — the typical amount of equity underwater.\nSource: same snapshot series as Portfolio DD.",
+                tooltip: "Mean per-position worst dip as a share of the portfolio — the typical worst-case drag one trade put on total balance.\nSource: positions[].pnl.maxDownUsdt ÷ mean balanceSnapshots.total.",
             },
             {
                 id: "leaderboard.maxPortfolioDrawdown.max",
                 label: "max",
-                tooltip: "Worst single snapshot — the deepest the whole portfolio was underwater at once.\nSource: same snapshot series as Portfolio DD.",
+                tooltip: "Worst single trade — the deepest one position ever dragged the portfolio.\nSource: positions[].pnl.maxDownUsdt ÷ mean balanceSnapshots.total.",
             },
         ],
     },
@@ -196,17 +196,17 @@ const HEADER_GROUPS: HeaderGroup[] = [
         id: "leaderboard.maxFloatingDrawdown",
         label: "Floating DD",
         align: "center",
-        tooltip: "Unrealized-loss drag relative to the capital actually deployed.\n−floating PnL / open-position notional, per snapshot that has open trades.\nUnlike Portfolio DD it ignores idle cash — it shows how deep open positions dipped against their own notional.\nLower is better.\nSource: positions[].pnl.history floating PnL vs openBase (margin-at-time × leverage, rebuilt minus later averaging fills).",
+        tooltip: "Deepest dip each position ever saw relative to its own deployed notional.\n−pnl.maxDownPct / 100, where maxDownPct is the lowest fee-aware netPct observed while the position was open.\nWhere Portfolio DD measures drag on total balance, this ranks how deep individual trades dipped against their own notional.\nLower is better.\nSource: positions[].pnl.maxDownPct — the exact running minimum kept every monitoring pass (more accurate than the bucketed pnl.history).",
         children: [
             {
                 id: "leaderboard.maxFloatingDrawdown.avg",
                 label: "avg",
-                tooltip: "Mean drag across snapshots with open positions — typical underwater depth vs deployed notional.\nSource: same reconstruction as Floating DD.",
+                tooltip: "Mean deepest dip across positions — the typical worst-case vs deployed notional.\nSource: positions[].pnl.maxDownPct.",
             },
             {
                 id: "leaderboard.maxFloatingDrawdown.max",
                 label: "max",
-                tooltip: "Worst snapshot — the deepest open positions dipped relative to their deployed notional.\nSource: same reconstruction as Floating DD.",
+                tooltip: "Worst single position — the deepest any trade dipped vs its own notional.\nSource: positions[].pnl.maxDownPct.",
             },
         ],
     },

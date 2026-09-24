@@ -21,21 +21,12 @@ interface TimelinePoint {
   locked: number;
   /** Combined spendable quote balance. */
   spendable: number;
-  /** Combined unrealized fee-aware PnL of open positions at t. */
-  floatingPnl: number;
-  /** Combined deployed notional of open positions at t. */
-  openBase: number;
-}
-
-/** Floating value at t = total + floatingPnl (mark-to-market estimate). */
-function floatingOf(point: TimelinePoint): number {
-  return point.total + point.floatingPnl;
 }
 
 /** Builds one combined balance timeline by forward-filling account snapshots. */
 function buildBaseTimeline(
   balanceSnapshots: Record<string, BacktestBalanceSnapshot[]>,
-): Array<Pick<TimelinePoint, "t" | "total" | "locked" | "spendable">> {
+): TimelinePoint[] {
   const series = Object.values(balanceSnapshots)
     .map((snapshots) =>
       [...snapshots].sort((left, right) => left.t - right.t),
@@ -71,6 +62,8 @@ function buildBaseTimeline(
  * Reconstructs one open position's unrealized PnL and deployed notional at t.
  * Notional is rebuilt per timestamp from the final margin minus later
  * averaging fills, so averaging steps do not inflate earlier observations.
+ * Only used inside detected bear windows — the drawdown columns read the
+ * cheaper per-position `pnl.maxDown*` extrema instead.
  */
 function positionStateAt(
   position: Position,
@@ -99,23 +92,6 @@ function positionStateAt(
   return { floatingPnl: (openBase * pct) / 100, openBase };
 }
 
-/** Merges base balances with reconstructed floating position values. */
-function buildTimeline(
-  balanceSnapshots: Record<string, BacktestBalanceSnapshot[]>,
-  positions: Position[],
-): TimelinePoint[] {
-  return buildBaseTimeline(balanceSnapshots).map((base) => {
-    let floatingPnl = 0;
-    let openBase = 0;
-    for (const position of positions) {
-      const state = positionStateAt(position, base.t);
-      floatingPnl += state.floatingPnl;
-      openBase += state.openBase;
-    }
-    return { ...base, floatingPnl, openBase };
-  });
-}
-
 function rangeOf(values: number[]): LeaderboardRange {
   if (values.length === 0) return { avg: 0, max: 0, min: 0 };
   const sum = values.reduce((a, b) => a + b, 0);
@@ -126,19 +102,36 @@ function rangeOf(values: number[]): LeaderboardRange {
   };
 }
 
-/** Drawdown of total vs floating value, averaged and peaked over the timeline. */
-function portfolioDrawdown(timeline: TimelinePoint[]): LeaderboardRange {
-  const values = timeline
+/**
+ * Per-position worst USDT dip relative to the mean combined total.
+ * Sourced from the running `pnl.maxDownUsdt` extrema — no history scan.
+ */
+function portfolioDrawdown(
+  positions: Position[],
+  timeline: TimelinePoint[],
+): LeaderboardRange {
+  const totals = timeline
     .filter((point) => point.total > 0)
-    .map((point) => (point.total - floatingOf(point)) / point.total);
+    .map((point) => point.total);
+  if (totals.length === 0) return { avg: 0, max: 0, min: 0 };
+  const meanTotal = totals.reduce((a, b) => a + b, 0) / totals.length;
+  const values = positions
+    .map((position) => position.pnl.maxDownUsdt)
+    .filter((value): value is number => Number.isFinite(value))
+    .map((usdt) => -usdt / meanTotal);
   return rangeOf(values);
 }
 
-/** Floating drag relative to the deployed open-position notional. */
-function floatingDrawdown(timeline: TimelinePoint[]): LeaderboardRange {
-  const values = timeline
-    .filter((point) => point.openBase > 0)
-    .map((point) => -point.floatingPnl / point.openBase);
+/**
+ * Per-position deepest dip vs its deployed notional: -`pnl.maxDownPct` / 100.
+ * The extrema is an exact running minimum kept every monitoring pass, so it
+ * beats the bounded, bucketed `pnl.history` series on accuracy and cost.
+ */
+function floatingDrawdown(positions: Position[]): LeaderboardRange {
+  const values = positions
+    .map((position) => position.pnl.maxDownPct)
+    .filter((value): value is number => Number.isFinite(value))
+    .map((pct) => -pct / 100);
   return rangeOf(values);
 }
 
@@ -341,9 +334,13 @@ function detectBearRanges(points: Array<{ t: number; p: number }>): BearRange[] 
   return ranges;
 }
 
-/** Mean floating resilience inside detected bear windows, in percent. */
+/**
+ * Mean floating resilience inside detected bear windows, in percent.
+ * Floating PnL is reconstructed only for timeline points inside a window.
+ */
 function bearMarketProofRatio(
   timeline: TimelinePoint[],
+  positions: Position[],
   vPointsMap?: Record<string, VolatilityPoint[]>,
 ): number {
   const ranges = Object.values(vPointsMap ?? {}).flatMap((points) =>
@@ -358,11 +355,25 @@ function bearMarketProofRatio(
       (point) => point.t >= range.start && point.t <= range.end,
     );
     if (records.length === 0) continue;
+    const windowPositions = positions.filter(
+      (position) =>
+        position.opened.t <= range.end &&
+        (position.closed?.t ?? Number.POSITIVE_INFINITY) > range.start,
+    );
     const avgTotal =
       records.reduce((sum, point) => sum + point.total, 0) / records.length;
     const avgFloating =
-      records.reduce((sum, point) => sum + floatingOf(point), 0) /
-      records.length;
+      records.reduce(
+        (sum, point) =>
+          sum +
+          point.total +
+          windowPositions.reduce(
+            (inner, position) =>
+              inner + positionStateAt(position, point.t).floatingPnl,
+            0,
+          ),
+        0,
+      ) / records.length;
     if (avgTotal <= 0) continue;
     totalDrawdown += (avgTotal - avgFloating) / avgTotal;
     counted++;
@@ -372,8 +383,8 @@ function bearMarketProofRatio(
 
 /**
  * Computes the full leaderboard metric set for one precision backtest result.
- * Floating values are reconstructed from each position's PnL history and its
- * margin rebuild per timestamp (final margin minus later averaging fills).
+ * Drawdown columns read the per-position `pnl.maxDown*` extrema; floating
+ * reconstruction runs only for bear-window resilience.
  */
 export function computeLeaderboardMetrics(input: {
   balanceSnapshots: Record<string, BacktestBalanceSnapshot[]>;
@@ -381,7 +392,7 @@ export function computeLeaderboardMetrics(input: {
   vPointsMap?: Record<string, VolatilityPoint[]>;
 }): BacktestLeaderboardMetrics {
   const { positions, balanceSnapshots, vPointsMap } = input;
-  const timeline = buildTimeline(balanceSnapshots, positions);
+  const timeline = buildBaseTimeline(balanceSnapshots);
 
   const closed = positions.filter((position) => position.closed);
   const wins = closed.filter(
@@ -406,12 +417,12 @@ export function computeLeaderboardMetrics(input: {
         ? (monthly.avgMonthlyProfitUsdt / startingBalance) * 100
         : 0,
     balanceTradesScore: tradeBalanceScore(positions),
-    bearMarketProofRatio: bearMarketProofRatio(timeline, vPointsMap),
+    bearMarketProofRatio: bearMarketProofRatio(timeline, positions, vPointsMap),
     capitalEfficiency: capitalEfficiency(timeline),
     emptyBalance: emptyBalanceDurations(timeline),
     gainPct,
-    maxFloatingDrawdown: floatingDrawdown(timeline),
-    maxPortfolioDrawdown: portfolioDrawdown(timeline),
+    maxFloatingDrawdown: floatingDrawdown(positions),
+    maxPortfolioDrawdown: portfolioDrawdown(positions, timeline),
     monthlyGain: monthly.gains,
     positionsClosed: closed.length,
     sharpeRatio: sharpeRatio(timeline),

@@ -62,22 +62,7 @@ describe("backtest leaderboards metrics", () => {
         expect(metrics.positionsClosed).toBe(2);
     });
 
-    it("measures floating drawdown from open-position pnl history", () => {
-        const position = createTestPosition({
-            closed: { feeUsdt: 0, price: 9, reason: "STOP_LOSS", t: T0 + 25 * DAY },
-            entryPrice: 10,
-            entryTime: T0 + 2 * DAY,
-            leverage: 1,
-            marginUsdt: 200,
-            notionalUsdt: 200,
-            pnl: {
-                history: [
-                    { pct: -10, t: T0 + 10 * DAY },
-                    { pct: -5, t: T0 + 20 * DAY },
-                ],
-                netUsdt: -20,
-            },
-        });
+    it("measures drawdown columns from per-position pnl extrema", () => {
         const metrics = computeLeaderboardMetrics({
             balanceSnapshots: {
                 acc1: [
@@ -87,12 +72,29 @@ describe("backtest leaderboards metrics", () => {
                     snapshot(T0 + 30 * DAY, 990),
                 ],
             },
-            positions: [position],
+            positions: [
+                createTestPosition({
+                    closed: { feeUsdt: 0, price: 9, reason: "STOP_LOSS", t: T0 + 25 * DAY },
+                    pnl: { maxDownPct: -10, maxDownUsdt: -20, netUsdt: -20 },
+                }),
+                createTestPosition({
+                    closed: { feeUsdt: 0, price: 11, reason: "TAKE_PROFIT", t: T0 + 12 * DAY },
+                    pnl: { maxDownPct: -4, maxDownUsdt: -10, netUsdt: 30 },
+                }),
+                // No extrema recorded — excluded from both drawdown ranges.
+                createTestPosition({
+                    closed: { feeUsdt: 0, price: 10, reason: "FINAL", t: T0 + 8 * DAY },
+                    pnl: { netUsdt: 5 },
+                }),
+            ],
         });
 
-        // floating pnl at t=+10d: notional 200 * -10% = -20 → dd vs openBase = 10%
+        // -maxDownPct/100 per position → {0.10, 0.04}
         expect(metrics.maxFloatingDrawdown.max).toBeCloseTo(0.1, 3);
-        expect(metrics.maxPortfolioDrawdown.max).toBeCloseTo(20 / 980, 3);
+        expect(metrics.maxFloatingDrawdown.avg).toBeCloseTo(0.07, 3);
+        // mean total = 990 → -maxDownUsdt/990 → {20/990, 10/990}
+        expect(metrics.maxPortfolioDrawdown.max).toBeCloseTo(20 / 990, 3);
+        expect(metrics.maxPortfolioDrawdown.avg).toBeCloseTo(15 / 990, 3);
     });
 
     it("tracks spendable-empty durations and trade evenness", () => {
