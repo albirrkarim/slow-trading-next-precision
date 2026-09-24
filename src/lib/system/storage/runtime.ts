@@ -434,7 +434,7 @@ async function readVPoints(params: {
 /**
  * Atomically merges vPoints into one symbol's persisted volatility file.
  * Points merge by `id` — the full detected history on disk is preserved while
- * runtime mutations (`usedBy<accountSlug>` markers, new points) write through.
+ * runtime mutations (`usedBy` markers, new points) write through.
  * Unknown top-level fields already on disk are preserved.
  */
 async function mergeVPoints(params: {
@@ -461,7 +461,7 @@ async function mergeVPoints(params: {
 }
 
 /**
- * Removes every entry-usage marker (`used`, `usedBy<slug>`) from one symbol's
+ * Removes every entry-usage marker (`used`, `usedBy`) from one symbol's
  * persisted volatility file. The strip runs inside the atomic update on the
  * file's own contents — a merge cannot clear these keys because absent fields
  * are preserved by spread.

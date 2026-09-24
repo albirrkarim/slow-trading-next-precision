@@ -22,7 +22,12 @@ describe("runtimeStorage.vpoints.resetUsage", () => {
     mocks.updateAtomic.mockImplementation(async (_file: any, update: any) => {
       written = update({
         lastVolatility: [
-          { id: "B_a", t: 1, usedByMain: true, usedBySecond: true },
+          {
+            id: "B_a",
+            t: 1,
+            usedBy: ["Main", "Second"],
+            usedByMain: true,
+          },
           { id: "T_b", t: 2, used: true },
           { id: "T_c", t: 3 },
         ],

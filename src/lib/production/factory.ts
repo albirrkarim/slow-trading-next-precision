@@ -359,7 +359,7 @@ function createActionHandlers(
     const accountRuntime = accountRuntimes.get(accountSlug);
     if (!accountRuntime) return;
     await persistAccount(context, accountRuntime);
-    // Entries and averagings mark `usedBy<slug>` on vPoints right before this
+    // Entries and averagings write `usedBy` markers on vPoints right before this
     // hook fires; flushing the retained window writes those markers to disk.
     await onVPointsChanged(context.state.vPointsMap);
   };
@@ -506,7 +506,7 @@ function createProductionFactory(): ProductionRuntimeFactory {
     // PROD:VPOINTS_BOOTSTRAP_FROM_STORAGE
     // Seeds vPointsMap from the persisted per-symbol volatility files instead
     // of transient model memory: each file keeps the full detected point list
-    // including `usedBy<accountSlug>` markers, so a restart does not re-consume
+    // including `usedBy` markers, so a restart does not re-consume
     // entry signals. The latest 7 points are injected, expanded by the shared
     // retention rule so open positions keep their referenced/post-entry
     // vPoints. Runtime market updates merge new points on top of this seed.

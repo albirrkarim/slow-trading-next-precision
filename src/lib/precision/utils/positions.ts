@@ -7,6 +7,7 @@ import type {
   PositionPnlPoint,
 } from "@/lib/system/trading";
 import type { VolatilityPoint } from "@/lib/system/types";
+import vpoints from "@/lib/system/utils/vpoints";
 import { VOLATILITY_THRESHOLD } from "@/lib/system/constants";
 
 const MAX_HISTORY_POINTS = 24 * 90;
@@ -471,6 +472,8 @@ function findEntrySignalVolatilityPoint(params: {
 /** Marks an entry signal's source volatility point as used after entry succeeds. */
 function markVPointUsed(params: {
   accountSlug: string;
+  /** Strategy-supplied markers; defaults to `[accountSlug]`. */
+  markers?: string[];
   recommendation: EntryRecommendation | AveragingRecommendation;
   volatilityPoints?: VolatilityPoint[];
 }): void {
@@ -484,10 +487,16 @@ function markVPointUsed(params: {
   }
 
   const accountSlug = String(params.accountSlug || "").trim();
-  if (accountSlug) {
-    Object.assign(point, {
-      [`usedBy${accountSlug}`]: true,
-    });
+  const markers =
+    params.markers && params.markers.length > 0
+      ? params.markers
+      : accountSlug
+        ? [accountSlug]
+        : [];
+  if (markers.length > 0) {
+    for (const marker of markers) {
+      vpoints.usage.mark(point, marker);
+    }
     return;
   }
 

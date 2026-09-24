@@ -32,10 +32,12 @@ import { describe, expect, it } from "vitest";
 
 describe("latest volatility point volume", () => {
   it("reads account-scoped usage markers from the latest vPoint", () => {
-    const point = { id: "point-1", usedBymain: true } as any;
+    const point = { id: "point-1", usedBy: ["main"] } as any;
+    const legPoint = { id: "point-2", usedBy: ["main:COUNTER"] } as any;
 
     // BOTH:MULTI_ACCOUNT_ENTRY_VPOINT_USAGE
     expect(isVolatilityPointUsedByAccount(point, "main")).toBe(true);
+    expect(isVolatilityPointUsedByAccount(legPoint, "main")).toBe(true);
     expect(isVolatilityPointUsedByAccount(point, "second")).toBe(false);
     expect(isVolatilityPointUsedByAccount(point, "")).toBe(false);
   });

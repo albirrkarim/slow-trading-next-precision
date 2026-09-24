@@ -916,15 +916,6 @@ type VolatilityPointOwner = {
   };
 };
 
-/**
- * Builds the persisted property name used to track production entry usage for
- * one exchange account. Account markers live on the shared volatility point
- * so live and sandbox executions for that account observe the same usage.
- */
-function getEntryVolatilityPointUsageKey(accountSlug: string): string {
-  return `usedBy${String(accountSlug || "").trim()}`;
-}
-
 function findEntrySignalVolatilityPoint(params: {
   entrySignal: Pick<VolatilityPoint, "id" | "symbol">;
   modelMemory?: VolatilityPointOwner;
@@ -960,11 +951,7 @@ function isEntrySignalVolatilityPointUsed(params: {
 
   const accountSlug = String(params.accountSlug || "").trim();
   if (accountSlug) {
-    return (
-      (point as VolatilityPoint & Record<string, unknown>)[
-        getEntryVolatilityPointUsageKey(accountSlug)
-      ] === true
-    );
+    return vpoints.usage.hasAccount(point, accountSlug);
   }
 
   return point.used === true;
@@ -985,9 +972,7 @@ function markEntrySignalVolatilityPointUsed(params: {
 
   const accountSlug = String(params.accountSlug || "").trim();
   if (accountSlug) {
-    Object.assign(point, {
-      [getEntryVolatilityPointUsageKey(accountSlug)]: true,
-    });
+    vpoints.usage.mark(point, accountSlug);
     return true;
   }
 
@@ -1012,7 +997,6 @@ const reserve = {
     isActionableAveragingLevel: isActionableAveragingVolatilityLevel,
     findPositionTargetPoint: findPositionTargetVolatilityPoint,
     hasPositionHitTargetPoint: hasPositionHitTargetVolatilityPoint,
-    getUsageKey: getEntryVolatilityPointUsageKey,
     isUsed: isEntrySignalVolatilityPointUsed,
     markUsed: markEntrySignalVolatilityPointUsed,
     markAccountUsed: markEntrySignalVolatilityPointUsed,

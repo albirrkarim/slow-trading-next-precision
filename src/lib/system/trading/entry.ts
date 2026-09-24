@@ -5,6 +5,7 @@ import type {
 import { TradingMode } from "@/lib/exchange/types";
 import type { RuntimeConfig } from "../runtime";
 import type { VolatilityPoint } from "../types";
+import vpoints from "../utils/vpoints";
 import autoRemove from "./auto-remove";
 import lateEntryVPointDrift from "./late-entry-vpoint-drift";
 import type { EntryRecommendation, Position } from "./types";
@@ -44,14 +45,10 @@ function mapScaleValue(
   return outputMin + proportion * outputRange;
 }
 
-/** Builds the persisted property name tracking entry usage for one account. */
-function entryVolatilityPointUsageKey(accountSlug: string): string {
-  return `usedBy${String(accountSlug || "").trim()}`;
-}
-
 /**
  * Checks whether the source volatility point for an entry signal is already
- * used: account markers win, callers without account identity read `used`.
+ * used: account markers (`"<slug>"` or per-leg `"<slug>:<ROLE>"`) win,
+ * callers without account identity read `used`.
  */
 function isVolatilityPointUsed(params: {
   accountSlug?: string;
@@ -69,11 +66,7 @@ function isVolatilityPointUsed(params: {
 
   const accountSlug = String(params.accountSlug || "").trim();
   if (accountSlug) {
-    return (
-      (point as VolatilityPoint & Record<string, unknown>)[
-        entryVolatilityPointUsageKey(accountSlug)
-      ] === true
-    );
+    return vpoints.usage.hasAccount(point, accountSlug);
   }
 
   return point.used === true;
@@ -294,6 +287,7 @@ async function findDecisions(
         message: entrySignal.message,
         symbol,
         type: "entry",
+        vPointUsage: [account.slug],
       });
     }
   }

@@ -341,8 +341,8 @@ function detectVPoints(params: {
 
 /**
  * Merges two vPoint lists by `id` into one list sorted by `t`. Points present
- * in both keep the `next` version, so later mutations such as
- * `usedBy<accountSlug>` markers overwrite the older copy.
+ * in both keep the `next` version, except `usedBy` markers which union so
+ * consumption recorded on either copy is never lost.
  */
 function mergeById(
   current: VolatilityPoint[],
@@ -353,7 +353,30 @@ function mergeById(
     pointById.set(point.id, point);
   }
   for (const point of next) {
-    pointById.set(point.id, { ...pointById.get(point.id), ...point });
+    const existing = pointById.get(point.id);
+    const merged: VolatilityPoint = { ...existing, ...point };
+    const markers = [
+      ...(existing?.usedBy ?? []),
+      ...(point.usedBy ?? []),
+    ];
+    // Upgrade persisted `usedBy<slug>` markers from the retired scheme.
+    for (const source of [existing, point]) {
+      if (!source) continue;
+      for (const key of Object.keys(source)) {
+        if (
+          key !== "usedBy" &&
+          key.startsWith("usedBy") &&
+          (source as unknown as Record<string, unknown>)[key] === true
+        ) {
+          markers.push(key.slice("usedBy".length));
+          delete (merged as unknown as Record<string, unknown>)[key];
+        }
+      }
+    }
+    if (markers.length > 0) {
+      merged.usedBy = [...new Set(markers)];
+    }
+    pointById.set(point.id, merged);
   }
   return [...pointById.values()].sort((left, right) => left.t - right.t);
 }
@@ -371,8 +394,8 @@ function mergeById(
  * The entry-time clause is required so post-entry target vPoints survive the
  * window: BOTH:AVERAGING_STOPS_AFTER_TARGET_VPOINT resolves them from the
  * vPoints map, so trimming them would let a position keep averaging after a
- * restart. Account usage markers (`usedBy<accountSlug>`) ride along on every
- * retained point. Chronological source order is preserved.
+ * restart. Usage markers (`usedBy`) ride along on every retained point.
+ * Chronological source order is preserved.
  *
  * Passing `Number.POSITIVE_INFINITY` as `recent` retains every point.
  */
@@ -405,13 +428,45 @@ function retainRecent(params: {
   );
 }
 
-/** Removes legacy and account-scoped entry usage markers from one point. */
+/** Removes legacy and strategy usage markers from one point. */
 function resetUsage(point: VolatilityPoint): void {
   delete point.used;
+  delete point.usedBy;
+  // Strip persisted markers written by the retired `usedBy<slug>` scheme.
   for (const key of Object.keys(point)) {
     if (key.startsWith("usedBy")) {
       delete (point as VolatilityPoint & Record<string, unknown>)[key];
     }
+  }
+}
+
+/** Checks whether one marker was recorded on the point. */
+function hasUsage(point: VolatilityPoint, marker: string): boolean {
+  const normalized = String(marker || "").trim();
+  return Boolean(normalized) && (point.usedBy ?? []).includes(normalized);
+}
+
+/**
+ * Checks whether the point was consumed by one account — either by an exact
+ * `"<slug>"` marker or by a per-leg `"<slug>:<ROLE>"` marker.
+ */
+function hasAccountUsage(
+  point: VolatilityPoint,
+  accountSlug: string,
+): boolean {
+  const slug = String(accountSlug || "").trim();
+  if (!slug) return false;
+  return (point.usedBy ?? []).some(
+    (marker) => marker === slug || marker.startsWith(`${slug}:`),
+  );
+}
+
+/** Records one strategy marker on the point, ignoring duplicates. */
+function markUsage(point: VolatilityPoint, marker: string): void {
+  const normalized = String(marker || "").trim();
+  if (!normalized) return;
+  if (!(point.usedBy ??= []).includes(normalized)) {
+    point.usedBy.push(normalized);
   }
 }
 
@@ -422,6 +477,11 @@ const vpoints = {
   processKline,
   resetUsage,
   retainRecent,
+  usage: {
+    has: hasUsage,
+    hasAccount: hasAccountUsage,
+    mark: markUsage,
+  },
 } as const;
 
 export default vpoints;

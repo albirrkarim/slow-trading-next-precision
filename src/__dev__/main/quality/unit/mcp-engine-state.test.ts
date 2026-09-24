@@ -132,7 +132,7 @@ function makeState() {
           p: 12,
           pct: 4,
           t: 1,
-          usedByMain: true,
+          usedBy: ["Main"],
         },
         { id: "T_b", l: "T", lvl: 1, p: 13, pct: 3, t: 2 },
       ],

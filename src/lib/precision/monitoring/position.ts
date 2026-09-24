@@ -132,6 +132,7 @@ async function averaging(
   // BOTH:AVERAGING_CONSUMES_VOLATILITY_POINT
   positions.markVPointUsed({
     accountSlug: decision.accountSlug,
+    markers: decision.vPointUsage,
     recommendation: decision.recommendation,
     volatilityPoints: context.state.vPointsMap[decision.symbol],
   });

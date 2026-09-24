@@ -94,6 +94,7 @@ async function executeDecision(
   );
   positions.markVPointUsed({
     accountSlug: decision.accountSlug,
+    markers: decision.vPointUsage,
     recommendation: decision.entrySignal,
     volatilityPoints: context.state.vPointsMap[decision.symbol],
   });

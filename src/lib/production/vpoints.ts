@@ -6,7 +6,7 @@ import type { ExchangeType, VolatilityPoint } from "@/lib/system/types";
  * `prod/volatility/<exchangeType>/<symbol>.json`.
  *
  * Points are merged by `id`: the full detected history already on disk is
- * preserved while runtime-only mutations — `usedBy<accountSlug>` markers and
+ * preserved while runtime-only mutations — `usedBy` markers and
  * newly detected points — are written through. Passing a single-point array
  * persists one point; passing the retained runtime window flushes markers.
  */

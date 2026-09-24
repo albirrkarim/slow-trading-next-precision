@@ -149,6 +149,12 @@ export interface RuntimeEntryDecision {
   manual?: boolean;
   message: string;
   symbol: string;
+  /**
+   * Strategy-owned usage markers written onto the source vPoint after the
+   * entry fills. Defaults to `[accountSlug]`; pair strategies emit
+   * `"<slug>:<ROLE>"` markers instead.
+   */
+  vPointUsage?: string[];
 }
 
 /**
@@ -161,6 +167,12 @@ export interface RuntimeAveragingDecision {
   position: Position;
   recommendation: AveragingRecommendation;
   symbol: string;
+  /**
+   * Strategy-owned usage markers written onto the consumed vPoint after the
+   * fill. Defaults to `[accountSlug]`; strategies may emit per-leg markers
+   * or none at all.
+   */
+  vPointUsage?: string[];
 }
 
 /**

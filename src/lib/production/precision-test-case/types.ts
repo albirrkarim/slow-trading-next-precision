@@ -10,7 +10,7 @@ export interface PrecisionTestCase extends BacktestTestCase {
    * Runtime state captured when the recording ends; absent in the pending
    * file. Unlike `initialState`, `vPointsMap` here is a delta: per symbol,
    * the vPoints newly detected during the recording window plus pre-existing
-   * points whose content changed while recording (e.g. `usedBy*` markers
+   * points whose content changed while recording (e.g. `usedBy` markers
    * gained through entry/averaging). Reconstruct the full map as
    * `initialState.vPointsMap` overlaid with this delta; symbols with no
    * delta are omitted.

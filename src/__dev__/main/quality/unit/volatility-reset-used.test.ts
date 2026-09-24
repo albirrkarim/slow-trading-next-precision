@@ -57,7 +57,7 @@ function storedPoint(id: string): VolatilityPoint {
     p: 12,
     pct: 4,
     t: 1,
-    usedByMain: true,
+    usedBy: ["Main"],
   } as unknown as VolatilityPoint;
 }
 
@@ -99,7 +99,7 @@ describe("market volatility removeUsed reset", () => {
 
   it("clears in-memory markers before persisting the cleaned copies", async () => {
     const enginePoints = [
-      { id: "B_a", usedByMain: true },
+      { id: "B_a", usedBy: ["Main"], usedByMain: true },
       { id: "B_c", used: true },
     ];
     const state = { vPointsMap: { LINK: enginePoints } };
@@ -114,6 +114,8 @@ describe("market volatility removeUsed reset", () => {
     );
 
     expect(mocks.runManual).toHaveBeenCalledTimes(1);
+    expect(enginePoints[0].usedBy).toBeUndefined();
+    // Legacy `usedBy<slug>` keys are stripped alongside the new markers.
     expect(enginePoints[0].usedByMain).toBeUndefined();
     expect(enginePoints[1].used).toBeUndefined();
     // The in-memory reset must run before the file reset so later

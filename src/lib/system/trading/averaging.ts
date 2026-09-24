@@ -150,6 +150,7 @@ async function findDecision(
     recommendation,
     symbol: position.symbol.toUpperCase(),
     type: "averaging",
+    vPointUsage: [position.account],
   };
 }
 

@@ -15,7 +15,6 @@ interface RuntimeEngineStateReadInput {
 }
 
 const PNL_HISTORY_LIMIT = 500;
-const USAGE_PREFIX = "usedBy";
 const VPOINTS_DEFAULT_LIMIT = 200;
 const VPOINTS_MAX_LIMIT = 1000;
 
@@ -135,8 +134,9 @@ function serializePosition(position: Position, includePnlHistory: boolean) {
 
 /**
  * Summarizes one symbol's volatility points: the latest point plus which
- * account consumed which point id (`usedBy<slug>` markers). When `limit` is
- * provided the recent point array is included in full.
+ * marker consumed which point id (`usedBy` marker strings, conventionally
+ * `"<slug>"` or `"<slug>:<ROLE>"`). When `limit` is provided the recent
+ * point array is included in full.
  */
 function summarizeSymbolPoints(
   points: VolatilityPoint[] | undefined,
@@ -149,14 +149,8 @@ function summarizeSymbolPoints(
     const id = String(point.id ?? "");
     if (!id) continue;
     if (point.used === true) used.push(id);
-    for (const key of Object.keys(point)) {
-      if (
-        !key.startsWith(USAGE_PREFIX) ||
-        (point as unknown as Record<string, unknown>)[key] !== true
-      ) {
-        continue;
-      }
-      const slug = key.slice(USAGE_PREFIX.length);
+    for (const marker of point.usedBy ?? []) {
+      const slug = String(marker || "").trim();
       if (!slug) continue;
       (usedBy[slug] ??= []).push(id);
     }

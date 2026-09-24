@@ -26,9 +26,11 @@ export function isVolatilityPointUsedByAccount(
   const normalizedSlug = String(accountSlug || "").trim();
   if (!normalizedSlug) return false;
 
-  return (
-    (point as VolatilityPoint & Record<string, unknown>)[
-      `usedBy${normalizedSlug}`
-    ] === true
+  // Matches both account-wide ("<slug>") and per-leg ("<slug>:<ROLE>")
+  // markers written by the active strategy.
+  return (point.usedBy ?? []).some(
+    (marker) =>
+      marker === normalizedSlug ||
+      marker.startsWith(`${normalizedSlug}:`),
   );
 }

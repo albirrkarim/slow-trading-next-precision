@@ -41,8 +41,9 @@ Yes. The foundation can accommodate both strategies — this is exactly the
 - **Exchange layer already supports `positionSide`**
   (`src/lib/exchange/types.ts`, binance/okx adapters) — hedge-mode order
   mechanics are mostly adapter-side work.
-- **`usedBy<slug>` vPoint markers** exist as dynamic keys — extensible to
-  per-leg granularity.
+- **`usedBy: string[]` vPoint markers** are implemented — strategy-owned
+  marker strings (`"<slug>"` or `"<slug>:<ROLE>"`), supplied by decisions
+  via `vPointUsage`, giving per-leg granularity already.
 - **Both instance repos already converged on the same model**: `role`,
   `pairId`, `entryLegs` on `Position`; pair identity =
   `symbol + opened.vPoint.id + opened.t`
@@ -85,115 +86,28 @@ like known as StreakStrategyLogic or etc...
 
 
 
-4. `usedBy<slug>` is a boolean per account — Streak needs per-leg marks
-   (e.g. `usedBy<slug>` storing role), since one vPoint can be MAIN's
-   averaging point and COUNTER's entry anchor.
-
-I think it will be 
-
-vpoint.used: string[] 
-
-it will depend on the strategy it choose
-
-["accountslug1", "accountslug2"]
-
-["accountslug1_mainleg", "accountslug2_counterleg"]
-
-#### 4. Design — strategy-owned usage markers
-
-Replace the dynamic `usedBy<slug>: true` keys (and the deprecated `used:
-boolean`) with one array field of opaque marker strings:
-
-```ts
-interface VolatilityPoint {
-  /**
-   * Usage markers written by the active strategy after an action succeeds.
-   * Marker format is strategy-chosen; the runtime only stores and matches
-   * the raw strings. Absent/empty = unused.
-   */
-  usedBy?: string[];
-}
-```
-
-Name it `usedBy` (not `used`) to avoid colliding with the deprecated boolean
-`used` field during migration — old data has `used: true`, new code expects
-an array.
-
-**Marker convention** — strategy picks the format; `:` is the separator
-since account slugs may contain `_`:
-
-```
-"multi"                // one-way strategies: account consumed the point
-"main:MAIN"            // hedge/streak: account + leg consumed the point
-"main:COUNTER"
-```
-
-For Hedge/Streak one vPoint can carry both leg markers —
-`["main:MAIN", "main:COUNTER"]` — because the same point can be MAIN's
-averaging step and COUNTER's entry anchor (streak FAQ: "unused means unused
-for entry for some leg; averaging doesn't count"). Whether averaging writes
-a marker at all is the strategy's choice; streak marks entries only.
-
-**Who writes markers** — keep the engine marker-agnostic:
-
-- The shared runtime owns a dumb primitive: `usage.mark(point, marker)`,
-  `usage.has(point, marker)`, `usage.reset(point)`.
-- Each `RuntimeDecision` carries `vPointUsage?: string[]` — the markers to
-  write on success. The decision producer (strategy) computes them, e.g.
-  hedge emits `["main:MAIN", "main:COUNTER"]` for a pair entry.
-- The engine writes markers only after `onAction` returns and shared
-  accounting succeeds — same timing guarantee as today
-  (`BOTH:AVERAGING_CONSUMES_VOLATILITY_POINT`), just moved from
-  "derived from accountSlug" to "supplied by the decision".
-- Eligibility predicates ("is this vPoint free for me?") move into the
-  strategy's decision producer — it calls `usage.has` with its own marker
-  format. Default/multi strategy emits `[accountSlug]`, preserving current
-  `BOTH:ENTRY_ONLY_IN_UNIQUE_VOLATILITY_POINT_ID` behavior.
-
-**Consumers to update** — `usedBy<slug>` isn't runtime-internal only:
-
-- `system/utils/vpoints.ts` — merge/reset logic scans `usedBy*` keys →
-  copy/clear the `usedBy` array instead (also keep deleting legacy
-  `used`/`usedBy*` keys once, for storage compat).
-- `system/storage/runtime.ts` `resetVolatilityPointUsage` — same.
-- `system/mcp/engine-state.ts` — currently reports `usedBy: Record<slug,
-  ids[]>`; switch to listing raw markers per point (optionally grouped by
-  the `slug` prefix before `:`).
-- `components/LiveDashboard/Feature/LatestVolatilityPoints` — reads
-  `usedBy${slug}` → membership check `usedBy.includes(slug)` or
-  `startsWith(`${slug}:`)`.
-- `production/factory.ts` — writes `usedBy<slug>` around fills → supply
-  markers through the decision instead.
-
-**No Precision Checker impact** — positions persist only `vPoint = {id,
-lvl}` refs, never the marker state, and markers are already excluded from
-datasets.
-
-**Storage** — `usedBy: string[]` is compact-JSON friendly and reset becomes
-`point.usedBy = []` (or delete) instead of scanning dynamic keys.
-
 ### RuntimeEngine API (`src/lib/precision/`)
 
-5. **One-position-per-symbol assumption** — `canAttemptEntry` blocks any
+4. **One-position-per-symbol assumption** — `canAttemptEntry` blocks any
    same-symbol position. Needs pair-aware eligibility, and
    `maxOpenPositions` must count pairs ("worker count is not doubled"),
    not legs.
-6. **Strategy can only veto, not generate.** `onStrategy(decision) => boolean`
+5. **Strategy can only veto, not generate.** `onStrategy(decision) => boolean`
    gates candidates produced by the built-in `defaultDecision`. A `both`
    strategy must *produce* pair entries; `streak` must produce re-entries.
    Widen the extension point to an injectable decision provider or a
    transform hook (`decisions => decisions`).
-7. **`onAction` returns `Position | null`** — pair entry needs two
+6. **`onAction` returns `Position | null`** — pair entry needs two
    coordinated fills with rollback (close leg 1 if leg 2 fails, per the
    hedge FAQ). Either a `RuntimePairEntryDecision` type returning
    `Position[]`, or two leg decisions sharing `pairId` executed atomically
    by the adapter.
-8. **No coordinated exit** — `BOTH:VOLATILITY_TARGET_EXIT` and
+7. **No coordinated exit** — `BOTH:VOLATILITY_TARGET_EXIT` and
    `BOTH:EXIT_TOGETHER_WHEN_STOP_LOSS` close both legs;
    `monitorPosition`/`exit` handles one position at a time. Needs a
    pair-exit decision or a post-exit counterpart lookup. (Iteration is
    safe — stages iterate a copied array.)
-9. **No preflight hook** — hedge-mode validation
+8. **No preflight hook** — hedge-mode validation
    (`PROD:VALIDATE_HEDGE_POSITION_MODE_*`) fits as an optional adapter
    method called during `start()` or before pair entry.
 

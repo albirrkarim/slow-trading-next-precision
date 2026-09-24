@@ -106,11 +106,22 @@ export interface VolatilityPoint<TFeature = unknown> {
 
   /**
    * Legacy point-wide backtest usage marker. Account-aware entry and averaging
-   * use runtime `usedBy<accountSlug>` properties instead.
+   * use the `usedBy` marker list instead.
    *
    * [EXCLUDE FROM DATASET]
    */
   used?: boolean;
+
+  /**
+   * Usage markers written by the active strategy after an action succeeds.
+   * Marker format is strategy-chosen; the runtime only stores and matches
+   * the raw strings. Convention: `"<accountSlug>"` consumes the point for
+   * the whole account, `"<accountSlug>:<ROLE>"` scopes consumption to one
+   * pair leg. Absent or empty means unused.
+   *
+   * [EXCLUDE FROM DATASET]
+   */
+  usedBy?: string[];
 
   /**
    * Delta in ms between v point before and the current v point

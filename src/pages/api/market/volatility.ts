@@ -198,8 +198,8 @@ async function keepTheVolatilityUpdated(
 
   try {
     // Clearing persisted markers alone is not enough: the running engine owns
-    // separate in-memory vPointsMap objects whose surviving `usedBy<slug>`
-    // flags would be merged back into the files on the next state-change
+    // separate in-memory vPointsMap objects whose surviving `usedBy`
+    // markers would be merged back into the files on the next state-change
     // flush. Reset the live copies first, serialized with the engine's
     // scheduled stages, so later flushes persist the cleared state.
     if (removeUsed && symbols.length > 0) {

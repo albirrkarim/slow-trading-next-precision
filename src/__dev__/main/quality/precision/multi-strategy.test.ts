@@ -292,11 +292,9 @@ describe("multi strategy entry decisions", () => {
 
     // The shared point itself is not marked used by decision evaluation.
     expect(suiLatest.used).toBeUndefined();
-    expect(
-      (suiLatest as VolatilityPoint & Record<string, unknown>).usedBya1,
-    ).toBeUndefined();
+    expect(suiLatest.usedBy).toBeUndefined();
 
-    Object.assign(suiLatest, { usedBya1: true });
+    Object.assign(suiLatest, { usedBy: ["a1"] });
     const second = await strategy.decisions.findEntries(context);
     expect(second).toHaveLength(1);
     expect(second[0].accountSlug).toBe("a2");
@@ -346,9 +344,7 @@ describe("multi strategy late-entry vPoint drift guard", () => {
 
     // A blocked decision never consumes the source vPoint, so the same
     // point can still enter later if the drift settles back under the cap.
-    expect(
-      (point as VolatilityPoint & Record<string, unknown>).usedBya1,
-    ).toBeUndefined();
+    expect(point.usedBy).toBeUndefined();
     context.state.markPriceMap.SUI.price = 100.5;
     expect(await strategy.decisions.findEntries(context)).toHaveLength(1);
 
@@ -518,9 +514,8 @@ describe("multi strategy positions", () => {
       volatilityPoints: points.SUI,
     });
 
-    const marked = suiLatest as VolatilityPoint & Record<string, unknown>;
-    expect(marked.usedBya1).toBe(true);
-    expect(marked.used).toBeUndefined();
+    expect(suiLatest.usedBy).toEqual(["a1"]);
+    expect(suiLatest.used).toBeUndefined();
 
     const decisions = await strategy.decisions.findEntries(context);
     expect(decisions.map((decision) => decision.accountSlug)).toEqual(["a2"]);
