@@ -83,9 +83,6 @@ like known as StreakStrategyLogic or etc...
 3. Config needs `management.openDirection` ("ONE_WAY" | "BOTH"), per-account
    `trading.entryLegs`, and `futuresPositionMode` for hedge-mode validation.
 
-
-
-
 ### RuntimeEngine API (`src/lib/precision/`)
 
 4. **One-position-per-symbol assumption** — `canAttemptEntry` blocks any

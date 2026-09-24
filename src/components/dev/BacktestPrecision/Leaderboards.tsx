@@ -22,6 +22,7 @@ import {
 } from "@mui/material";
 import { grey } from "@mui/material/colors";
 import axios from "axios";
+import type { ReactElement } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ButtonDialog from "@/components/ui/ButtonDialog";
 import { endpoints } from "../../endpoints";
@@ -99,75 +100,201 @@ function getGradientColor(
     return `rgba(${red}, ${green}, 100, 0.18)`;
 }
 
+const headerTooltipSlotProps = {
+    tooltip: {
+        sx: {
+            fontSize: "0.8rem",
+            lineHeight: 1.45,
+            maxWidth: 420,
+            p: 1.1,
+            whiteSpace: "pre-line",
+        },
+    },
+} as const;
+
+function HeaderTooltip({
+    children,
+    title,
+}: {
+    children: ReactElement;
+    title?: string;
+}) {
+    return (
+        <Tooltip
+            arrow
+            placement="top"
+            slotProps={headerTooltipSlotProps}
+            title={title ?? ""}
+        >
+            {children}
+        </Tooltip>
+    );
+}
+
 interface HeaderGroup {
     id: string;
     label: string;
     align?: "left" | "right" | "center";
-    children?: { id: string; label: string }[];
+    children?: { id: string; label: string; tooltip?: string }[];
     tooltip?: string;
 }
 
 const HEADER_GROUPS: HeaderGroup[] = [
-    { id: "label", label: "Label", tooltip: "Saved run label" },
-    { id: "t", label: "Saved At", tooltip: "When the run was saved" },
-    { id: "leaderboard.gainPct", label: "Gain", align: "right", tooltip: "(final - starting) / starting balance" },
-    { id: "leaderboard.winRate", label: "Win Rate", align: "right", tooltip: "Winning closed positions / total closed" },
-    { id: "leaderboard.positionsClosed", label: "Trades", align: "right", tooltip: "Closed positions" },
-    { id: "leaderboard.sharpeRatio", label: "Sharpe", align: "right", tooltip: "Monthly-return Sharpe ratio" },
+    {
+        id: "label",
+        label: "Label",
+        tooltip: "Name of this saved run.\nFalls back to the backtest name or date range when no label was set.\nThe entry id is a content hash — re-saving the same config + range overwrites it.\nSource: entry.label → backtestConfig.name → range → id (storage/leaderboards/[hash].json).",
+    },
+    {
+        id: "t",
+        label: "Saved At",
+        tooltip: "Local time the run was persisted via the \"Save run to leaderboards\" button.\nSource: entry.t on the saved file (storage/leaderboards/[hash].json).",
+    },
+    {
+        id: "leaderboard.gainPct",
+        label: "Gain",
+        align: "right",
+        tooltip: "Total realized return over the whole run.\n(final total − starting balance) / starting balance × 100%.\nStarting balance = sum of every account's initial balance.\nFinal total = last combined balance snapshot — open-position PnL is excluded.\nHigher is better.\nSource: backtest result → balanceSnapshots (each account's startingBalance + last timeline total), computed at save time.",
+    },
+    {
+        id: "leaderboard.winRate",
+        label: "Win Rate",
+        align: "right",
+        tooltip: "Closed positions that finished with net USDT profit > 0, as a percentage of all closed positions.\nStill-open positions are not counted.\nSource: backtest result → positions[].closed + pnl.netUsdt.",
+    },
+    {
+        id: "leaderboard.positionsClosed",
+        label: "Trades",
+        align: "right",
+        tooltip: "Number of closed positions over the backtest range, summed across all accounts.\nMore trades means more samples — but also more fees, so read it together with Gain and Monthly Gain.\nSource: backtest result → positions[] with a closed event.",
+    },
+    {
+        id: "leaderboard.sharpeRatio",
+        label: "Sharpe",
+        align: "right",
+        tooltip: "Sharpe ratio of month-over-month total-balance returns (UTC months).\nmean(monthly returns) / stddev(monthly returns) — not annualized.\n0 when fewer than 2 monthly returns exist in the range.\nHigher = smoother compounding.\nSource: backtest result → balanceSnapshots month-end combined totals.",
+    },
     {
         id: "leaderboard.maxPortfolioDrawdown",
         label: "Portfolio DD",
         align: "center",
-        tooltip: "(total - floating) / total per snapshot — unrealized-loss drag",
+        tooltip: "Unrealized-loss drag on the whole portfolio, measured per balance snapshot.\n(total − floating) / total, where floating = total + open-position PnL.\nLower is better — it can even go negative when open trades are in profit.\nSource: balanceSnapshots.total vs floating PnL reconstructed from positions[].pnl.history.",
         children: [
-            { id: "leaderboard.maxPortfolioDrawdown.avg", label: "avg" },
-            { id: "leaderboard.maxPortfolioDrawdown.max", label: "max" },
+            {
+                id: "leaderboard.maxPortfolioDrawdown.avg",
+                label: "avg",
+                tooltip: "Mean portfolio drag across every balance snapshot — the typical amount of equity underwater.\nSource: same snapshot series as Portfolio DD.",
+            },
+            {
+                id: "leaderboard.maxPortfolioDrawdown.max",
+                label: "max",
+                tooltip: "Worst single snapshot — the deepest the whole portfolio was underwater at once.\nSource: same snapshot series as Portfolio DD.",
+            },
         ],
     },
     {
         id: "leaderboard.maxFloatingDrawdown",
         label: "Floating DD",
         align: "center",
-        tooltip: "Floating drag relative to deployed open notional",
+        tooltip: "Unrealized-loss drag relative to the capital actually deployed.\n−floating PnL / open-position notional, per snapshot that has open trades.\nUnlike Portfolio DD it ignores idle cash — it shows how deep open positions dipped against their own notional.\nLower is better.\nSource: positions[].pnl.history floating PnL vs openBase (margin-at-time × leverage, rebuilt minus later averaging fills).",
         children: [
-            { id: "leaderboard.maxFloatingDrawdown.avg", label: "avg" },
-            { id: "leaderboard.maxFloatingDrawdown.max", label: "max" },
+            {
+                id: "leaderboard.maxFloatingDrawdown.avg",
+                label: "avg",
+                tooltip: "Mean drag across snapshots with open positions — typical underwater depth vs deployed notional.\nSource: same reconstruction as Floating DD.",
+            },
+            {
+                id: "leaderboard.maxFloatingDrawdown.max",
+                label: "max",
+                tooltip: "Worst snapshot — the deepest open positions dipped relative to their deployed notional.\nSource: same reconstruction as Floating DD.",
+            },
         ],
     },
-    { id: "leaderboard.bearMarketProofRatio", label: "Bear Proof", align: "right", tooltip: "Portfolio resilience inside detected bear windows" },
+    {
+        id: "leaderboard.bearMarketProofRatio",
+        label: "Bear Proof",
+        align: "right",
+        tooltip: "Resilience inside detected bear windows.\nA bear window is a ≥20% peak→trough drawdown on a symbol's volatility-point price series.\nScore = 100 − mean portfolio floating drag inside those windows.\n100 = untouched by bear phases · 0 = no bear window found in the range.\nSource: vPointsMap price series per symbol (window detection) + balance/position timeline (drag inside windows).",
+    },
     {
         id: "leaderboard.monthlyGain",
         label: "Monthly Gain",
         align: "center",
-        tooltip: "Realized monthly profit / month-start total",
+        tooltip: "Realized net profit per UTC month / month-start total balance × 100%.\nMonths covered by the balance timeline with no closed trades count as 0%.\nSource: positions[].closed.t + pnl.netUsdt grouped by UTC month, over month-start totals from balanceSnapshots.",
         children: [
-            { id: "leaderboard.monthlyGain.min", label: "min" },
-            { id: "leaderboard.monthlyGain.avg", label: "avg" },
-            { id: "leaderboard.monthlyGain.max", label: "max" },
+            {
+                id: "leaderboard.monthlyGain.min",
+                label: "min",
+                tooltip: "Worst calendar month — the floor of realized monthly performance.\nSource: same monthly series as Monthly Gain.",
+            },
+            {
+                id: "leaderboard.monthlyGain.avg",
+                label: "avg",
+                tooltip: "Mean realized gain across all covered months — includes 0% months with no closed trades.\nSource: same monthly series as Monthly Gain.",
+            },
+            {
+                id: "leaderboard.monthlyGain.max",
+                label: "max",
+                tooltip: "Best calendar month of the run.\nSource: same monthly series as Monthly Gain.",
+            },
         ],
     },
-    { id: "leaderboard.avgMonthlyProfitPct", label: "Avg Monthly", align: "right", tooltip: "Average monthly profit vs starting balance" },
-    { id: "leaderboard.balanceTradesScore", label: "Trades Bal", align: "right", tooltip: "Evenness of trades across coins (0-100%)" },
+    {
+        id: "leaderboard.avgMonthlyProfitPct",
+        label: "Avg Monthly",
+        align: "right",
+        tooltip: "Average realized monthly profit as a share of the STARTING balance.\nmean(monthly net USDT) / starting balance × 100%.\nA flat-rate view — unlike Monthly Gain it does not compound off the growing balance.\nSource: same monthly pnl.netUsdt series ÷ combined startingBalance from balanceSnapshots.",
+    },
+    {
+        id: "leaderboard.balanceTradesScore",
+        label: "Trades Bal",
+        align: "right",
+        tooltip: "How evenly closed trades are spread across symbols.\nexp(−CV) of per-symbol closed-trade counts.\n100% = perfectly even · lower = concentrated in a few coins.\nDefaults to 100% when no trades closed.\nSource: positions[] grouped by symbol (closed trades only).",
+    },
     {
         id: "leaderboard.capitalEfficiency",
         label: "Capital Eff",
         align: "center",
-        tooltip: "Held ratio + turnover scores",
+        tooltip: "How hard the balance worked during the run.\nHR — held-ratio score: 1 − time-weighted locked/total. Higher = less capital stuck in open positions.\nTR — turnover score: daily locked-capital turnover normalized to average total balance, clamped to 100%. Higher = capital recycles faster.\nFinal — (HR + TR) / 2.\nSource: balanceSnapshots locked + total fields, time-weighted across the run.",
         children: [
-            { id: "leaderboard.capitalEfficiency.hrScore", label: "HR" },
-            { id: "leaderboard.capitalEfficiency.trScore", label: "TR" },
-            { id: "leaderboard.capitalEfficiency.score", label: "Final" },
+            {
+                id: "leaderboard.capitalEfficiency.hrScore",
+                label: "HR",
+                tooltip: "Held-ratio score: 1 − time-weighted (locked / total).\nHigher = less capital parked in open positions.\nSource: balanceSnapshots locked + total timeline.",
+            },
+            {
+                id: "leaderboard.capitalEfficiency.trScore",
+                label: "TR",
+                tooltip: "Turnover score: daily locked-capital turnover ÷ average total balance, clamped to 100%.\nHigher = capital recycles faster.\nSource: balanceSnapshots — sum of |Δlocked| per day ÷ avg total.",
+            },
+            {
+                id: "leaderboard.capitalEfficiency.score",
+                label: "Final",
+                tooltip: "Combined efficiency score: (HR + TR) / 2.\nHigher = balance stayed both free and active.\nSource: the HR and TR scores above.",
+            },
         ],
     },
     {
         id: "leaderboard.emptyBalance",
         label: "Empty Balance",
         align: "center",
-        tooltip: "Durations the spendable balance stayed below trading minimum",
+        tooltip: "How long the combined spendable balance stayed ≤ $2 — below the trading minimum — per consecutive dry spell.\nAll zeros = never ran dry: entries were never starved for quote.\nSource: balanceSnapshots spendable field vs the $2 trading minimum.",
         children: [
-            { id: "leaderboard.emptyBalance.min", label: "min" },
-            { id: "leaderboard.emptyBalance.avg", label: "avg" },
-            { id: "leaderboard.emptyBalance.max", label: "max" },
+            {
+                id: "leaderboard.emptyBalance.min",
+                label: "min",
+                tooltip: "Shortest dry spell — the smallest stretch without spendable balance.\nSource: same spendable timeline as Empty Balance.",
+            },
+            {
+                id: "leaderboard.emptyBalance.avg",
+                label: "avg",
+                tooltip: "Mean dry-spell length.\nSource: same spendable timeline as Empty Balance.",
+            },
+            {
+                id: "leaderboard.emptyBalance.max",
+                label: "max",
+                tooltip: "Longest dry spell — the worst stretch without spendable balance.\nSource: same spendable timeline as Empty Balance.",
+            },
         ],
     },
 ];
@@ -425,11 +552,11 @@ function LeaderboardsContent({
                                                 colSpan={group.children.length}
                                                 key={group.id}
                                             >
-                                                <Tooltip title={group.tooltip ?? ""}>
+                                                <HeaderTooltip title={group.tooltip}>
                                                     <Button color="inherit" size="small">
                                                         {group.label}
                                                     </Button>
-                                                </Tooltip>
+                                                </HeaderTooltip>
                                             </TableCell>
                                         ) : (
                                             <TableCell
@@ -437,7 +564,7 @@ function LeaderboardsContent({
                                                 key={group.id}
                                                 rowSpan={2}
                                             >
-                                                <Tooltip title={group.tooltip ?? ""}>
+                                                <HeaderTooltip title={group.tooltip}>
                                                     <TableSortLabel
                                                         active={orderBy === group.id}
                                                         direction={
@@ -447,27 +574,31 @@ function LeaderboardsContent({
                                                     >
                                                         {group.label}
                                                     </TableSortLabel>
-                                                </Tooltip>
+                                                </HeaderTooltip>
                                             </TableCell>
                                         ),
                                     )}
                                     <TableCell align="center" rowSpan={2}>
-                                        Actions
+                                        <HeaderTooltip title="Copy the run's settings JSON (paste into Settings → Backup → Restore), load it into the backtest form, re-run it, or delete the entry.">
+                                            <span>Actions</span>
+                                        </HeaderTooltip>
                                     </TableCell>
                                 </TableRow>
                                 <TableRow>
                                     {HEADER_GROUPS.flatMap((group) =>
                                         (group.children ?? []).map((child) => (
                                             <TableCell align="center" key={child.id}>
-                                                <TableSortLabel
-                                                    active={orderBy === child.id}
-                                                    direction={
-                                                        orderBy === child.id ? order : "asc"
-                                                    }
-                                                    onClick={() => handleSort(child.id)}
-                                                >
-                                                    {child.label}
-                                                </TableSortLabel>
+                                                <HeaderTooltip title={child.tooltip}>
+                                                    <TableSortLabel
+                                                        active={orderBy === child.id}
+                                                        direction={
+                                                            orderBy === child.id ? order : "asc"
+                                                        }
+                                                        onClick={() => handleSort(child.id)}
+                                                    >
+                                                        {child.label}
+                                                    </TableSortLabel>
+                                                </HeaderTooltip>
                                             </TableCell>
                                         )),
                                     )}

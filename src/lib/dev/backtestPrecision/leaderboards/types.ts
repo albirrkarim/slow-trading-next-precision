@@ -32,9 +32,9 @@ export interface BacktestLeaderboardMetrics {
   emptyBalance: LeaderboardRange;
   /** (finalTotal - startingBalance) / startingBalance * 100. */
   gainPct: number;
-  /** (total - floating) / total per snapshot; unrealized-loss drag on the portfolio. */
+  /** -floatingPnl / deployed open notional per snapshot; drag vs deployed capital. */
   maxFloatingDrawdown: LeaderboardRange;
-  /** Floating drag relative to deployed open notional, per snapshot. */
+  /** (total - floating) / total per snapshot; unrealized-loss drag on the portfolio. */
   maxPortfolioDrawdown: LeaderboardRange;
   /** Realized monthly profit / month-start total, in percent. */
   monthlyGain: LeaderboardRange;
