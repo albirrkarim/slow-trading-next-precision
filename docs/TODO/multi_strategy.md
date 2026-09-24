@@ -56,8 +56,23 @@ Yes. The foundation can accommodate both strategies — this is exactly the
    `entryLegs?: "MAIN" | "COUNTER" | "BOTH"`. Trivial — all three already
    proven in the streak repo's model.
 
+I think it will be in 
 
-   
+Position.strategy.logic = {
+    role: "MAIN" | "COUNTER",
+    pairId: string,
+    entryLegs: "MAIN" | "COUNTER" | "BOTH",
+}
+
+the type will be 
+
+Position.strategy.logic:any
+
+then the strategy code will assign the type into it.
+
+like known as StreakStrategyLogic or etc...
+
+
 2. Streak needs a pending-reentry record (`PositionPendingReentry`:
    pairId/role/direction/anchor vPoint) — either a `state.pendingReentries`
    slot or strategy-owned state.
