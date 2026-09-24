@@ -412,7 +412,7 @@ TC: `PROD:TOTAL_ASSET`
 
 **MCP balance contract**
 
-The read-only `slow_balance_read` tool exposes the same canonical balance
+The read-only `balance_read` tool exposes the same canonical balance
 model for the active, live, or sandbox mode. The top-level `balance` is summed
 across every enabled exchange account and `accounts[]` retains the contribution
 from each included account. Disabled accounts are excluded. The response also
@@ -431,7 +431,7 @@ TC: `PROD:MULTI_ACCOUNT_COMBINED_MCP_BALANCE`
 
 **MCP engine-state contract**
 
-The read-only `slow_engine_state_read` tool exposes the Precision engine
+The read-only `engine_state_read` tool exposes the Precision engine
 state serialized against the scheduled stages: lifecycle flags
 (`running`, `ready`, `processing`, `restartPending`), config with account
 credentials and MCP token secrets stripped, per-account balances, open

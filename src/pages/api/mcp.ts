@@ -89,8 +89,8 @@ function pickCoinMetadata(state: CoinTagState, symbol?: string) {
   };
 }
 
-runtimeMcp.tools.registerHandler("slow_tags_list", () => coinTags.list());
-runtimeMcp.tools.registerHandler("slow_tags_create", ({ args }) => {
+runtimeMcp.tools.registerHandler("tags_list", () => coinTags.list());
+runtimeMcp.tools.registerHandler("tags_create", ({ args }) => {
   const state = coinTags.create(
     String(args.text ?? ""),
     String(args.color ?? ""),
@@ -100,7 +100,7 @@ runtimeMcp.tools.registerHandler("slow_tags_create", ({ args }) => {
   void coinMetadataSync.broadcast(state);
   return state;
 });
-runtimeMcp.tools.registerHandler("slow_tags_update", ({ args }) => {
+runtimeMcp.tools.registerHandler("tags_update", ({ args }) => {
   const state = coinTags.update(
     Number(args.tagId),
     String(args.text ?? ""),
@@ -111,15 +111,15 @@ runtimeMcp.tools.registerHandler("slow_tags_update", ({ args }) => {
   void coinMetadataSync.broadcast(state);
   return state;
 });
-runtimeMcp.tools.registerHandler("slow_tags_delete", ({ args }) => {
+runtimeMcp.tools.registerHandler("tags_delete", ({ args }) => {
   const state = coinTags.delete(Number(args.tagId));
   void coinMetadataSync.broadcast(state);
   return state;
 });
-runtimeMcp.tools.registerHandler("slow_coin_metadata_get", ({ args }) =>
+runtimeMcp.tools.registerHandler("coin_metadata_get", ({ args }) =>
   pickCoinMetadata(coinTags.list(), String(args.symbol ?? "")),
 );
-runtimeMcp.tools.registerHandler("slow_coin_metadata_update", ({ args }) => {
+runtimeMcp.tools.registerHandler("coin_metadata_update", ({ args }) => {
   const symbol = String(args.symbol ?? "");
   let state = coinTags.list();
   if (Object.hasOwn(args, "description")) {
@@ -133,7 +133,7 @@ runtimeMcp.tools.registerHandler("slow_coin_metadata_update", ({ args }) => {
   return pickCoinMetadata(state, symbol);
 });
 runtimeMcp.tools.registerHandler(
-  "slow_coin_metadata_broadcast",
+  "coin_metadata_broadcast",
   async ({ args }) => {
     const state = coinTags.list();
     const peers = Array.isArray(args.peers)

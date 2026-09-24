@@ -30,7 +30,7 @@ function jsonSchema(properties: Record<string, unknown>, required: string[] = []
 
 const toolDefinitions: RuntimeMcpToolDefinition[] = [
   {
-    name: "slow_tags_list",
+    name: "tags_list",
     description:
       "List reusable coin tags, their descriptions, filter JSON, and assigned coin symbols.",
     permission: "tags.read",
@@ -38,7 +38,7 @@ const toolDefinitions: RuntimeMcpToolDefinition[] = [
     inputSchema: jsonSchema({}),
   },
   {
-    name: "slow_tags_create",
+    name: "tags_create",
     description: `${WRITE_TOOL_NOTICE} Create one reusable coin tag.`,
     permission: "tags.write",
     inputSchema: jsonSchema(
@@ -55,7 +55,7 @@ const toolDefinitions: RuntimeMcpToolDefinition[] = [
     ),
   },
   {
-    name: "slow_tags_update",
+    name: "tags_update",
     description: `${WRITE_TOOL_NOTICE} Update one reusable coin tag, including its optional filters JSON.`,
     permission: "tags.write",
     inputSchema: jsonSchema(
@@ -73,7 +73,7 @@ const toolDefinitions: RuntimeMcpToolDefinition[] = [
     ),
   },
   {
-    name: "slow_tags_delete",
+    name: "tags_delete",
     description: `${WRITE_TOOL_NOTICE} Delete one reusable coin tag and all coin attachments for it.`,
     permission: "tags.write",
     inputSchema: jsonSchema(
@@ -84,7 +84,7 @@ const toolDefinitions: RuntimeMcpToolDefinition[] = [
     ),
   },
   {
-    name: "slow_coin_metadata_get",
+    name: "coin_metadata_get",
     description:
       "Read coin descriptions and tag attachments. Pass a symbol to return only one coin.",
     permission: "coin_metadata.read",
@@ -97,7 +97,7 @@ const toolDefinitions: RuntimeMcpToolDefinition[] = [
     }),
   },
   {
-    name: "slow_coin_metadata_update",
+    name: "coin_metadata_update",
     description: `${WRITE_TOOL_NOTICE} Update one coin description and/or replace its attached tags. This auto-broadcasts through the current coin metadata sync behavior.`,
     permission: "coin_metadata.write",
     inputSchema: jsonSchema(
@@ -117,7 +117,7 @@ const toolDefinitions: RuntimeMcpToolDefinition[] = [
     ),
   },
   {
-    name: "slow_coin_metadata_broadcast",
+    name: "coin_metadata_broadcast",
     description:
       "Manually broadcast the current coin metadata state to configured/manual peer instances.",
     permission: "coin_metadata.broadcast",
@@ -131,7 +131,7 @@ const toolDefinitions: RuntimeMcpToolDefinition[] = [
     }),
   },
   {
-    name: "slow_monitoring_snapshot_read",
+    name: "monitoring_snapshot_read",
     description:
       "Read a versioned, credential-free snapshot of SLOW profile configuration, all account identities and effective strategies, withdrawal and Safe Haven schedules, and optional bounded operational logs.",
     permission: "monitoring.read",
@@ -154,7 +154,7 @@ const toolDefinitions: RuntimeMcpToolDefinition[] = [
     }),
   },
   {
-    name: "slow_balance_read",
+    name: "balance_read",
     description:
       "Read the canonical SLOW USDT balance across all enabled exchange accounts, with an account breakdown. Returns available exchange-free balance, spendable capital, virtual reserve, Safe Haven, locked active-position margin, total asset, formulas, and a plain-language meaning for every field. totalAsset is available plus locked and is not floating equity or unrealized P&L.",
     permission: "balance.read",
@@ -169,7 +169,7 @@ const toolDefinitions: RuntimeMcpToolDefinition[] = [
     }),
   },
   {
-    name: "slow_engine_state_read",
+    name: "engine_state_read",
     description:
       "Read the Precision runtime engine state: lifecycle flags, config with account credentials and token secrets stripped, per-account balances, open positions with their entry/close volatility-point ids, mark prices with staleness, and per-symbol volatility points including which account consumed each point id (usedBy markers). When the engine is stopped, stateSource reports retained or hydrated instead of live. Use to debug entry blocks such as VOLATILITY_POINT_USED.",
     permission: "engine_state.read",
@@ -193,7 +193,7 @@ const toolDefinitions: RuntimeMcpToolDefinition[] = [
     }),
   },
   {
-    name: "slow_finance_summary",
+    name: "finance_summary",
     description:
       "Summarize realized net USDT P&L across every enabled exchange account from closed SLOW trades inside one bounded UTC date range. Disabled accounts, balance changes, and open-position unrealized P&L are excluded.",
     permission: "trade_history.read",
@@ -218,7 +218,7 @@ const toolDefinitions: RuntimeMcpToolDefinition[] = [
     ),
   },
   {
-    name: "slow_trade_history_read",
+    name: "trade_history_read",
     description:
       "Read combined SLOW trade history and open positions across every enabled exchange account. Each position retains its account slug and disabled accounts are excluded.",
     permission: "trade_history.read",
@@ -302,7 +302,7 @@ async function call(params: {
     return external({ args, auth: params.auth });
   }
 
-  if (params.name === "slow_balance_read") {
+  if (params.name === "balance_read") {
     // PROD:MCP_BALANCE
     // PROD:MULTI_ACCOUNT_COMBINED_MCP_BALANCE
     return runtimeMcpBalance.read({
@@ -311,7 +311,7 @@ async function call(params: {
     });
   }
 
-  if (params.name === "slow_monitoring_snapshot_read") {
+  if (params.name === "monitoring_snapshot_read") {
     return runtimeMcpMonitoring.read(
       {
         mode: args.mode as "active" | "live" | "sandbox" | undefined,
@@ -322,7 +322,7 @@ async function call(params: {
     );
   }
 
-  if (params.name === "slow_engine_state_read") {
+  if (params.name === "engine_state_read") {
     // PROD:MCP_ENGINE_STATE
     return runtimeMcpEngineState.read({
       includePnlHistory: args.includePnlHistory === true,
@@ -331,7 +331,7 @@ async function call(params: {
     });
   }
 
-  if (params.name === "slow_trade_history_read") {
+  if (params.name === "trade_history_read") {
     // PROD:MULTI_ACCOUNT_COMBINED_MCP_DATA
     const limit = Math.min(500, Math.max(1, Number(args.limit) || 50));
     const includeOpenPositions = args.includeOpenPositions !== false;
@@ -361,7 +361,7 @@ async function call(params: {
     });
   }
 
-  if (params.name === "slow_finance_summary") {
+  if (params.name === "finance_summary") {
     // PROD:MCP_FINANCE_SUMMARY
     // PROD:MULTI_ACCOUNT_COMBINED_MCP_DATA
     const combined = await runtimeMcpHistory.read({
