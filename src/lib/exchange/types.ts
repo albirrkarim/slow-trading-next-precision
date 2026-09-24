@@ -13,6 +13,9 @@ export type ExchangeAccountSlug = string;
 export type ExchangeAccountType = ExchangeType;
 export const DEFAULT_EXCHANGE_ACCOUNT_SLUG: ExchangeAccountSlug = "binance-1";
 
+/** Futures position mode used by exchanges that support one-way and hedge positions. */
+export type UnifiedFuturesPositionMode = "ONE_WAY" | "HEDGE";
+
 /**
  * Unified order side
  */
@@ -578,12 +581,20 @@ export interface FeeCalculator {
 export interface ExchangeConfig {
   /** Default trading mode for this exchange instance */
   defaultTradingMode?: TradingMode;
+
+  /**
+   * Optional known futures position mode. When omitted, supporting adapters may
+   * resolve the current mode from the exchange before placing an order.
+   */
+  futuresPositionMode?: UnifiedFuturesPositionMode;
 }
 
 /** Parameters for confirming that an exchange position has fully closed. */
 export interface ExchangeEnsureClosedParams {
   symbol: string;
   direction: "LONG" | "SHORT";
+  /** Explicit Hedge Mode leg used for any residual close order. */
+  positionSide?: "long" | "short";
 }
 
 /** Result of exchange position-close confirmation and residual retries. */
@@ -607,6 +618,14 @@ export interface IExchange {
    * Get the default trading mode
    */
   readonly defaultTradingMode?: TradingMode;
+
+  /** Get the account's current futures position mode when supported. */
+  getFuturesPositionMode?(): Promise<UnifiedFuturesPositionMode>;
+
+  /** Change the account's futures position mode when supported. */
+  setFuturesPositionMode?(
+    mode: UnifiedFuturesPositionMode,
+  ): Promise<UnifiedFuturesPositionMode>;
 
   /**
    * Get account balance for a trading pair
@@ -795,7 +814,11 @@ export interface IExchange {
    */
   closePosition(
     symbol: string,
-    options?: { tradingMode?: TradingMode },
+    options?: {
+      tradingMode?: TradingMode;
+      /** Required to select a leg when both directions are open in Hedge Mode. */
+      direction?: "LONG" | "SHORT";
+    },
   ): Promise<boolean>;
 
   /**

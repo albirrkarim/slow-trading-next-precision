@@ -15,6 +15,7 @@ import type {
   UnifiedTicker,
   UnifiedWithdrawAssetParams,
   UnifiedWithdrawAssetResponse,
+  UnifiedFuturesPositionMode,
 } from "../types";
 import { UnifiedOrderSide, UnifiedOrderType, TradingMode } from "../types";
 import { type BinanceFuturesOrder } from "@/lib/exchange/platform/binance/futures/order";
@@ -34,6 +35,46 @@ import exchangeExit from "../ensure-closed";
 import binanceFuturesFunding from "@/lib/exchange/platform/binance/futures/funding";
 import binanceRequestCoordinator from "@/lib/exchange/platform/binance/request-coordinator";
 
+type BinanceFuturesPositionSide = "BOTH" | "LONG" | "SHORT";
+
+/** Resolves the Binance leg required by one-way or hedge-mode order semantics. */
+function resolveBinanceFuturesPositionSide(
+  params: UnifiedOrderParams,
+  positionMode: UnifiedFuturesPositionMode,
+): BinanceFuturesPositionSide | undefined {
+  if (positionMode === "ONE_WAY") {
+    if (params.positionSide && params.positionSide !== "net") {
+      throw new Error(
+        `Cannot use ${params.positionSide.toUpperCase()} positionSide in Binance One-way Mode`,
+      );
+    }
+    return params.positionSide === "net" ? "BOTH" : undefined;
+  }
+
+  if (params.positionSide === "net") {
+    throw new Error("Cannot use NET positionSide in Binance Hedge Mode");
+  }
+  if (params.positionSide) {
+    return params.positionSide.toUpperCase() as "LONG" | "SHORT";
+  }
+
+  if (params.tradeType === "ENTRY") {
+    return params.side === UnifiedOrderSide.BUY ? "LONG" : "SHORT";
+  }
+
+  return params.side === UnifiedOrderSide.SELL ? "LONG" : "SHORT";
+}
+
+/** Normalizes Binance's BOTH response literal to the unified NET literal. */
+function normalizeBinanceFuturesPositionSide(
+  value: unknown,
+): UnifiedOrderResponse["positionSide"] {
+  const normalized = String(value || "").toUpperCase();
+  if (normalized === "BOTH") return "NET";
+  if (normalized === "LONG" || normalized === "SHORT") return normalized;
+  return undefined;
+}
+
 /**
  * Binance Exchange Adapter
  * Binance uses BTCUSDT format (no underscore), converts to/from BTC_USDT
@@ -42,9 +83,45 @@ import binanceRequestCoordinator from "@/lib/exchange/platform/binance/request-c
 export class BinanceExchange implements IExchange {
   readonly exchangeType = "binance" as const;
   readonly defaultTradingMode?: TradingMode;
+  private configuredFuturesPositionMode?: UnifiedFuturesPositionMode;
+  private resolvedFuturesPositionMode?: UnifiedFuturesPositionMode;
 
   constructor(config?: ExchangeConfig) {
     this.defaultTradingMode = config?.defaultTradingMode;
+    this.configuredFuturesPositionMode = config?.futuresPositionMode;
+    this.resolvedFuturesPositionMode = config?.futuresPositionMode;
+  }
+
+  /** Gets and caches the account's current Binance futures position mode. */
+  async getFuturesPositionMode(): Promise<UnifiedFuturesPositionMode> {
+    const mode = await binance.futures.positionMode.get();
+    if (
+      this.configuredFuturesPositionMode &&
+      this.configuredFuturesPositionMode !== mode
+    ) {
+      throw new Error(
+        `Configured Binance futures position mode ${this.configuredFuturesPositionMode} does not match account mode ${mode}`,
+      );
+    }
+    this.resolvedFuturesPositionMode = mode;
+    return mode;
+  }
+
+  /** Explicitly changes and caches the account's Binance futures position mode. */
+  async setFuturesPositionMode(
+    mode: UnifiedFuturesPositionMode,
+  ): Promise<UnifiedFuturesPositionMode> {
+    const changedMode = await binance.futures.positionMode.change(mode);
+    this.configuredFuturesPositionMode = changedMode;
+    this.resolvedFuturesPositionMode = changedMode;
+    return changedMode;
+  }
+
+  /** Resolves a configured mode or lazily reads the authoritative account mode. */
+  private async resolveFuturesPositionMode(): Promise<UnifiedFuturesPositionMode> {
+    return (
+      this.resolvedFuturesPositionMode ?? (await this.getFuturesPositionMode())
+    );
   }
 
   ensureClosed(
@@ -424,6 +501,12 @@ export class BinanceExchange implements IExchange {
     binanceSide: BinanceOrderSide,
     binanceOrderType: BinanceOrderType,
   ): Promise<UnifiedOrderResponse> {
+    const positionMode = await this.resolveFuturesPositionMode();
+    const positionSide = resolveBinanceFuturesPositionSide(
+      params,
+      positionMode,
+    );
+
     // Map Spot Enum types to specific Futures API strings if different
     let orderTypeString = binanceOrderType.toString();
 
@@ -448,6 +531,10 @@ export class BinanceExchange implements IExchange {
       side: binanceSide,
       type: orderTypeString,
     };
+
+    if (positionSide) {
+      binanceParams.positionSide = positionSide;
+    }
 
     // Handle quantity
     if (params.quantity !== undefined) {
@@ -483,7 +570,9 @@ export class BinanceExchange implements IExchange {
       binanceParams.newClientOrderId = params.clientId;
     }
 
-    if (params.reduceOnly !== undefined) {
+    // Binance rejects reduceOnly in Hedge Mode. The explicit positionSide
+    // selects the leg being reduced instead.
+    if (positionMode === "ONE_WAY" && params.reduceOnly !== undefined) {
       binanceParams.reduceOnly = params.reduceOnly;
     }
 
@@ -500,9 +589,7 @@ export class BinanceExchange implements IExchange {
       executedPrice: parseFloat(response.avgPrice || response.price || "0"),
       time: response.updateTime ?? Date.now(),
       tradingMode: TradingMode.FUTURES,
-      positionSide: response.positionSide
-        ? (response.positionSide.toUpperCase() as "LONG" | "SHORT" | "NET")
-        : undefined,
+      positionSide: normalizeBinanceFuturesPositionSide(response.positionSide),
       targetPrice: params.stopPrice || params.price || 0,
       quantity: response.origQty
         ? parseFloat(response.origQty)
@@ -928,7 +1015,10 @@ export class BinanceExchange implements IExchange {
    */
   async closePosition(
     symbol: string,
-    options?: { tradingMode?: TradingMode },
+    options?: {
+      tradingMode?: TradingMode;
+      direction?: "LONG" | "SHORT";
+    },
   ): Promise<boolean> {
     const binanceSymbol = this.denormalizeSymbol(symbol);
     const mode =
@@ -937,15 +1027,30 @@ export class BinanceExchange implements IExchange {
     systemLog.log("[Binance] Closing position for", symbol);
 
     if (mode === TradingMode.FUTURES) {
-      const { requestPrivate } =
-        await import("@/lib/exchange/platform/binance/utils");
-      const FUTURES_BASE_URL = "https://fapi.binance.com";
+      const positionMode = await this.resolveFuturesPositionMode();
 
       // Get current position to determine side and quantity
       const positions = await this.getPositions(symbol);
-      const position = positions.find(
-        (p) => p.originalSymbol === binanceSymbol,
+      const matchingPositions = positions.filter(
+        (position) => position.originalSymbol === binanceSymbol,
       );
+      const position = options?.direction
+        ? matchingPositions.find(
+            (candidate) => candidate.side === options.direction,
+          )
+        : matchingPositions.length === 1
+          ? matchingPositions[0]
+          : undefined;
+
+      if (
+        positionMode === "HEDGE" &&
+        !options?.direction &&
+        matchingPositions.length > 1
+      ) {
+        throw new Error(
+          `Direction is required to close ${symbol} because both Binance Hedge Mode legs are open`,
+        );
+      }
 
       if (!position || position.amount === 0) {
         systemLog.log(`No open position found for ${symbol}`);
@@ -953,26 +1058,26 @@ export class BinanceExchange implements IExchange {
       }
 
       // Close position by placing opposite market order
-      const closeSide = position.side === "LONG" ? "SELL" : "BUY";
-
-      const orderParams = {
-        symbol: binanceSymbol,
-        side: closeSide,
-        type: "MARKET",
-        quantity: position.amount.toString(),
-        reduceOnly: true, // Important: only close existing position
-      };
+      const closeSide =
+        position.side === "LONG" ? UnifiedOrderSide.SELL : UnifiedOrderSide.BUY;
 
       systemLog.log(
         `[Binance] Closing ${position.side} position for ${symbol} with ${closeSide} order`,
       );
 
-      await requestPrivate<any>(
-        "/fapi/v1/order",
-        orderParams,
-        "post",
-        FUTURES_BASE_URL,
-      );
+      await this.createOrder({
+        tradeType: "EXIT",
+        symbol,
+        side: closeSide,
+        type: UnifiedOrderType.MARKET,
+        quantity: position.amount,
+        tradingMode: TradingMode.FUTURES,
+        positionSide:
+          positionMode === "HEDGE"
+            ? (position.side.toLowerCase() as "long" | "short")
+            : undefined,
+        reduceOnly: positionMode === "ONE_WAY",
+      });
 
       systemLog.log(`[Binance] Successfully closed position for ${symbol}`);
       return true;

@@ -86,6 +86,7 @@ async function ensureClosed(
       type: UnifiedOrderType.MARKET,
       quantity: remainingPosition.amount,
       tradingMode: TradingMode.FUTURES,
+      positionSide: params.positionSide,
       reduceOnly: true,
     });
     retryOrders += 1;

@@ -9,11 +9,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   createFuturesOrder: vi.fn(),
   getFuturesSymbolInfo: vi.fn(),
+  getPositionMode: vi.fn(),
 }));
 
 vi.mock("@/lib/exchange/platform/binance", () => ({
   binance: {
-    futures: { createFuturesOrder: mocks.createFuturesOrder },
+    futures: {
+      createFuturesOrder: mocks.createFuturesOrder,
+      positionMode: { get: mocks.getPositionMode },
+    },
   },
 }));
 
@@ -29,6 +33,7 @@ describe("Binance futures reduce-only exits", () => {
       stepSize: 1,
       tickSize: 0.000001,
     });
+    mocks.getPositionMode.mockResolvedValue("ONE_WAY");
     mocks.createFuturesOrder.mockResolvedValue({
       orderId: 1,
       clientOrderId: "exit",
@@ -37,6 +42,7 @@ describe("Binance futures reduce-only exits", () => {
       avgPrice: "1",
       updateTime: 1,
       origQty: "10",
+      positionSide: "BOTH",
     });
   });
 
