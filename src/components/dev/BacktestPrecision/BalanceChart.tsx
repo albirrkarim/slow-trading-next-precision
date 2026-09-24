@@ -58,13 +58,14 @@ export default function BacktestBalanceChart(props: {
   return (
     <HeaderMetrics
       rememberExpand="backtest-precision:balance"
+      defaultExpanded={false}
       title={
         <Typography variant="body1" sx={{ fontWeight: "bold" }}>
           Balance Over Time
         </Typography>
       }
     >
-      {() => (
+      {(expanded) => expanded && (
         <>
           {slugs.map((slug) => (
             <Box key={slug} sx={{ mb: 1 }}>
