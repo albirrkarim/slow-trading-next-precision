@@ -134,23 +134,31 @@ async function marketData(params: {
               : "failed",
       });
 
-      // closedKlines answers `undefined` until the first candle closes into
-      // the buffer (up to one interval after boot). A miss while the stream
-      // is fresh means still warming, not a failure; a miss while the
-      // stream is dead means the feed is genuinely down.
-      const cold = symbols.filter(
-        (symbol) => live.closedKlines(symbol, "5m", Date.now()) === undefined,
-      );
+      // closedKlines is anchored to the 5m boundary at probe start, so a
+      // mid-candle boot asks for a candle that has not closed yet: the feed
+      // answers `undefined` or `[]` — still warming, not a failure. Only a
+      // non-empty array of closed candles proves the buffer serves the
+      // runtime window; an empty one must never count as success.
+      const klineWindowStart =
+        Math.floor(pollStartedAt / (5 * 60_000)) * (5 * 60_000);
+      const unwarmed = symbols.filter((symbol) => {
+        const klines = live.closedKlines(symbol, "5m", klineWindowStart);
+        return !klines || klines.length === 0;
+      });
       items.push({
         detail:
-          cold.length === 0
+          unwarmed.length === 0
             ? `${symbols.length} symbol(s)`
             : streamAlive
-              ? `${cold.length} symbol(s) awaiting first closed candle`
+              ? `${unwarmed.length} symbol(s) awaiting first closed candle`
               : "stream stale or dead",
         label: "adapter.market.live.closedKlines",
         status:
-          cold.length === 0 ? "success" : streamAlive ? "pending" : "failed",
+          unwarmed.length === 0
+            ? "success"
+            : streamAlive
+              ? "pending"
+              : "failed",
       });
     }
 

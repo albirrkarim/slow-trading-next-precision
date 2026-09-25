@@ -7,6 +7,7 @@ import type {
 } from "../types";
 import {
   DEFAULT_RECENT_VPOINTS,
+  LIVE_FEED_KLINES_MISS_GRACE_MS,
   LIVE_FEED_MISS_GRACE_MS,
   LIVE_FEED_MISS_REPEAT_MS,
   MARK_PRICE_LOOKBACK_MINUTES,
@@ -46,6 +47,14 @@ function create(
    */
   const liveFeedMiss = runtimeErrors.trackMisses({
     graceMs: LIVE_FEED_MISS_GRACE_MS,
+    repeatMs: LIVE_FEED_MISS_REPEAT_MS,
+    source: "runtime.market.live-feed",
+  });
+  // Closed candles need a wider window than mark prices: the first x:true
+  // lands up to one full interval after the socket opens, so a healthy
+  // feed can legitimately miss closedKlines for minutes after boot.
+  const liveKlinesMiss = runtimeErrors.trackMisses({
+    graceMs: LIVE_FEED_KLINES_MISS_GRACE_MS,
     repeatMs: LIVE_FEED_MISS_REPEAT_MS,
     source: "runtime.market.live-feed",
   });
@@ -168,7 +177,7 @@ function create(
         // conflates that designed backfill with a dead stream — they
         // separate by duration: a backfill misses a single pass, then the
         // buffer serves and clears the tracker; a dead feed misses every
-        // pass until it outlives the grace window and gets logged.
+        // pass until it outlives the wider kline grace and gets logged.
         const klinesKey = `${symbol}:${interval}:klines`;
         const buffered = adapter.market.live?.closedKlines(
           symbol,
@@ -177,14 +186,14 @@ function create(
         );
         if (adapter.market.live) {
           if (buffered === undefined) {
-            liveFeedMiss.miss(klinesKey, (outageMs) =>
+            liveKlinesMiss.miss(klinesKey, (outageMs) =>
               new Error(
                 `Live feed missed ${symbol}@${interval} closed klines for ` +
                   `${Math.round(outageMs / 1000)}s; REST backfill in use.`,
               ),
             );
           } else {
-            liveFeedMiss.ok(klinesKey);
+            liveKlinesMiss.ok(klinesKey);
           }
         }
         const klines =

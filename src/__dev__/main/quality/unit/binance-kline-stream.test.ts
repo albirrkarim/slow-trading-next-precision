@@ -120,8 +120,8 @@ describe("Binance kline stream", () => {
   it("serves mark prices from the forming candle and closed klines from the buffer", () => {
     feed.track(["SUI"], "5m");
     sockets[0].open();
-    emit("suiusdt", "5m", { c: "100", t: 1_000, T: 2_000, x: true });
-    emit("suiusdt", "5m", { c: "101.5", t: 3_000, T: 4_000, x: false });
+    emit("suiusdt", "5m", { c: "100", t: 300_000, T: 599_999, x: true });
+    emit("suiusdt", "5m", { c: "101.5", t: 600_000, T: 899_999, x: false });
 
     // PROD:MARKET_LIVE_FEED
     expect(feed.markPrice("SUI", "5m")).toEqual({
@@ -129,21 +129,63 @@ describe("Binance kline stream", () => {
       price: 101.5,
     });
     // sinceOpenTime matches the oldest buffered candle → fully covered.
-    expect(feed.closedKlines("SUI", "5m", 1_000)).toEqual([
-      [1_000, "1", "2", "0.5", "100", "10", 2_000, "10", 5, "5", "5", "0", ""],
+    expect(feed.closedKlines("SUI", "5m", 300_000)).toEqual([
+      [
+        300_000, "1", "2", "0.5", "100", "10", 599_999, "10", 5, "5", "5", "0",
+        "",
+      ],
     ]);
   });
 
   it("returns undefined for windows the buffer cannot cover", () => {
     feed.track(["SUI"], "5m");
     sockets[0].open();
-    emit("suiusdt", "5m", { c: "100", t: 1_000, T: 2_000, x: true });
+    emit("suiusdt", "5m", { c: "100", t: 300_000, T: 599_999, x: true });
 
     // PROD:MARKET_LIVE_FEED — a window starting before the first buffered
     // candle must backfill through REST instead of silently truncating.
-    expect(feed.closedKlines("SUI", "5m", 500)).toBeUndefined();
-    expect(feed.closedKlines("SUI", "5m", 1_000)).toHaveLength(1);
-    expect(feed.closedKlines("SUI", "5m", 3_000)).toEqual([]);
+    expect(feed.closedKlines("SUI", "5m", 299_999)).toBeUndefined();
+    expect(feed.closedKlines("SUI", "5m", 300_000)).toHaveLength(1);
+    expect(feed.closedKlines("SUI", "5m", 600_000)).toEqual([]);
+  });
+
+  it("returns undefined when the window's first candle is missing", () => {
+    feed.track(["SUI"], "5m");
+    sockets[0].open();
+    emit("suiusdt", "5m", { c: "99", t: 300_000, T: 599_999, x: true });
+    // The 600_000 candle never arrived — dropped while the socket was
+    // down — but a later one did.
+    emit("suiusdt", "5m", { c: "101", t: 900_000, T: 1_199_999, x: true });
+
+    // Serving the truncated buffer would skip the missing candle's
+    // volatility window, so the feed defers to REST backfill.
+    expect(feed.closedKlines("SUI", "5m", 600_000)).toBeUndefined();
+  });
+
+  it("returns undefined when the buffered window skips a middle candle", () => {
+    feed.track(["SUI"], "5m");
+    sockets[0].open();
+    emit("suiusdt", "5m", { c: "99", t: 300_000, T: 599_999, x: true });
+    emit("suiusdt", "5m", { c: "100", t: 600_000, T: 899_999, x: true });
+    emit("suiusdt", "5m", { c: "101", t: 1_200_000, T: 1_499_999, x: true });
+
+    expect(feed.closedKlines("SUI", "5m", 300_000)).toBeUndefined();
+  });
+
+  it("serves a contiguous window and keeps [] for a not-yet-closed candle", () => {
+    feed.track(["SUI"], "5m");
+    sockets[0].open();
+    emit("suiusdt", "5m", { c: "99", t: 300_000, T: 599_999, x: true });
+    emit("suiusdt", "5m", { c: "100", t: 600_000, T: 899_999, x: true });
+    emit("suiusdt", "5m", { c: "101", t: 900_000, T: 1_199_999, x: true });
+
+    expect(feed.closedKlines("SUI", "5m", 300_000)?.map((k) => k[0])).toEqual([
+      300_000, 600_000, 900_000,
+    ]);
+
+    // A still-forming candle has no closed row yet — an empty array is a
+    // valid answer, not a hole.
+    expect(feed.closedKlines("SUI", "5m", 1_200_000)).toEqual([]);
   });
 
   it("stops serving data when the stream goes quiet", () => {

@@ -59,6 +59,11 @@ const RECONNECT_MAX_MS = 30_000;
 const SILENT_STREAM_MS = 15_000;
 const STALE_FEED_MS = 30_000;
 const SUBSCRIBE_CHUNK = 50;
+/** Candle width per runtime interval — needed to detect buffer holes. */
+const KLINE_INTERVAL_MS: Record<string, number> = {
+  "1m": 60_000,
+  "5m": 5 * 60_000,
+};
 
 const SHARED_KEY = Symbol.for("slow-trading.binance-kline-stream.instances");
 
@@ -356,6 +361,9 @@ function create(options: BinanceKlineStreamOptions) {
     /**
      * Closed candles received since `openTime`, or undefined when the buffer
      * cannot cover the window (cold start or stale feed → REST backfills).
+     * A hole inside the buffered window — a candle dropped while the socket
+     * was down — also answers undefined: serving the truncated range would
+     * silently skip volatility points instead of backfilling them.
      */
     closedKlines(
       symbol: string,
@@ -368,7 +376,24 @@ function create(options: BinanceKlineStreamOptions) {
         return undefined;
       }
       if (buffer.closed[0][0] > sinceOpenTime) return undefined;
-      return buffer.closed.filter((kline) => kline[0] >= sinceOpenTime);
+      const selected = buffer.closed.filter(
+        (kline) => kline[0] >= sinceOpenTime,
+      );
+      const intervalMs = KLINE_INTERVAL_MS[interval];
+      if (intervalMs && selected.length > 0) {
+        // The first candle the caller can expect is the one whose aligned
+        // open time reaches `sinceOpenTime`; anything later means the
+        // covering candle was dropped.
+        const firstWanted =
+          Math.ceil(sinceOpenTime / intervalMs) * intervalMs;
+        if (selected[0][0] !== firstWanted) return undefined;
+        for (let index = 1; index < selected.length; index += 1) {
+          if (selected[index][0] - selected[index - 1][0] !== intervalMs) {
+            return undefined;
+          }
+        }
+      }
+      return selected;
     },
 
     status(): BinanceKlineStreamStatus {

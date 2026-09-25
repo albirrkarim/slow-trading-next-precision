@@ -60,6 +60,7 @@ vi.mock("@/lib/system/storage", () => ({
   },
 }));
 
+import { TradingMode } from "@/lib/exchange";
 import { RuntimeEngine } from "@/lib/precision";
 import schedule from "@/lib/precision/monitoring/schedule";
 import type {
@@ -68,6 +69,7 @@ import type {
   RuntimeEngineState,
 } from "@/lib/precision/types";
 import productionStages from "@/lib/production/stages";
+import systemLog from "@/lib/system/logging";
 import { DEFAULT_BLACK_SWAN_CONFIG } from "@/lib/system/trading/black-swan";
 
 function candle(openTime: number, close: number) {
@@ -288,6 +290,92 @@ describe("RuntimeEngine environment stages", () => {
     );
     // The second iteration ran normally after the failed first one.
     expect(stageStats).toContain("standard-monitoring");
+  });
+
+  it("probes the live feed at boot, warms up via REST once, then stages stream", async () => {
+    vi.clearAllMocks();
+    const T0 = Date.UTC(2026, 8, 24, 10, 4); // 10:04 — mid 5m candle
+    const OPEN_0955 = T0 - 9 * MINUTE_MS;
+    const OPEN_1000 = T0 - 4 * MINUTE_MS;
+
+    const kline5m = (openTime: number, close: number) =>
+      [
+        openTime,
+        String(close),
+        String(close),
+        String(close),
+        String(close),
+        "1",
+        openTime + 5 * MINUTE_MS - 1,
+      ] as never;
+
+    const state = createState({ currentTime: T0 });
+    state.config.management.symbols = ["SUI"];
+    state.config.management.tradingMode = TradingMode.FUTURES;
+    state.config.runtime.standardMonitoringStageIntervalMinutes = 5;
+    // A longer capture cadence keeps the entry stage out of this pass.
+    state.config.runtime.captureEntryStageIntervalMinutes = 10;
+
+    // Fake feed: marks are live from the start; the closedKlines buffer is
+    // still warming at probe time ([]), cannot reach the warmup lookback
+    // (undefined → one REST backfill), then serves the stage's next candle.
+    const closedKlines = vi.fn(
+      (_symbol: string, _interval: string, since: number) => {
+        if (since === OPEN_1000) return [kline5m(OPEN_1000, 1.02)];
+        if (since < OPEN_0955) return undefined;
+        return [];
+      },
+    );
+    const live = {
+      closedKlines,
+      markPrice: vi.fn((symbol: string) => ({
+        lastUpdated: T0,
+        price: symbol === "BTC" ? 84_000 : 1.02,
+      })),
+      track: vi.fn(),
+    };
+    const getKlines = vi.fn(async () => [kline5m(OPEN_0955, 1.01)]);
+
+    const adapter = createAdapter(state, {
+      market: { getKlines, live },
+    });
+
+    const engine = new RuntimeEngine(state, adapter);
+    await engine.start();
+
+    // The startup checklist stays pending — a feed that has not delivered
+    // a closed 5m candle yet is warming, not healthy and not failed.
+    const logs = vi
+      .mocked(systemLog.info)
+      .mock.calls.flat()
+      .join("\n");
+    expect(logs).toContain("adapter.market.live.markPrice [success]");
+    expect(logs).toContain("adapter.market.live.closedKlines [pending]");
+
+    // Live marks fill markPriceMap — REST was never needed for prices.
+    expect(state.markPriceMap.SUI?.price).toBe(1.02);
+    expect(state.markPriceMap.BTC?.price).toBe(84_000);
+
+    // After the REST warmup (closed 9:55 candle), the 10:05 stage asks the
+    // feed for exactly the next aligned candle — no REST call for it.
+    expect(closedKlines).toHaveBeenCalledWith("SUI", "5m", OPEN_1000);
+    // getKlines ran only for the startup probe plus the warmup backfill —
+    // once per tracked symbol each, never during the stage pass.
+    expect(getKlines).toHaveBeenCalledTimes(4);
+    expect(
+      getKlines.mock.calls.some(
+        ([params]: any[]) => params?.startTime === OPEN_1000,
+      ),
+    ).toBe(false);
+
+    // No stage or startup failure was recorded.
+    expect(
+      mocks.appendError.mock.calls.every(
+        ([arg]: any[]) =>
+          !String(arg?.source ?? "").startsWith("runtime.stage.") &&
+          arg?.source !== "runtime.startup.market-data",
+      ),
+    ).toBe(true);
   });
 
   it("includes environment-stage boundaries in getNextTime only when the hooks exist", () => {

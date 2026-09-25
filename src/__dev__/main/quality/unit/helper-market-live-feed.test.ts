@@ -7,6 +7,12 @@ const mocks = vi.hoisted(() => ({
   getKlines: vi.fn(),
   getSymbols: vi.fn(() => ["SUI"]),
   liveMarkPrice: vi.fn(),
+  processKline: vi.fn(
+    (params: { kline: unknown[]; memory: unknown; symbol: string }) => ({
+      memory: params.memory,
+      point: undefined,
+    }),
+  ),
   track: vi.fn(),
 }));
 
@@ -25,10 +31,7 @@ vi.mock("@/lib/system/trading/entry", () => ({
 vi.mock("@/lib/system/utils/vpoints", () => ({
   default: {
     createMemory: vi.fn((params: unknown) => params),
-    processKline: vi.fn((params: { memory: unknown }) => ({
-      memory: params.memory,
-      point: undefined,
-    })),
+    processKline: mocks.processKline,
     retainRecent: vi.fn(
       (params: { points: unknown[] }) => params.points,
     ),
@@ -184,6 +187,133 @@ describe("market helper live-feed miss logging", () => {
     expect(mocks.appendError).toHaveBeenCalledTimes(2);
   });
 
+  it("serves the next closed candle from the feed after a one-time REST warmup", async () => {
+    // Cold start: the initial lookback is far older than the stream buffer,
+    // so the first pass backfills through REST exactly once.
+    mocks.closedKlines.mockReturnValue(undefined);
+    mocks.getKlines.mockResolvedValue([closedKline(now - 1)]);
+    const firstNow = now;
+    await helper.updateVPointsMap("5m");
+    expect(mocks.getKlines).toHaveBeenCalledTimes(1);
+
+    // Next pass: the cursor advanced past the warmup candle, so the feed
+    // serves the newly-closed candle from its buffer — no REST again.
+    now += INTERVAL_MS;
+    vi.setSystemTime(now);
+    state.currentTime = now;
+    mocks.closedKlines.mockReturnValue([closedKline(now - 1)]);
+    await helper.updateVPointsMap("5m");
+
+    expect(mocks.getKlines).toHaveBeenCalledTimes(1);
+    // Warmup's last candle opened at firstNow-INTERVAL_MS, so the feed is
+    // queried from the next aligned open time.
+    expect(mocks.closedKlines).toHaveBeenLastCalledWith(
+      "SUI",
+      "5m",
+      firstNow,
+    );
+
+    // The buffered candle actually reaches volatility processing — served
+    // with openTime firstNow for SUI.
+    expect(mocks.processKline).toHaveBeenCalledTimes(1);
+    const processed = mocks.processKline.mock.calls[0]?.[0];
+    expect(processed?.symbol).toBe("SUI");
+    expect(processed?.kline[0]).toBe(firstNow);
+
+    // Third pass: the cursor moved past that candle, so the feed is asked
+    // for the next aligned open — still no REST and no reprocessing.
+    now += INTERVAL_MS;
+    vi.setSystemTime(now);
+    state.currentTime = now;
+    mocks.closedKlines.mockReturnValue([]);
+    await helper.updateVPointsMap("5m");
+
+    expect(mocks.closedKlines).toHaveBeenLastCalledWith(
+      "SUI",
+      "5m",
+      firstNow + INTERVAL_MS,
+    );
+    expect(mocks.getKlines).toHaveBeenCalledTimes(1);
+    expect(mocks.processKline).toHaveBeenCalledTimes(1);
+  });
+
+  it("backfills through REST when the feed reports a buffer gap", async () => {
+    // `undefined` means the stream cannot cover the requested window —
+    // cold start or a hole from a dropped socket — so REST answers it.
+    mocks.closedKlines.mockReturnValue(undefined);
+    await helper.updateVPointsMap("5m");
+
+    expect(mocks.getKlines).toHaveBeenCalledTimes(1);
+    expect(mocks.getKlines).toHaveBeenCalledWith(
+      expect.objectContaining({
+        interval: "5m",
+        marketType: "FUTURES",
+        symbol: "SUI_USDT",
+      }),
+    );
+  });
+
+  it("stays silent while the first closed candle is still forming after boot", async () => {
+    // PROD:MARKET_LIVE_FEED — marks stream immediately but no 5m candle has
+    // closed yet, so closedKlines misses for up to one interval are warm-up
+    // covered by REST, not an outage. Two passes 5m apart outlive the 2m
+    // mark-price grace and must still log nothing.
+    mocks.liveMarkPrice.mockReturnValue({ lastUpdated: now, price: 101 });
+    mocks.closedKlines.mockReturnValue(undefined);
+    await helper.updateMarkPrice("5m");
+    await helper.updateVPointsMap("5m");
+
+    now += INTERVAL_MS;
+    vi.setSystemTime(now);
+    state.currentTime = now;
+    mocks.getKlines.mockResolvedValue([closedKline(now - 1)]);
+    await helper.updateMarkPrice("5m");
+    await helper.updateVPointsMap("5m");
+
+    expect(state.markPriceMap.SUI?.price).toBe(101);
+    expect(mocks.getKlines).toHaveBeenCalledTimes(2);
+    expect(mocks.appendError).not.toHaveBeenCalled();
+  });
+
+  it("resets the closed-klines tracker when the buffer recovers", async () => {
+    mocks.closedKlines.mockReturnValue(undefined);
+    await helper.updateVPointsMap("5m");
+
+    // Buffer serves again — the outage clears.
+    now += INTERVAL_MS;
+    vi.setSystemTime(now);
+    state.currentTime = now;
+    mocks.getKlines.mockResolvedValue([closedKline(now - 1)]);
+    mocks.closedKlines.mockReturnValue([closedKline(now - 1)]);
+    await helper.updateVPointsMap("5m");
+
+    // Fresh misses restart the full kline grace: cumulative outage would
+    // already exceed it here, the restarted one must stay silent.
+    mocks.closedKlines.mockReturnValue(undefined);
+    for (let i = 0; i < 2; i += 1) {
+      now += INTERVAL_MS;
+      vi.setSystemTime(now);
+      state.currentTime = now;
+      mocks.getKlines.mockResolvedValue([closedKline(now - 1)]);
+      await helper.updateVPointsMap("5m");
+    }
+    expect(mocks.appendError).not.toHaveBeenCalled();
+
+    // One more pass crosses the 10-minute kline grace — logged once.
+    now += INTERVAL_MS;
+    vi.setSystemTime(now);
+    state.currentTime = now;
+    mocks.getKlines.mockResolvedValue([closedKline(now - 1)]);
+    await helper.updateVPointsMap("5m");
+    expect(mocks.appendError).toHaveBeenCalledTimes(1);
+    expect(mocks.appendError).toHaveBeenCalledWith({
+      error: expect.objectContaining({
+        message: expect.stringContaining("SUI@5m closed klines"),
+      }),
+      source: "runtime.market.live-feed",
+    });
+  });
+
   it("stays silent when the kline buffer cannot cover a designed backfill", async () => {
     // A window older than the buffer misses once (REST backfills), then the
     // next pass is served — the outage never outlives the grace window.
@@ -203,7 +333,10 @@ describe("market helper live-feed miss logging", () => {
   it("records an error when closed klines keep missing past the grace", async () => {
     mocks.closedKlines.mockReturnValue(undefined);
 
-    for (let i = 0; i < 3; i += 1) {
+    // Four 5m passes put the outage at 15m — clearly past the 10-minute
+    // closed-klines grace (a healthy feed's first close lands within one
+    // interval).
+    for (let i = 0; i < 4; i += 1) {
       now += INTERVAL_MS;
       vi.setSystemTime(now);
       state.currentTime = now;

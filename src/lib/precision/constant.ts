@@ -34,6 +34,15 @@ export const DEFAULT_RECENT_VPOINTS = 10;
 export const LIVE_FEED_MISS_GRACE_MS = 2 * 60_000;
 
 /**
+ * Wider grace window for closed-kline misses. The first closed candle
+ * lands up to one full interval after the socket opens, and a stage can
+ * run exactly at the boundary before the close event arrives — REST
+ * covers those passes, so only a gap outliving one interval plus margin
+ * means the feed is genuinely dead.
+ */
+export const LIVE_FEED_KLINES_MISS_GRACE_MS = 10 * 60_000;
+
+/**
  * Re-log cadence while a live-feed miss persists. Bounds the error-log
  * volume to one entry per symbol per half hour during a sustained outage.
  */
