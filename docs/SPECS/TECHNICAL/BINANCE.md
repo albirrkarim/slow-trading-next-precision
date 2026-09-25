@@ -268,11 +268,13 @@ restarts and manual passes never leak connections.
 
 | Concern | Behavior |
 | --- | --- |
-| Streams | `<base>usdt@kline_<interval>` on one combined-stream socket; futures `wss://fstream.binance.com/stream`, spot `wss://stream.binance.com:9443/stream` |
+| Streams | `<base>usdt@kline_<interval>` on one combined-stream socket; futures rotates `fstream` → `fstream1/2/3`, spot rotates `stream.binance.com:9443` → `:443` |
 | Subscriptions | `track(symbols, interval)` marks wanted streams on every market update; streams unrequested for 15 minutes are unsubscribed and their buffers dropped |
 | Buffer | Latest forming candle plus up to 1,000 closed candles per stream |
 | Reconnect | On socket close, resubscribes every wanted stream after a 1-second backoff that doubles up to 30 seconds |
 | Staleness | A stream with no event for 30 seconds counts as dead; its readers fall back to REST |
+| Silent starvation | An open socket that delivers nothing for 15 seconds — or a handshake that never completes — is force-closed and the next host is tried; a socket that dies eventless also rotates. Hosts that suppress data per-IP (connected, ACKed, muted) self-skip in rotation instead of pinning the feed dead |
+| Spot proxy fallback | When every futures host is silent, `withFallback` engages the shared spot stream for the same `<base>usdt` symbols — prices differ only by basis (≈noise for monitoring). It engages after 5 seconds of primary silence, logs the transition, records a `runtime.market.live-feed` error (NOTIF_ERROR), and releases automatically when futures delivers again. Symbols not listed on spot still fall back to REST per symbol |
 
 Consumers in `helper/market.ts`:
 

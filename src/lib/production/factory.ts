@@ -14,6 +14,7 @@ import type {
   RuntimeEngineAdapter,
   RuntimeEngineState as PrecisionRuntimeState,
 } from "@/lib/precision/types";
+import runtimeErrors from "@/lib/precision/utils/errors";
 import { systemLog } from "@/lib/system/logging";
 import type {
   RuntimeAccountConfig,
@@ -561,15 +562,29 @@ function createProductionFactory(): ProductionRuntimeFactory {
     // PROD:MARKET_LIVE_FEED — the kline websocket feed is one shared
     // process-level socket; it self-closes when nothing tracks it so
     // engine restarts and one-shot manual passes never leak connections.
+    // Binance suppresses futures ws per-IP without erroring, so futures
+    // gets a spot-stream proxy fallback: same symbols at ≈price, engaged
+    // only while the futures stream is silent and released on recovery.
     const liveFeed =
       firstRuntime.exchange.exchangeType === "binance"
-        ? binanceKlineStream.shared({
-            marketType:
-              latestState.config.management.tradingMode ===
-              TradingMode.FUTURES
-                ? "FUTURES"
-                : "SPOT",
-          })
+        ? latestState.config.management.tradingMode === TradingMode.FUTURES
+          ? binanceKlineStream.withFallback({
+              fallback: binanceKlineStream.shared({ marketType: "SPOT" }),
+              primary: binanceKlineStream.shared({ marketType: "FUTURES" }),
+              onFallback: (engaged) => {
+                if (!engaged) return;
+                void runtimeErrors
+                  .record(
+                    "runtime.market.live-feed",
+                    new Error(
+                      "Futures kline stream silent — spot stream is " +
+                        "proxying mark data until it recovers",
+                    ),
+                  )
+                  .catch(() => undefined);
+              },
+            })
+          : binanceKlineStream.shared({ marketType: "SPOT" })
         : undefined;
     return adapter.create({
       clock: clock.create({ signal }),

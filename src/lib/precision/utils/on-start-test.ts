@@ -9,7 +9,7 @@ import {
 import type { RuntimeEngineAdapter, RuntimeEngineState } from "../types";
 import runtimeErrors from "./errors";
 
-type CheckStatus = "failed" | "pending" | "skipped" | "success";
+type CheckStatus = "failed" | "partial" | "pending" | "skipped" | "success";
 
 interface CheckItem {
   detail?: string;
@@ -104,23 +104,34 @@ async function marketData(params: {
       live.track(symbols, "5m");
       const pollStartedAt = Date.now();
       const deadline = pollStartedAt + LIVE_FEED_PROBE_TIMEOUT_MS;
-      let markServed = 0;
+      let unserved = symbols;
       while (Date.now() < deadline) {
-        markServed = symbols.filter(
-          (symbol) => live.markPrice(symbol, "5m") !== undefined,
-        ).length;
-        if (markServed >= symbols.length) break;
+        unserved = symbols.filter(
+          (symbol) => live.markPrice(symbol, "5m") === undefined,
+        );
+        if (unserved.length === 0) break;
         await sleep(LIVE_FEED_PROBE_POLL_MS);
       }
-      const streamAlive = markServed >= symbols.length;
+      const markServed = symbols.length - unserved.length;
+      // Any served symbol proves the stream delivers — an unserved subset
+      // is a coverage gap (e.g. not listed on the proxy market) that REST
+      // absorbs per symbol, not a dead feed.
+      const streamAlive = markServed > 0;
       items.push({
-        detail: streamAlive
-          ? `${markServed}/${symbols.length} in ` +
-            `${((Date.now() - pollStartedAt) / 1000).toFixed(1)}s`
-          : `served ${markServed}/${symbols.length} within ` +
-            `${LIVE_FEED_PROBE_TIMEOUT_MS / 1000}s`,
+        detail:
+          unserved.length === 0
+            ? `${markServed}/${symbols.length} in ` +
+              `${((Date.now() - pollStartedAt) / 1000).toFixed(1)}s`
+            : `served ${markServed}/${symbols.length} within ` +
+              `${LIVE_FEED_PROBE_TIMEOUT_MS / 1000}s` +
+              (streamAlive ? ` — unserved: ${unserved.join(", ")}` : ""),
         label: "adapter.market.live.markPrice",
-        status: streamAlive ? "success" : "failed",
+        status:
+          unserved.length === 0
+            ? "success"
+            : streamAlive
+              ? "partial"
+              : "failed",
       });
 
       // closedKlines answers `undefined` until the first candle closes into
