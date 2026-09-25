@@ -58,7 +58,8 @@ export default function TradingAccountSettings({
                             checked={
                                 tradingConfig.lateEntryVPointPriceDriftEnabled !== false
                             }
-                            info="When ON, entries are blocked after price moves too far in the profitable direction from the source vPoint. Applies to live, sandbox, and backtest. This setting belongs only to the selected account."
+                            info="Automatic entries: block when the latest closed 1-minute price has moved more than the limit in the trade's profitable direction from the signal vPoint (above it for LONG, below for SHORT). The limit is 0.5% when the volatility threshold is below 5%; otherwise it is 1%. For a vPoint price of 100 and a 1% limit, LONG above 101 or SHORT below 99 is blocked; exactly 101 or 99 is allowed. Checked when selecting a signal and again before execution. Adverse moves and manual entries are exempt. Applies only to this account in live, sandbox, and backtest."
+                            infoTooltipMaxWidth={440}
                             label="Late Entry vPoint Price Drift Guard"
                             onChange={(checked) =>
                                 setTradingConfig((prev) =>

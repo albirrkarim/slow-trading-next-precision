@@ -16,6 +16,7 @@ interface SettingsCheckboxProps {
   checked: boolean;
   disabled?: boolean;
   info: string;
+  infoTooltipMaxWidth?: number;
   label: string;
   labelFontWeight?: number;
   labelVariant?: TypographyProps["variant"];
@@ -27,6 +28,7 @@ export default function SettingsCheckbox({
   checked,
   disabled = false,
   info,
+  infoTooltipMaxWidth,
   label,
   labelFontWeight = 400,
   labelVariant = "body2",
@@ -57,6 +59,7 @@ export default function SettingsCheckbox({
       <IconButtonTooltip
         size="small"
         sx={{ color: "text.secondary", p: 0.25 }}
+        tooltipMaxWidth={infoTooltipMaxWidth}
         tooltipTitle={info}
       >
         <HelpOutlineIcon fontSize="inherit" />
