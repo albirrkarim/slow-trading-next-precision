@@ -1,4 +1,5 @@
 import { RuntimeEngine } from "@/lib/precision";
+import runtimeErrors from "@/lib/precision/utils/errors";
 import type {
   RuntimeContext,
   RuntimeEngineAdapter,
@@ -10,10 +11,6 @@ import { runtimeLogs, runtimeStorage } from "@/lib/system/storage";
 import coinManagement from "./coin-management";
 import factoryModule from "./factory";
 import type { ProductionRuntimeFactory } from "./types";
-
-function isAbortError(error: unknown): boolean {
-  return error instanceof Error && error.name === "AbortError";
-}
 
 const MINUTE_MS = 60_000;
 const READY_WAIT_MS = 100;
@@ -72,7 +69,7 @@ class ProductionRuntime {
         this.engine = engine;
         await engine.start();
       } catch (error) {
-        if (!isAbortError(error)) throw error;
+        if (!runtimeErrors.isAbort(error)) throw error;
       }
     })().finally(() => {
       this.engine = undefined;
@@ -85,7 +82,7 @@ class ProductionRuntime {
     // escaped the stage guards) is recorded, then schedules a restart with
     // capped backoff. A stop() abort or a clean clock finish never restarts.
     this.runPromise.catch(async (error) => {
-      if (controller.signal.aborted || isAbortError(error)) return;
+      if (controller.signal.aborted || runtimeErrors.isAbort(error)) return;
       await runtimeLogs
         ?.appendError?.({ source: "runtime.engine", error })
         ?.catch(() => undefined);

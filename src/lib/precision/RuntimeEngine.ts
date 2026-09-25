@@ -1,13 +1,12 @@
 import systemLog from "../system/logging";
-import { systemNotif } from "../system/notification";
 import type {
   RuntimeCycleSectionSummary,
   RuntimeStage,
   RuntimeStageRunStats,
 } from "../system/runtime";
-import { runtimeLogs } from "../system/storage";
 import { createRuntimeHelper, type RuntimeHelper } from "./helper";
 import monitoring from "./monitoring";
+import runtimeErrors from "./utils/errors";
 import preview from "./utils/preview";
 import type {
   RuntimeContext,
@@ -20,43 +19,6 @@ import type {
  * This runtime is used on both in backtest and the production
  * BOTH:SHARED_RUNTIME_ENGINE
  */
-function isAbortError(error: unknown): boolean {
-  return error instanceof Error && error.name === "AbortError";
-}
-
-/**
- * Persists a stage/cycle failure to the error log without breaking the loop,
- * and reports it once per hour bucket through the NOTIF_ERROR channel so an
- * operational fault is visible without spamming on every failing pass.
- */
-async function recordRuntimeError(source: string, error: unknown) {
-  await runtimeLogs
-    ?.appendError?.({ source, error })
-    ?.catch(() => undefined);
-
-  const message = error instanceof Error ? error.message : String(error);
-  const hourBucket = Math.floor(Date.now() / 3_600_000);
-  await systemNotif
-    .central({
-      dashboard: "SLOW",
-      dedupeKey: `slow-operational-error:${source}:${message}:${hourBucket}`,
-      // PROD:NOTIF_ERROR
-      key: "NOTIF_ERROR",
-      message: JSON.stringify(
-        {
-          details: { source },
-          error: message,
-          source,
-          stack: error instanceof Error ? error.stack : undefined,
-        },
-        null,
-        2,
-      ),
-      title: `[ERROR] ${source}`,
-    })
-    .catch(() => undefined);
-}
-
 export class RuntimeEngine {
   state: RuntimeEngineState;
 
@@ -114,12 +76,12 @@ export class RuntimeEngine {
         } catch (error) {
           // Shutdown still propagates; every other failure keeps the loop alive
           // so one bad pass can never permanently stop the engine.
-          if (isAbortError(error)) throw error;
+          if (runtimeErrors.isAbort(error)) throw error;
           systemLog.error(
             "[Precision Runtime] cycle failed — engine continues",
             error,
           );
-          await recordRuntimeError("runtime.cycle", error);
+          await runtimeErrors.record("runtime.cycle", error);
         }
       }
     } finally {
@@ -189,10 +151,10 @@ export class RuntimeEngine {
     try {
       patch = await body(context);
     } catch (error) {
-      if (isAbortError(error)) throw error;
+      if (runtimeErrors.isAbort(error)) throw error;
       failed = error;
       systemLog.error(`[Precision Runtime] ${stage} pass failed`, error);
-      await recordRuntimeError(`runtime.stage.${stage}`, error);
+      await runtimeErrors.record(`runtime.stage.${stage}`, error);
     }
     const ms = Date.now() - startedAt;
     const stats: RuntimeStageRunStats = {
@@ -221,7 +183,7 @@ export class RuntimeEngine {
             `[Precision Runtime] failed to record ${stage} stats`,
             statsError,
           );
-          await recordRuntimeError(`runtime.stats.${stage}`, statsError);
+          await runtimeErrors.record(`runtime.stats.${stage}`, statsError);
         });
     }
 
@@ -347,7 +309,7 @@ export class RuntimeEngine {
               "[Precision Runtime] failed to record cycle stats",
               cycleError,
             );
-            await recordRuntimeError("runtime.stats.cycle", cycleError);
+            await runtimeErrors.record("runtime.stats.cycle", cycleError);
           });
       }
     } finally {

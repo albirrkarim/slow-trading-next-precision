@@ -3,6 +3,7 @@ import blackSwanBacktest, {
 } from "@/lib/dev/black-swan";
 import blackSwan from "@/lib/system/trading/black-swan";
 import { systemLog } from "@/lib/system/logging";
+import runtimeErrors from "@/lib/precision/utils/errors";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 const INCIDENT_START_T = Date.parse("2025-10-10T18:00:00.000Z");
@@ -13,10 +14,6 @@ export const config = {
     responseLimit: false,
   },
 };
-
-function isAbortError(error: unknown) {
-  return error instanceof Error && error.name === "AbortError";
-}
 
 /** Runs the date-bounded candle and savings comparison used by Settings. */
 export default async function handler(
@@ -62,7 +59,7 @@ export default async function handler(
     abortController.signal.throwIfAborted();
     res.status(200).json(result);
   } catch (error) {
-    if (isAbortError(error)) {
+    if (runtimeErrors.isAbort(error)) {
       if (!res.destroyed && !res.writableEnded) res.status(499).end();
       return;
     }
