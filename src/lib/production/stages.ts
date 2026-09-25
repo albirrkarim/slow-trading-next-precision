@@ -2,8 +2,10 @@ import binanceRequestCoordinator from "@/lib/exchange/platform/binance/request-c
 import monitoring from "@/lib/precision/monitoring";
 import type {
   RuntimeContext,
+  RuntimeMarketFeed,
   RuntimeStageRunPatch,
 } from "@/lib/precision/types";
+import type { Kline } from "@/lib/system/types";
 import {
   monitorNotif,
   systemNotif,
@@ -33,6 +35,9 @@ import runtimeQueue from "@/lib/system/queue";
 
 const SENTINEL_LOOKBACK_MINUTES = 65;
 const BREADTH_FETCH_CONCURRENCY = 4;
+const MINUTE_MS = 60_000;
+const CANDLE_CLOSE_GRACE_MS = 5_000;
+const sentinelCandles = new WeakMap<RuntimeMarketFeed, Map<string, Kline[]>>();
 
 const NOTIFICATION_CHANNELS: NotificationChannel[] = ["telegram", "email"];
 
@@ -47,23 +52,75 @@ function modeOf(context: RuntimeContext): RuntimeMode {
   return context.state.mode === "sandbox" ? "sandbox" : "live";
 }
 
-/** Fetches closed 1m candles for one symbol through the environment market port. */
+/**
+ * Keeps the historical Black Swan window while appending closed websocket
+ * candles. A cold, stale, or gapped stream reloads the window through REST.
+ */
 async function getCandles(
   context: RuntimeContext,
   symbol: string,
   currentTimeMs: number,
-) {
+  maxDataAgeMinutes: number,
+): Promise<Kline[]> {
+  const baseSymbol = normalizeSymbol(symbol);
+  const live = context.adapter.market.live;
+  const startTime = currentTimeMs - SENTINEL_LOOKBACK_MINUTES * MINUTE_MS;
+  const latestExpectedOpen =
+    Math.floor(currentTimeMs / MINUTE_MS) * MINUTE_MS - MINUTE_MS;
+  if (live) {
+    // PROD:BLACK_SWAN_SHARED_EVIDENCE — live and sandbox share the same
+    // Binance feed; backtests have no risk-sentinel stage or live feed.
+    live.track([baseSymbol], "1m");
+    const cache = sentinelCandles.get(live)?.get(baseSymbol);
+    const lastOpenTime = cache?.at(-1)?.[0];
+    const sinceOpenTime = lastOpenTime === undefined
+      ? startTime
+      : lastOpenTime + MINUTE_MS;
+    const streamed = live.closedKlines(baseSymbol, "1m", sinceOpenTime);
+    if (streamed !== undefined) {
+      const candles = [...(cache ?? []), ...streamed].filter(
+        (kline) => kline[0] >= startTime && kline[6] <= currentTimeMs,
+      );
+      const latest = candles.at(-1);
+      const inCloseGrace =
+        currentTimeMs % MINUTE_MS <= CANDLE_CLOSE_GRACE_MS &&
+        latest?.[0] === latestExpectedOpen - MINUTE_MS;
+      if (
+        latest &&
+        currentTimeMs - latest[6] <= maxDataAgeMinutes * MINUTE_MS &&
+        (latest[0] === latestExpectedOpen || inCloseGrace)
+      ) {
+        let bySymbol = sentinelCandles.get(live);
+        if (!bySymbol) {
+          bySymbol = new Map();
+          sentinelCandles.set(live, bySymbol);
+        }
+        bySymbol.set(baseSymbol, candles);
+        return candles;
+      }
+    }
+  }
+
   const marketType =
     context.state.config.management.tradingMode === "futures"
       ? "FUTURES"
       : "SPOT";
-  return context.adapter.market.getKlines({
+  const candles = await context.adapter.market.getKlines({
     endTime: currentTimeMs,
     interval: "1m",
     marketType,
     minutes: SENTINEL_LOOKBACK_MINUTES,
-    symbol: `${normalizeSymbol(symbol)}_USDT`,
+    symbol: `${baseSymbol}_USDT`,
   });
+  if (live) {
+    let bySymbol = sentinelCandles.get(live);
+    if (!bySymbol) {
+      bySymbol = new Map();
+      sentinelCandles.set(live, bySymbol);
+    }
+    bySymbol.set(baseSymbol, candles);
+  }
+  return candles;
 }
 
 /** Runs limited-concurrency breadth fetches; failed symbols are excluded. */
@@ -71,6 +128,7 @@ async function getBreadthCandles(
   context: RuntimeContext,
   symbols: string[],
   currentTimeMs: number,
+  maxDataAgeMinutes: number,
 ) {
   const output: Record<string, Awaited<ReturnType<typeof getCandles>>> = {};
   const queue = Array.from(
@@ -85,7 +143,12 @@ async function getBreadthCandles(
         while (cursor < queue.length) {
           const symbol = queue[cursor++];
           try {
-            output[symbol] = await getCandles(context, symbol, currentTimeMs);
+            output[symbol] = await getCandles(
+              context,
+              symbol,
+              currentTimeMs,
+              maxDataAgeMinutes,
+            );
           } catch (error) {
             if (binanceRequestCoordinator.error.isRateLimit(error)) {
               throw error;
@@ -178,7 +241,7 @@ async function runRiskSentinel(
   let btcCandles: Awaited<ReturnType<typeof getCandles>> = [];
   try {
     btcCandles = config.enabled
-      ? await getCandles(context, "BTC", now)
+      ? await getCandles(context, "BTC", now, config.maxDataAgeMinutes)
       : [];
   } catch (error) {
     if (binanceRequestCoordinator.error.isRateLimit(error)) {
@@ -200,6 +263,7 @@ async function runRiskSentinel(
           context,
           context.state.config.management.symbols,
           now,
+          config.maxDataAgeMinutes,
         )
       : undefined;
 

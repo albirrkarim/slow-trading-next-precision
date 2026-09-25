@@ -72,23 +72,24 @@ TC: `BOTH:STANDARD_MONITORING_STAGE`
 
 TC: `PROD:BINANCE_REQUEST_COORDINATOR`
 
-## 3. Black Swan request cadence
+## 3. Black Swan candle cadence
 
 - BTC is checked on every enabled Risk Sentinel pass: every 1 minute by
-  default (`blackSwanStageIntervalMinutes`).
-- The request is one 1-minute kline window from the previous 65 minutes, with
-  `limit=70`.
-- The BTC candle promise/value is cached for 55 seconds, coalescing live and
-  sandbox consumers inside that freshness window.
-- Breadth is not fetched during normal BTC conditions.
-- If the first BTC evaluation reaches a warning threshold, configured symbols
-  other than BTC are fetched using the same 1-minute/65-minute/70-candle shape.
-- Breadth uses at most four application workers, but all resulting Binance REST
-  callbacks still pass through the single coordinator queue.
+  default (`blackSwanStageIntervalMinutes`). The shared Binance 1m kline
+  websocket supplies closed candles after its first 65-minute history load.
+- The historical load uses one REST 1m kline window per symbol. The stream
+  then appends closed candles to that window, which is trimmed as time moves.
+- If the stream is cold, stale, missing a candle, or has not delivered the
+  latest expected close, REST reloads the window. A pass in the first five
+  seconds of a minute may use the preceding closed candle while the close
+  event arrives, provided it satisfies the configured data-age limit. The
+  detector remains protective when usable BTC data cannot be obtained.
+- Breadth symbols are tracked only after BTC warning evidence. They use the
+  same websocket and historical-load behavior as BTC. REST breadth reloads
+  use at most four application workers and the shared request coordinator.
 
-Thus Black Swan normally costs one kline request per minute: futures weight 1
-or spot weight 2 for `limit=70`. Its exceptional warning path costs up to one
-additional request at the same weight per non-BTC configured symbol.
+In steady state Black Swan makes no periodic kline REST request. Backtests
+continue to use historical candles and do not connect to the live feed.
 
 TC: `PROD:BLACK_SWAN_SHARED_EVIDENCE`
 

@@ -268,7 +268,8 @@ sequential requests with an unbounded burst.
 
 Completed public-market results use freshness windows that match the data:
 
-- Black Swan candles: 55 seconds.
+- Black Swan candles: rolling 65-minute 1m history with websocket updates;
+  REST reloads the window on startup, stale data, or stream gaps.
 - Latest reporting and position-sync prices: 5 seconds.
 - A completed five-minute stage candle: until the next aligned five-minute
   boundary. An in-progress candle is coalesced only while its request runs.

@@ -503,6 +503,89 @@ describe("productionStages.riskSentinel", () => {
     expect(mocks.central).not.toHaveBeenCalled();
     expect(patch?.summary).toMatch(/NORMAL/);
   });
+
+  it("uses streamed BTC and breadth candles after the initial history load", async () => {
+    // PROD:BLACK_SWAN_SHARED_EVIDENCE
+    const context = contextWith();
+    const historical = Array.from({ length: 65 }, (_, index) =>
+      candle(NOW - (65 - index) * MINUTE_MS, index >= 63 ? 90 : 100),
+    );
+    const getKlines = vi.fn(async () => historical);
+    let streamed = false;
+    const track = vi.fn();
+    const closedKlines = vi.fn(() =>
+      streamed ? [candle(NOW, 90)] : undefined,
+    );
+    context.adapter.market.getKlines = getKlines;
+    context.adapter.market.live = {
+      track,
+      closedKlines,
+      markPrice: vi.fn(),
+    };
+
+    await productionStages.riskSentinel(context);
+    expect(getKlines).toHaveBeenCalledTimes(2);
+    expect(track).toHaveBeenCalledWith(["BTC"], "1m");
+    expect(track).toHaveBeenCalledWith(["SUI"], "1m");
+
+    streamed = true;
+    context.state.currentTime += MINUTE_MS;
+    await productionStages.riskSentinel(context);
+
+    expect(getKlines).toHaveBeenCalledTimes(2);
+    expect(closedKlines).toHaveBeenCalledWith("BTC", "1m", NOW);
+    expect(closedKlines).toHaveBeenCalledWith("SUI", "1m", NOW);
+    expect(mocks.statusByMode.live?.blackSwan?.status).toBe("CRISIS");
+  });
+
+  it("waits through the minute boundary for the websocket close event", async () => {
+    // PROD:BLACK_SWAN_SHARED_EVIDENCE
+    const context = contextWith();
+    const historical = Array.from({ length: 65 }, (_, index) =>
+      candle(NOW - (65 - index) * MINUTE_MS, index >= 63 ? 90 : 100),
+    );
+    const getKlines = vi.fn(async () => historical);
+    let bootstrapped = false;
+    context.adapter.market.getKlines = getKlines;
+    context.adapter.market.live = {
+      track: vi.fn(),
+      closedKlines: vi.fn(() => bootstrapped ? [] : undefined),
+      markPrice: vi.fn(),
+    };
+
+    await productionStages.riskSentinel(context);
+    bootstrapped = true;
+    context.state.currentTime += MINUTE_MS;
+    await productionStages.riskSentinel(context);
+
+    expect(getKlines).toHaveBeenCalledTimes(2);
+    expect(mocks.statusByMode.live?.blackSwan?.status).toBe("CRISIS");
+  });
+
+  it("reloads the Black Swan window when the stream has a gap", async () => {
+    // PROD:BLACK_SWAN_SHARED_EVIDENCE
+    const context = contextWith();
+    const getKlines = vi.fn(async () =>
+      Array.from({ length: 65 }, (_, index) =>
+        candle(
+          context.state.currentTime - (65 - index) * MINUTE_MS,
+          index >= 63 ? 90 : 100,
+        ),
+      ),
+    );
+    context.adapter.market.getKlines = getKlines;
+    context.adapter.market.live = {
+      track: vi.fn(),
+      closedKlines: vi.fn(() => undefined),
+      markPrice: vi.fn(),
+    };
+
+    await productionStages.riskSentinel(context);
+    context.state.currentTime += MINUTE_MS;
+    await productionStages.riskSentinel(context);
+
+    expect(getKlines).toHaveBeenCalledTimes(4);
+  });
 });
 
 describe("productionStages.management", () => {
