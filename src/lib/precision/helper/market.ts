@@ -83,6 +83,9 @@ function create(
         // Live path: the websocket feed answers with the forming candle's
         // real-time close. Only reached when the feed is wired (production).
         const live = adapter.market.live?.markPrice(symbol, interval);
+        
+        // console.log(live ? "Use websocket mark price " : "REST fallback mark price")
+
         if (live) {
           liveFeedMiss.ok(`${symbol}:${interval}`);
           entries.push([symbol, live]);
@@ -97,7 +100,7 @@ function create(
           liveFeedMiss.miss(`${symbol}:${interval}`, (outageMs) =>
             new Error(
               `Live feed missed ${symbol}@${interval} mark price for ` +
-                `${Math.round(outageMs / 1000)}s; REST fallback in use.`,
+              `${Math.round(outageMs / 1000)}s; REST fallback in use.`,
             ),
           );
         }
@@ -189,13 +192,16 @@ function create(
             liveKlinesMiss.miss(klinesKey, (outageMs) =>
               new Error(
                 `Live feed missed ${symbol}@${interval} closed klines for ` +
-                  `${Math.round(outageMs / 1000)}s; REST backfill in use.`,
+                `${Math.round(outageMs / 1000)}s; REST backfill in use.`,
               ),
             );
           } else {
             liveKlinesMiss.ok(klinesKey);
           }
         }
+
+        // console.log(buffered ? "Using websocket Vpoints" : "REST fallback Vpoints")
+
         const klines =
           buffered ??
           (await adapter.market.getKlines({

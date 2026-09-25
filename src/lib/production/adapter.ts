@@ -98,6 +98,7 @@ function createMarket(
     // serves pure REST when no stream is wired.
     live: options.liveFeed,
     async getKlines(props) {
+      // console.log("GET KLINE",props)
       options.signal?.throwIfAborted();
       const endTime = resolveEndTime(props, options.clock.now());
       const startTime = resolveStartTime(props, endTime);
