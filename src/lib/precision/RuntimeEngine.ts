@@ -362,14 +362,4 @@ export class RuntimeEngine {
       state: this.state,
     };
   }
-
-  updateBalance() {
-    // foreach accounts
-    // const balanceAccount = this.exchange.getBalance;
-  }
-
-  // used in production
-  updateConfig() {
-    // update config to the state and storage
-  }
 }
