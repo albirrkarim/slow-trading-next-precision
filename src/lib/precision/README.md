@@ -5,10 +5,9 @@ trading. The engine always follows the same scheduling path. The injected
 adapter decides how time advances, where market data comes from, and how an
 action is performed.
 
-This directory currently provides the clock loop, monitoring schedule, and
-shared entry-decision pipeline. Position monitoring in
-`monitoring/position.ts` and the stage handlers in `monitoring/stages.ts` still
-need to be connected to the shared trading functions.
+This directory provides the clock loop, monitoring schedule, shared
+entry/averaging/exit decision pipeline, and the position monitoring used by
+every environment.
 
 ## Directory structure
 
@@ -20,14 +19,14 @@ precision/
   constant.ts              Engine constants (lookbacks, retention defaults)
   defaultDecision/         Shared decisions backed by production algorithms
   helper/                  State-bound account/config/balance/market helpers
-  utils/                   Stateless pure utilities shared by engine and adapters
-  action/                  Environment action implementations (e.g. simulated)
+  utils/                   Stateless utilities shared by engine and adapters
   monitoring/
     index.ts               Grouped monitoring API
     schedule.ts            Stage timing and Speedup activation
     stages.ts              Standard and Speedup stage handlers
     position.ts            Position monitoring, averaging, and exit
     entry.ts               Entry capture
+    manual.ts              Operator-triggered manual pass support
 ```
 
 ## `helper/` vs `utils/`
@@ -39,11 +38,11 @@ Both folders hold engine implementation details; the difference is binding:
   that engine's state and call its adapter (`getAccount`, `getAccountBalance`,
   `getAccountConfig`, `market.updateMarkPrice`, `market.updateVPointsMap`).
   They are exposed to monitoring code through `context.helper`.
-- `utils/` — **stateless pure functions**. They take explicit inputs and
-  return outputs with no engine state or adapter (`vpoints.retainRecent`,
-  `vpoints.mergeById`). They are importable by the engine, by environment
-  adapters (production persistence, backtest result assembly), and by dev
-  tooling alike.
+- `utils/` — **stateless helpers**. They take explicit inputs and return
+  outputs with no engine state (`positions`, `preview`, `errors` — the
+  `runtimeErrors` grouped API also covers error-log persistence and abort
+  detection shared with production code). They are importable by the engine,
+  by environment adapters, and by dev tooling alike.
 
 Rule of thumb: if the operation needs `state` or `adapter`, it belongs in
 `helper/`; if it only needs its own arguments, it belongs in `utils/`.
@@ -69,9 +68,12 @@ RuntimeEngine.start()
 
 The current stage order is:
 
-1. Speedup monitoring, only when an open position was classified as Speedup.
-2. Standard monitoring.
-3. Capture Entry.
+1. Risk Sentinel (production only — Black Swan detection and protection).
+2. Speedup monitoring, only when an open position was classified as Speedup.
+3. Standard monitoring.
+4. Management (production only — balance snapshots, daily-PnL entry stop, and
+   completed-day performance reports).
+5. Capture Entry.
 
 Intervals come from `state.config.runtime`. When there is no Speedup position,
 the scheduler does not create extra Speedup boundaries.
@@ -85,8 +87,10 @@ const state: RuntimeEngineState = {
   balance: balanceByAccountSlug,
   config,
   currentTime,
+  markPriceMap: {},
   mode: "backtest", // or "sandbox" / "live"
   openPositions,
+  vPointsMap,
 };
 ```
 
@@ -112,7 +116,8 @@ const adapter: RuntimeEngineAdapter = {
 | Capability | Backtest | Production |
 | --- | --- | --- |
 | `clock` | Advances immediately through historical time | Waits for real UTC boundaries |
-| `market` | Reads cached historical klines | Reads current exchange klines |
+| `market.getKlines` | Reads cached historical klines | REST klines fallback for uncovered windows |
+| `market.live` | Omitted | Shared kline websocket feed (Binance only) |
 | `exchange` | Usually empty or simulated | Exposes production exchange operations |
 | `onStrategy` | Shared strategy | The same shared strategy |
 | `onAction` | Simulates an accepted action | Submits sandbox or live execution |
@@ -121,6 +126,10 @@ const adapter: RuntimeEngineAdapter = {
 | `onNewVPoint` | Buffers detected points for the full result map | Merges each point into shared volatility files |
 | `retainRecentVPoints` | Unset — same window as production | Unset — default `DEFAULT_RECENT_VPOINTS` |
 | `onNotif` | Disabled/no-op | Delivers configured notifications |
+| `onRiskSentinel` | Omitted | Black Swan detection, status, and protection |
+| `onManagement` | Omitted | Balance snapshots and daily reporting stage |
+| `onStageStats` | Usually omitted | Persists per-stage run stats |
+| `onCycleComplete` | Usually omitted | Persists the per-cycle summary |
 
 The environment adapter supplies capabilities. It must not contain a second
 copy of the strategy rules.
@@ -251,14 +260,19 @@ const state: RuntimeEngineState = {
   balance: loadedBalanceByAccountSlug,
   config: loadedSettings,
   currentTime: Date.now(),
+  markPriceMap: {},
   mode: "live",
   openPositions: loadedOpenPositions,
+  vPointsMap: loadedVPointsMap,
 };
 
 const adapter: RuntimeEngineAdapter = {
   clock: createProductionClock(shutdownController.signal),
   market: {
     getKlines: (request) => exchange.getKlines(request),
+    // Binance production wires the shared kline websocket feed; readers use
+    // it first and fall back to getKlines for uncovered windows.
+    live: binanceKlineStream.shared({ marketType: "FUTURES" }),
   },
   exchange: {
     getBalance: () => latestCachedBalance,
@@ -281,10 +295,11 @@ await engine.start();
 - Initialize state from persisted production data before starting the engine.
 - The clock must wait until the requested boundary rather than advancing early.
 - A missed cycle should not replay old orders automatically.
-- Market reads use the exchange configured for the account and trading mode.
+- Market reads use the exchange configured for the account and trading mode;
+  the shared kline websocket serves steady-state prices while REST klines
+  backfills windows the stream cannot cover.
 - Live execution must return verified exchange facts before state is updated.
 - Shutdown must stop the clock loop cleanly.
-- Configuration changes can later be applied through `updateConfig()`.
 
 Sandbox uses the production clock and live market data, but `onAction` simulates
 execution instead of submitting a real order.

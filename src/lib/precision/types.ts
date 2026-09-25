@@ -15,20 +15,28 @@ import type {
   RuntimeStageRunStats,
 } from "@/lib/system/runtime";
 
+/** Candle intervals the shared market preparation supports. */
 export type RuntimeMarketInterval = "1m" | "5m";
 
+/** Refreshes the shared market snapshot consumed by stage bodies. */
 export interface RuntimeMarketHelper {
+  /** Writes the latest close per symbol into `state.markPriceMap`. */
   updateMarkPrice(interval?: RuntimeMarketInterval): Promise<void>;
+  /** Appends newly detected volatility points into `state.vPointsMap`. */
   updateVPointsMap(interval?: RuntimeMarketInterval): Promise<void>;
 }
 
 /** State-bound account, balance, configuration, and market helpers. */
 export interface RuntimeHelper {
+  /** Gets one configured runtime account or fails for inconsistent state. */
   getAccount(accountSlug: string): RuntimeAccountConfig;
+  /** Gets the mutable in-memory balance owned by one account. */
   getAccountBalance(accountSlug: string): BalanceSummary;
+  /** Gets the account-owned Trading-tab configuration. */
   getAccountConfig(
     accountSlug: string,
   ): RuntimeAccountTradingConfig;
+  /** Shared market snapshot updaters. */
   market: RuntimeMarketHelper;
 }
 
@@ -67,8 +75,9 @@ export interface RuntimeMarketFeed {
   ): Kline[] | undefined;
 }
 
-// Pack of market function
+/** Pack of market functions the adapter supplies to the runtime. */
 interface MarketFunction {
+  /** Candle fetch used by backtests and as the production REST fallback. */
   getKlines: FetchKlines;
   /** Optional live feed; when absent every read resolves through getKlines. */
   live?: RuntimeMarketFeed;
@@ -81,7 +90,8 @@ interface MarketFunction {
  */
 export interface RuntimeExchangePort {
   /**
-   * Not needed in backtest
+   * Latest spendable quote balance for one account. Not needed in backtest —
+   * simulated balances live entirely in `state.balance`.
    */
   getBalance?: (
     accountSlug?: string,
@@ -126,6 +136,7 @@ export interface RuntimeEngineState {
    */
   mode: "live" | "sandbox" | "backtest";
 
+  /** Every tracked position; closed entries stay until the adapter archives them. */
   openPositions: Position[];
 
   /**
@@ -159,9 +170,9 @@ export interface RuntimeEngineState {
   markPriceMap: Record<
     string,
     {
-      // unix
+      /** Unix ms of the candle close the price was taken from. */
       lastUpdated: number;
-      // coing price
+      /** Latest coin price in quote asset. */
       price: number;
     }
   >;
@@ -178,13 +189,19 @@ export interface RuntimeEngineState {
  * Approved entry candidate produced by the shared decision pipeline.
  */
 export interface RuntimeEntryDecision {
+  /** Discriminant identifying this decision as an entry action. */
   type: "entry";
+  /** Account that owns the balance and the resulting position. */
   accountSlug: string;
+  /** Long/short direction the entry opens. */
   direction: PositionDirection;
+  /** Detector output that produced this candidate (level, prices, sizing). */
   entrySignal: EntryRecommendation;
   /** Operator-forced entry: bypasses the auto-entry runtime gate. */
   manual?: boolean;
+  /** Human-readable reason shown in notifications and logs. */
   message: string;
+  /** Base symbol being entered, e.g. `SUI`. */
   symbol: string;
   /**
    * Strategy-owned usage markers written onto the source vPoint after the
@@ -198,11 +215,17 @@ export interface RuntimeEntryDecision {
  * Averaging candidate for an existing open position.
  */
 export interface RuntimeAveragingDecision {
+  /** Discriminant identifying this decision as an averaging action. */
   type: "averaging";
+  /** Account that owns the position and funds the added margin. */
   accountSlug: string;
+  /** Human-readable reason shown in notifications and logs. */
   message: string;
+  /** Open position the averaging adds to. */
   position: Position;
+  /** Detector output that produced this candidate (level, sizing, reserve use). */
   recommendation: AveragingRecommendation;
+  /** Base symbol of the open position. */
   symbol: string;
   /**
    * Strategy-owned usage markers written onto the consumed vPoint after the
@@ -216,14 +239,21 @@ export interface RuntimeAveragingDecision {
  * Exit candidate for an existing open position.
  */
 export interface RuntimeExitDecision {
+  /** Discriminant identifying this decision as an exit action. */
   type: "exit";
+  /** Account that owns the closing position. */
   accountSlug: string;
+  /** Human-readable reason shown in notifications and logs. */
   message: string;
+  /** Open position being closed. */
   position: Position;
+  /** Base symbol of the open position. */
   symbol: string;
+  /** Exit evaluation output (reason, target price, full/partial close). */
   tradeDecision: TradeDecision;
 }
 
+/** Any action a stage can ask the strategy gate and adapter to execute. */
 export type RuntimeDecision =
   | RuntimeEntryDecision
   | RuntimeAveragingDecision
@@ -235,20 +265,19 @@ export interface RuntimeVPointMemory {
 }
 
 /**
- * We will have Backend adapter and production adapter
+ * Environment bridge supplied to the shared engine — one implementation for
+ * the backtest, one for production live/sandbox.
  */
 export interface RuntimeEngineAdapter {
   /** Environment clock: instant in backtest, real-time in production. */
   clock: RuntimeClock;
 
-  /**
-   * Getting the market data
-   */
+  /** Market data access: klines plus the optional live feed. */
   market: MarketFunction;
 
   /**
-   * we pass the exchange lib so it can later be tested outside
-   * does it really called the update balance after doing some action
+   * Exchange capabilities passed as a port so they stay testable outside the
+   * runtime — e.g. verifying balance refreshes around order actions.
    */
   exchange: RuntimeExchangePort;
 
@@ -273,15 +302,10 @@ export interface RuntimeEngineAdapter {
   ) => Promise<void>;
 
   /**
-   * with the strategy outside we can doing manythings
-   * adapt to our 3 instance (multi, hedge, both)
-   *
-   * so the sequence will be like
-   *
-   * common entry signal by default runtime engine and current config
-   * then approved by this onStrategy function.
-   *
-   * Its the final gate wether can actually entry, averaging, exit
+   * Final strategy gate before an action executes. The shared engine builds a
+   * default decision from the runtime snapshot and config; this hook approves
+   * or rejects it so outer strategies (multi, hedge, both) can adapt behavior
+   * without forking the engine.
    */
   onStrategy: (
     decision: RuntimeDecision,
@@ -289,8 +313,9 @@ export interface RuntimeEngineAdapter {
   ) => Promise<boolean>;
 
   /**
-   * Telling outside runtime engine initiate. some action
-   * For entry, averaging, exit
+   * Executes an approved decision in the environment: simulated fills in
+   * backtest/sandbox, real exchange orders in live. Returns the resulting
+   * position or null when the action did not fill.
    */
   onAction: (
     decision: RuntimeDecision,
@@ -329,8 +354,7 @@ export interface RuntimeEngineAdapter {
   ) => Promise<void>;
 
   /**
-   * To send notification outside
-   * Unused in backtest
+   * Environment notification sink for runtime events. Unused in backtest.
    */
   onNotif: () => boolean;
 
@@ -375,8 +399,11 @@ export interface RuntimeEngineAdapter {
 
 /** Optional refinements an environment-owned stage returns for its run stats. */
 export interface RuntimeStageRunPatch {
+  /** Overrides the counted actions when the stage produced reports itself. */
   reports?: number;
+  /** Overrides the default "pass completed/failed" summary line. */
   summary?: string;
+  /** Overrides the symbol count recorded for the pass. */
   symbols?: number;
 }
 

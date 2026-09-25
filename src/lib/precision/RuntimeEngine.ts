@@ -20,32 +20,47 @@ import type {
  * BOTH:SHARED_RUNTIME_ENGINE
  */
 export class RuntimeEngine {
+  /** Shared runtime snapshot mutated in place by stages, actions, and helpers. */
   state: RuntimeEngineState;
 
+  /** Environment bridge: market data, balance, execution, and lifecycle hooks. */
   adapter: RuntimeEngineAdapter;
 
+  /** Convenience layer over `state` shared with every stage body. */
   helper: RuntimeHelper;
 
+  /** True once the first market-data warmup inside `start()` completes. */
   private ready = false;
 
+  /** True while a stage cycle or exclusive task is mutating runtime state. */
   private processing = false;
 
+  /** Serializes stage cycles and operator passes so state updates never interleave. */
   private queue: Promise<unknown> = Promise.resolve();
 
+  /** Wires the shared state and environment adapter into one engine. */
   constructor(state: RuntimeEngineState, adapter: RuntimeEngineAdapter) {
     this.state = state;
     this.adapter = adapter;
     this.helper = createRuntimeHelper(state, adapter);
   }
 
+  /** Reports whether the warmup inside `start()` has completed. */
   isReady(): boolean {
     return this.ready;
   }
 
+  /** Reports whether a stage cycle or exclusive task is currently running. */
   isProcessing(): boolean {
     return this.processing;
   }
 
+  /**
+   * Warms the shared market snapshot, then loops the stage scheduler until the
+   * adapter clock finishes. Production waits on wall-clock boundaries; the
+   * backtest clock jumps straight to each due candle. A failed cycle is
+   * logged and skipped — only an abort error stops the loop.
+   */
   async start() {
     if (!this.state.config.runtime.runnerEnabled) {
       return;
@@ -55,6 +70,8 @@ export class RuntimeEngine {
     systemLog.info(preview.state(this.state));
 
     try {
+      // Warmup seeds markPriceMap and vPointsMap so the first stage pass never
+      // runs on empty market data.
       await this.helper.market.updateMarkPrice();
       await this.helper.market.updateVPointsMap();
       this.ready = true;
@@ -90,6 +107,11 @@ export class RuntimeEngine {
     }
   }
 
+  /**
+   * Appends one task to the serialized run queue. The queue itself swallows
+   * task failures so a rejected pass cannot stall everything queued after it;
+   * the caller still receives the task's own promise.
+   */
   private enqueue<T>(task: () => Promise<T>): Promise<T> {
     const result = this.queue.then(task);
     this.queue = result.then(
@@ -190,6 +212,7 @@ export class RuntimeEngine {
     return { ms, n: 1, s: stage, stats };
   }
 
+  /** Counts distinct symbols across open positions for stage-run stats. */
   private openSymbolCount(): number {
     return new Set(
       this.state.openPositions
@@ -198,6 +221,13 @@ export class RuntimeEngine {
     ).size;
   }
 
+  /**
+   * Dispatches every due stage in a fixed order — risk sentinel, speedup,
+   * standard monitoring, management, capture entry — then reports the whole
+   * cycle through `onCycleComplete`. Each stage first refreshes the shared
+   * market snapshot so position checks and entry capture see one consistent
+   * price/volatility view.
+   */
   private async runDueStages() {
     this.processing = true;
     const stages: Awaited<ReturnType<RuntimeEngine["runStage"]>>[] = [];
@@ -222,6 +252,8 @@ export class RuntimeEngine {
             "speedup",
             this.openSymbolCount(),
             async (context) => {
+              // Speedup watches fast moves, so it prepares 1-minute candles
+              // instead of the shared 5-minute snapshot.
               await this.helper.market.updateMarkPrice("1m");
               await this.helper.market.updateVPointsMap("1m");
               await monitoring.stages.speedup(context);
@@ -273,6 +305,8 @@ export class RuntimeEngine {
         );
       }
 
+      // Cycle stats aggregate every stage that ran; sections are sorted by
+      // duration so the dashboard highlights the slowest stage first.
       if (stages.length > 0 && this.adapter.onCycleComplete) {
         const totalMs = stages.reduce(
           (total, stage) => total + stage.ms,
@@ -317,6 +351,7 @@ export class RuntimeEngine {
     }
   }
 
+  /** Builds the shared context handed to adapter hooks and exclusive tasks. */
   private get context(): RuntimeContext {
     return {
       adapter: this.adapter,
