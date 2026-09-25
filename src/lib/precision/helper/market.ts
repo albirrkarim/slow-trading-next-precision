@@ -48,11 +48,27 @@ function create(
       const currentTime = state.currentTime;
       if (markPriceUpdatedAt[interval] === currentTime) return;
 
+      const symbols = getSymbols();
+      // PROD:MARKET_LIVE_FEED — production streams candles over websocket;
+      // backtests and cold/stale feeds keep answering through REST klines.
+      adapter.market.live?.track(symbols, interval);
+
       const entries: Array<
         readonly [string, { lastUpdated: number; price: number }]
       > = [];
 
-      for (const symbol of getSymbols()) {
+      for (const symbol of symbols) {
+        // Live path: the websocket feed answers with the forming candle's
+        // real-time close. Only reached when the feed is wired (production).
+        const live = adapter.market.live?.markPrice(symbol, interval);
+        if (live) {
+          entries.push([symbol, live]);
+          continue;
+        }
+
+        // REST fallback: required for backtests (no feed), the first cycles
+        // before the socket streams, newly added symbols, and any symbol
+        // whose stream went stale — without it the stage would fail.
         const klines = await adapter.market.getKlines({
           endTime: currentTime,
           interval,
@@ -97,9 +113,12 @@ function create(
       const currentTime = state.currentTime;
       if (vPointsUpdatedAt[interval] === currentTime) return;
 
+      const symbols = getSymbols();
+      adapter.market.live?.track(symbols, interval);
+
       const intervalCursors = (volatilityCursors[interval] ??= {});
 
-      for (const symbol of getSymbols()) {
+      for (const symbol of symbols) {
         const points = state.vPointsMap[symbol] ?? [];
         let previousPoint = points.at(-1);
         let cursor = intervalCursors[symbol];
@@ -116,14 +135,19 @@ function create(
             currentTime - VPOINT_INITIAL_LOOKBACK_MINUTES * 60_000);
 
 
-        const klines = await adapter.market.getKlines({
-          endTime: currentTime,
-          exactDate: true,
-          interval,
-          marketType,
-          startTime,
-          symbol: `${symbol}_USDT`,
-        });
+        // PROD:MARKET_LIVE_FEED — closed candles stream in over websocket;
+        // when the buffer cannot reach back to `startTime` (cold start,
+        // long gap) REST backfills the missing window once.
+        const klines =
+          adapter.market.live?.closedKlines(symbol, interval, startTime) ??
+          (await adapter.market.getKlines({
+            endTime: currentTime,
+            exactDate: true,
+            interval,
+            marketType,
+            startTime,
+            symbol: `${symbol}_USDT`,
+          }));
         const closedKlines = klines.filter(
           (kline) => kline[6] <= currentTime,
         );

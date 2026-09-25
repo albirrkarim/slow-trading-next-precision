@@ -3,6 +3,7 @@ import type {
   RuntimeClock,
   RuntimeEngineAdapter,
   RuntimeEngineState,
+  RuntimeMarketFeed,
 } from "@/lib/precision/types";
 import type { FetchKlines } from "@/lib/system/types";
 
@@ -14,6 +15,12 @@ export interface ProductionAdapterOptions {
   clock: RuntimeClock;
   /** Stops new market reads when the runtime is shutting down. */
   signal?: AbortSignal;
+  /**
+   * Optional live market feed (e.g. the Binance kline websocket stream).
+   * When present, mark prices and closed klines resolve from the stream and
+   * REST `getKlines` only backfills windows the stream cannot cover.
+   */
+  liveFeed?: RuntimeMarketFeed;
   /** Final strategy approval before an action is submitted. */
   onStrategy: RuntimeEngineAdapter["onStrategy"];
   /** Submits or simulates an approved production action. */

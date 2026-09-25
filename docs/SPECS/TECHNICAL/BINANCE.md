@@ -95,11 +95,15 @@ TC: `PROD:BLACK_SWAN_SHARED_EVIDENCE`
 ## 4. Cycle request inventory
 
 Public market preparation is performed once per stage and reused sequentially
-by all enabled accounts.
+by all enabled accounts. In production the shared kline websocket feed (§10)
+serves steady-state mark prices and closed candles; REST `/klines` only
+backfills windows the stream cannot cover, and remains the sole path in
+backtests.
 
 | Runtime operation | Endpoint or adapter call | When/cadence | Cache/coalescing |
 | --- | --- | --- | --- |
-| Volatility synchronization | Futures `/fapi/v1/klines`; spot `/api/v3/klines` | Once for each selected symbol in each eligible stage cycle; incremental range is decided by stored prediction memory | In-flight shared stage preparation and prediction-memory throttling |
+| Mark price (per-symbol latest price) | Kline websocket forming-candle close (§10); REST `/klines` fallback per symbol | Each eligible stage cycle for every selected symbol | Shared stream buffer; REST only for uncovered or stale symbols |
+| Volatility synchronization | Kline websocket closed candles (§10); REST `/fapi/v1/klines` or `/api/v3/klines` only when the stream buffer cannot reach the requested `startTime` | Once for each selected symbol in each eligible stage cycle; incremental range is decided by stored prediction memory | Shared stream buffer plus prediction-memory throttling |
 | Stage clock candle | Klines for the first selected symbol, 5m interval | Each eligible stage cycle | Until the next aligned 5-minute boundary |
 | Position-sync price | Klines, 5m interval | Each selected live open-position symbol before private position reconciliation | 5-second per-symbol latest-price cache plus stage single-flight |
 | Reporting price | Klines, 5m interval | Each monitored position symbol | Separate 5-second per-symbol cache plus stage single-flight |
@@ -196,10 +200,14 @@ raise the coordinator's local observed usage when they exceed its estimates.
 
 ## 8. Persistent cooldown health
 
-HTTP 418, HTTP 429, or Binance code `-1003` activates a hard gate. Its end is
-the maximum of the `Retry-After` header, the `banned until` epoch in Binance's
-message, and the two-minute fallback. No public or private REST callback may run
-while the gate is active.
+HTTP 418, HTTP 429, or Binance code `-1003` activates a hard gate. For a real
+IP ban — HTTP 418 or a parsed `banned until` epoch — the gate end is the
+exchange-communicated end plus a fixed **10-minute spare settle window**, so
+the first post-ban burst cannot instantly re-trigger a longer ban. For any
+other rate-limit response the gate end is the maximum of the `Retry-After`
+header, the `banned until` epoch in Binance's message, and the two-minute
+fallback, with no spare time. No public or private REST callback may run while
+the gate is active.
 
 Cooldown incidents are stored compactly in
 `prod/logs/binance_cooldowns.json`, bounded to 500 entries. One continuous ban
@@ -208,15 +216,22 @@ increment `occurrences` instead of creating notification spam. Each incident
 stores:
 
 - `t`: first detection time;
-- `end`: latest allowed retry time;
+- `end`: latest allowed retry time (includes the spare settle window);
+- `banEnd`: exchange-communicated ban end when Binance provided one (before spare);
+- `settle`: spare settle milliseconds appended after a real ban;
 - public/private request kind and endpoint;
 - exact Binance reason, optional error/HTTP code, and occurrence count.
 
 The Live Dashboard places **Binance REST Health** immediately below Black Swan
 status. An active cooldown shows its start and end explicitly in Jakarta time,
-remaining duration, trigger, exact reason, and recent incident logs. MCP
-monitoring snapshots include the same bounded cooldown logs when `logs` is
-requested.
+remaining duration, trigger, exact reason, and recent incident logs. For bans
+the card distinguishes the exchange's own ban end from the local gate reopen:
+the chip reads **COOLDOWN** while the exchange ban runs and switches to
+**SETTLING** during the spare window; the body lists "Ban end" and "Requests
+resume (+Nm spare)". Incident rows show a `+Nm spare` marker when settle was
+applied, and cooldown notifications append a spare-time line for bans. MCP
+monitoring snapshots include the same bounded cooldown logs (with `banEndAt`
+and `settleMs`) when `logs` is requested.
 
 An operator can manually reset an active cooldown from the dashboard after
 changing the public IP. The reset clears the in-memory gate and request-weight
@@ -230,6 +245,8 @@ TC: `PROD:BINANCE_PERSISTENT_COOLDOWN`
 
 TC: `PROD:BINANCE_MANUAL_COOLDOWN_RESET`
 
+TC: `PROD:BINANCE_BAN_SETTLE`
+
 ## 9. Position-monitoring health
 
 Every open position displays a visible warning when its latest successful
@@ -240,3 +257,39 @@ monitoring warning. The tooltip shows the last timestamp and elapsed minutes.
 This is a health signal: it does not itself mutate or close a position.
 
 TC: `PROD:OPEN_POSITION_STALE_MONITORING_WARNING`
+
+## 10. Live kline websocket feed
+
+Steady-state candle reads in production stream over one Binance websocket
+instead of polling REST `/klines`. The feed is a process-level singleton shared
+by the engine, one-shot manual passes, and diagnostics; it connects lazily on
+the first `track` call and idle-closes after 15 minutes without one, so engine
+restarts and manual passes never leak connections.
+
+| Concern | Behavior |
+| --- | --- |
+| Streams | `<base>usdt@kline_<interval>` on one combined-stream socket; futures `wss://fstream.binance.com/stream`, spot `wss://stream.binance.com:9443/stream` |
+| Subscriptions | `track(symbols, interval)` marks wanted streams on every market update; streams unrequested for 15 minutes are unsubscribed and their buffers dropped |
+| Buffer | Latest forming candle plus up to 1,000 closed candles per stream |
+| Reconnect | On socket close, resubscribes every wanted stream after a 1-second backoff that doubles up to 30 seconds |
+| Staleness | A stream with no event for 30 seconds counts as dead; its readers fall back to REST |
+
+Consumers in `helper/market.ts`:
+
+- `updateMarkPrice` writes `markPriceMap` from the forming candle's live close
+  with event-time `lastUpdated` — fresher than the previous latest-closed-kline
+  close. A symbol the feed cannot serve falls back to REST klines, so cold
+  starts, new symbols, and stale streams degrade to the old behavior instead
+  of failing the stage.
+- `updateVPointsMap` consumes buffered closed candles. When the buffer cannot
+  reach the requested `startTime` (cold start, long gap, or a fresh symbol's
+  multi-month lookback) REST backfills the window once and the stream takes
+  over from there.
+
+Backtests never wire the feed — `adapter.market.live` is undefined and every
+read resolves through `getKlines` exactly as before. In production the feed is
+created only for the Binance exchange type. The websocket is unaffected by the
+REST cooldown gate, so mark prices and volatility detection keep flowing while
+a REST ban is active.
+
+TC: `PROD:MARKET_LIVE_FEED`

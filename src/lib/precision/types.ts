@@ -1,4 +1,4 @@
-import type { FetchKlines, VolatilityPoint } from "@/lib/system/types";
+import type { FetchKlines, Kline, VolatilityPoint } from "@/lib/system/types";
 import type {
   AveragingRecommendation,
   BalanceSummary,
@@ -32,9 +32,46 @@ export interface RuntimeHelper {
   market: RuntimeMarketHelper;
 }
 
+/**
+ * Optional live market feed. Production wires an exchange websocket stream;
+ * backtests omit it and keep answering through `getKlines`.
+ *
+ * Every reader falls back to `getKlines` whenever the feed returns undefined,
+ * so a cold stream, a coverage gap, or a dead socket degrades to the
+ * previous REST behavior instead of failing the stage.
+ */
+export interface RuntimeMarketFeed {
+  /**
+   * Marks the symbol set the feed must cover for one interval. Idempotent —
+   * call it on every market update so subscriptions follow config changes.
+   */
+  track(symbols: string[], interval: RuntimeMarketInterval): void;
+
+  /**
+   * Latest live close price for `markPriceMap`, or undefined when the feed
+   * has no fresh candle for the symbol.
+   */
+  markPrice(
+    symbol: string,
+    interval: RuntimeMarketInterval,
+  ): { lastUpdated: number; price: number } | undefined;
+
+  /**
+   * Closed candles received since `openTime`, or undefined when the stream
+   * buffer cannot cover the window and REST must backfill it.
+   */
+  closedKlines(
+    symbol: string,
+    interval: RuntimeMarketInterval,
+    sinceOpenTime: number,
+  ): Kline[] | undefined;
+}
+
 // Pack of market function
 interface MarketFunction {
   getKlines: FetchKlines;
+  /** Optional live feed; when absent every read resolves through getKlines. */
+  live?: RuntimeMarketFeed;
 }
 
 /**

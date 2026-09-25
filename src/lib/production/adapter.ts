@@ -94,6 +94,9 @@ function createMarket(
   options: ProductionAdapterOptions,
 ): RuntimeEngineAdapter["market"] {
   return {
+    // PROD:MARKET_LIVE_FEED — the feed is optional so the adapter still
+    // serves pure REST when no stream is wired.
+    live: options.liveFeed,
     async getKlines(props) {
       options.signal?.throwIfAborted();
       const endTime = resolveEndTime(props, options.clock.now());

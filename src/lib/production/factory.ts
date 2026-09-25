@@ -4,6 +4,7 @@ import {
   type ExchangeType,
   type IExchange,
 } from "@/lib/exchange";
+import binanceKlineStream from "@/lib/exchange/platform/binance/kline-stream";
 import {
   runWithExchangeAccount,
   type ExchangeAccount,
@@ -557,11 +558,25 @@ function createProductionFactory(): ProductionRuntimeFactory {
       accountRuntimes,
       persistVPointsToFiles,
     );
+    // PROD:MARKET_LIVE_FEED — the kline websocket feed is one shared
+    // process-level socket; it self-closes when nothing tracks it so
+    // engine restarts and one-shot manual passes never leak connections.
+    const liveFeed =
+      firstRuntime.exchange.exchangeType === "binance"
+        ? binanceKlineStream.shared({
+            marketType:
+              latestState.config.management.tradingMode ===
+              TradingMode.FUTURES
+                ? "FUTURES"
+                : "SPOT",
+          })
+        : undefined;
     return adapter.create({
       clock: clock.create({ signal }),
       exchange: firstRuntime.exchange,
       getBalance: async (accountSlug) =>
         latestState?.balance[accountSlug ?? ""]?.available ?? 0,
+      liveFeed,
       onAction: handlers.onAction,
       onCycleComplete: productionStages.cycleComplete,
       onExit: handlers.onExit,
