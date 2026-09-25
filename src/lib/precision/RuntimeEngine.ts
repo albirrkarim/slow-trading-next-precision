@@ -8,6 +8,7 @@ import { createRuntimeHelper, type RuntimeHelper } from "./helper";
 import monitoring from "./monitoring";
 import runtimeErrors from "./utils/errors";
 import preview from "./utils/preview";
+import runtimeSelfTest from "./utils/on-start-test";
 import type {
   RuntimeContext,
   RuntimeEngineAdapter,
@@ -70,6 +71,14 @@ export class RuntimeEngine {
     systemLog.info(preview.state(this.state));
 
     try {
+      // Startup probe: reads one kline batch per symbol through the adapter
+      // so a broken market-data path is reported (log + NOTIF_ERROR channels)
+      // at boot instead of surfacing as repeated stage failures.
+      await runtimeSelfTest.marketData({
+        adapter: this.adapter,
+        state: this.state,
+      });
+
       // Warmup seeds markPriceMap and vPointsMap so the first stage pass never
       // runs on empty market data.
       await this.helper.market.updateMarkPrice();

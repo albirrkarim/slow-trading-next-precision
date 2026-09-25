@@ -38,3 +38,14 @@ export const LIVE_FEED_MISS_GRACE_MS = 2 * 60_000;
  * volume to one entry per symbol per half hour during a sustained outage.
  */
 export const LIVE_FEED_MISS_REPEAT_MS = 30 * 60_000;
+
+/**
+ * How long the on-start check waits for the websocket feed to serve every
+ * tracked symbol before calling it failed. A healthy socket connects and
+ * receives first kline events within seconds; the bound only bites when the
+ * feed is dead or the transport is missing.
+ */
+export const LIVE_FEED_PROBE_TIMEOUT_MS = 15_000;
+
+/** Poll interval between live-feed readiness reads during the on-start check. */
+export const LIVE_FEED_PROBE_POLL_MS = 500;
