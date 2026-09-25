@@ -24,3 +24,17 @@ export const VPOINT_INITIAL_LOOKBACK_MINUTES = 60 * 24 * 30 * 2;
  * Older points are dropped unless an open position still depends on them.
  */
 export const DEFAULT_RECENT_VPOINTS = 10;
+
+/**
+ * Grace window before a wired live feed's miss is recorded as an error.
+ * Kline events arrive within seconds once the socket is subscribed, so a
+ * miss surviving past this window means the stream is genuinely stale or
+ * dead and REST is carrying the stage.
+ */
+export const LIVE_FEED_MISS_GRACE_MS = 2 * 60_000;
+
+/**
+ * Re-log cadence while a live-feed miss persists. Bounds the error-log
+ * volume to one entry per symbol per half hour during a sustained outage.
+ */
+export const LIVE_FEED_MISS_REPEAT_MS = 30 * 60_000;

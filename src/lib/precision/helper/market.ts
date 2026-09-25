@@ -7,10 +7,13 @@ import type {
 } from "../types";
 import {
   DEFAULT_RECENT_VPOINTS,
+  LIVE_FEED_MISS_GRACE_MS,
+  LIVE_FEED_MISS_REPEAT_MS,
   MARK_PRICE_LOOKBACK_MINUTES,
   VPOINT_INITIAL_LOOKBACK_MINUTES,
 } from "../constant";
 import vpoints from "@/lib/system/utils/vpoints";
+import runtimeErrors from "../utils/errors";
 import type { RuntimeMarketHelper, RuntimeMarketInterval } from "./types";
 
 interface VolatilityCursor {
@@ -36,6 +39,16 @@ function create(
     entry.getSymbols(state.config, state.openPositions);
   const marketType =
     state.config.management.tradingMode === "futures" ? "FUTURES" : "SPOT";
+  /**
+   * Records sustained live-feed misses: the first seconds of an outage are
+   * expected (socket warm-up), so only misses outliving the grace window
+   * reach the error log. Every successful read resets the key's outage.
+   */
+  const liveFeedMiss = runtimeErrors.trackMisses({
+    graceMs: LIVE_FEED_MISS_GRACE_MS,
+    repeatMs: LIVE_FEED_MISS_REPEAT_MS,
+    source: "runtime.market.live-feed",
+  });
 
   return {
     /**
@@ -62,8 +75,22 @@ function create(
         // real-time close. Only reached when the feed is wired (production).
         const live = adapter.market.live?.markPrice(symbol, interval);
         if (live) {
+          liveFeedMiss.ok(`${symbol}:${interval}`);
           entries.push([symbol, live]);
           continue;
+        }
+
+        // PROD:MARKET_LIVE_FEED — the feed is wired (production) but cannot
+        // serve this symbol; a sustained miss means a stale/dead stream and
+        // is recorded so the outage stays visible instead of silently
+        // riding REST. Backtests never reach this — they carry no `live`.
+        if (adapter.market.live) {
+          liveFeedMiss.miss(`${symbol}:${interval}`, (outageMs) =>
+            new Error(
+              `Live feed missed ${symbol}@${interval} mark price for ` +
+                `${Math.round(outageMs / 1000)}s; REST fallback in use.`,
+            ),
+          );
         }
 
         // REST fallback: required for backtests (no feed), the first cycles
@@ -137,9 +164,31 @@ function create(
 
         // PROD:MARKET_LIVE_FEED — closed candles stream in over websocket;
         // when the buffer cannot reach back to `startTime` (cold start,
-        // long gap) REST backfills the missing window once.
+        // long gap) REST backfills the missing window once. `undefined`
+        // conflates that designed backfill with a dead stream — they
+        // separate by duration: a backfill misses a single pass, then the
+        // buffer serves and clears the tracker; a dead feed misses every
+        // pass until it outlives the grace window and gets logged.
+        const klinesKey = `${symbol}:${interval}:klines`;
+        const buffered = adapter.market.live?.closedKlines(
+          symbol,
+          interval,
+          startTime,
+        );
+        if (adapter.market.live) {
+          if (buffered === undefined) {
+            liveFeedMiss.miss(klinesKey, (outageMs) =>
+              new Error(
+                `Live feed missed ${symbol}@${interval} closed klines for ` +
+                  `${Math.round(outageMs / 1000)}s; REST backfill in use.`,
+              ),
+            );
+          } else {
+            liveFeedMiss.ok(klinesKey);
+          }
+        }
         const klines =
-          adapter.market.live?.closedKlines(symbol, interval, startTime) ??
+          buffered ??
           (await adapter.market.getKlines({
             endTime: currentTime,
             exactDate: true,
