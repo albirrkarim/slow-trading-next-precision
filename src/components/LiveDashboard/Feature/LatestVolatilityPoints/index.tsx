@@ -97,7 +97,7 @@ interface LatestVolatilityPointTableRow {
 
 interface LatestVolatilityPointColumn {
   help: {
-    meaning: string | ((minActionableAbsoluteLevel: number) => string);
+    meaning: string | ((minEntryAbsLevel?: number, maxEntryAbsLevel?: number) => string);
     source: string;
   };
   key: SortKey;
@@ -147,10 +147,10 @@ const COLUMNS: LatestVolatilityPointColumn[] = [
   },
   {
     help: {
-      meaning: (minActionableAbsoluteLevel) =>
-        `Number of historical entry-sequence candidates in the loaded range with an absolute level of at least ${minActionableAbsoluteLevel}. LONG and SHORT counts are shown separately.`,
+      meaning: (minEntryAbsLevel, maxEntryAbsLevel) =>
+        `Number of historical entry-sequence candidates in the loaded range with ${minEntryAbsLevel === undefined ? "no minimum" : `an absolute level of at least ${minEntryAbsLevel}`}${maxEntryAbsLevel === undefined ? " and no maximum" : ` and at most ${maxEntryAbsLevel}`}. LONG and SHORT counts are shown separately.`,
       source:
-        "Entry-sequence candidates calculated from the loaded volatility-point history and the configured minimum actionable absolute level.",
+        "Entry-sequence candidates calculated from loaded volatility-point history and the configured entry-level range.",
     },
     key: "entrySequence",
     label: "Count entry sequence",
@@ -214,13 +214,14 @@ const SYMBOL_SEARCH_MAX_LENGTH = 1_000;
 
 /** Resolves table-header explanations from the same definitions used by the UI. */
 export function getLatestVolatilityPointColumnHelp(
-  minActionableAbsoluteLevel: number,
+  minEntryAbsLevel?: number,
+  maxEntryAbsLevel?: number,
 ) {
   return COLUMNS.map((column) => ({
     key: column.key,
     meaning:
       typeof column.help.meaning === "function"
-        ? column.help.meaning(minActionableAbsoluteLevel)
+        ? column.help.meaning(minEntryAbsLevel, maxEntryAbsLevel)
         : column.help.meaning,
     source: column.help.source,
   }));
@@ -555,24 +556,31 @@ export default function LatestVolatilityPoints({
       }),
     [configuredSymbols, volatilityMap],
   );
-  const resolvedMinActionableAbsoluteLevel =
+  const resolvedMinEntryAbsLevel =
     entrySequenceCandidates.threshold.resolve(
-      dashboardState.config.minActionableAbsoluteLevel,
+      dashboardState.config.minEntryAbsLevel,
+    );
+  const resolvedMaxEntryAbsLevel =
+    entrySequenceCandidates.threshold.resolveMax(
+      dashboardState.config.maxEntryAbsLevel,
     );
   const columnHelpByKey = useMemo(
     () =>
       new Map(
         getLatestVolatilityPointColumnHelp(
-          resolvedMinActionableAbsoluteLevel,
+          resolvedMinEntryAbsLevel,
+          resolvedMaxEntryAbsLevel,
         ).map((column) => [column.key, column]),
       ),
-    [resolvedMinActionableAbsoluteLevel],
+    [resolvedMinEntryAbsLevel, resolvedMaxEntryAbsLevel],
   );
   const displayableRows = useMemo(() => {
     const entrySequenceCounts = runtimeEntrySequences.count({
       entrySignals: entrySequenceCandidates.build({
-        minActionableAbsoluteLevel:
-          dashboardState.config.minActionableAbsoluteLevel,
+        minEntryAbsLevel:
+          dashboardState.config.minEntryAbsLevel,
+        maxEntryAbsLevel:
+          dashboardState.config.maxEntryAbsLevel,
         volatilityMap,
       }),
       volatilityMap,
@@ -630,7 +638,8 @@ export default function LatestVolatilityPoints({
     coinDescriptions,
     configuredSymbols,
     dashboardState.config.maxEntryBased24HourVolPct,
-    dashboardState.config.minActionableAbsoluteLevel,
+    dashboardState.config.minEntryAbsLevel,
+    dashboardState.config.maxEntryAbsLevel,
     fundingRateBySymbol,
     marketCapFetchedAtBySymbol,
     marketCapUSDBySymbol,
@@ -833,7 +842,7 @@ export default function LatestVolatilityPoints({
                       {COLUMNS.map((column) => {
                         const label =
                           column.key === "entrySequence"
-                            ? `Entry sequences (abs >= ${resolvedMinActionableAbsoluteLevel})`
+                            ? `Entry sequences (${resolvedMinEntryAbsLevel === undefined ? "no min" : `abs >= ${resolvedMinEntryAbsLevel}`}${resolvedMaxEntryAbsLevel === undefined ? "" : `, abs <= ${resolvedMaxEntryAbsLevel}`})`
                             : column.label;
                         const help = columnHelpByKey.get(column.key);
                         const accessibleHelp = help

@@ -64,7 +64,7 @@ function createTrading(): RuntimeAccountTradingConfig {
     averagingRescueProjectionGuardEnabled: true,
     maxOpenPositions: 0,
     maxEntryBased24HourVolPct: 0.2,
-    minActionableAbsoluteLevel: 2,
+    minEntryAbsLevel: 2,
     exactLeverage: 0,
     notes: "",
   };

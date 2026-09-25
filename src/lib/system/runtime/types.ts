@@ -128,7 +128,10 @@ export type RuntimeBlackSwanState = BlackSwanState;
 /** Account-owned strategy settings consumed by the runtime engine. */
 export interface RuntimeAccountTradingConfig {
   maxOpenPositions?: number;
-  minActionableAbsoluteLevel?: number;
+  /** Inclusive minimum absolute vPoint level; undefined disables the bound. */
+  minEntryAbsLevel?: number;
+  /** Inclusive maximum absolute vPoint level; undefined disables the bound. */
+  maxEntryAbsLevel?: number;
   takeProfitPercent: number;
   useStopLossPlus?: boolean;
   enableWatchLogic?: boolean;

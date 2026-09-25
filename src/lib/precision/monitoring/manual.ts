@@ -1,5 +1,6 @@
 import { TradingMode } from "@/lib/exchange/types";
 import type { EntryRecommendation } from "@/lib/system/trading";
+import tradingEntry from "@/lib/system/trading/entry";
 import type {
   RuntimeContext,
   RuntimeEntryDecision,
@@ -57,12 +58,15 @@ function normalizeSymbol(symbol: string): string {
   return String(symbol || "").trim().toUpperCase();
 }
 
-function minActionableLevel(accountSlug: string, context: RuntimeContext) {
-  const configured = context.state.config.accounts.find(
+/** Resolves the account's entry-level range for non-bypassed manual entries. */
+function entryLevelBounds(accountSlug: string, context: RuntimeContext) {
+  const trading = context.state.config.accounts.find(
     (account) => account.slug === accountSlug,
-  )?.trading.minActionableAbsoluteLevel;
-  const parsed = Number(configured);
-  return Number.isFinite(parsed) ? Math.max(1, Math.floor(parsed)) : 2;
+  )?.trading;
+  return {
+    min: tradingEntry.threshold.resolve(trading?.minEntryAbsLevel),
+    max: tradingEntry.threshold.resolveMax(trading?.maxEntryAbsLevel),
+  };
 }
 
 /**
@@ -96,13 +100,16 @@ function buildForcedEntryDecision(
   const lastPoint = context.state.vPointsMap[symbol]?.at(-1);
   if (!lastPoint) return `No volatility point available for ${symbol}`;
 
-  const minLevel = minActionableLevel(accountSlug, context);
+  const { min, max } = entryLevelBounds(accountSlug, context);
   const level = Number(lastPoint.lvl);
-  const actionable = Number.isFinite(level) && Math.abs(level) >= minLevel;
-  if (bypass ? level === 0 || !Number.isFinite(level) : !actionable) {
-    return bypass
-      ? `Latest ${symbol} volatility point is neutral`
-      : `Latest ${symbol} volatility level ${lastPoint.lvl} below minimum ${minLevel}`;
+  if (!Number.isFinite(level) || (bypass && level === 0)) {
+    return `Latest ${symbol} volatility point is neutral`;
+  }
+  if (!bypass && min !== undefined && Math.abs(level) < min) {
+    return `Latest ${symbol} volatility level ${lastPoint.lvl} below minimum ${min}`;
+  }
+  if (!bypass && max !== undefined && Math.abs(level) > max) {
+    return `Latest ${symbol} volatility level ${lastPoint.lvl} above maximum ${max}`;
   }
 
   if (

@@ -10,17 +10,27 @@ import autoRemove from "./auto-remove";
 import lateEntryVPointDrift from "./late-entry-vpoint-drift";
 import type { EntryRecommendation, Position } from "./types";
 
-const DEFAULT_MIN_ACTIONABLE_ABSOLUTE_LEVEL = 2;
-
 /**
- * Normalizes the configured absolute immediate-entry threshold.
+ * Normalizes an optional inclusive absolute entry-level bound.
  */
-function resolveMinActionableAbsoluteLevel(value?: number): number {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return DEFAULT_MIN_ACTIONABLE_ABSOLUTE_LEVEL;
-  }
+function resolveEntryAbsLevel(value?: number): number | undefined {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.max(0, Math.floor(value))
+    : undefined;
+}
 
-  return Math.max(1, Math.floor(value));
+/** Checks one absolute level against both optional inclusive entry bounds. */
+function isWithinEntryAbsLevel(
+  level: number,
+  minEntryAbsLevel?: number,
+  maxEntryAbsLevel?: number,
+): boolean {
+  if (!Number.isFinite(level)) return false;
+  const absoluteLevel = Math.abs(level);
+  const min = resolveEntryAbsLevel(minEntryAbsLevel);
+  const max = resolveEntryAbsLevel(maxEntryAbsLevel);
+  return (min === undefined || absoluteLevel >= min) &&
+    (max === undefined || absoluteLevel <= max);
 }
 
 /**
@@ -94,7 +104,8 @@ function createAccountVolatilityMap(
 
 function makeEntryRecommendation(
   point: VolatilityPoint,
-  minActionableAbsoluteLevel: number,
+  minEntryAbsLevel?: number,
+  maxEntryAbsLevel?: number,
 ): EntryRecommendation {
   let amountProbab = 0;
 
@@ -113,6 +124,10 @@ function makeEntryRecommendation(
   }
 
   const direction = point.l === "B" ? "LONG" : "SHORT";
+  const bounds = [
+    minEntryAbsLevel === undefined ? null : `minimum ${minEntryAbsLevel}`,
+    maxEntryAbsLevel === undefined ? null : `maximum ${maxEntryAbsLevel}`,
+  ].filter(Boolean);
 
   return {
     ...point,
@@ -120,7 +135,9 @@ function makeEntryRecommendation(
     maxLeverage: 3,
     message:
       `decision.v20 ${direction}: absolute level ${Math.abs(point.lvl)} ` +
-      `meets minimum ${minActionableAbsoluteLevel}`,
+      (bounds.length > 0
+        ? `meets ${bounds.join(" and ")}`
+        : "has no entry level bound"),
   };
 }
 
@@ -128,11 +145,12 @@ function makeEntryRecommendation(
 function evaluateRecommendations(
   context: RuntimeContext,
   accountSlug: string,
-  minActionableAbsoluteLevel?: number,
+  minEntryAbsLevel?: number,
+  maxEntryAbsLevel?: number,
 ): EntryRecommendation[] {
   const recommendations: EntryRecommendation[] = [];
-  const resolvedMinActionableAbsoluteLevel =
-    resolveMinActionableAbsoluteLevel(minActionableAbsoluteLevel);
+  const resolvedMinEntryAbsLevel = resolveEntryAbsLevel(minEntryAbsLevel);
+  const resolvedMaxEntryAbsLevel = resolveEntryAbsLevel(maxEntryAbsLevel);
   const autoRemoveAbsLevel = Math.max(
     0,
     Math.floor(
@@ -145,10 +163,10 @@ function evaluateRecommendations(
     const currentPoint = points.at(-1);
     if (
       !currentPoint ||
-      !(
-        typeof currentPoint.lvl === "number" &&
-        Number.isFinite(currentPoint.lvl) &&
-        Math.abs(currentPoint.lvl) >= resolvedMinActionableAbsoluteLevel
+      !isWithinEntryAbsLevel(
+        currentPoint.lvl,
+        resolvedMinEntryAbsLevel,
+        resolvedMaxEntryAbsLevel,
       )
     ) {
       continue;
@@ -175,13 +193,14 @@ function evaluateRecommendations(
     }
 
     // BOTH:DECISION_V20_LEVEL_GATE
-    // v20 enters every unused latest point at or above the configured level.
+    // v20 enters every unused latest point inside the configured range.
     // It does not project lower levels or rank candidates by Speed timing.
     currentPoint.used = true;
     recommendations.push(
       makeEntryRecommendation(
         currentPoint,
-        resolvedMinActionableAbsoluteLevel,
+        resolvedMinEntryAbsLevel,
+        resolvedMaxEntryAbsLevel,
       ),
     );
   }
@@ -224,7 +243,8 @@ async function findDecisions(
     const recommendations = evaluateRecommendations(
       context,
       account.slug,
-      account.trading.minActionableAbsoluteLevel,
+      account.trading.minEntryAbsLevel,
+      account.trading.maxEntryAbsLevel,
     );
 
     for (const entrySignal of recommendations) {
@@ -323,7 +343,9 @@ const entry = {
   findDecisions,
   getSymbols,
   threshold: {
-    resolve: resolveMinActionableAbsoluteLevel,
+    resolve: resolveEntryAbsLevel,
+    resolveMax: resolveEntryAbsLevel,
+    contains: isWithinEntryAbsLevel,
   },
   usage: {
     isUsed: isVolatilityPointUsed,

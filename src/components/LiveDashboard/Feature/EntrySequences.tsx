@@ -18,12 +18,14 @@ interface EntrySequenceChartRow extends RuntimeEntrySequenceCount {
 
 export default function EntrySequenceMetrics({
     endTime,
-    minActionableAbsoluteLevel,
+    minEntryAbsLevel,
+    maxEntryAbsLevel,
     startTime,
     volatilityMap,
 }: {
     endTime?: number;
-    minActionableAbsoluteLevel?: number;
+    minEntryAbsLevel?: number;
+    maxEntryAbsLevel?: number;
     startTime?: number;
     volatilityMap: Record<string, VolatilityPoint[]>;
 }) {
@@ -43,7 +45,8 @@ export default function EntrySequenceMetrics({
                     {expanded && (
                         <EntrySequenceMetricsContent
                             endTime={endTime}
-                            minActionableAbsoluteLevel={minActionableAbsoluteLevel}
+                            minEntryAbsLevel={minEntryAbsLevel}
+                            maxEntryAbsLevel={maxEntryAbsLevel}
                             startTime={startTime}
                             volatilityMap={volatilityMap}
                         />
@@ -56,17 +59,21 @@ export default function EntrySequenceMetrics({
 
 function EntrySequenceMetricsContent({
     endTime,
-    minActionableAbsoluteLevel,
+    minEntryAbsLevel,
+    maxEntryAbsLevel,
     startTime,
     volatilityMap,
 }: {
     endTime?: number;
-    minActionableAbsoluteLevel?: number;
+    minEntryAbsLevel?: number;
+    maxEntryAbsLevel?: number;
     startTime?: number;
     volatilityMap: Record<string, VolatilityPoint[]>;
 }) {
-    const resolvedMinActionableAbsoluteLevel =
-        entrySequenceCandidates.threshold.resolve(minActionableAbsoluteLevel);
+    const resolvedMinEntryAbsLevel =
+        entrySequenceCandidates.threshold.resolve(minEntryAbsLevel);
+    const resolvedMaxEntryAbsLevel =
+        entrySequenceCandidates.threshold.resolveMax(maxEntryAbsLevel);
     const { entrySequenceCounts, entrySequenceIntervals } = useMemo(() => {
         const rangedVolatilityMap = runtimeEntrySequences.range.crop({
             endTimeMs: endTime,
@@ -74,7 +81,8 @@ function EntrySequenceMetricsContent({
             volatilityMap,
         });
         const entrySignals = entrySequenceCandidates.build({
-            minActionableAbsoluteLevel,
+            minEntryAbsLevel,
+            maxEntryAbsLevel,
             volatilityMap: rangedVolatilityMap,
         });
 
@@ -89,7 +97,7 @@ function EntrySequenceMetricsContent({
                     volatilityMap: rangedVolatilityMap,
                 }),
         };
-    }, [endTime, minActionableAbsoluteLevel, startTime, volatilityMap]);
+    }, [endTime, minEntryAbsLevel, maxEntryAbsLevel, startTime, volatilityMap]);
     const chartData = useMemo(
         () =>
             entrySequenceCounts
@@ -105,7 +113,8 @@ function EntrySequenceMetricsContent({
                 Entry sequences ({totalSequences})
             </Typography>
             <Typography color="text.secondary" variant="caption">
-                Configured abs(level) &gt;= {resolvedMinActionableAbsoluteLevel} candidates
+                Configured abs(level) {resolvedMinEntryAbsLevel === undefined ? "unbounded below" : `>= ${resolvedMinEntryAbsLevel}`}
+                {resolvedMaxEntryAbsLevel !== undefined && ` and <= ${resolvedMaxEntryAbsLevel}`} candidates
                 {" · current range"}
             </Typography>
 

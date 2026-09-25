@@ -52,9 +52,10 @@ export interface RuntimeEntryDiagnosticsSnapshot {
   sharedGuards: RuntimeSharedEntryGuardDiagnostic[];
 }
 
-function isActionable(pointLevel: unknown, minLevel: number): boolean {
+function isActionable(pointLevel: unknown, minLevel?: number): boolean {
   const level = Number(pointLevel);
-  return Number.isFinite(level) && Math.abs(level) >= minLevel;
+  return Number.isFinite(level) &&
+    (minLevel === undefined || Math.abs(level) >= minLevel);
 }
 
 /**
@@ -382,9 +383,11 @@ async function build(
     if (!account.enabled) continue;
 
     const diagnostics: RuntimeEntryDiagnostic[] = [];
-    const minLevel = Math.max(
-      1,
-      Math.floor(Number(account.trading.minActionableAbsoluteLevel) || 2),
+    const minLevel = tradingEntry.threshold.resolve(
+      account.trading.minEntryAbsLevel,
+    );
+    const maxLevel = tradingEntry.threshold.resolveMax(
+      account.trading.maxEntryAbsLevel,
     );
 
     for (const rawSymbol of context.state.config.management.symbols) {
@@ -421,6 +424,16 @@ async function build(
       }
 
       if (!point || !isActionable(point.lvl, minLevel)) continue;
+
+      if (maxLevel !== undefined && Math.abs(point.lvl) > maxLevel) {
+        diagnostics.push({
+          ...base,
+          code: "MAX_ENTRY_ABS_LEVEL",
+          reason: `Blocked because absolute level ${Math.abs(point.lvl)} exceeds the configured entry maximum ${maxLevel}.`,
+          status: "blocked",
+        });
+        continue;
+      }
 
       const decision = decisionByKey.get(`${account.slug}:${symbol}`);
       if (decision) {

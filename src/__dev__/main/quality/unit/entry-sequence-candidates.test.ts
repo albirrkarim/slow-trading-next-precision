@@ -1,4 +1,5 @@
 import entrySequenceCandidates from "@/components/LiveDashboard/Feature/entry-sequence-candidates";
+import { runtimeEntrySequences } from "@/lib/system/trading";
 import type { VolatilityPoint } from "@/lib/system/types";
 import { describe, expect, it } from "vitest";
 
@@ -16,7 +17,7 @@ function point(lvl: number, t: number): VolatilityPoint {
 }
 
 describe("dashboard entry-sequence candidates", () => {
-  it("uses the configured minimum actionable absolute level", () => {
+  it("uses the configured inclusive entry-level bounds", () => {
     const volatilityMap = {
       BTC: [point(4, 1)],
       sol: [point(1, 2), point(2, 3), point(-2, 4), point(3, 5)],
@@ -24,7 +25,7 @@ describe("dashboard entry-sequence candidates", () => {
 
     expect(
       entrySequenceCandidates
-        .build({ minActionableAbsoluteLevel: 2, volatilityMap })
+        .build({ minEntryAbsLevel: 2, volatilityMap })
         .map((candidate) => [candidate.symbol, candidate.lvl]),
     ).toEqual([
       ["SOL", 2],
@@ -34,14 +35,36 @@ describe("dashboard entry-sequence candidates", () => {
 
     expect(
       entrySequenceCandidates
-        .build({ minActionableAbsoluteLevel: 3, volatilityMap })
+        .build({ minEntryAbsLevel: 3, volatilityMap })
         .map((candidate) => candidate.lvl),
     ).toEqual([3]);
+
+    expect(
+      entrySequenceCandidates
+        .build({ minEntryAbsLevel: 2, maxEntryAbsLevel: 2, volatilityMap })
+        .map((candidate) => candidate.lvl),
+    ).toEqual([2, -2]);
+    expect(
+      entrySequenceCandidates
+        .build({ maxEntryAbsLevel: 0, volatilityMap: { sol: [point(0, 1), point(1, 2)] } })
+        .map((candidate) => candidate.lvl),
+    ).toEqual([0]);
+
+    const zeroMap = { sol: [point(0, 1), point(1, 2)] };
+    expect(runtimeEntrySequences.count({
+      entrySignals: entrySequenceCandidates.build({
+        maxEntryAbsLevel: 0,
+        volatilityMap: zeroMap,
+      }),
+      volatilityMap: zeroMap,
+    })[0].total).toBe(1);
   });
 
-  it("uses decision v19 threshold resolution for missing or low values", () => {
-    expect(entrySequenceCandidates.threshold.resolve()).toBe(2);
-    expect(entrySequenceCandidates.threshold.resolve(0)).toBe(1);
+  it("treats undefined as disabled and zero as an active bound", () => {
+    expect(entrySequenceCandidates.threshold.resolve()).toBeUndefined();
+    expect(entrySequenceCandidates.threshold.resolveMax()).toBeUndefined();
+    expect(entrySequenceCandidates.threshold.resolve(0)).toBe(0);
+    expect(entrySequenceCandidates.threshold.resolveMax(0)).toBe(0);
     expect(entrySequenceCandidates.threshold.resolve(3.9)).toBe(3);
   });
 });

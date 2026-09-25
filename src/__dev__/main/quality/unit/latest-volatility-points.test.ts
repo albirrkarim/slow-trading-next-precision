@@ -84,6 +84,11 @@ describe("latest volatility point volume", () => {
     expect(help.find((column) => column.key === "entrySequence")?.meaning).toContain(
       "at least 3",
     );
+    expect(
+      getLatestVolatilityPointColumnHelp(undefined, 0).find(
+        (column) => column.key === "entrySequence",
+      )?.meaning,
+    ).toContain("at most 0");
     expect(help.find((column) => column.key === "fundingRate")).toMatchObject({
       meaning: expect.stringMatching(
         /crowded LONG.*LONG pays SHORT.*crowded SHORT.*SHORT pays LONG/,

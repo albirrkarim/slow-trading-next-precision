@@ -937,8 +937,11 @@ export default function DynamicTradeHistoryPage({
 
                     <EntrySequenceMetrics
                       endTime={config.endTime}
-                      minActionableAbsoluteLevel={
-                        dashboardState.config.minActionableAbsoluteLevel
+                      minEntryAbsLevel={
+                        dashboardState.config.minEntryAbsLevel
+                      }
+                      maxEntryAbsLevel={
+                        dashboardState.config.maxEntryAbsLevel
                       }
                       startTime={config.startTime}
                       volatilityMap={volatilityMap}
@@ -1009,8 +1012,11 @@ export default function DynamicTradeHistoryPage({
 
                     <EntrySequenceMetrics
                       endTime={config.endTime}
-                      minActionableAbsoluteLevel={
-                        dashboardState.config.minActionableAbsoluteLevel
+                      minEntryAbsLevel={
+                        dashboardState.config.minEntryAbsLevel
+                      }
+                      maxEntryAbsLevel={
+                        dashboardState.config.maxEntryAbsLevel
                       }
                       startTime={config.startTime}
                       volatilityMap={volatilityMap}

@@ -6,10 +6,13 @@ import type { VolatilityPoint } from "@/lib/system/types";
 const entrySequenceCandidates = {
   threshold: {
     /**
-     * Resolves the dashboard threshold with the same rules as decision v19.
+     * Resolves the dashboard threshold with the same rules as the entry gate.
      */
     resolve(value?: number) {
       return entry.threshold.resolve(value);
+    },
+    resolveMax(value?: number) {
+      return entry.threshold.resolveMax(value);
     },
   },
 
@@ -19,14 +22,19 @@ const entrySequenceCandidates = {
    * path when the metric panels are collapsed.
    */
   build({
-    minActionableAbsoluteLevel,
+    minEntryAbsLevel,
+    maxEntryAbsLevel,
     volatilityMap,
   }: {
-    minActionableAbsoluteLevel?: number;
+    minEntryAbsLevel?: number;
+    maxEntryAbsLevel?: number;
     volatilityMap: Record<string, VolatilityPoint[]>;
   }): EntryRecommendation[] {
     const threshold = entrySequenceCandidates.threshold.resolve(
-      minActionableAbsoluteLevel,
+      minEntryAbsLevel,
+    );
+    const maximum = entrySequenceCandidates.threshold.resolveMax(
+      maxEntryAbsLevel,
     );
 
     return Object.entries(volatilityMap).flatMap(([rawSymbol, points]) => {
@@ -34,7 +42,7 @@ const entrySequenceCandidates = {
       if (symbol === "BTC") return [];
 
       return points
-        .filter((point) => Math.abs(point.lvl) >= threshold)
+        .filter((point) => entry.threshold.contains(point.lvl, threshold, maximum))
         .map((point) => ({
           ...point,
           amountProbab: 1,

@@ -565,7 +565,7 @@ describe("entry.findDecisions auto-remove guards", () => {
             {
               enabled: true,
               slug: "acc-1",
-              trading: { minActionableAbsoluteLevel: 2 },
+              trading: { minEntryAbsLevel: 2 },
             },
           ],
           management: {

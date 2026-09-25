@@ -54,6 +54,22 @@ function normalizeCredentials(
   };
 }
 
+/** Renames the persisted entry minimum without changing its configured value. */
+function migrateTradingConfig(value: unknown): RuntimeAccountConfig["trading"] {
+  const record =
+    value && typeof value === "object" && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : {};
+  const { minActionableAbsoluteLevel, ...trading } = record;
+  return {
+    ...trading,
+    ...(trading.minEntryAbsLevel === undefined &&
+    typeof minActionableAbsoluteLevel === "number"
+      ? { minEntryAbsLevel: minActionableAbsoluteLevel }
+      : {}),
+  } as RuntimeAccountConfig["trading"];
+}
+
 /** Normalizes one account profile into the canonical persisted shape. */
 function createAccount(params: {
   credentials?: unknown;
@@ -73,7 +89,7 @@ function createAccount(params: {
       : {};
   const trading =
     params.trading && typeof params.trading === "object"
-      ? (params.trading as RuntimeAccountConfig["trading"])
+      ? migrateTradingConfig(params.trading)
       : runtimeDefaults.trading.create();
   const tradingNotes =
     trading && typeof trading === "object" && "notes" in trading
@@ -185,6 +201,7 @@ const runtimeAccounts = {
   create: createAccount,
   createDefault: createDefaultAccounts,
   normalize: normalizeAccounts,
+  trading: { migrate: migrateTradingConfig },
   slug: {
     normalize: normalizeSlug,
     createUnique: createUniqueSlug,

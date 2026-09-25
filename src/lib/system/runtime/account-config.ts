@@ -4,6 +4,7 @@ import type {
   RuntimeEffectiveConfig,
   RuntimeManagementConfig,
 } from "./types";
+import runtimeAccounts from "./accounts";
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value));
@@ -18,11 +19,12 @@ export const ACCOUNT_TRADING_CONFIG_KEYS = [
   "exactLeverage",
   "lateEntryVPointPriceDriftEnabled",
   "maxEntryBased24HourVolPct",
+  "maxEntryAbsLevel",
   "maxEntryMargin",
   "maxEntryMarginPct",
   "maxLeverage",
   "maxOpenPositions",
-  "minActionableAbsoluteLevel",
+  "minEntryAbsLevel",
   "watchMaxNextAveragingLevels",
   "watchReserveLevels",
   "watchReservePctAlloc",
@@ -77,6 +79,7 @@ function tradingFromEffective(
   config: Partial<FlatConfig>,
   notes = "",
 ): RuntimeAccountTradingConfig {
+  const source = runtimeAccounts.trading.migrate(config);
   const trading = {
     notes: typeof notes === "string" ? notes : "",
   } as RuntimeAccountTradingConfig;
@@ -85,7 +88,7 @@ function tradingFromEffective(
     ...ACCOUNT_TRADING_CONFIG_KEYS,
     ...ACCOUNT_STRATEGY_CONFIG_KEYS,
   ]) {
-    const value = config[key];
+    const value = source[key];
     if (value !== undefined) {
       Object.assign(trading, { [key]: clone(value) });
     }

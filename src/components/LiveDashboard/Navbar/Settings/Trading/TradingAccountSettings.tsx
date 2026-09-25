@@ -53,7 +53,7 @@ export default function TradingAccountSettings({
             />
             <SettingsGroup title="Entry">
                 <Grid container spacing={2}>
-                    <Grid size={{ xs: 12, md: 6 }}>
+                    <Grid size={{ xs: 12 }}>
                         <SettingsCheckbox
                             checked={
                                 tradingConfig.lateEntryVPointPriceDriftEnabled !== false
@@ -70,6 +70,62 @@ export default function TradingAccountSettings({
                                         : prev,
                                 )
                             }
+                        />
+                    </Grid>
+
+                    <Grid size={{ xs: 12, md: 6 }}>
+                        <SettingsInfoField
+                            label="Min Entry Absolute Level"
+                            type="number"
+                            size="small"
+                            fullWidth
+                            value={tradingConfig.minEntryAbsLevel ?? ""}
+                            onChange={(event) =>
+                                setTradingConfig((prev) =>
+                                    prev
+                                        ? {
+                                            ...prev,
+                                            minEntryAbsLevel: event.target.value === ""
+                                                ? undefined
+                                                : Math.max(0, Math.floor(Number(event.target.value))),
+                                        }
+                                        : prev,
+                                )
+                            }
+                            slotProps={{
+                                htmlInput: {
+                                    step: "1",
+                                    inputMode: "numeric",
+                                    min: 0,
+                                },
+                            }}
+                            info="Inclusive minimum absolute vPoint level for a new entry. Clear the field to disable this bound. New accounts start at 2; 0 is an active minimum."
+                        />
+                    </Grid>
+
+                    <Grid size={{ xs: 12, md: 6 }}>
+                        <SettingsInfoField
+                            label="Max Entry Absolute Level"
+                            type="number"
+                            size="small"
+                            fullWidth
+                            value={tradingConfig.maxEntryAbsLevel ?? ""}
+                            onChange={(event) =>
+                                setTradingConfig((prev) => ({
+                                    ...prev,
+                                    maxEntryAbsLevel: event.target.value === ""
+                                        ? undefined
+                                        : Math.max(0, Math.floor(Number(event.target.value))),
+                                }))
+                            }
+                            slotProps={{
+                                htmlInput: {
+                                    step: "1",
+                                    inputMode: "numeric",
+                                    min: 0,
+                                },
+                            }}
+                            info="Inclusive maximum absolute vPoint level for a new entry. Clear the field to disable this bound. A value of 0 permits only level 0; a maximum below the minimum permits no entries."
                         />
                     </Grid>
 
@@ -166,37 +222,6 @@ export default function TradingAccountSettings({
                                 )
                             }
                             info="Hard USDT cap for one entry margin. Example: engine wants 80 USDT but this is 50, so SLOW uses at most 50. Set 0 to use engine calculation."
-                        />
-                    </Grid>
-
-                    <Grid size={{ xs: 12, md: 6 }}>
-                        <SettingsInfoField
-                            label="Min Actionable Absolute Level"
-                            type="number"
-                            size="small"
-                            fullWidth
-                            value={tradingConfig.minActionableAbsoluteLevel}
-                            onChange={(event) =>
-                                setTradingConfig((prev) =>
-                                    prev
-                                        ? {
-                                            ...prev,
-                                            minActionableAbsoluteLevel: Math.max(
-                                                1,
-                                                Math.floor(Number(event.target.value) || 0),
-                                            ),
-                                        }
-                                        : prev,
-                                )
-                            }
-                            slotProps={{
-                                htmlInput: {
-                                    step: "1",
-                                    inputMode: "numeric",
-                                    min: 1,
-                                },
-                            }}
-                            info="Minimum absolute vPoint level decision.v19 or decision.v20 may enter. Default 2; minimum 1. Only decision.v19 treats the level immediately below this value as a projection candidate."
                         />
                     </Grid>
 

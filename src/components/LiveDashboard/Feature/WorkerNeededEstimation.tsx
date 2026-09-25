@@ -292,7 +292,8 @@ function WorkerNeededEstimationContent({
       config,
       endTimeMs: endTime,
       entrySignals: entrySequenceCandidates.build({
-        minActionableAbsoluteLevel: config.minActionableAbsoluteLevel,
+        minEntryAbsLevel: config.minEntryAbsLevel,
+        maxEntryAbsLevel: config.maxEntryAbsLevel,
         volatilityMap: rangedVolatilityMap,
       }),
       startTimeMs: startTime,

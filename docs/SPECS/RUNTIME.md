@@ -7,8 +7,9 @@ When it is not configured, the system defaults to `5`.
 Production and backtest should use the same configured threshold when their
 volatility points are expected to be comparable. Changing this threshold
 changes how frequently volatility points form; it does not change
-`config.minActionableAbsoluteLevel`, which separately controls which completed
-vPoint levels the Multi entry gate may treat as actionable.
+the optional `config.minEntryAbsLevel` and `config.maxEntryAbsLevel` bounds,
+which separately control which completed vPoint levels the Multi entry gate
+may treat as actionable.
 
 The SLOW navbar displays the server-resolved global value as `Vol: <value>%`.
 The browser receives this value through the dashboard state and does not read
@@ -607,12 +608,14 @@ TC: `PROD:MULTI_ACCOUNT_TRADING_NOTES`
 
 The dashboard also counts historical entry sequences per coin for the current
 vPoint time range. Dashboard candidate signals require
-`abs(level) >= config.minActionableAbsoluteLevel`, resolved with the same
-minimum/default rules as the Multi entry gate. Multiple candidate signals inside the
+the same optional inclusive minimum and maximum absolute-level bounds as the
+Multi entry gate. Multiple candidate signals inside the
 same directional non-zero sequence count once; level zero or a defensive sign
-change ends the sequence. LONG and SHORT counts are shown together in the
+change ends that sequence. When the configured bounds permit level zero, its
+candidate starts a separate interval. LONG and SHORT counts are shown together in the
 latest-vPoint table and a per-coin pie chart. Both views display the resolved
-threshold used by their calculation.
+bounds used by their calculation. An undefined bound is disabled; a maximum
+of `0` restricts candidates to absolute level `0`.
 
 TC: `PROD:HISTORICAL_ENTRY_SEQUENCES`
 
@@ -642,8 +645,10 @@ TC: `PROD:VPOINTS_LEVEL_MAX_DD`
 
 The dashboard shows an `Entry Decisions` section immediately below VPoints
 Frequency. It evaluates the latest point for every configured coin whose
-absolute level meets `config.minActionableAbsoluteLevel`. Each row identifies
-the coin, level, and whether it is ready or blocked, followed by the same
+absolute level meets `config.minEntryAbsLevel` when that bound is set. A level
+above a configured `maxEntryAbsLevel` appears as blocked, including when the
+maximum is `0`. Each row identifies the coin, level, and whether it is ready
+or blocked, followed by the same
 server-generated reason used by the entry decision flow. The browser does not
 reimplement or translate decision reasons.
 

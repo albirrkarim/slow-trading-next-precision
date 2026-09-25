@@ -544,8 +544,12 @@ async function runSavings(
   )?.t;
   const positionSnapshotT = crisisT ?? incidentT;
   const entryAbsoluteLevel = Math.max(
-    1,
-    Math.floor(input.tradingConfig.minActionableAbsoluteLevel ?? 2),
+    0,
+    Math.floor(
+      input.tradingConfig.minEntryAbsLevel ??
+        input.tradingConfig.maxEntryAbsLevel ??
+        2,
+    ),
   );
   const positions = Array.from(
     backtest.tradeHistory

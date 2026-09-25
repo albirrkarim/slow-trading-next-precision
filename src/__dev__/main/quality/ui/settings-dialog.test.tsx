@@ -7,14 +7,17 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axios from "axios";
 import { describe, expect, it, vi } from "vitest";
+import { useState } from "react";
 
 import { endpoints } from "@/components/endpoints";
 import SettingsDialogBlackSwanTab from "@/components/LiveDashboard/Navbar/Settings/Backswan/SettingsDialogBlackSwanTab";
 import SettingsDialogRuntimeTab from "@/components/LiveDashboard/Navbar/Settings/Runtime/SettingsDialogRuntimeTab";
 import SettingsDialogManagementTab from "@/components/LiveDashboard/Navbar/Settings/Management/SettingsDialogManagementTab";
+import TradingAccountSettings from "@/components/LiveDashboard/Navbar/Settings/Trading/TradingAccountSettings";
 import { makeConfigDraft } from "@/components/LiveDashboard/Navbar/Settings/helpers";
 import { useLiveDashboardNavbar } from "@/components/LiveDashboard/Navbar/useLiveDashboardNavbar";
 import { TradingMode } from "@/lib/exchange";
+import { runtimeDefaults } from "@/lib/system/runtime";
 
 vi.mock("axios", () => ({
   default: {
@@ -49,7 +52,7 @@ function dashboardState() {
       maxEntryMargin: 0,
       maxEntryBased24HourVolPct: 0.2,
       maxEntryMarginPct: 0,
-      minActionableAbsoluteLevel: 3,
+      minEntryAbsLevel: 3,
       maxLeverage: 0,
       exactLeverage: 0,
       orderType: "taker",
@@ -92,7 +95,7 @@ function dashboardState() {
           maxEntryMarginPct: 0,
           maxLeverage: 0,
           maxOpenPositions: 0,
-          minActionableAbsoluteLevel: 3,
+          minEntryAbsLevel: 3,
           notes: "",
           stopLossPercent: 20,
           takeProfitPercent: 5,
@@ -142,6 +145,23 @@ function dashboardState() {
 }
 
 const BASE_DASHBOARD_STATE = dashboardState();
+
+function EntryBoundsHarness() {
+  const [tradingConfig, setTradingConfig] = useState(
+    runtimeDefaults.trading.create(),
+  );
+  return (
+    <>
+      <TradingAccountSettings
+        tradingConfig={tradingConfig}
+        setTradingConfig={setTradingConfig}
+      />
+      <span data-testid="entry-bounds">
+        {String(tradingConfig.minEntryAbsLevel)}|{String(tradingConfig.maxEntryAbsLevel)}
+      </span>
+    </>
+  );
+}
 
 function Harness() {
   const navbar = useLiveDashboardNavbar({
@@ -214,7 +234,7 @@ function Harness() {
                     maxEntryBased24HourVolPct: 0.5,
                     maxEntryMarginPct: 50,
                     maxOpenPositions: 3,
-                    minActionableAbsoluteLevel: 4,
+                    minEntryAbsLevel: 4,
                     maxLeverage: 3,
                     exactLeverage: 6,
                     stopLossPercent: 12,
@@ -612,10 +632,28 @@ describe("settings dialog save payload", () => {
       maxEntryMarginPct: 50,
       maxLeverage: 3,
       maxOpenPositions: 3,
-      minActionableAbsoluteLevel: 4,
+      minEntryAbsLevel: 4,
       stopLossPercent: 12,
       takeProfitPercent: 7,
       useStopLossPlus: true,
     });
   });
+});
+
+describe("account entry-level settings", () => {
+  it("keeps zero as an active maximum and clears either bound to undefined", () => {
+    // BOTH:DECISION_V20_LEVEL_GATE
+    render(<EntryBoundsHarness />);
+    const minimum = screen.getByLabelText("Min Entry Absolute Level");
+    const maximum = screen.getByLabelText("Max Entry Absolute Level");
+
+    expect(screen.getByTestId("entry-bounds").textContent).toBe("2|undefined");
+    fireEvent.change(maximum, { target: { value: "0" } });
+    expect(screen.getByTestId("entry-bounds").textContent).toBe("2|0");
+    fireEvent.change(minimum, { target: { value: "" } });
+    expect(screen.getByTestId("entry-bounds").textContent).toBe("undefined|0");
+    fireEvent.change(maximum, { target: { value: "" } });
+    expect(screen.getByTestId("entry-bounds").textContent).toBe("undefined|undefined");
+  });
+
 });

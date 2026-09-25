@@ -166,8 +166,8 @@ function deriveMode(runtime: RuntimeControlConfig): RuntimeMode {
 }
 
 /**
- * Loads `config.json` and `accounts.json` exactly as persisted — no defaults,
- * no migration. Throws when either file is missing or malformed.
+ * Loads the catalog, migrating only the renamed per-account entry threshold.
+ * Throws when either file is missing or malformed.
  */
 async function load(): Promise<RuntimeStorageCatalog> {
   const [configRaw, accountsRaw] = await Promise.all([
@@ -198,7 +198,10 @@ async function load(): Promise<RuntimeStorageCatalog> {
   const config = {
     management: configRaw.management,
     runtime: configRaw.runtime,
-    accounts,
+    accounts: accounts.map((account) => ({
+      ...account,
+      trading: runtimeAccounts.trading.migrate(account.trading),
+    })),
   } as unknown as RuntimeConfig;
 
   return { config, mode: deriveMode(config.runtime) };

@@ -134,6 +134,7 @@ function collectEntrySequenceIntervals({
     const points = rawPoints.slice().sort((left, right) => left.t - right.t);
     let direction = 0;
     let sequenceSignal: EntryRecommendation | null = null;
+    let zeroSignal: EntryRecommendation | null = null;
 
     const finishSequence = (endTimeMs?: number) => {
       if (sequenceSignal) {
@@ -153,12 +154,31 @@ function collectEntrySequenceIntervals({
       sequenceSignal = null;
     };
 
+    /** Keeps an eligible level-zero entry separate from directional runs. */
+    const finishZero = (endTimeMs?: number) => {
+      if (!zeroSignal) return;
+      intervals.push({
+        endTimeMs: Math.max(
+          zeroSignal.t,
+          endTimeMs ?? fallbackEndTimeMs ?? zeroSignal.t,
+        ),
+        entrySignal: zeroSignal,
+        label: zeroSignal.l,
+        startTimeMs: zeroSignal.t,
+        symbol,
+      });
+      zeroSignal = null;
+    };
+
     for (const point of points) {
       const pointDirection = Math.sign(point.lvl);
       if (pointDirection === 0) {
         finishSequence(point.t);
+        finishZero(point.t);
+        zeroSignal = signals.get(signalKey(point)) ?? null;
         continue;
       }
+      finishZero(point.t);
       if (direction !== 0 && pointDirection !== direction) {
         finishSequence(point.t);
       }
@@ -169,6 +189,7 @@ function collectEntrySequenceIntervals({
       }
     }
     finishSequence(fallbackEndTimeMs ?? points.at(-1)?.t);
+    finishZero(fallbackEndTimeMs ?? points.at(-1)?.t);
   }
 
   return intervals;
@@ -176,7 +197,8 @@ function collectEntrySequenceIntervals({
 
 /**
  * Counts at most one selected-engine entry per directional vPoint sequence.
- * A level-zero point or defensive sign change releases the sequence.
+ * A level-zero point or defensive sign change releases the directional
+ * sequence. An eligible level-zero point starts its own interval.
  */
 function countEntrySequences({
   entrySignals,

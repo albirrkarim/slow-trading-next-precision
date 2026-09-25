@@ -15,7 +15,7 @@ export interface TradingLivePreviewConfig extends RuntimeEffectiveConfig {
   maxEntryMarginPct?: number;
   maxOpenPositions?: number;
   maxLeverage?: number;
-  minActionableAbsoluteLevel?: number;
+  minEntryAbsLevel?: number;
   tradingMode: TradingMode;
   watchMaxNextAveragingLevels?: number;
   watchReserveLevels?: number;
@@ -354,7 +354,7 @@ export function buildTradingLivePreview(params: {
       amountProbab: 1,
       id: "settings-preview",
       l: "B",
-      lvl: config.minActionableAbsoluteLevel ?? 2,
+      lvl: config.minEntryAbsLevel ?? config.maxEntryAbsLevel ?? 2,
       maxLeverage: 2,
       message: "Trading settings preview",
       p: 1,
@@ -470,8 +470,8 @@ export function buildTradingLivePreview(params: {
             estimatedNotionalUsdt * (stopLossPct / 100),
           );
     const entryAbsoluteLevel = Math.max(
-      1,
-      Math.floor(Number(config.minActionableAbsoluteLevel) || 2),
+      0,
+      Math.floor(config.minEntryAbsLevel ?? config.maxEntryAbsLevel ?? 2),
     );
     const absoluteLevel = entryAbsoluteLevel + index;
     const levelBasedCondition = levelBasedPctDriftStopLoss.condition.get(

@@ -166,7 +166,7 @@ function makeContext(
         trading: {
           ...runtimeDefaults.trading.create(),
           maxOpenPositions: 0,
-          minActionableAbsoluteLevel: 2,
+          minEntryAbsLevel: 2,
           takeProfitPercent: options.takeProfitPercent ?? 50,
           ...options.accountTrading,
         },
@@ -298,6 +298,55 @@ describe("multi strategy entry decisions", () => {
     const second = await strategy.decisions.findEntries(context);
     expect(second).toHaveLength(1);
     expect(second[0].accountSlug).toBe("a2");
+  });
+
+  it("applies optional inclusive entry bounds, including an active zero maximum", async () => {
+    // BOTH:DECISION_V20_LEVEL_GATE
+    const decisionsAt = async (
+      level: number,
+      minEntryAbsLevel?: number,
+      maxEntryAbsLevel?: number,
+    ) => {
+      const context = makeContext(
+        ["a1"],
+        { SUI: [makePoint(level, 200)] },
+        {
+          accountTrading: { minEntryAbsLevel, maxEntryAbsLevel },
+          tradingMode: "futures",
+        },
+      );
+      return strategy.decisions.findEntries(context);
+    };
+
+    expect(await decisionsAt(-1, 2, 3)).toHaveLength(0);
+    expect(await decisionsAt(-2, 2, 3)).toHaveLength(1);
+    expect(await decisionsAt(3, 2, 3)).toHaveLength(1);
+    expect(await decisionsAt(-4, 2, 3)).toHaveLength(0);
+    expect(await decisionsAt(0, undefined, 0)).toHaveLength(1);
+    expect(await decisionsAt(-1, undefined, 0)).toHaveLength(0);
+    expect(await decisionsAt(0, 2, 0)).toHaveLength(0);
+    expect(await decisionsAt(0, undefined, undefined)).toHaveLength(1);
+    expect(await decisionsAt(-4, undefined, undefined)).toHaveLength(1);
+  });
+
+  it("can execute a level-zero entry when its optional bounds permit it", async () => {
+    const context = makeContext(
+      ["a1"],
+      { SUI: [makePoint(0, 200)] },
+      {
+        accountTrading: {
+          enableWatchLogic: false,
+          maxEntryAbsLevel: 0,
+          minEntryAbsLevel: undefined,
+        },
+        markPriceMap: { SUI: { lastUpdated: 200, price: 100 } },
+        tradingMode: "futures",
+      },
+    );
+    const [decision] = await strategy.decisions.findEntries(context);
+
+    expect(decision).toBeDefined();
+    expect(strategy.actions.executeEntry(context, decision)).not.toBeNull();
   });
 });
 

@@ -591,8 +591,11 @@ TC: `BOTH:LATE_ENTRY_VPOINT_PRICE_DRIFT_PCT`
 
 ### B.3.8 Averaging not allowed in low level
 
-Averaging should not run on absolute level `1` or `0`. Entry uses `config.minActionableAbsoluteLevel`; setting it to `1` allows the Multi entry
-gate to enter on absolute level `1`.
+Averaging should not run on absolute level `1` or `0`. Entry uses optional,
+inclusive `config.minEntryAbsLevel` and `config.maxEntryAbsLevel` bounds.
+Setting the minimum to `1` allows entry on absolute level `1`; clearing it
+disables the minimum. Setting the maximum to `0` restricts entry to absolute
+level `0` unless the minimum excludes it.
 
 TC: `BOTH:LOW_LEVEL_NO_ACTION_AVERAGING`
 
