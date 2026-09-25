@@ -266,12 +266,15 @@ export interface RuntimeVPointMemory {
   readonly value: unknown;
 }
 
-type OnStrategy = (
+export type OnStrategy = (
   decision: RuntimeDecision,
   context: RuntimeContext,
 ) => Promise<boolean>;
 
-type OnExit= (position: Position, context: RuntimeContext) => Promise<void>;
+export type OnExit = (
+  position: Position,
+  context: RuntimeContext,
+) => Promise<void>;
 
 /**
  * Environment bridge supplied to the shared engine — one implementation for

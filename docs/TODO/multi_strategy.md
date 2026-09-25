@@ -152,3 +152,33 @@ so in the production adapter we will have like
 const choosenStragey = [config.strategy] lazy import
 
 so we plug choosenStragey.onStrategy  and choosenStragey.onExit into the production adapter
+
+---
+
+# Decided contract
+
+The plug contract is defined in `src/lib/strategy/type.d.ts` (`StrategyAPI`).
+
+Review of the proposal above: the adapter seam and lazy import are right,
+but `{ onStrategy, onExit }` alone under-covers the requirements — those
+two are a veto gate and a post-close persistence hook. The contract
+therefore keeps both and adds:
+
+- `decisions` — per-family candidate producers mirroring
+  `defaultDecision.{entry,averaging,exit}.find`. This is how a strategy
+  *produces* decisions (both's MAIN+COUNTER pair, streak's re-entries);
+  `onStrategy` can only veto what already exists.
+- `state` — `hydrate`/`serialize` port for strategy-owned persisted
+  records (e.g. streak pending re-entries) under a namespaced slot.
+- `preflight` — optional boot validation (e.g. hedge-mode position-mode
+  check) before the strategy's first pair entry.
+
+Composition rules baked into the contract: `onStrategy` ANDs with the
+environment's `isActionAllowed` (strategies cannot disable account
+limits); `onExit` runs after environment persistence; `onAction` is never
+strategy-overridable.
+
+Still open (tracked above): `config.strategy` field, per-account
+`entryLegs`, `futuresPositionMode`, the decision metadata slot carrying
+`pairId`/`role`, `Position.strategy.logic`, and atomic pair execution
+(`onAction` still returns a single `Position`).
