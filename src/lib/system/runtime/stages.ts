@@ -14,8 +14,8 @@ export const RUNTIME_STAGE_ORDER: RuntimeStage[] = [
   "capture-entry",
 ];
 
-export const DEFAULT_SPEEDUP_POSITIVE_PNL_THRESHOLD_PCT = 1.5;
-export const DEFAULT_SPEEDUP_NEGATIVE_PNL_THRESHOLD_PCT = 1.5;
+export const DEFAULT_SPEEDUP_POSITIVE_PNL_THRESHOLD_PCT = 0.8;
+export const DEFAULT_SPEEDUP_NEGATIVE_PNL_THRESHOLD_PCT = 0.8;
 export const DEFAULT_SPEEDUP_TAKE_PROFIT_OFFSET_PCT = 0.5;
 
 export const DEFAULT_STAGE_INTERVAL_MINUTES: Record<RuntimeStage, number> = {
