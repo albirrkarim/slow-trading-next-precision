@@ -78,7 +78,6 @@ like known as StreakStrategyLogic or etc...
    pairId/role/direction/anchor vPoint) — either a `state.pendingReentries`
    slot or strategy-owned state.
 
-
    
 3. Config needs `management.openDirection` ("ONE_WAY" | "BOTH"), per-account
    `trading.entryLegs`, and `futuresPositionMode` for hedge-mode validation.
@@ -125,3 +124,31 @@ const strategy = {
 `both` should expose the pair lifecycle primitives (`pair.matches`,
 `volatilityTarget.resolve`, role resolution) that `streak` reuses —
 mirroring how the instance repos share `both-direction.ts`.
+
+
+# Human proposed architecture
+
+Here my proposed architecure.
+
+the production adapter will have port to be plugged with strategy API.
+
+```tsx
+interface StrategyAPI {
+   onStrategy:OnStrategy
+   onExit:OnExit
+}
+```
+
+so the
+
+lib/strategies/both
+lib/strategies/streak
+
+will be just exposing `StrategyAPI`
+
+so in the production adapter we will have like 
+
+
+const choosenStragey = [config.strategy] lazy import
+
+so we plug choosenStragey.onStrategy  and choosenStragey.onExit into the production adapter

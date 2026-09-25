@@ -266,6 +266,13 @@ export interface RuntimeVPointMemory {
   readonly value: unknown;
 }
 
+type OnStrategy = (
+  decision: RuntimeDecision,
+  context: RuntimeContext,
+) => Promise<boolean>;
+
+type OnExit= (position: Position, context: RuntimeContext) => Promise<void>;
+
 /**
  * Environment bridge supplied to the shared engine — one implementation for
  * the backtest, one for production live/sandbox.
@@ -309,10 +316,7 @@ export interface RuntimeEngineAdapter {
    * or rejects it so outer strategies (multi, hedge, both) can adapt behavior
    * without forking the engine.
    */
-  onStrategy: (
-    decision: RuntimeDecision,
-    context: RuntimeContext,
-  ) => Promise<boolean>;
+  onStrategy: OnStrategy;
 
   /**
    * Executes an approved decision in the environment: simulated fills in
@@ -325,7 +329,7 @@ export interface RuntimeEngineAdapter {
   ) => Promise<Position | null>;
 
   /** Persists a closed position after the shared runtime updates its state. */
-  onExit: (position: Position, context: RuntimeContext) => Promise<void>;
+  onExit: OnExit
 
   /**
    * Persists one account's environment state after the shared runtime has
