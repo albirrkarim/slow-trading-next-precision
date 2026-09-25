@@ -102,7 +102,7 @@ backtests.
 
 | Runtime operation | Endpoint or adapter call | When/cadence | Cache/coalescing |
 | --- | --- | --- | --- |
-| Mark price (per-symbol latest price) | Kline websocket forming-candle close (§10); REST `/klines` fallback per symbol | Each eligible stage cycle for every selected symbol | Shared stream buffer; REST only for uncovered or stale symbols |
+| Runtime mark price (per-symbol latest trade close, not the exchange's index mark) | Kline websocket forming-candle close (§10); REST `/klines` fallback per symbol | Each eligible stage cycle for every selected symbol | Shared stream buffer; REST only for uncovered or stale symbols |
 | Volatility synchronization | Kline websocket closed candles (§10); REST `/fapi/v1/klines` or `/api/v3/klines` only when the stream buffer cannot reach the requested `startTime` | Once for each selected symbol in each eligible stage cycle; incremental range is decided by stored prediction memory | Shared stream buffer plus prediction-memory throttling |
 | Stage clock candle | Klines for the first selected symbol, 5m interval | Each eligible stage cycle | Until the next aligned 5-minute boundary |
 | Position-sync price | Klines, 5m interval | Each selected live open-position symbol before private position reconciliation | 5-second per-symbol latest-price cache plus stage single-flight |
@@ -266,15 +266,19 @@ by the engine, one-shot manual passes, and diagnostics; it connects lazily on
 the first `track` call and idle-closes after 15 minutes without one, so engine
 restarts and manual passes never leak connections.
 
+The feed's `markPrice` is the forming futures kline's trade-close that fills
+the runtime `markPriceMap` — not Binance's `@markPrice` stream, the
+index-based mark used for funding and liquidation.
+
 | Concern | Behavior |
 | --- | --- |
-| Streams | `<base>usdt@kline_<interval>` on one combined-stream socket; futures rotates `fstream` → `fstream1/2/3`, spot rotates `stream.binance.com:9443` → `:443` |
+| Streams | `<base>usdt@kline_<interval>` on one combined-stream socket; futures uses the documented market-data base `wss://fstream.binance.com/market` (combined path `/stream`), spot rotates `stream.binance.com:9443` → `:443` |
 | Subscriptions | `track(symbols, interval)` marks wanted streams on every market update; streams unrequested for 15 minutes are unsubscribed and their buffers dropped |
 | Buffer | Latest forming candle plus up to 1,000 closed candles per stream |
 | Reconnect | On socket close, resubscribes every wanted stream after a 1-second backoff that doubles up to 30 seconds |
 | Staleness | A stream with no event for 30 seconds counts as dead; its readers fall back to REST |
-| Silent starvation | An open socket that delivers nothing for 15 seconds — or a handshake that never completes — is force-closed and the next host is tried; a socket that dies eventless also rotates. Hosts that suppress data per-IP (connected, ACKed, muted) self-skip in rotation instead of pinning the feed dead |
-| Spot proxy fallback | When every futures host is silent, `withFallback` engages the shared spot stream for the same `<base>usdt` symbols — prices differ only by basis (≈noise for monitoring). It engages after 5 seconds of primary silence, logs the transition, records a `runtime.market.live-feed` error (NOTIF_ERROR), and releases automatically when futures delivers again. Symbols not listed on spot still fall back to REST per symbol |
+| Silent starvation | An open socket that delivers nothing for 15 seconds — or a handshake that never completes — is force-closed and reconnected. Futures has a single documented host, so the watchdog reconnects to the same host; spot rotates between its two hosts |
+| No spot proxy | Spot klines are a different market — spot candles are never used for futures price or volatility decisions, and there is no cross-market proxy. A symbol the stream cannot serve falls back to REST per symbol |
 
 Consumers in `helper/market.ts`:
 

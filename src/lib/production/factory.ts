@@ -9,12 +9,12 @@ import {
   runWithExchangeAccount,
   type ExchangeAccount,
 } from "@/lib/exchange/account-context";
+import { resolveMarketTypeForTradingMode } from "@/lib/exchange/utils";
 import type {
   RuntimeDecision,
   RuntimeEngineAdapter,
   RuntimeEngineState as PrecisionRuntimeState,
 } from "@/lib/precision/types";
-import runtimeErrors from "@/lib/precision/utils/errors";
 import { systemLog } from "@/lib/system/logging";
 import type {
   RuntimeAccountConfig,
@@ -562,29 +562,19 @@ function createProductionFactory(): ProductionRuntimeFactory {
     // PROD:MARKET_LIVE_FEED — the kline websocket feed is one shared
     // process-level socket; it self-closes when nothing tracks it so
     // engine restarts and one-shot manual passes never leak connections.
-    // Binance suppresses futures ws per-IP without erroring, so futures
-    // gets a spot-stream proxy fallback: same symbols at ≈price, engaged
-    // only while the futures stream is silent and released on recovery.
+    // Futures streams from the documented market host; the feed's
+    // markPrice() is the futures kline trade-close that fills the
+    // runtime markPriceMap, not Binance's @markPrice index/funding/
+    // liquidation mark. Spot candles are a different market and are
+    // never used for futures price or volatility decisions — a symbol
+    // the stream cannot serve falls back to per-symbol REST reads.
     const liveFeed =
       firstRuntime.exchange.exchangeType === "binance"
-        ? latestState.config.management.tradingMode === TradingMode.FUTURES
-          ? binanceKlineStream.withFallback({
-              fallback: binanceKlineStream.shared({ marketType: "SPOT" }),
-              primary: binanceKlineStream.shared({ marketType: "FUTURES" }),
-              onFallback: (engaged) => {
-                if (!engaged) return;
-                void runtimeErrors
-                  .record(
-                    "runtime.market.live-feed",
-                    new Error(
-                      "Futures kline stream silent — spot stream is " +
-                        "proxying mark data until it recovers",
-                    ),
-                  )
-                  .catch(() => undefined);
-              },
-            })
-          : binanceKlineStream.shared({ marketType: "SPOT" })
+        ? binanceKlineStream.shared({
+            marketType: resolveMarketTypeForTradingMode(
+              latestState.config.management.tradingMode,
+            ),
+          })
         : undefined;
     return adapter.create({
       clock: clock.create({ signal }),

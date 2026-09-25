@@ -156,19 +156,30 @@ describe("Binance kline stream", () => {
     expect(feed.closedKlines("SUI", "5m", 0)).toBeUndefined();
   });
 
-  it("reconnects and resubscribes after the socket closes", async () => {
+  it("reconnects, resubscribes, and recovers after a healthy socket closes", async () => {
     feed.track(["SUI"], "5m");
     sockets[0].open();
+    emit("suiusdt", "5m", { c: "100", t: 1_000, T: 2_000, x: false });
     sockets[0].close();
 
     await vi.advanceTimersByTimeAsync(1_000);
     expect(sockets).toHaveLength(2);
+    // Futures streams only from the documented market-data endpoint — a
+    // socket that delivered reconnects to the same host.
+    expect(urls).toEqual([
+      "wss://fstream.binance.com/market/stream",
+      "wss://fstream.binance.com/market/stream",
+    ]);
     sockets[1].open();
     expect(sockets[1].frames()).toContainEqual({
       id: expect.any(Number),
       method: "SUBSCRIBE",
       params: ["suiusdt@kline_5m"],
     });
+
+    emit("suiusdt", "5m", { c: "101", t: 3_000, T: 4_000, x: false });
+    expect(feed.markPrice("SUI", "5m")?.price).toBe(101);
+    expect(feed.status().host).toBe("wss://fstream.binance.com/market");
   });
 
   it("prunes streams that stop being requested", () => {
@@ -197,7 +208,7 @@ describe("Binance kline stream", () => {
     });
   });
 
-  it("rotates hosts when an open socket never delivers an event", async () => {
+  it("reconnects a starved socket to the same documented host", async () => {
     feed.track(["SUI"], "5m");
     sockets[0].open();
     // No events ever arrive — the socket starves while looking connected.
@@ -207,9 +218,11 @@ describe("Binance kline stream", () => {
     expect(sockets[0].closed).toBe(true);
 
     await vi.advanceTimersByTimeAsync(1_000); // reconnect backoff
+    // Futures has one documented market host, so a starved or eventless
+    // socket reconnects to it instead of rotating to undocumented bases.
     expect(urls).toEqual([
-      "wss://fstream.binance.com/stream",
-      "wss://fstream1.binance.com/stream",
+      "wss://fstream.binance.com/market/stream",
+      "wss://fstream.binance.com/market/stream",
     ]);
   });
 
@@ -224,91 +237,21 @@ describe("Binance kline stream", () => {
 
     await vi.advanceTimersByTimeAsync(1_000);
     expect(urls).toEqual([
-      "wss://fstream.binance.com/stream",
-      "wss://fstream1.binance.com/stream",
+      "wss://fstream.binance.com/market/stream",
+      "wss://fstream.binance.com/market/stream",
     ]);
   });
 
-  it("rotates hosts when a socket dies before its first event", async () => {
+  it("reconnects an eventless socket to the same host", async () => {
     feed.track(["SUI"], "5m");
     sockets[0].open();
     sockets[0].close(); // died eventless — not a healthy stream
 
     await vi.advanceTimersByTimeAsync(1_000);
     expect(urls).toEqual([
-      "wss://fstream.binance.com/stream",
-      "wss://fstream1.binance.com/stream",
+      "wss://fstream.binance.com/market/stream",
+      "wss://fstream.binance.com/market/stream",
     ]);
-  });
-
-  it("serves through the fallback while the primary stays silent", () => {
-    const fallbackSockets: FakeSocket[] = [];
-    const fallback = binanceKlineStream.create({
-      marketType: "SPOT",
-      createSocket: () => {
-        const socket = new FakeSocket();
-        fallbackSockets.push(socket);
-        return socket;
-      },
-    });
-    const composite = binanceKlineStream.withFallback({
-      fallback,
-      primary: feed,
-    });
-
-    composite.track(["SUI"], "5m");
-    sockets[0].open();
-    // Primary silent — under the engage window the fallback stays off.
-    expect(composite.markPrice("SUI", "5m")).toBeUndefined();
-    expect(fallbackSockets).toHaveLength(0);
-
-    vi.setSystemTime(Date.now() + 6_000);
-    expect(composite.markPrice("SUI", "5m")).toBeUndefined();
-    expect(fallbackSockets).toHaveLength(1); // proxy spun up lazily
-
-    fallbackSockets[0].open();
-    fallbackSockets[0].emit(
-      klineEvent("suiusdt", "5m", { c: "1.02", t: 1_000, T: 2_000, x: false }),
-    );
-    expect(composite.markPrice("SUI", "5m")).toEqual({
-      lastUpdated: expect.any(Number),
-      price: 1.02,
-    });
-    expect(composite.status().host).toContain("(fallback)");
-    composite.stop();
-  });
-
-  it("releases the fallback once the primary delivers again", () => {
-    const fallbackSockets: FakeSocket[] = [];
-    const fallback = binanceKlineStream.create({
-      marketType: "SPOT",
-      createSocket: () => {
-        const socket = new FakeSocket();
-        fallbackSockets.push(socket);
-        return socket;
-      },
-    });
-    const onFallback = vi.fn();
-    const composite = binanceKlineStream.withFallback({
-      fallback,
-      onFallback,
-      primary: feed,
-    });
-
-    composite.track(["SUI"], "5m");
-    sockets[0].open();
-    vi.setSystemTime(Date.now() + 6_000);
-    composite.markPrice("SUI", "5m");
-    expect(onFallback).toHaveBeenCalledWith(true);
-    expect(fallbackSockets).toHaveLength(1);
-
-    // Primary recovers — reads prefer it again and the fallback releases.
-    emit("suiusdt", "5m", { c: "9.9", t: 3_000, T: 4_000, x: false });
-    composite.track(["SUI"], "5m");
-    expect(onFallback).toHaveBeenCalledWith(false);
-    expect(composite.markPrice("SUI", "5m")?.price).toBe(9.9);
-    expect(composite.status().host).toBe("wss://fstream.binance.com");
-    composite.stop();
   });
 
   it("stays inert without throwing when no WebSocket transport exists", async () => {

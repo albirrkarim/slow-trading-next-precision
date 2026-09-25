@@ -33,7 +33,7 @@ export interface BinanceKlineStreamOptions {
 
 export interface BinanceKlineStreamStatus {
   connected: boolean;
-  /** Current stream host — rotates when a socket starves or dies silent. */
+  /** Current stream host — advances only when another host is configured. */
   host: string;
   lastEventAt: number;
   streams: string[];
@@ -51,29 +51,23 @@ const RECONNECT_BASE_MS = 1_000;
 const RECONNECT_MAX_MS = 30_000;
 /**
  * A subscribed kline stream emits every ~250ms, so an open socket that has
- * delivered nothing for this long is silently starved — either a half-dead
- * socket or a host withholding data (Binance suppresses ws per-IP without
- * erroring). The feed treats it as a disconnect and rotates hosts.
+ * delivered nothing for this long is silently starved — a half-dead socket
+ * or a retired route that still accepts and ACKs subscriptions without
+ * streaming. The feed treats it as a disconnect and reconnects, rotating
+ * to the next host only when the market lists more than one.
  */
 const SILENT_STREAM_MS = 15_000;
 const STALE_FEED_MS = 30_000;
 const SUBSCRIBE_CHUNK = 50;
-/**
- * Grace given to a primary feed before its fallback market takes over —
- * long enough for a healthy socket to deliver first events, short enough
- * that a suppressed host is bypassed within one probe window.
- */
-const FALLBACK_ENGAGE_MS = 5_000;
 
 const SHARED_KEY = Symbol.for("slow-trading.binance-kline-stream.instances");
 
 const WS_HOSTS: Record<BinanceKlineStreamMarket, string[]> = {
-  FUTURES: [
-    "wss://fstream.binance.com",
-    "wss://fstream1.binance.com",
-    "wss://fstream2.binance.com",
-    "wss://fstream3.binance.com",
-  ],
+  // USDⓈ-M futures klines stream only from the documented market-data
+  // base. Binance retired the legacy `/stream` route — it still accepts
+  // the socket and ACKs subscriptions but never delivers events; the
+  // `fstream1/2/3` alternates were never verified and are not used.
+  FUTURES: ["wss://fstream.binance.com/market"],
   SPOT: ["wss://stream.binance.com:9443", "wss://stream.binance.com:443"],
 };
 
@@ -136,7 +130,7 @@ function create(options: BinanceKlineStreamOptions) {
   let lastEventAt = 0;
   let subscribeId = 0;
 
-  /** Cycles to the next stream host — a dead or suppressing host self-skips. */
+  /** Cycles to the next configured host — a dead or muted host self-skips. */
   function rotateHost(): void {
     hostIndex = (hostIndex + 1) % hosts.length;
   }
@@ -171,8 +165,9 @@ function create(options: BinanceKlineStreamOptions) {
     // Stale transports are ignored — the path that dropped them already ran
     // cleanup, and acting again could corrupt a live replacement socket.
     if (closed !== socket) return;
-    // A socket that never delivered rotates hosts — dead or suppressing
-    // hosts self-skip. A socket that streamed reconnects to the same host.
+    // A socket that never delivered rotates to the next configured host
+    // when the market lists more than one — dead or muted hosts self-skip.
+    // A socket that streamed reconnects to the same host.
     if (lastEventAt < socketCreatedAt) rotateHost();
     socket = null;
     socketOpen = false;
@@ -181,10 +176,10 @@ function create(options: BinanceKlineStreamOptions) {
   }
 
   /**
-   * Recycles a silently-dead socket — open-but-muted (Binance suppresses
-   * futures ws per-IP without erroring) or stuck mid-handshake (a filtered
-   * host leaves connect hanging with no open/error/close). Called on every
-   * read/track so starvation is detected within one pass without a timer.
+   * Recycles a silently-dead socket — open-but-muted or stuck mid-handshake
+   * (a filtered host leaves connect hanging with no open/error/close).
+   * Called on every read/track so starvation is detected within one pass
+   * without a timer.
    */
   function ensureFreshSocket(): void {
     if (!socket || wanted.size === 0) return;
@@ -422,89 +417,6 @@ function shared(options: { marketType: BinanceKlineStreamMarket }) {
 
 export type BinanceKlineStream = ReturnType<typeof create>;
 
-/**
- * Wraps a primary feed with a fallback market's stream — e.g. spot klines
- * proxying a suppressed futures stream. Both markets carry the same
- * `<base>usdt@kline_*` names at ≈price (spot basis vs futures mark is
- * noise for stage monitoring), so readers keep getting real-time data
- * instead of dropping to REST polling while every primary host is dead.
- *
- * The fallback only spins up while the primary is silent: first delivery
- * on the primary releases it, and its streams prune + idle-close on their
- * own once nothing tracks them — the feed self-heals back to the primary.
- */
-function withFallback(options: {
-  primary: BinanceKlineStream;
-  fallback: BinanceKlineStream;
-  /** Silence window before the fallback engages. */
-  engageMs?: number;
-  /** Fired when the fallback engages or releases — persist/notify upstream. */
-  onFallback?: (engaged: boolean) => void;
-  /** Injectable clock for tests. */
-  now?: () => number;
-}): BinanceKlineStream {
-  const now = options.now ?? (() => Date.now());
-  const engageMs = options.engageMs ?? FALLBACK_ENGAGE_MS;
-  const { primary, fallback } = options;
-  let proxyEngaged = false;
-  let silentSince: number | null = null;
-
-  /** Whether the primary cannot serve: never delivered, or went stale. */
-  function primarySilent(): boolean {
-    const status = primary.status();
-    if (status.lastEventAt > 0) {
-      silentSince = null;
-      return now() - status.lastEventAt > STALE_FEED_MS;
-    }
-    // Never delivered — only counts after the socket had a fair window.
-    silentSince ??= now();
-    return now() - silentSince >= engageMs;
-  }
-
-  function evaluate(): boolean {
-    const silent = primarySilent();
-    if (silent === proxyEngaged) return silent;
-    proxyEngaged = silent;
-    if (silent) {
-      systemLog.error("Primary kline stream silent — fallback stream engaged");
-    } else {
-      systemLog.info("Primary kline stream recovered — fallback released");
-    }
-    options.onFallback?.(silent);
-    return silent;
-  }
-
-  return {
-    track(symbols, interval) {
-      primary.track(symbols, interval);
-      if (evaluate()) fallback.track(symbols, interval);
-    },
-    markPrice(symbol, interval) {
-      const direct = primary.markPrice(symbol, interval);
-      if (direct) return direct;
-      if (evaluate()) fallback.track([symbol], interval);
-      return fallback.markPrice(symbol, interval);
-    },
-    closedKlines(symbol, interval, sinceOpenTime) {
-      const direct = primary.closedKlines(symbol, interval, sinceOpenTime);
-      if (direct) return direct;
-      if (evaluate()) fallback.track([symbol], interval);
-      return fallback.closedKlines(symbol, interval, sinceOpenTime);
-    },
-    status() {
-      const status = proxyEngaged ? fallback.status() : primary.status();
-      return {
-        ...status,
-        host: proxyEngaged ? `${status.host} (fallback)` : status.host,
-      };
-    },
-    stop() {
-      primary.stop();
-      fallback.stop();
-    },
-  };
-}
-
-const binanceKlineStream = { create, shared, withFallback } as const;
+const binanceKlineStream = { create, shared } as const;
 
 export default binanceKlineStream;

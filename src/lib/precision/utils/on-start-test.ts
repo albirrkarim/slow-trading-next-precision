@@ -114,7 +114,7 @@ async function marketData(params: {
       }
       const markServed = symbols.length - unserved.length;
       // Any served symbol proves the stream delivers — an unserved subset
-      // is a coverage gap (e.g. not listed on the proxy market) that REST
+      // is a coverage gap (e.g. not listed on this market) that REST
       // absorbs per symbol, not a dead feed.
       const streamAlive = markServed > 0;
       items.push({
