@@ -189,6 +189,27 @@ describe("Binance kline stream", () => {
     });
   });
 
+  it("stays inert without throwing when no WebSocket transport exists", async () => {
+    // PROD:MARKET_LIVE_FEED — runtimes without a native WebSocket (older
+    // Node) must degrade to REST-only; track() must never throw through
+    // the stage.
+    const dead = binanceKlineStream.create({
+      marketType: "FUTURES",
+      createSocket: () => {
+        throw new ReferenceError("WebSocket is not defined");
+      },
+    });
+
+    expect(() => dead.track(["SUI"], "5m")).not.toThrow();
+    expect(dead.markPrice("SUI", "5m")).toBeUndefined();
+    expect(dead.closedKlines("SUI", "5m", 0)).toBeUndefined();
+
+    // It must not keep retrying: one logged failure, then stays disabled.
+    dead.track(["SUI"], "5m");
+    expect(mocks.error).toHaveBeenCalledTimes(1);
+    dead.stop();
+  });
+
   it("idle-closes the socket when nothing tracks it, then reconnects on demand", async () => {
     feed.track(["SUI"], "5m");
     sockets[0].open();

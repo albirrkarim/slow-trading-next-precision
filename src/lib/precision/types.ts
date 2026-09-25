@@ -179,8 +179,10 @@ export interface RuntimeEngineState {
 
   /**
    * Optional 24h quote volume per base symbol, used to cap entry margin via
-   * `maxEntryBased24HourVolPct`. Backtests seed it from caller-provided
-   * volume maps; production leaves it unset until a live feed lands.
+   * `maxEntryBased24HourVolPct`. Backtests seed it from the caller-provided
+   * volume map; production never populates it, so the liquidity cap is
+   * inactive there — the ticker-volume snapshot only feeds the dashboard UI
+   * and backtest inputs, never engine state.
    */
   volume24hMap?: Record<string, number>;
 }

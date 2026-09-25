@@ -105,6 +105,7 @@ function create(options: BinanceKlineStreamOptions) {
   const subscribed = new Set<string>();
   let socket: BinanceKlineStreamSocket | null = null;
   let socketOpen = false;
+  let socketFailed = false;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   let idleTimer: ReturnType<typeof setTimeout> | null = null;
   let reconnectDelay = RECONNECT_BASE_MS;
@@ -183,9 +184,22 @@ function create(options: BinanceKlineStreamOptions) {
   }
 
   function connect(): void {
-    if (stopped || socket) return;
+    if (stopped || socket || socketFailed) return;
 
-    const next = createSocket(url);
+    let next: BinanceKlineStreamSocket;
+    try {
+      next = createSocket(url);
+    } catch (error) {
+      // No usable transport — e.g. a runtime without native WebSocket. The
+      // feed stays inert so readers degrade to the REST fallback instead of
+      // track() throwing through the stage.
+      socketFailed = true;
+      systemLog.error(
+        "Binance kline stream unavailable — REST fallback active",
+        { error, url },
+      );
+      return;
+    }
     socket = next;
     socketOpen = false;
     next.onopen = () => {
