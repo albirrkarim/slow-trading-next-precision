@@ -91,40 +91,75 @@ Then theres two column of
 
 # F. Metrics
 
-Above two column i need the metrics
+Above the two columns sits the metrics block (`src/lib/dev/precisionChecker/metrics/`,
+client-side; the API returns raw data only). `metrics.build(result)` returns
+`{ overall, categories }` rendered as colored score cards:
 
-it will compare many aspects:
+- **Overall precision** — mean of the category scores, equal weight per aspect.
+- **Balance**, **Trades**, **Volatility points** — one card each; the card's
+  bullet list is the "breakdown why" — every metric line colored by its own
+  severity with `prod → bt · diff`.
 
-- initial Balance end balance. how many pct diff
+## Severity and scoring
 
-- trade history count how many pct diff
+Divergence is measured on **absolute** difference — a favorable direction still
+counts as wrong, because the goal is precision, not profitability.
 
-- diff count vpoints generated each symbol within test case range
+Each row resolves to `match | minor | major | none` via per-metric bands
+(`BANDS` in `metrics/index.ts`): below `minor` = match (green), below `major` =
+minor (orange), otherwise major (red), `none` = unscorable.
 
-- identical vpoints minute diff
+| Row kind | green | orange | red |
+|---|---|---|---|
+| Balance \|pct diff\| | <0.5 | <2 | >=2 |
+| Counts (trades, vPoints/symbol) | 0 | 1 | >=2 |
+| Unpaired leftovers | 0 | <=2 | >=3 |
+| Minute diffs | <1 | <5 | >=5 |
+| Price pct diffs | <0.05 | <0.25 | >=0.25 |
+| Averaging count/pair | <0.25 | <1 | >=1 |
+| Exit-reason mismatch | <10% of pairs | <33% | >=33% |
+| PnL USDT/pair, Margin/pair | <$0.5 | <$2 | >=$2 |
+| PnL pct, Max up/down pct/pair | <0.1pt | <0.5pt | >=0.5pt |
 
-we try to pair vpoint production vs vpoint backtest.
+Score per row: match 100, minor 60, major 0, none excluded. Category score =
+mean of its row scores; card severity bands at >=90 green / >=60 orange /
+else red.
 
-when the symbol level dd mm yyy HH is identical  so count it as can be paired.
+## Balance
 
-so count the vpoints pairable and unpairable
+- `Balance · {account}` — initial → production end → backtest end totals
+  (`initialState.balance`, `endState.balance`, last entry of the backtest
+  `balanceSnapshots`), diff `±$x (±y%)`.
 
-then based on the vpoints pairable we sum minute differentiate absolute / length of paired vpoints  
+## Trades
 
-then show metrics "diff minute/paired vpoint"
+`Trade history` count diff, then paired evaluation. Trade pairing
+(`metrics/trade-pairs.ts`): greedy one-to-one on
+`account | symbol | hour(opened.t)` — the nearest unconsumed backtest entry
+time inside the bucket wins.
 
+- `Trade pairs` — `paired/total` per side plus unpaired leftover count.
+- `Trade entry diff` — mean `|opened.t Δ|` min/pair.
+- `Trade exit diff` — mean `|closed.t Δ|` min/pair, both-closed pairs.
+- `Duration diff` — mean `|(closed.t−opened.t) Δ|` min, both-closed pairs.
+- `Entry price diff` / `Exit price diff` — mean `|price Δ| / prod price × 100`,
+  own denominators (pairs with a positive production price).
+- `Margin diff` — mean `|exposure.marginUsdt Δ|` USDT/pair.
+- `Quantity diff` — mean `|exposure.quantity Δ|` pct of production quantity.
+- `Averaging minute diff` — executions zipped by order index, `Σ|t Δ|` min
+  divided by trade-pair count.
+- `Averaging count diff` — mean `|executions.length Δ|`/pair.
+- `Exit reason diff` — pairs whose `closed.reason` differs, `n/pairs`.
+- `PnL diff USDT` / `PnL diff %` — mean `|pnl.netUsdt Δ|` / `|netPct Δ|`
+  (pct points) per pair.
+- `Max up diff` / `Max down diff` — mean `|pnl.maxUpPct Δ|` / `|maxDownPct Δ|`
+  per pair — intra-trade path fidelity.
 
-- Trade history pair
+## Volatility points
 
-We need to pair first trade history from the production and backtest
-
-based on the entry time 
-account slug + symbol+ dd mm yyyy hh
-
-then evaluate based on the paired record:
-
-- avg entry diff minute / pair
-- avg exit diff minute / pair
-- avg diff averaging minute / pair
-- avg diff averaging count / pair
-- avg diff exit reason count / pair
+- `vPoints · {symbol}` — count within `[testCase.startTime, endTime]`, union of
+  symbols, zero-count pairs hidden.
+- `vPoint pairs` — vPoint pairing (`metrics/pairs.ts`): greedy one-to-one on
+  `symbol | lvl | l | hour(t)` (T/B type included so tops never match bottoms);
+  nearest unconsumed backtest point in the bucket wins.
+- `vPoint minute diff` — `Σ|prod.t − bt.t|` min / pair count.
