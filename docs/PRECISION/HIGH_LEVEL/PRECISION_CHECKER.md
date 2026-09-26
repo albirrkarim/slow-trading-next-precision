@@ -101,3 +101,14 @@ it will compare many aspects:
 
 - diff count vpoints generated each symbol within test case range
 
+- identical vpoints minute diff
+
+we try to pair vpoint production vs vpoint backtest.
+
+when the symbol level dd mm yyy HH is identical  so count it as can be paired.
+
+so count the vpoints pairable and unpairable
+
+then based on the vpoints pairable we sum minute differentiate absolute / length of paired vpoints  
+
+then show metrics "diff minute/paired vpoint"

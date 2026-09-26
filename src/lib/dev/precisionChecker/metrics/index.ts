@@ -1,5 +1,6 @@
 import type { VolatilityPoint } from "@/lib/system/types";
 
+import pairVPoints from "./pairs";
 import type { PrecisionCheckerRunResult } from "../types";
 
 /** One rendered production↔backtest comparison row. */
@@ -128,7 +129,36 @@ function build(result: PrecisionCheckerRunResult): PrecisionCheckerMetricRow[] {
     })
     .filter((row) => row.production !== "0" || row.backtest !== "0");
 
-  return [...balanceRows, tradeCountRow, ...vPointRows];
+  const pairing = pairVPoints(
+    result.productionVPointsMap,
+    result.backtestVPointsMap,
+    startTime,
+    endTime,
+  );
+
+  const pairRows: PrecisionCheckerMetricRow[] = [
+    {
+      key: "vpoint-pairs",
+      metric: "vPoint pairs",
+      initial: "—",
+      production: `${pairing.prodPaired}/${pairing.prodTotal}`,
+      backtest: `${pairing.btPaired}/${pairing.btTotal}`,
+      diff: `${pairing.unpaired} unpaired`,
+    },
+    {
+      key: "vpoint-minute-diff",
+      metric: "vPoint minute diff",
+      initial: "—",
+      production: "—",
+      backtest: "—",
+      diff:
+        pairing.meanMinuteDiff != null
+          ? `${pairing.meanMinuteDiff.toFixed(2)} min/pair`
+          : "—",
+    },
+  ];
+
+  return [...balanceRows, tradeCountRow, ...vPointRows, ...pairRows];
 }
 
 const metrics = {
