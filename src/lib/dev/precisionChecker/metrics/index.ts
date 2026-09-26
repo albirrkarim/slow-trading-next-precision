@@ -1,6 +1,7 @@
 import type { VolatilityPoint } from "@/lib/system/types";
 
 import pairVPoints from "./pairs";
+import pairTrades from "./trade-pairs";
 import type { PrecisionCheckerRunResult } from "../types";
 
 /** One rendered production↔backtest comparison row. */
@@ -106,6 +107,66 @@ function build(result: PrecisionCheckerRunResult): PrecisionCheckerMetricRow[] {
     ),
   };
 
+  const trades = pairTrades(
+    result.productionHistory,
+    result.backtestHistory,
+  );
+
+  const tradePairRows: PrecisionCheckerMetricRow[] = [
+    {
+      key: "trade-pairs",
+      metric: "Trade pairs",
+      initial: "—",
+      production: `${trades.pairCount}/${trades.prodTotal}`,
+      backtest: `${trades.pairCount}/${trades.btTotal}`,
+      diff: `${trades.unpaired} unpaired`,
+    },
+    {
+      key: "trade-entry-diff",
+      metric: "Trade entry diff",
+      initial: "—",
+      production: "—",
+      backtest: "—",
+      diff:
+        trades.meanEntryMinuteDiff != null
+          ? `${trades.meanEntryMinuteDiff.toFixed(2)} min/pair`
+          : "—",
+    },
+    {
+      key: "trade-exit-diff",
+      metric: "Trade exit diff",
+      initial: "—",
+      production: "—",
+      backtest: "—",
+      diff:
+        trades.meanExitMinuteDiff != null
+          ? `${trades.meanExitMinuteDiff.toFixed(2)} min/pair`
+          : "—",
+    },
+    {
+      key: "trade-averaging-diff",
+      metric: "Averaging count diff",
+      initial: "—",
+      production: "—",
+      backtest: "—",
+      diff:
+        trades.meanAveragingCountDiff != null
+          ? `${trades.meanAveragingCountDiff.toFixed(2)} /pair`
+          : "—",
+    },
+    {
+      key: "trade-exit-reason-diff",
+      metric: "Exit reason diff",
+      initial: "—",
+      production: "—",
+      backtest: "—",
+      diff:
+        trades.pairCount > 0
+          ? `${trades.exitReasonMismatches}/${trades.pairCount} pairs`
+          : "—",
+    },
+  ];
+
   const vPointRows = vPointSymbols
     .map((symbol) => {
       const production = countInWindow(
@@ -158,7 +219,13 @@ function build(result: PrecisionCheckerRunResult): PrecisionCheckerMetricRow[] {
     },
   ];
 
-  return [...balanceRows, tradeCountRow, ...vPointRows, ...pairRows];
+  return [
+    ...balanceRows,
+    tradeCountRow,
+    ...tradePairRows,
+    ...vPointRows,
+    ...pairRows,
+  ];
 }
 
 const metrics = {

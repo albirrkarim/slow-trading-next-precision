@@ -112,3 +112,18 @@ so count the vpoints pairable and unpairable
 then based on the vpoints pairable we sum minute differentiate absolute / length of paired vpoints  
 
 then show metrics "diff minute/paired vpoint"
+
+
+- Trade history pair
+
+We need to pair first trade history from the production and backtest
+
+based on the entry time 
+account slug + symbol+ dd mm yyyy hh
+
+then evaluate based on the paired record:
+
+- avg entry diff minute / pair
+- avg exit diff minute / pair
+- avg diff averaging count / pair
+- avg diff exit reason count / pair
