@@ -73,28 +73,7 @@ storage/persistent/instances/3010/dev/precision-test-case/sandbox-<start>-<end>.
 
 TC: `PROD:PRODUCTION_TEST_CASE`
 
-# E. JSON comparison
-
-Recursively compare the union of leaf paths in both positions:
-
-- Object key order does not matter; array order does.
-- Missing, `null`, and present values are different states.
-- Strings and booleans require exact equality.
-- JSON numbers require exact equality in V1.
-- Exclude only `executionMode`; every other persisted position field is compared.
-
-Show both values for every difference. For unequal numbers, show absolute and
-percentage difference. Percentage difference is unavailable when production is
-zero; if both values are zero, they are equal.
-
-```text
-pair precision = equal leaf fields / all leaf fields × 100
-overall precision = equal leaves across pairs / all leaves across pairs × 100
-```
-
-When no candidate pair exists, overall precision is unavailable.
-
-# F. Page `/dev/precision-checker`
+# E. Page `/dev/precision-checker`
 
 
 I imagine like top section it list the all the production test cases that has been captured. then select it. 
@@ -109,3 +88,16 @@ Then theres two column of
 [production result] [backtest result]
 
 [table history]     [table history]
+
+# F. Metrics
+
+Above two column i need the metrics
+
+it will compare many aspects:
+
+- initial Balance end balance. how many pct diff
+
+- trade history count how many pct diff
+
+- diff count vpoints generated each symbol within test case range
+

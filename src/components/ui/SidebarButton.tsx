@@ -1,8 +1,9 @@
 "use client";
 
 import DashboardIcon from "@mui/icons-material/Dashboard";
+import DifferenceIcon from "@mui/icons-material/Difference";
 import MenuIcon from "@mui/icons-material/Menu";
-import ShowChartIcon from "@mui/icons-material/ShowChart";
+import QueryStatsIcon from "@mui/icons-material/QueryStats";
 import {
     Box,
     Divider,
@@ -40,13 +41,13 @@ const sidebarSections = [
             {
                 text: "Precision Checker",
                 href: "/dev/precision-checker",
-                icon: <ShowChartIcon />,
+                icon: <DifferenceIcon />,
                 description: "Precision checker",
             },
             {
                 text: "Backtest Precision",
                 href: "/dev/backtest-precision",
-                icon: <ShowChartIcon />,
+                icon: <QueryStatsIcon />,
                 description: "Inspect one symbol with chart context, volatility rails, and simulated trade behavior for debugging.",
             },
         ],
