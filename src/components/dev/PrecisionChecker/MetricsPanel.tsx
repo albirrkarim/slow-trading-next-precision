@@ -3,6 +3,7 @@
 import metrics, {
     type MetricSeverity,
     type PrecisionCheckerMetricCategory,
+    type PrecisionCheckerMetrics,
 } from "@/lib/dev/precisionChecker/metrics";
 import type { PrecisionCheckerRunResult } from "@/lib/dev/precisionChecker";
 import { alpha } from "@mui/material/styles";
@@ -93,12 +94,58 @@ function CategoryCard({ category }: { category: PrecisionCheckerMetricCategory }
     );
 }
 
+function OverallCard({ overall }: { overall: PrecisionCheckerMetrics["overall"] }) {
+    return (
+        <Card
+            variant="outlined"
+            sx={(theme) => ({
+                borderLeftWidth: 4,
+                borderLeftColor: severityColor(theme, overall.severity),
+                bgcolor: alpha(
+                    severityColor(theme, overall.severity),
+                    overall.severity === "none" ? 0.02 : 0.1,
+                ),
+            })}
+        >
+            <CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 } }}>
+                <Typography variant="body2" fontWeight={700}>
+                    Overall precision
+                </Typography>
+                <Typography
+                    variant="h4"
+                    fontWeight={800}
+                    sx={(theme) => ({
+                        color: severityColor(theme, overall.severity),
+                        mt: 0.5,
+                    })}
+                >
+                    {overall.score == null ? "n/a" : `${overall.score}`}
+                    <Typography
+                        component="span"
+                        variant="body2"
+                        fontWeight={600}
+                        color="text.secondary"
+                    >
+                        /100
+                    </Typography>
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                    mean across all aspects
+                </Typography>
+            </CardContent>
+        </Card>
+    );
+}
+
 export default function MetricsPanel({
     result,
 }: {
     result: PrecisionCheckerRunResult;
 }) {
-    const categories = useMemo(() => metrics.build(result), [result]);
+    const { overall, categories } = useMemo(
+        () => metrics.build(result),
+        [result],
+    );
 
     return (
         <Box component="section" aria-label="Precision metrics" sx={{ mt: 2 }}>
@@ -106,8 +153,11 @@ export default function MetricsPanel({
                 Metrics
             </Typography>
             <Grid container spacing={1.5}>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                    <OverallCard overall={overall} />
+                </Grid>
                 {categories.map((category) => (
-                    <Grid key={category.key} size={{ xs: 12, md: 4 }}>
+                    <Grid key={category.key} size={{ xs: 12, sm: 6, md: 3 }}>
                         <CategoryCard category={category} />
                     </Grid>
                 ))}

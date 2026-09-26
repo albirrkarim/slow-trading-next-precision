@@ -28,6 +28,13 @@ export interface PrecisionCheckerMetricCategory {
   rows: PrecisionCheckerMetricRow[];
 }
 
+/** Categorized metrics plus the aggregate score across all aspects. */
+export interface PrecisionCheckerMetrics {
+  /** Mean of the category scores — equal weight per aspect. */
+  overall: { score: number | null; severity: MetricSeverity };
+  categories: PrecisionCheckerMetricCategory[];
+}
+
 /** Points contributed per row severity — divergence magnitude only. */
 const ROW_SCORE: Record<MetricSeverity, number | null> = {
   none: null,
@@ -35,6 +42,14 @@ const ROW_SCORE: Record<MetricSeverity, number | null> = {
   minor: 60,
   major: 0,
 };
+
+/** Bands a 0-100 score into a severity: >=90 match, >=60 minor, else major. */
+function scoreSeverity(score: number | null): MetricSeverity {
+  if (score == null) return "none";
+  if (score >= 90) return "match";
+  if (score >= 60) return "minor";
+  return "major";
+}
 
 /** Scores a category: mean of row scores, severity banded at 90/60. */
 function toCategory(
@@ -49,9 +64,7 @@ function toCategory(
     scored.length === 0
       ? null
       : Math.round(scored.reduce((a, b) => a + b, 0) / scored.length);
-  const severity: MetricSeverity =
-    score == null ? "none" : score >= 90 ? "match" : score >= 60 ? "minor" : "major";
-  return { key, title, score, severity, rows };
+  return { key, title, score, severity: scoreSeverity(score), rows };
 }
 
 // Severity bands on the absolute diff: below `minor` = match (green), below
@@ -129,9 +142,7 @@ function countInWindow(
 }
 
 /** Builds the categorized metric comparison shown above the two result columns. */
-function build(
-  result: PrecisionCheckerRunResult,
-): PrecisionCheckerMetricCategory[] {
+function build(result: PrecisionCheckerRunResult): PrecisionCheckerMetrics {
   const { startTime, endTime } = result.testCase;
   const accountName = new Map(
     result.accounts.map((account) => [account.slug, account.name]),
@@ -379,11 +390,30 @@ function build(
     },
   ];
 
-  return [
+  const categories = [
     toCategory("balance", "Balance", balanceRows),
     toCategory("trades", "Trades", [tradeCountRow, ...tradePairRows]),
     toCategory("vpoints", "Volatility points", [...vPointRows, ...pairRows]),
   ];
+
+  const scoredCategories = categories
+    .map((category) => category.score)
+    .filter((score): score is number => score != null);
+  const overallScore =
+    scoredCategories.length === 0
+      ? null
+      : Math.round(
+          scoredCategories.reduce((a, b) => a + b, 0) /
+            scoredCategories.length,
+        );
+
+  return {
+    overall: {
+      score: overallScore,
+      severity: scoreSeverity(overallScore),
+    },
+    categories,
+  };
 }
 
 const metrics = {

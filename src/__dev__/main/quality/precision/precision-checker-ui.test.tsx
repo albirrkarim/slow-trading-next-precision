@@ -46,17 +46,29 @@ const testCase = {
   tradeCount: 1,
 };
 
+const positionFixture = (symbol: string) => ({
+  account: "acc-1",
+  symbol,
+  opened: { t: 1_000, price: 1, vPoint: { id: "vp", lvl: -2 } },
+  closed: { t: 2_000, price: 1.1, reason: "volatility" },
+  strategy: { averaging: { executions: [] } },
+  pnl: { netUsdt: 1, netPct: 1 },
+});
+
 const runResult = {
   testCase,
   accounts: [{ slug: "acc-1", name: "Account 1" }],
   exchangeType: "binance",
-  productionHistory: [{ symbol: "SUI" }],
-  backtestHistory: [{ symbol: "BACK" }],
+  initialBalance: { "acc-1": { total: 100 } },
+  productionEndBalance: { "acc-1": { total: 101 } },
+  backtestBalanceSnapshots: { "acc-1": [{ t: 2_000, total: 101 }] },
+  productionHistory: [positionFixture("SUI")],
+  backtestHistory: [positionFixture("BACK")],
   productionVPointsMap: {
     SUI: [{ id: "prod", t: 1_000, l: "B", lvl: -2, pct: 5, p: 1 }],
   },
   backtestVPointsMap: {
-    BTC: [{ id: "back", t: 2_000, l: "T", lvl: 3, pct: 6, p: 2 }],
+    LINK: [{ id: "back", t: 2_000, l: "T", lvl: 3, pct: 6, p: 2 }],
   },
 };
 
@@ -94,7 +106,7 @@ describe("Precision Checker page", () => {
     const charts = screen.getAllByTestId("volatility-chart");
     expect(charts).toHaveLength(2);
     expect(charts[0].textContent).toBe('{"names":["SUI"],"levels":[[-2]]}');
-    expect(charts[1].textContent).toBe('{"names":["BTC"],"levels":[[3]]}');
+    expect(charts[1].textContent).toBe('{"names":["LINK"],"levels":[[3]]}');
 
     await user.click(screen.getByText("Production Volatility points"));
     expect(screen.getAllByTestId("volatility-chart")).toHaveLength(1);
@@ -105,6 +117,10 @@ describe("Precision Checker page", () => {
 
     await user.click(screen.getByText("Production Volatility points"));
     expect(screen.getAllByTestId("volatility-chart")).toHaveLength(1);
+
+    // History sections are collapsed by default — expand both.
+    await user.click(screen.getByText("Production History (1)"));
+    await user.click(screen.getByText("Backtest History (1)"));
 
     const tables = screen.getAllByTestId("trades-table");
     expect(tables).toHaveLength(2);
