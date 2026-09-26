@@ -23,15 +23,16 @@
  *      and filters the result — a separate veto member adds nothing.
  *   4. `onAction`                 — environment execution (sandbox fill or
  *      live order) plus notifications. Not strategy-overridable.
- *   5. `onExit`                   — environment persistence runs first,
- *      then the strategy's `onExit` observes the closed position.
+ *   5. `onActionResult`           — the strategy observes the outcome:
+ *      success carries the produced position (entries, averagings, and
+ *      exits alike), failure carries null.
  *
  * See docs/TODO/multi_strategy.md for the full assessment.
  */
 
 import type { Position } from "@/lib/system/trading";
 import type {
-  OnExit,
+  OnActionResult,
   RuntimeAveragingDecision,
   RuntimeContext,
   RuntimeEntryDecision,
@@ -93,10 +94,12 @@ export interface StrategyDecisionProducers {
  * Deliberately absent: `onStrategy` (producers express suppression by not
  * emitting or by filtering a wrapped `defaultDecision`), `onAction`
  * (execution is environment-owned — sandbox fill vs live order plus
- * atomic pair rollback are adapter concerns, not strategy concerns), and
- * a state port (strategy-owned records — e.g. streak pending re-entries —
- * live in the free-form `RuntimeEngineState.strategy` slot that snapshots
- * carry into test cases automatically).
+ * atomic pair rollback are adapter concerns, not strategy concerns),
+ * `onExit` (a close is just an `onActionResult("success")` whose
+ * `decision.type === "exit"`), and a state port (strategy-owned records —
+ * e.g. streak pending re-entries — live in the free-form
+ * `RuntimeEngineState.strategy` slot that snapshots carry into test cases
+ * automatically).
  */
 export interface StrategyAPI {
   /** Module slug — must match the `src/lib/strategies/<slug>` folder. */
@@ -115,11 +118,16 @@ export interface StrategyAPI {
   decisions?: StrategyDecisionProducers;
 
   /**
-   * Called with a closed position AFTER the environment's persistence
-   * (account state + history append). Observation hook — not the exit
-   * decision itself, which belongs to `decisions.exit`.
+   * Called after `adapter.onAction` ran a decision — `"success"` carries
+   * the produced position, `"failed"` carries `null`. This is the
+   * strategy's commit point for bookkeeping a producer cannot express:
+   * e.g. streak registers a pending re-entry only once the parent entry
+   * actually filled, `both` marks a pair leg filled, and a closed
+   * position is observed via `decision.type === "exit"` on success.
+   * Runs after the engine's own bookkeeping and before the env
+   * persistence flush; vetoed candidates never reach `onAction`.
    */
-  onExit?: OnExit;
+  onActionResult?: OnActionResult;
 
   /**
    * Optional boot-time validation — e.g. a `both` strategy verifies the

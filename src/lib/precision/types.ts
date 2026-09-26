@@ -1,3 +1,4 @@
+import type { StrategyAPI } from "@/lib/strategy/type";
 import type { FetchKlines, Kline, VolatilityPoint } from "@/lib/system/types";
 import type {
   AveragingRecommendation,
@@ -285,6 +286,19 @@ export type OnExit = (
 ) => Promise<void>;
 
 /**
+ * Observation hook fired once `adapter.onAction` ran: `"success"` carries
+ * the produced position, `"failed"` a null — so strategy bookkeeping can
+ * distinguish a real fill from a rejected execution. Vetoed candidates
+ * never reach `onAction`, so they produce no result.
+ */
+export type OnActionResult = (
+  result: "success" | "failed",
+  decision: RuntimeDecision,
+  position: Position | null,
+  context: RuntimeContext,
+) => Promise<void> | void;
+
+/**
  * Environment bridge supplied to the shared engine — one implementation for
  * the backtest, one for production live/sandbox.
  */
@@ -322,10 +336,11 @@ export interface RuntimeEngineAdapter {
   ) => Promise<void>;
 
   /**
-   * Final strategy gate before an action executes. The shared engine builds a
-   * default decision from the runtime snapshot and config; this hook approves
-   * or rejects it so outer strategies (multi, hedge, both) can adapt behavior
-   * without forking the engine.
+   * Environment's final approval gate between a produced candidate and
+   * `onAction`. Each environment applies its own policy — production runs
+   * `isActionAllowed` (account eligibility, daily-PnL stop), backtests
+   * apply run-window cutoffs — so env rules stay out of the shared engine
+   * and the decision producers.
    */
   onStrategy: OnStrategy;
 
@@ -432,4 +447,10 @@ export interface RuntimeContext {
   helper: RuntimeHelper;
   /** Canonical mutable runtime state shared by backtest and production flows. */
   state: RuntimeEngineState;
+  /**
+   * Resolved strategy module plugged into this engine — undefined means the
+   * built-in default pipeline. Distinct from `state.strategy`, which is the
+   * strategy-owned free-form data slot this module reads and writes.
+   */
+  strategy?: StrategyAPI;
 }

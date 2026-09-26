@@ -30,6 +30,13 @@ export class RuntimeEngine {
   /** Convenience layer over `state` shared with every stage body. */
   helper: RuntimeHelper;
 
+  /**
+   * Resolved strategy plug-in; absent means the built-in default pipeline.
+   * Carried on every `RuntimeContext` so stages swap decision producers
+   * and fire the strategy's observation hooks.
+   */
+  strategy?: RuntimeContext["strategy"];
+
   /** True once the first market-data warmup inside `start()` completes. */
   private ready = false;
 
@@ -40,9 +47,14 @@ export class RuntimeEngine {
   private queue: Promise<unknown> = Promise.resolve();
 
   /** Wires the shared state and environment adapter into one engine. */
-  constructor(state: RuntimeEngineState, adapter: RuntimeEngineAdapter) {
+  constructor(
+    state: RuntimeEngineState,
+    adapter: RuntimeEngineAdapter,
+    strategy?: RuntimeContext["strategy"],
+  ) {
     this.state = state;
     this.adapter = adapter;
+    this.strategy = strategy;
     this.helper = createRuntimeHelper(state, adapter);
   }
 
@@ -69,6 +81,10 @@ export class RuntimeEngine {
 
     systemLog.info("\n\nRUNTIME ENGINE STARTED");
     systemLog.info(preview.state(this.state));
+
+    // Boot-time strategy validation (e.g. hedge-mode position check) —
+    // throws surface to the caller instead of failing mid-cycle.
+    await this.strategy?.preflight?.(this.context);
 
     try {
       // Startup probe: reads one kline batch per symbol through the adapter
@@ -174,6 +190,7 @@ export class RuntimeEngine {
       },
       helper: this.helper,
       state: this.state,
+      strategy: this.strategy,
     };
 
     const startedAt = Date.now();
@@ -366,6 +383,7 @@ export class RuntimeEngine {
       adapter: this.adapter,
       helper: this.helper,
       state: this.state,
+      strategy: this.strategy,
     };
   }
 }

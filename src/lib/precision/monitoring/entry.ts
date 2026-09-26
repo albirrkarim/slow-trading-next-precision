@@ -74,7 +74,10 @@ async function executeDecision(
   // C. then the actual entry
   // context.adapter.onAction
   const position = await context.adapter.onAction(decision, context);
-  if (!position) return null;
+  if (!position) {
+    await context.strategy?.onActionResult?.("failed", decision, null, context);
+    return null;
+  }
   if (
     position.account !== decision.accountSlug ||
     position.symbol.toUpperCase() !== decision.symbol
@@ -98,6 +101,10 @@ async function executeDecision(
     recommendation: decision.entrySignal,
     volatilityPoints: context.state.vPointsMap[decision.symbol],
   });
+  // Strategy bookkeeping (e.g. registering pair legs or pending re-entries)
+  // commits only on a real fill — before onStateChange so its state
+  // mutations persist in the same flush.
+  await context.strategy?.onActionResult?.("success", decision, position, context);
   await context.adapter.onStateChange?.(context, decision.accountSlug);
 
   return position;
@@ -110,7 +117,8 @@ async function captureEntry(context: RuntimeContext): Promise<void> {
   // context.state.vPointsMap
   // find existing function that doing that or maybe we create it inside the
   // src/lib/precision/defaultDecision
-  const decisions = await defaultDecision.entry.find(context);
+  const producer = context.strategy?.decisions?.entry ?? defaultDecision.entry;
+  const decisions = await producer.find(context);
 
   for (const decision of decisions) {
     await executeDecision(context, decision);

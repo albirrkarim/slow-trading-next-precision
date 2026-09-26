@@ -157,7 +157,13 @@ so we plug choosenStragey.onStrategy  and choosenStragey.onExit into the product
 
 # Decided contract
 
-The plug contract is defined in `src/lib/strategy/type.d.ts` (`StrategyAPI`).
+The plug contract is defined in `src/lib/strategy/type.d.ts` (`StrategyAPI`)
+and is wired into the shared engine: `RuntimeEngine(state, adapter, strategy?)`
+carries it on every `RuntimeContext` (`context.strategy`), so stages swap
+`defaultDecision.<family>` for `strategy.decisions.<family>` when present,
+fire `strategy.onActionResult` after each `onAction` outcome (before the
+env `onStateChange`/`onExit` persistence), and run `strategy.preflight`
+during `start()`.
 
 Review of the proposal above: the adapter seam and lazy import are right,
 but `{ onStrategy, onExit }` alone under-covers the requirements — those
@@ -167,6 +173,12 @@ two are a veto gate and a post-close persistence hook. The contract keeps
 - `decisions` — per-family candidate producers mirroring
   `defaultDecision.{entry,averaging,exit}.find`. This is how a strategy
   *produces* decisions (both's MAIN+COUNTER pair, streak's re-entries).
+- `onActionResult(result, decision, position)` — post-execution
+  observation covering both outcomes: `"success"` carries the produced
+  position (entries, averagings, and exits — a close is just a success
+  whose `decision.type === "exit"`), `"failed"` carries `null`. Strategy
+  bookkeeping commits on real fills, never on vetoed or failed
+  candidates.
 - `state` — dropped as a port; strategy-owned persisted records (e.g.
   streak pending re-entries) live in the free-form
   `RuntimeEngineState.strategy` slot, which `PrecisionRuntimeSnapshot`
@@ -182,8 +194,10 @@ produced candidates stays environment-side (`adapter.onStrategy` ANDs with
 runs after environment persistence; `onAction` is never
 strategy-overridable.
 
-Still open (tracked above): `config.strategy` field, per-account
-`entryLegs`, `futuresPositionMode`, the decision metadata slot carrying
+Still open (tracked above): `config.strategy` field plus the slug→module
+resolution that passes a `StrategyAPI` into `new RuntimeEngine(...)`
+(`src/lib/strategies/` does not exist yet), per-account `entryLegs`,
+`futuresPositionMode`, the decision metadata slot carrying
 `pairId`/`role`, `Position.strategy.logic`, atomic pair execution
 (`onAction` still returns a single `Position`), and a production storage
 channel for `state.strategy` — engine state is rebuilt per-account on

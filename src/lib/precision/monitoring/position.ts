@@ -80,7 +80,9 @@ async function averaging(
   // context.state.vPointsMap
   // find existing function that doing that or maybe we create it inside the
   // src/lib/precision/defaultDecision
-  const decision = await defaultDecision.averaging.find(context, position);
+  const producer =
+    context.strategy?.decisions?.averaging ?? defaultDecision.averaging;
+  const decision = await producer.find(context, position);
   if (!decision) return null;
 
   // B. Give the outer strategy an opportunity to approve or reject the
@@ -95,7 +97,10 @@ async function averaging(
   const reservedBefore =
     position.strategy.averaging.reservedRemainingMarginUsdt;
   const updatedPosition = await context.adapter.onAction(decision, context);
-  if (!updatedPosition) return null;
+  if (!updatedPosition) {
+    await context.strategy?.onActionResult?.("failed", decision, null, context);
+    return null;
+  }
   assertMatchingPosition(decision, updatedPosition);
   if (updatedPosition.closed) {
     throw new Error("Averaging action returned a closed position.");
@@ -137,6 +142,12 @@ async function averaging(
     volatilityPoints: context.state.vPointsMap[decision.symbol],
   });
 
+  await context.strategy?.onActionResult?.(
+    "success",
+    decision,
+    updatedPosition,
+    context,
+  );
   await context.adapter.onStateChange?.(context, decision.accountSlug);
 
   return updatedPosition;
@@ -153,7 +164,9 @@ async function exit(
   // context.state.vPointsMap
   // find existing function that doing that or maybe we create it inside the
   // src/lib/precision/defaultDecision
-  const decision = await defaultDecision.exit.find(context, position);
+  const producer =
+    context.strategy?.decisions?.exit ?? defaultDecision.exit;
+  const decision = await producer.find(context, position);
   if (!decision) return false;
 
   // B. Give the outer strategy an opportunity to approve or reject the
@@ -163,7 +176,10 @@ async function exit(
   // C. Ask the environment adapter to execute the exit action.
   // Backtest/sandbox adapters simulate the close; a live adapter submits it.
   const closedPosition = await context.adapter.onAction(decision, context);
-  if (!closedPosition) return false;
+  if (!closedPosition) {
+    await context.strategy?.onActionResult?.("failed", decision, null, context);
+    return false;
+  }
   assertMatchingPosition(decision, closedPosition);
   if (!closedPosition.closed) {
     throw new Error("Exit action returned a position without closed details.");
@@ -199,7 +215,14 @@ async function exit(
   );
   balance.total = balance.available + balance.locked;
 
-  // F. Persist the closed position after the shared state is fully updated.
+  // F. Persist the closed position after the shared state is fully updated;
+  // the strategy observes the close via onActionResult before persistence.
+  await context.strategy?.onActionResult?.(
+    "success",
+    decision,
+    closedPosition,
+    context,
+  );
   await context.adapter.onExit(closedPosition, context);
 
   return true;
