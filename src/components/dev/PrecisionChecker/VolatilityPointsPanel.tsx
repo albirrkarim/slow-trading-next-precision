@@ -34,7 +34,7 @@ export default function VolatilityPointsPanel({
                 defaultExpanded
                 headerCanBeClicked
                 rememberExpand={`precision-checker:${title}`}
-                title={<Typography variant="h6">{title}</Typography>}
+                title={<Typography variant="body1" fontWeight={600}>{title}</Typography>}
             >
                 {(expanded) =>
                     expanded &&

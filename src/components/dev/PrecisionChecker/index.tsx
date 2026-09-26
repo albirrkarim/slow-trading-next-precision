@@ -45,8 +45,20 @@ function RunResultView({ result }: { result: PrecisionCheckerRunResult }) {
     }));
 
     const panels = [
-        { title: "Production History", history: productionHistory, mode: result.testCase.mode },
-        { title: "Backtest History", history: backtestHistory, mode: "sandbox" as const },
+        {
+            title: "Production History",
+            history: productionHistory,
+            mode: result.testCase.mode,
+            vPointsMap: result.productionVPointsMap,
+            vPointsTitle: "Production Volatility points",
+        },
+        {
+            title: "Backtest History",
+            history: backtestHistory,
+            mode: "sandbox" as const,
+            vPointsMap: result.backtestVPointsMap,
+            vPointsTitle: "Backtest Volatility points",
+        },
     ];
 
     return (
@@ -58,21 +70,14 @@ function RunResultView({ result }: { result: PrecisionCheckerRunResult }) {
                 {testCaseLabel(result.testCase)} · {result.exchangeType}
             </Typography>
 
-            <Box sx={{ display: "grid", gap: 2, mt: 2 }}>
-                <VolatilityPointsPanel
-                    title="Production Volatility points"
-                    volatilityMap={result.productionVPointsMap}
-                />
-                <VolatilityPointsPanel
-                    title="Backtest Volatility points"
-                    volatilityMap={result.backtestVPointsMap}
-                />
-            </Box>
-
-            <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid container spacing={2} sx={{ mt: 2 }}>
                 {panels.map((panel) => (
                     <Grid key={panel.title} size={{ xs: 12, md: 6 }}>
-                        <Typography variant="h6" sx={{ mb: 1 }}>
+                        <VolatilityPointsPanel
+                            title={panel.vPointsTitle}
+                            volatilityMap={panel.vPointsMap}
+                        />
+                        <Typography variant="body1" fontWeight={600} sx={{ mb: 1, mt: 2 }}>
                             {panel.title} ({panel.history.length})
                         </Typography>
                         <Box sx={{ overflowX: "auto" }}>

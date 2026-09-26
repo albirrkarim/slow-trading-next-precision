@@ -40,7 +40,7 @@ import RangedValueText, {
 } from "./RangedValueText";
 import type { SlowTradingReportRow } from "./types";
 import { formatHoldMs } from "./utils";
-import { positionData  } from "@/lib/system/trading";
+import { positionData } from "@/lib/system/trading";
 import TradeHistoryNotesField from "./TradeHistoryNotesField";
 import JsonTreeViewer from "@/components/LiveDashboard/Shared/JsonTreeViewer";
 import type { RuntimeAccountConfig, RuntimeMode } from "@/lib/system/runtime";
@@ -188,6 +188,8 @@ export function TradeAuditMessage({ message }: { message?: string }) {
     </Typography>
   );
 }
+
+
 
 function formatTradeTime({
   compareTimeMs,
@@ -758,6 +760,9 @@ export function TradesTableSection({
                       {positionData.entry.label(row)}
                     </Typography>
                     <TradeAuditMessage message={row.opened.message} />
+                    <Typography variant="body2" color="text.secondary">
+                      {row.opened.vPoint?.id}
+                    </Typography>
                   </TableCell>
                   <TableCell align="right">
                     <MetricTooltip title="Entry margin assigned to the position in USDT.">
@@ -787,6 +792,11 @@ export function TradesTableSection({
                       {positionData.close.label(row)}
                     </Typography>
                     <TradeAuditMessage message={row.closed?.message} />
+
+                    <Typography variant="body2" color="text.secondary">
+                      {row.closed?.vPoint?.id}
+                    </Typography>
+
                     {!readOnly && (
                       <TradeHistoryNotesField
                         mode={mode}
