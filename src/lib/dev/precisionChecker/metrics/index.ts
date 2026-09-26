@@ -244,6 +244,18 @@ function build(result: PrecisionCheckerRunResult): PrecisionCheckerMetrics {
       severity: severityOf(trades.meanExitMinuteDiff, BANDS.minutes),
     },
     {
+      key: "trade-duration-diff",
+      metric: "Duration diff",
+      initial: "—",
+      production: "—",
+      backtest: "—",
+      diff:
+        trades.meanDurationMinuteDiff != null
+          ? `${trades.meanDurationMinuteDiff.toFixed(2)} min/pair`
+          : "—",
+      severity: severityOf(trades.meanDurationMinuteDiff, BANDS.minutes),
+    },
+    {
       key: "trade-entry-price-diff",
       metric: "Entry price diff",
       initial: "—",
@@ -266,6 +278,30 @@ function build(result: PrecisionCheckerRunResult): PrecisionCheckerMetrics {
           ? `${trades.meanExitPricePctDiff.toFixed(2)} pct/pair`
           : "—",
       severity: severityOf(trades.meanExitPricePctDiff, BANDS.pricePct),
+    },
+    {
+      key: "trade-margin-diff",
+      metric: "Margin diff",
+      initial: "—",
+      production: "—",
+      backtest: "—",
+      diff:
+        trades.meanMarginUsdtDiff != null
+          ? `$${trades.meanMarginUsdtDiff.toFixed(2)} /pair`
+          : "—",
+      severity: severityOf(trades.meanMarginUsdtDiff, BANDS.pnlUsdt),
+    },
+    {
+      key: "trade-quantity-diff",
+      metric: "Quantity diff",
+      initial: "—",
+      production: "—",
+      backtest: "—",
+      diff:
+        trades.meanQuantityPctDiff != null
+          ? `${trades.meanQuantityPctDiff.toFixed(2)} pct/pair`
+          : "—",
+      severity: severityOf(trades.meanQuantityPctDiff, BANDS.pricePct),
     },
     {
       key: "trade-averaging-minute-diff",
@@ -332,6 +368,30 @@ function build(result: PrecisionCheckerRunResult): PrecisionCheckerMetrics {
           ? `${trades.meanPnlPctDiff.toFixed(2)} pct/pair`
           : "—",
       severity: severityOf(trades.meanPnlPctDiff, BANDS.pnlPct),
+    },
+    {
+      key: "trade-max-up-diff",
+      metric: "Max up diff",
+      initial: "—",
+      production: "—",
+      backtest: "—",
+      diff:
+        trades.meanMaxUpPctDiff != null
+          ? `${trades.meanMaxUpPctDiff.toFixed(2)} pct/pair`
+          : "—",
+      severity: severityOf(trades.meanMaxUpPctDiff, BANDS.pnlPct),
+    },
+    {
+      key: "trade-max-down-diff",
+      metric: "Max down diff",
+      initial: "—",
+      production: "—",
+      backtest: "—",
+      diff:
+        trades.meanMaxDownPctDiff != null
+          ? `${trades.meanMaxDownPctDiff.toFixed(2)} pct/pair`
+          : "—",
+      severity: severityOf(trades.meanMaxDownPctDiff, BANDS.pnlPct),
     },
   ];
 

@@ -34,6 +34,22 @@ export interface TradePairing {
   meanPnlUsdtDiff: number | null;
   /** Mean |pnl.netPct diff| in pct points across pairs — null when no pairs. */
   meanPnlPctDiff: number | null;
+  /** Mean |pnl.maxUpPct diff| in pct points across pairs — null when no pairs. */
+  meanMaxUpPctDiff: number | null;
+  /** Mean |pnl.maxDownPct diff| in pct points across pairs — null when no pairs. */
+  meanMaxDownPctDiff: number | null;
+  /** Mean |exposure.marginUsdt diff| in USDT across pairs — null when no pairs. */
+  meanMarginUsdtDiff: number | null;
+  /**
+   * Mean |exposure.quantity diff| as % of the production quantity across
+   * pairs contributing a quantity — null when none.
+   */
+  meanQuantityPctDiff: number | null;
+  /**
+   * Mean |closed.t − opened.t diff| in minutes across pairs where both
+   * sides closed — null when none.
+   */
+  meanDurationMinuteDiff: number | null;
   /** Pairs whose `closed.reason` differs. */
   exitReasonMismatches: number;
 }
@@ -82,6 +98,13 @@ function pairTrades(
   let averagingPairCount = 0;
   let sumPnlUsdtDiff = 0;
   let sumPnlPctDiff = 0;
+  let sumMaxUpPctDiff = 0;
+  let sumMaxDownPctDiff = 0;
+  let sumMarginUsdtDiff = 0;
+  let sumQuantityPctDiff = 0;
+  let quantityPairCount = 0;
+  let sumDurationMinuteDiff = 0;
+  let durationPairCount = 0;
   let sumEntryPricePctDiff = 0;
   let entryPricePairCount = 0;
   let sumExitPricePctDiff = 0;
@@ -115,7 +138,27 @@ function pairTrades(
         100;
     }
 
+    if (prodPosition.exposure.quantity > 0) {
+      quantityPairCount++;
+      sumQuantityPctDiff +=
+        (Math.abs(
+          btPosition.exposure.quantity - prodPosition.exposure.quantity,
+        ) /
+          prodPosition.exposure.quantity) *
+        100;
+    }
+    sumMarginUsdtDiff += Math.abs(
+      prodPosition.exposure.marginUsdt - btPosition.exposure.marginUsdt,
+    );
+
     if (prodPosition.closed && btPosition.closed) {
+      durationPairCount++;
+      sumDurationMinuteDiff +=
+        Math.abs(
+          prodPosition.closed.t -
+            prodPosition.opened.t -
+            (btPosition.closed.t - btPosition.opened.t),
+        ) / MINUTE_MS;
       sumExitMinuteDiff +=
         Math.abs(prodPosition.closed.t - btPosition.closed.t) / MINUTE_MS;
       if (prodPosition.closed.price > 0) {
@@ -141,6 +184,13 @@ function pairTrades(
     );
     sumPnlPctDiff += Math.abs(
       (prodPosition.pnl.netPct ?? 0) - (btPosition.pnl.netPct ?? 0),
+    );
+    sumMaxUpPctDiff += Math.abs(
+      (prodPosition.pnl.maxUpPct ?? 0) - (btPosition.pnl.maxUpPct ?? 0),
+    );
+    sumMaxDownPctDiff += Math.abs(
+      (prodPosition.pnl.maxDownPct ?? 0) -
+        (btPosition.pnl.maxDownPct ?? 0),
     );
 
     const prodExecs = prodPosition.strategy.averaging.executions ?? [];
@@ -175,6 +225,15 @@ function pairTrades(
       exitPricePairCount > 0 ? sumExitPricePctDiff / exitPricePairCount : null,
     meanPnlUsdtDiff: pairCount > 0 ? sumPnlUsdtDiff / pairCount : null,
     meanPnlPctDiff: pairCount > 0 ? sumPnlPctDiff / pairCount : null,
+    meanMaxUpPctDiff: pairCount > 0 ? sumMaxUpPctDiff / pairCount : null,
+    meanMaxDownPctDiff:
+      pairCount > 0 ? sumMaxDownPctDiff / pairCount : null,
+    meanMarginUsdtDiff:
+      pairCount > 0 ? sumMarginUsdtDiff / pairCount : null,
+    meanQuantityPctDiff:
+      quantityPairCount > 0 ? sumQuantityPctDiff / quantityPairCount : null,
+    meanDurationMinuteDiff:
+      durationPairCount > 0 ? sumDurationMinuteDiff / durationPairCount : null,
     exitReasonMismatches,
   };
 }

@@ -52,6 +52,7 @@ const positionFixture = (symbol: string) => ({
   opened: { t: 1_000, price: 1, vPoint: { id: "vp", lvl: -2 } },
   closed: { t: 2_000, price: 1.1, reason: "volatility" },
   strategy: { averaging: { executions: [] } },
+  exposure: { quantity: 10, marginUsdt: 5 },
   pnl: { netUsdt: 1, netPct: 1 },
 });
 
