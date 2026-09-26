@@ -76,6 +76,17 @@ function RunResultView({ result }: { result: PrecisionCheckerRunResult }) {
                         <VolatilityPointsPanel
                             title={panel.vPointsTitle}
                             volatilityMap={panel.vPointsMap}
+                            referenceLines={[
+                                {
+                                    timeMs: result.testCase.startTime,
+                                    label: `REC ${format.timeMsToReadable(result.testCase.startTime, "DD MMM HH:mm")}`,
+                                },
+                                {
+                                    timeMs: result.testCase.endTime,
+                                    label: `END ${format.timeMsToReadable(result.testCase.endTime, "DD MMM HH:mm")}`,
+                                    color: "#f57c00",
+                                },
+                            ]}
                         />
                         <Typography variant="body1" fontWeight={600} sx={{ mb: 1, mt: 2 }}>
                             {panel.title} ({panel.history.length})

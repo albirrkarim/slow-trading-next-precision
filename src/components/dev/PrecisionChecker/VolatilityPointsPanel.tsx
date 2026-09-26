@@ -11,9 +11,11 @@ import { Box, Typography } from "@mui/material";
 export default function VolatilityPointsPanel({
     title,
     volatilityMap,
+    referenceLines,
 }: {
     title: string;
     volatilityMap: Record<string, VolatilityPoint[]>;
+    referenceLines?: { timeMs: number; label?: string; color?: string }[];
 }) {
     const chartData = useMemo(() => {
         const names = Object.keys(volatilityMap)
@@ -45,6 +47,7 @@ export default function VolatilityPointsPanel({
                             names={chartData.names}
                             series={chartData.series}
                             height={420}
+                            referenceLines={referenceLines}
                         />
                     ) : (
                         <Typography color="text.secondary" variant="body2" sx={{ py: 2 }}>

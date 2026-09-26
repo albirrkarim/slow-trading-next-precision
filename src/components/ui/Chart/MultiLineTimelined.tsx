@@ -16,6 +16,7 @@ import {
   CartesianGrid,
   Legend,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -34,6 +35,8 @@ export interface VolatilityMultiLineProps {
   height?: number;
   defaultShowEntryGroups?: boolean;
   yTickFormatter?: (value: unknown) => string;
+  /** Vertical markers drawn at absolute times, e.g. a recorded window. */
+  referenceLines?: { timeMs: number; label?: string; color?: string }[];
 }
 
 function MultiLineTimelined({
@@ -43,6 +46,7 @@ function MultiLineTimelined({
   height = 420,
   defaultShowEntryGroups = false,
   yTickFormatter,
+  referenceLines,
 }: VolatilityMultiLineProps) {
   const { data, textMaps } = useMemo(() => buildMergedData(series), [series]);
   const xAxisDateFormat = useMemo(() => {
@@ -314,6 +318,27 @@ function MultiLineTimelined({
             visible={visible}
             showTradeGroup={effectiveShowTradeGroup}
           />
+
+          {referenceLines?.map((line) => (
+            <ReferenceLine
+              key={`${line.timeMs}-${line.label ?? ""}`}
+              x={line.timeMs}
+              stroke={line.color ?? "#d32f2f"}
+              strokeDasharray="6 3"
+              strokeWidth={1.5}
+              ifOverflow="extendDomain"
+              label={
+                line.label
+                  ? {
+                      value: line.label,
+                      position: "insideTopRight",
+                      fontSize: 11,
+                      fill: line.color ?? "#d32f2f",
+                    }
+                  : undefined
+              }
+            />
+          ))}
 
           <Brush
             dataKey="timeMs"
