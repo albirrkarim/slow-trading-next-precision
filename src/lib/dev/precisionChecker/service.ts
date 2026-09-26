@@ -171,6 +171,9 @@ async function run(fileName: string): Promise<PrecisionCheckerRunResult> {
     ),
     productionVPointsMap,
     backtestVPointsMap: result.vPointsMap,
+    initialBalance: testCase.initialState.balance,
+    productionEndBalance: testCase.endState?.balance ?? {},
+    backtestBalanceSnapshots: result.balanceSnapshots,
   };
 }
 

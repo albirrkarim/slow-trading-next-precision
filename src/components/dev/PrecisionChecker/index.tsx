@@ -24,6 +24,7 @@ import {
 import axios from "axios";
 import { useEffect, useState } from "react";
 
+import MetricsPanel from "./MetricsPanel";
 import VolatilityPointsPanel from "./VolatilityPointsPanel";
 
 const TRADE_TIME_FORMAT = "DD MMM YYYY HH:mm";
@@ -69,6 +70,8 @@ function RunResultView({ result }: { result: PrecisionCheckerRunResult }) {
             <Typography variant="body2" color="text.secondary" gutterBottom>
                 {testCaseLabel(result.testCase)} · {result.exchangeType}
             </Typography>
+
+            <MetricsPanel result={result} />
 
             <Grid container spacing={2} sx={{ mt: 2 }}>
                 {panels.map((panel) => (
