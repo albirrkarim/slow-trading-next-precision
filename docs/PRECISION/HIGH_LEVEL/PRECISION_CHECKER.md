@@ -125,5 +125,6 @@ then evaluate based on the paired record:
 
 - avg entry diff minute / pair
 - avg exit diff minute / pair
+- avg diff averaging minute / pair
 - avg diff averaging count / pair
 - avg diff exit reason count / pair

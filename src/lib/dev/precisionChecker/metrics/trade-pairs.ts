@@ -13,6 +13,17 @@ export interface TradePairing {
   meanExitMinuteDiff: number | null;
   /** Mean |averaging executions diff| across pairs — null when no pairs. */
   meanAveragingCountDiff: number | null;
+  /**
+   * Mean |execution t diff| in minutes across pairs — executions pair by
+   * order index, leftovers ignored; divided by trade-pair count.
+   */
+  meanAveragingMinuteDiff: number | null;
+  /** Total averaging-execution pairs zipped across all trade pairs. */
+  averagingPairCount: number;
+  /** Mean |pnl.netUsdt diff| in USDT across pairs — null when no pairs. */
+  meanPnlUsdtDiff: number | null;
+  /** Mean |pnl.netPct diff| in pct points across pairs — null when no pairs. */
+  meanPnlPctDiff: number | null;
   /** Pairs whose `closed.reason` differs. */
   exitReasonMismatches: number;
 }
@@ -57,6 +68,10 @@ function pairTrades(
   let sumEntryMinuteDiff = 0;
   let sumExitMinuteDiff = 0;
   let sumAveragingCountDiff = 0;
+  let sumAveragingMinuteDiff = 0;
+  let averagingPairCount = 0;
+  let sumPnlUsdtDiff = 0;
+  let sumPnlPctDiff = 0;
   let exitReasonMismatches = 0;
 
   for (const prodPosition of prod) {
@@ -89,6 +104,22 @@ function pairTrades(
     sumAveragingCountDiff += Math.abs(
       averagingCount(prodPosition) - averagingCount(btPosition),
     );
+
+    sumPnlUsdtDiff += Math.abs(
+      (prodPosition.pnl.netUsdt ?? 0) - (btPosition.pnl.netUsdt ?? 0),
+    );
+    sumPnlPctDiff += Math.abs(
+      (prodPosition.pnl.netPct ?? 0) - (btPosition.pnl.netPct ?? 0),
+    );
+
+    const prodExecs = prodPosition.strategy.averaging.executions ?? [];
+    const btExecs = btPosition.strategy.averaging.executions ?? [];
+    const execPairs = Math.min(prodExecs.length, btExecs.length);
+    averagingPairCount += execPairs;
+    for (let i = 0; i < execPairs; i++) {
+      sumAveragingMinuteDiff +=
+        Math.abs(prodExecs[i].t - btExecs[i].t) / MINUTE_MS;
+    }
   }
 
   return {
@@ -102,6 +133,11 @@ function pairTrades(
     meanExitMinuteDiff: pairCount > 0 ? sumExitMinuteDiff / pairCount : null,
     meanAveragingCountDiff:
       pairCount > 0 ? sumAveragingCountDiff / pairCount : null,
+    meanAveragingMinuteDiff:
+      pairCount > 0 ? sumAveragingMinuteDiff / pairCount : null,
+    averagingPairCount,
+    meanPnlUsdtDiff: pairCount > 0 ? sumPnlUsdtDiff / pairCount : null,
+    meanPnlPctDiff: pairCount > 0 ? sumPnlPctDiff / pairCount : null,
     exitReasonMismatches,
   };
 }

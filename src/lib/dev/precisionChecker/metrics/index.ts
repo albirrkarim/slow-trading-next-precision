@@ -144,6 +144,17 @@ function build(result: PrecisionCheckerRunResult): PrecisionCheckerMetricRow[] {
           : "—",
     },
     {
+      key: "trade-averaging-minute-diff",
+      metric: "Averaging minute diff",
+      initial: "—",
+      production: "—",
+      backtest: "—",
+      diff:
+        trades.meanAveragingMinuteDiff != null
+          ? `${trades.meanAveragingMinuteDiff.toFixed(2)} min/pair`
+          : "—",
+    },
+    {
       key: "trade-averaging-diff",
       metric: "Averaging count diff",
       initial: "—",
@@ -163,6 +174,28 @@ function build(result: PrecisionCheckerRunResult): PrecisionCheckerMetricRow[] {
       diff:
         trades.pairCount > 0
           ? `${trades.exitReasonMismatches}/${trades.pairCount} pairs`
+          : "—",
+    },
+    {
+      key: "trade-pnl-usdt-diff",
+      metric: "PnL diff USDT",
+      initial: "—",
+      production: "—",
+      backtest: "—",
+      diff:
+        trades.meanPnlUsdtDiff != null
+          ? `$${trades.meanPnlUsdtDiff.toFixed(2)} /pair`
+          : "—",
+    },
+    {
+      key: "trade-pnl-pct-diff",
+      metric: "PnL diff %",
+      initial: "—",
+      production: "—",
+      backtest: "—",
+      diff:
+        trades.meanPnlPctDiff != null
+          ? `${trades.meanPnlPctDiff.toFixed(2)} pct/pair`
           : "—",
     },
   ];
