@@ -16,7 +16,9 @@ export default function VolatilityPointsPanel({
     volatilityMap: Record<string, VolatilityPoint[]>;
 }) {
     const chartData = useMemo(() => {
-        const names = Object.keys(volatilityMap).sort();
+        const names = Object.keys(volatilityMap)
+            .filter((symbol) => symbol.split("_")[0] !== "BTC")
+            .sort();
         const orderedMap = Object.fromEntries(
             names.map((symbol) => [symbol, volatilityMap[symbol]]),
         );
