@@ -4,6 +4,7 @@ import { useMemo } from "react";
 
 import { makeSeries } from "@/components/LiveDashboard/utils";
 import MultiLineTimelined from "@/components/ui/Chart/MultiLineTimelined";
+import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import type { VolatilityPoint } from "@/lib/system/types";
 import { Box, Typography } from "@mui/material";
 
@@ -29,20 +30,27 @@ export default function VolatilityPointsPanel({
 
     return (
         <Box component="section" aria-label={title} sx={{ minWidth: 0 }}>
-            <Typography variant="h6" sx={{ mb: 1 }}>
-                {title}
-            </Typography>
-            {chartData.totalPoints > 0 ? (
-                <MultiLineTimelined
-                    names={chartData.names}
-                    series={chartData.series}
-                    height={420}
-                />
-            ) : (
-                <Typography color="text.secondary" variant="body2" sx={{ py: 2 }}>
-                    No volatility points were captured.
-                </Typography>
-            )}
+            <HeaderMetrics
+                defaultExpanded
+                headerCanBeClicked
+                rememberExpand={`precision-checker:${title}`}
+                title={<Typography variant="h6">{title}</Typography>}
+            >
+                {(expanded) =>
+                    expanded &&
+                    (chartData.totalPoints > 0 ? (
+                        <MultiLineTimelined
+                            names={chartData.names}
+                            series={chartData.series}
+                            height={420}
+                        />
+                    ) : (
+                        <Typography color="text.secondary" variant="body2" sx={{ py: 2 }}>
+                            No volatility points were captured.
+                        </Typography>
+                    ))
+                }
+            </HeaderMetrics>
         </Box>
     );
 }

@@ -96,6 +96,16 @@ describe("Precision Checker page", () => {
     expect(charts[0].textContent).toBe('{"names":["SUI"],"levels":[[-2]]}');
     expect(charts[1].textContent).toBe('{"names":["BTC"],"levels":[[3]]}');
 
+    await user.click(screen.getByText("Production Volatility points"));
+    expect(screen.getAllByTestId("volatility-chart")).toHaveLength(1);
+    expect(screen.getByText("Backtest Volatility points")).toBeTruthy();
+
+    await user.click(screen.getByText("Backtest Volatility points"));
+    expect(screen.queryByTestId("volatility-chart")).toBeNull();
+
+    await user.click(screen.getByText("Production Volatility points"));
+    expect(screen.getAllByTestId("volatility-chart")).toHaveLength(1);
+
     const tables = screen.getAllByTestId("trades-table");
     expect(tables).toHaveLength(2);
     expect(tables[0].textContent).toBe("SUI:sandbox");
