@@ -4,6 +4,9 @@ import pairVPoints from "./pairs";
 import pairTrades from "./trade-pairs";
 import type { PrecisionCheckerRunResult } from "../types";
 
+/** Divergence severity of one row — magnitude only; sign never softens it. */
+export type MetricSeverity = "none" | "match" | "minor" | "major";
+
 /** One rendered production↔backtest comparison row. */
 export interface PrecisionCheckerMetricRow {
   key: string;
@@ -12,6 +15,78 @@ export interface PrecisionCheckerMetricRow {
   production: string;
   backtest: string;
   diff: string;
+  severity: MetricSeverity;
+}
+
+/** One aspect of the comparison (balance, trades, vPoints) with a score card. */
+export interface PrecisionCheckerMetricCategory {
+  key: string;
+  title: string;
+  /** 0-100 precision score; null when no row in the category could be scored. */
+  score: number | null;
+  severity: MetricSeverity;
+  rows: PrecisionCheckerMetricRow[];
+}
+
+/** Points contributed per row severity — divergence magnitude only. */
+const ROW_SCORE: Record<MetricSeverity, number | null> = {
+  none: null,
+  match: 100,
+  minor: 60,
+  major: 0,
+};
+
+/** Scores a category: mean of row scores, severity banded at 90/60. */
+function toCategory(
+  key: string,
+  title: string,
+  rows: PrecisionCheckerMetricRow[],
+): PrecisionCheckerMetricCategory {
+  const scored = rows
+    .map((row) => ROW_SCORE[row.severity])
+    .filter((score): score is number => score != null);
+  const score =
+    scored.length === 0
+      ? null
+      : Math.round(scored.reduce((a, b) => a + b, 0) / scored.length);
+  const severity: MetricSeverity =
+    score == null ? "none" : score >= 90 ? "match" : score >= 60 ? "minor" : "major";
+  return { key, title, score, severity, rows };
+}
+
+// Severity bands on the absolute diff: below `minor` = match (green), below
+// `major` = minor (orange), otherwise major (red). A favorable direction is
+// still divergence — precision cares that backtest matches production.
+const BANDS = {
+  /** End-balance |pct diff|. */
+  balancePct: { minor: 0.5, major: 2 },
+  /** Count diffs (trades, vPoints per symbol): 0 match, 1 minor, 2+ major. */
+  count: { minor: 0.5, major: 1.5 },
+  /** Unpaired leftovers: 0 match, 1-2 minor, 3+ major. */
+  unpaired: { minor: 0.5, major: 2.5 },
+  /** Mean minute diffs (entry/exit/averaging/vPoint). */
+  minutes: { minor: 1, major: 5 },
+  /** Mean |price pct diff|. */
+  pricePct: { minor: 0.05, major: 0.25 },
+  /** Mean averaging-count diff per pair. */
+  averagingCount: { minor: 0.25, major: 1 },
+  /** Exit-reason mismatch rate in pct. */
+  mismatchPct: { minor: 10, major: 33 },
+  /** Mean |netUsdt diff| per pair. */
+  pnlUsdt: { minor: 0.5, major: 2 },
+  /** Mean |netPct diff| per pair in pct points. */
+  pnlPct: { minor: 0.1, major: 0.5 },
+} as const;
+
+function severityOf(
+  value: number | null | undefined,
+  bands: { minor: number; major: number },
+): MetricSeverity {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "none";
+  const abs = Math.abs(value);
+  if (abs < bands.minor) return "match";
+  if (abs < bands.major) return "minor";
+  return "major";
 }
 
 function formatUsdt(value?: number) {
@@ -53,8 +128,10 @@ function countInWindow(
     .length;
 }
 
-/** Builds the metric comparison rows shown above the two result columns. */
-function build(result: PrecisionCheckerRunResult): PrecisionCheckerMetricRow[] {
+/** Builds the categorized metric comparison shown above the two result columns. */
+function build(
+  result: PrecisionCheckerRunResult,
+): PrecisionCheckerMetricCategory[] {
   const { startTime, endTime } = result.testCase;
   const accountName = new Map(
     result.accounts.map((account) => [account.slug, account.name]),
@@ -82,18 +159,23 @@ function build(result: PrecisionCheckerRunResult): PrecisionCheckerMetricRow[] {
     ]),
   ].sort();
 
-  const balanceRows = balanceSlugs.map((slug) => ({
-    key: `balance-${slug}`,
-    metric: `Balance · ${accountName.get(slug)?.trim() || slug}`,
-    initial: formatUsdt(result.initialBalance[slug]?.total),
-    production: formatUsdt(result.productionEndBalance[slug]?.total),
-    backtest: formatUsdt(backtestEndTotal(slug)),
-    diff: diffLabel(
-      result.productionEndBalance[slug]?.total,
-      backtestEndTotal(slug),
-      true,
-    ),
-  }));
+  const balanceRows: PrecisionCheckerMetricRow[] = balanceSlugs.map((slug) => {
+    const prodTotal = result.productionEndBalance[slug]?.total;
+    const btTotal = backtestEndTotal(slug);
+    const pctDiff =
+      prodTotal != null && btTotal != null && prodTotal !== 0
+        ? (Math.abs(btTotal - prodTotal) / Math.abs(prodTotal)) * 100
+        : null;
+    return {
+      key: `balance-${slug}`,
+      metric: `Balance · ${accountName.get(slug)?.trim() || slug}`,
+      initial: formatUsdt(result.initialBalance[slug]?.total),
+      production: formatUsdt(prodTotal),
+      backtest: formatUsdt(btTotal),
+      diff: diffLabel(prodTotal, btTotal, true),
+      severity: severityOf(pctDiff, BANDS.balancePct),
+    };
+  });
 
   const tradeCountRow: PrecisionCheckerMetricRow = {
     key: "trade-count",
@@ -104,6 +186,10 @@ function build(result: PrecisionCheckerRunResult): PrecisionCheckerMetricRow[] {
     diff: diffLabel(
       result.productionHistory.length,
       result.backtestHistory.length,
+    ),
+    severity: severityOf(
+      result.backtestHistory.length - result.productionHistory.length,
+      BANDS.count,
     ),
   };
 
@@ -120,6 +206,7 @@ function build(result: PrecisionCheckerRunResult): PrecisionCheckerMetricRow[] {
       production: `${trades.pairCount}/${trades.prodTotal}`,
       backtest: `${trades.pairCount}/${trades.btTotal}`,
       diff: `${trades.unpaired} unpaired`,
+      severity: severityOf(trades.unpaired, BANDS.unpaired),
     },
     {
       key: "trade-entry-diff",
@@ -131,6 +218,7 @@ function build(result: PrecisionCheckerRunResult): PrecisionCheckerMetricRow[] {
         trades.meanEntryMinuteDiff != null
           ? `${trades.meanEntryMinuteDiff.toFixed(2)} min/pair`
           : "—",
+      severity: severityOf(trades.meanEntryMinuteDiff, BANDS.minutes),
     },
     {
       key: "trade-exit-diff",
@@ -142,6 +230,7 @@ function build(result: PrecisionCheckerRunResult): PrecisionCheckerMetricRow[] {
         trades.meanExitMinuteDiff != null
           ? `${trades.meanExitMinuteDiff.toFixed(2)} min/pair`
           : "—",
+      severity: severityOf(trades.meanExitMinuteDiff, BANDS.minutes),
     },
     {
       key: "trade-entry-price-diff",
@@ -153,6 +242,7 @@ function build(result: PrecisionCheckerRunResult): PrecisionCheckerMetricRow[] {
         trades.meanEntryPricePctDiff != null
           ? `${trades.meanEntryPricePctDiff.toFixed(2)} pct/pair`
           : "—",
+      severity: severityOf(trades.meanEntryPricePctDiff, BANDS.pricePct),
     },
     {
       key: "trade-exit-price-diff",
@@ -164,6 +254,7 @@ function build(result: PrecisionCheckerRunResult): PrecisionCheckerMetricRow[] {
         trades.meanExitPricePctDiff != null
           ? `${trades.meanExitPricePctDiff.toFixed(2)} pct/pair`
           : "—",
+      severity: severityOf(trades.meanExitPricePctDiff, BANDS.pricePct),
     },
     {
       key: "trade-averaging-minute-diff",
@@ -175,6 +266,7 @@ function build(result: PrecisionCheckerRunResult): PrecisionCheckerMetricRow[] {
         trades.meanAveragingMinuteDiff != null
           ? `${trades.meanAveragingMinuteDiff.toFixed(2)} min/pair`
           : "—",
+      severity: severityOf(trades.meanAveragingMinuteDiff, BANDS.minutes),
     },
     {
       key: "trade-averaging-diff",
@@ -186,6 +278,7 @@ function build(result: PrecisionCheckerRunResult): PrecisionCheckerMetricRow[] {
         trades.meanAveragingCountDiff != null
           ? `${trades.meanAveragingCountDiff.toFixed(2)} /pair`
           : "—",
+      severity: severityOf(trades.meanAveragingCountDiff, BANDS.averagingCount),
     },
     {
       key: "trade-exit-reason-diff",
@@ -197,6 +290,13 @@ function build(result: PrecisionCheckerRunResult): PrecisionCheckerMetricRow[] {
         trades.pairCount > 0
           ? `${trades.exitReasonMismatches}/${trades.pairCount} pairs`
           : "—",
+      severity:
+        trades.pairCount > 0
+          ? severityOf(
+              (trades.exitReasonMismatches / trades.pairCount) * 100,
+              BANDS.mismatchPct,
+            )
+          : "none",
     },
     {
       key: "trade-pnl-usdt-diff",
@@ -208,6 +308,7 @@ function build(result: PrecisionCheckerRunResult): PrecisionCheckerMetricRow[] {
         trades.meanPnlUsdtDiff != null
           ? `$${trades.meanPnlUsdtDiff.toFixed(2)} /pair`
           : "—",
+      severity: severityOf(trades.meanPnlUsdtDiff, BANDS.pnlUsdt),
     },
     {
       key: "trade-pnl-pct-diff",
@@ -219,10 +320,11 @@ function build(result: PrecisionCheckerRunResult): PrecisionCheckerMetricRow[] {
         trades.meanPnlPctDiff != null
           ? `${trades.meanPnlPctDiff.toFixed(2)} pct/pair`
           : "—",
+      severity: severityOf(trades.meanPnlPctDiff, BANDS.pnlPct),
     },
   ];
 
-  const vPointRows = vPointSymbols
+  const vPointRows: PrecisionCheckerMetricRow[] = vPointSymbols
     .map((symbol) => {
       const production = countInWindow(
         result.productionVPointsMap[symbol],
@@ -241,6 +343,7 @@ function build(result: PrecisionCheckerRunResult): PrecisionCheckerMetricRow[] {
         production: `${production}`,
         backtest: `${backtest}`,
         diff: diffLabel(production, backtest),
+        severity: severityOf(backtest - production, BANDS.count),
       };
     })
     .filter((row) => row.production !== "0" || row.backtest !== "0");
@@ -260,6 +363,7 @@ function build(result: PrecisionCheckerRunResult): PrecisionCheckerMetricRow[] {
       production: `${pairing.prodPaired}/${pairing.prodTotal}`,
       backtest: `${pairing.btPaired}/${pairing.btTotal}`,
       diff: `${pairing.unpaired} unpaired`,
+      severity: severityOf(pairing.unpaired, BANDS.unpaired),
     },
     {
       key: "vpoint-minute-diff",
@@ -271,15 +375,14 @@ function build(result: PrecisionCheckerRunResult): PrecisionCheckerMetricRow[] {
         pairing.meanMinuteDiff != null
           ? `${pairing.meanMinuteDiff.toFixed(2)} min/pair`
           : "—",
+      severity: severityOf(pairing.meanMinuteDiff, BANDS.minutes),
     },
   ];
 
   return [
-    ...balanceRows,
-    tradeCountRow,
-    ...tradePairRows,
-    ...vPointRows,
-    ...pairRows,
+    toCategory("balance", "Balance", balanceRows),
+    toCategory("trades", "Trades", [tradeCountRow, ...tradePairRows]),
+    toCategory("vpoints", "Volatility points", [...vPointRows, ...pairRows]),
   ];
 }
 
