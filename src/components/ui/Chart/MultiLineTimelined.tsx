@@ -37,6 +37,9 @@ export interface VolatilityMultiLineProps {
   yTickFormatter?: (value: unknown) => string;
   /** Vertical markers drawn at absolute times, e.g. a recorded window. */
   referenceLines?: { timeMs: number; label?: string; color?: string }[];
+  /** Initial brush selection bounds as absolute times; snapped to nearest points. */
+  brushStartTimeMs?: number;
+  brushEndTimeMs?: number;
 }
 
 function MultiLineTimelined({
@@ -47,8 +50,24 @@ function MultiLineTimelined({
   defaultShowEntryGroups = false,
   yTickFormatter,
   referenceLines,
+  brushStartTimeMs,
+  brushEndTimeMs,
 }: VolatilityMultiLineProps) {
   const { data, textMaps } = useMemo(() => buildMergedData(series), [series]);
+
+  const brushStartIndex = useMemo(() => {
+    if (brushStartTimeMs == null) return undefined;
+    const idx = data.findIndex((item) => Number(item.timeMs) >= brushStartTimeMs);
+    return idx >= 0 ? idx : undefined;
+  }, [data, brushStartTimeMs]);
+
+  const brushEndIndex = useMemo(() => {
+    if (brushEndTimeMs == null) return undefined;
+    for (let i = data.length - 1; i >= 0; i--) {
+      if (Number(data[i].timeMs) <= brushEndTimeMs) return i;
+    }
+    return undefined;
+  }, [data, brushEndTimeMs]);
   const xAxisDateFormat = useMemo(() => {
     const times = data
       .map((item) => Number(item.timeMs))
@@ -286,7 +305,7 @@ function MultiLineTimelined({
   return (
     <Box sx={{ width: "100%", height, py: 1 }}>
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data}>
+        <LineChart data={data} margin={{ top: 5, right: 8, bottom: 5, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis
             dataKey="timeMs"
@@ -297,7 +316,7 @@ function MultiLineTimelined({
             minTickGap={10}
             allowDataOverflow={false}
           />
-          <YAxis tickFormatter={yTickFormatter} />
+          <YAxis tickFormatter={yTickFormatter} width="auto" />
           <Tooltip
             content={(props) => (
               <CustomTooltip
@@ -345,6 +364,8 @@ function MultiLineTimelined({
             height={30}
             stroke="#8884d8"
             tickFormatter={formatXAxisTick}
+            startIndex={brushStartIndex}
+            endIndex={brushEndIndex}
           />
         </LineChart>
       </ResponsiveContainer>

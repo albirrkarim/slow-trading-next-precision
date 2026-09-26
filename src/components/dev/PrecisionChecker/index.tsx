@@ -76,6 +76,8 @@ function RunResultView({ result }: { result: PrecisionCheckerRunResult }) {
                         <VolatilityPointsPanel
                             title={panel.vPointsTitle}
                             volatilityMap={panel.vPointsMap}
+                            brushStartTimeMs={result.testCase.startTime}
+                            brushEndTimeMs={result.testCase.endTime}
                             referenceLines={[
                                 {
                                     timeMs: result.testCase.startTime,

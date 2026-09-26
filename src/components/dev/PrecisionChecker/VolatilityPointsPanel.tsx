@@ -12,10 +12,14 @@ export default function VolatilityPointsPanel({
     title,
     volatilityMap,
     referenceLines,
+    brushStartTimeMs,
+    brushEndTimeMs,
 }: {
     title: string;
     volatilityMap: Record<string, VolatilityPoint[]>;
     referenceLines?: { timeMs: number; label?: string; color?: string }[];
+    brushStartTimeMs?: number;
+    brushEndTimeMs?: number;
 }) {
     const chartData = useMemo(() => {
         const names = Object.keys(volatilityMap)
@@ -48,6 +52,8 @@ export default function VolatilityPointsPanel({
                             series={chartData.series}
                             height={420}
                             referenceLines={referenceLines}
+                            brushStartTimeMs={brushStartTimeMs}
+                            brushEndTimeMs={brushEndTimeMs}
                         />
                     ) : (
                         <Typography color="text.secondary" variant="body2" sx={{ py: 2 }}>
