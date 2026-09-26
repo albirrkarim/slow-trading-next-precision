@@ -1,6 +1,6 @@
 import type { PrecisionTestCaseMode } from "@/lib/production/precision-test-case";
 import type { Position } from "@/lib/system/trading";
-import type { ExchangeType } from "@/lib/system/types";
+import type { ExchangeType, VolatilityPoint } from "@/lib/system/types";
 
 /** Summary of a completed production capture selectable in the checker UI. */
 export interface PrecisionCheckerTestCaseSummary {
@@ -25,4 +25,6 @@ export interface PrecisionCheckerRunResult {
   exchangeType: ExchangeType;
   productionHistory: Position[];
   backtestHistory: Position[];
+  productionVPointsMap: Record<string, VolatilityPoint[]>;
+  backtestVPointsMap: Record<string, VolatilityPoint[]>;
 }

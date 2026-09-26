@@ -181,9 +181,17 @@ describe("precision checker service", () => {
     });
     const openProduction = createTestPosition({ symbol: "OPEN-PROD" });
     const snapshot = initialState();
+    const productionDelta = {
+      SUI: [
+        { id: "p1", t: 0, lvl: -3, usedBy: ["acc-1"] },
+        { id: "p2", t: 1, lvl: 2 },
+      ],
+      BTC: [{ id: "p3", t: 2, lvl: 1 }],
+    } as unknown as PrecisionTestCase["initialState"]["vPointsMap"];
     await writeCase(fileName, {
       config: testConfig(),
       initialState: snapshot,
+      endState: { ...snapshot, vPointsMap: productionDelta },
       startTime: 1,
       endTime: 2,
       tradeHistory: [closedProduction, openProduction],
@@ -196,7 +204,7 @@ describe("precision checker service", () => {
     const openBacktest = createTestPosition({ symbol: "OPEN-BACK" });
     mocks.precisionBacktest.mockResolvedValue({
       exchangeType: "binance",
-      vPointsMap: {},
+      vPointsMap: { SUI: [{ id: "backtest-p1", t: 1, lvl: 3 }] },
       positions: [closedBacktest, openBacktest],
     });
 
@@ -230,5 +238,15 @@ describe("precision checker service", () => {
     ]);
     expect(result.productionHistory).toEqual([closedProduction]);
     expect(result.backtestHistory).toEqual([closedBacktest]);
+    expect(result.productionVPointsMap).toEqual({
+      SUI: [
+        { id: "p1", t: 0, lvl: -3, usedBy: ["acc-1"] },
+        { id: "p2", t: 1, lvl: 2 },
+      ],
+      BTC: [{ id: "p3", t: 2, lvl: 1 }],
+    });
+    expect(result.backtestVPointsMap).toEqual({
+      SUI: [{ id: "backtest-p1", t: 1, lvl: 3 }],
+    });
   });
 });

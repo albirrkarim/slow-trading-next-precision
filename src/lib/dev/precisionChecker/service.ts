@@ -2,6 +2,7 @@ import fs from "fs-extra";
 import path from "path";
 
 import { storageFiles } from "@/lib/system/storage";
+import vpoints from "@/lib/system/utils/vpoints";
 import { precisionBacktest } from "@/lib/dev/backtestPrecision/backtest";
 import type {
   PrecisionTestCase,
@@ -142,6 +143,22 @@ async function run(fileName: string): Promise<PrecisionCheckerRunResult> {
     trading: { notes: String(account.trading?.notes ?? "") },
   }));
 
+  // A completed capture stores only changed production points at the end.
+  const productionVPointsMap = Object.fromEntries(
+    [
+      ...new Set([
+        ...Object.keys(testCase.initialState.vPointsMap),
+        ...Object.keys(testCase.endState?.vPointsMap ?? {}),
+      ]),
+    ].map((symbol) => [
+      symbol,
+      vpoints.mergeById(
+        testCase.initialState.vPointsMap[symbol] ?? [],
+        testCase.endState?.vPointsMap[symbol] ?? [],
+      ),
+    ]),
+  );
+
   return {
     testCase: testCaseSummary,
     accounts,
@@ -152,6 +169,8 @@ async function run(fileName: string): Promise<PrecisionCheckerRunResult> {
     backtestHistory: result.positions.filter((position) =>
       Boolean(position.closed),
     ),
+    productionVPointsMap,
+    backtestVPointsMap: result.vPointsMap,
   };
 }
 

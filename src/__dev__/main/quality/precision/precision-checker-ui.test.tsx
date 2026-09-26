@@ -16,6 +16,14 @@ vi.mock("@/components/ui/SidebarButton", () => ({
   default: () => null,
 }));
 
+vi.mock("@/components/ui/Chart/MultiLineTimelined", () => ({
+  default: ({ names, series }: { names: string[]; series: { level: number }[][] }) => (
+    <div data-testid="volatility-chart">
+      {JSON.stringify({ names, levels: series.map((points) => points.map((point) => point.level)) })}
+    </div>
+  ),
+}));
+
 vi.mock("@/components/LiveDashboard/Reporting/TradesTableSection", () => ({
   TradesTableSection: ({
     history,
@@ -44,6 +52,12 @@ const runResult = {
   exchangeType: "binance",
   productionHistory: [{ symbol: "SUI" }],
   backtestHistory: [{ symbol: "BACK" }],
+  productionVPointsMap: {
+    SUI: [{ id: "prod", t: 1_000, l: "B", lvl: -2, pct: 5, p: 1 }],
+  },
+  backtestVPointsMap: {
+    BTC: [{ id: "back", t: 2_000, l: "T", lvl: 3, pct: 6, p: 2 }],
+  },
 };
 
 describe("Precision Checker page", () => {
@@ -75,6 +89,12 @@ describe("Precision Checker page", () => {
 
     expect(await screen.findByText("Production History (1)")).toBeTruthy();
     expect(screen.getByText("Backtest History (1)")).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Production Volatility points" })).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Backtest Volatility points" })).toBeTruthy();
+    const charts = screen.getAllByTestId("volatility-chart");
+    expect(charts).toHaveLength(2);
+    expect(charts[0].textContent).toBe('{"names":["SUI"],"levels":[[-2]]}');
+    expect(charts[1].textContent).toBe('{"names":["BTC"],"levels":[[3]]}');
 
     const tables = screen.getAllByTestId("trades-table");
     expect(tables).toHaveLength(2);

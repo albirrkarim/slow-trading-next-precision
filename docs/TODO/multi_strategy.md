@@ -1,5 +1,7 @@
 # Multi Strategy Assessment
 
+# Introduction
+
 Read the
 /Users/susanto/Documents/OpenSource/trading/slow-trading-next-precision/docs/PRECISION/_PRECISION.md
 

@@ -24,6 +24,8 @@ import {
 import axios from "axios";
 import { useEffect, useState } from "react";
 
+import VolatilityPointsPanel from "./VolatilityPointsPanel";
+
 const TRADE_TIME_FORMAT = "DD MMM YYYY HH:mm";
 
 function testCaseLabel(testCase: PrecisionCheckerTestCaseSummary): string {
@@ -55,6 +57,17 @@ function RunResultView({ result }: { result: PrecisionCheckerRunResult }) {
             <Typography variant="body2" color="text.secondary" gutterBottom>
                 {testCaseLabel(result.testCase)} · {result.exchangeType}
             </Typography>
+
+            <Box sx={{ display: "grid", gap: 2, mt: 2 }}>
+                <VolatilityPointsPanel
+                    title="Production Volatility points"
+                    volatilityMap={result.productionVPointsMap}
+                />
+                <VolatilityPointsPanel
+                    title="Backtest Volatility points"
+                    volatilityMap={result.backtestVPointsMap}
+                />
+            </Box>
 
             <Grid container spacing={2} sx={{ mt: 1 }}>
                 {panels.map((panel) => (
