@@ -20,6 +20,16 @@ export interface TradePairing {
   meanAveragingMinuteDiff: number | null;
   /** Total averaging-execution pairs zipped across all trade pairs. */
   averagingPairCount: number;
+  /**
+   * Mean |opened.price diff| as % of the production entry price across
+   * pairs contributing a price — null when no pairs.
+   */
+  meanEntryPricePctDiff: number | null;
+  /**
+   * Mean |closed.price diff| as % of the production exit price across
+   * pairs where both sides closed — null when none.
+   */
+  meanExitPricePctDiff: number | null;
   /** Mean |pnl.netUsdt diff| in USDT across pairs — null when no pairs. */
   meanPnlUsdtDiff: number | null;
   /** Mean |pnl.netPct diff| in pct points across pairs — null when no pairs. */
@@ -72,6 +82,10 @@ function pairTrades(
   let averagingPairCount = 0;
   let sumPnlUsdtDiff = 0;
   let sumPnlPctDiff = 0;
+  let sumEntryPricePctDiff = 0;
+  let entryPricePairCount = 0;
+  let sumExitPricePctDiff = 0;
+  let exitPricePairCount = 0;
   let exitReasonMismatches = 0;
 
   for (const prodPosition of prod) {
@@ -93,9 +107,26 @@ function pairTrades(
     sumEntryMinuteDiff +=
       Math.abs(prodPosition.opened.t - btPosition.opened.t) / MINUTE_MS;
 
+    if (prodPosition.opened.price > 0) {
+      entryPricePairCount++;
+      sumEntryPricePctDiff +=
+        (Math.abs(btPosition.opened.price - prodPosition.opened.price) /
+          prodPosition.opened.price) *
+        100;
+    }
+
     if (prodPosition.closed && btPosition.closed) {
       sumExitMinuteDiff +=
         Math.abs(prodPosition.closed.t - btPosition.closed.t) / MINUTE_MS;
+      if (prodPosition.closed.price > 0) {
+        exitPricePairCount++;
+        sumExitPricePctDiff +=
+          (Math.abs(
+            btPosition.closed.price - prodPosition.closed.price,
+          ) /
+            prodPosition.closed.price) *
+          100;
+      }
       if (prodPosition.closed.reason !== btPosition.closed.reason) {
         exitReasonMismatches++;
       }
@@ -136,6 +167,12 @@ function pairTrades(
     meanAveragingMinuteDiff:
       pairCount > 0 ? sumAveragingMinuteDiff / pairCount : null,
     averagingPairCount,
+    meanEntryPricePctDiff:
+      entryPricePairCount > 0
+        ? sumEntryPricePctDiff / entryPricePairCount
+        : null,
+    meanExitPricePctDiff:
+      exitPricePairCount > 0 ? sumExitPricePctDiff / exitPricePairCount : null,
     meanPnlUsdtDiff: pairCount > 0 ? sumPnlUsdtDiff / pairCount : null,
     meanPnlPctDiff: pairCount > 0 ? sumPnlPctDiff / pairCount : null,
     exitReasonMismatches,

@@ -2,6 +2,7 @@
 
 import { endpoints } from "@/components/endpoints";
 import { TradesTableSection } from "@/components/LiveDashboard/Reporting/TradesTableSection";
+import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import SidebarButton from "@/components/ui/SidebarButton";
 import format from "@/lib/system/utils/format";
 import type {
@@ -93,19 +94,31 @@ function RunResultView({ result }: { result: PrecisionCheckerRunResult }) {
                                 },
                             ]}
                         />
-                        <Typography variant="body1" fontWeight={600} sx={{ mb: 1, mt: 2 }}>
-                            {panel.title} ({panel.history.length})
-                        </Typography>
-                        <Box sx={{ overflowX: "auto" }}>
-                            <TradesTableSection
-                                accounts={result.accounts}
-                                exchangeType={result.exchangeType}
-                                history={panel.history}
-                                mode={panel.mode}
-                                onHistoryChange={() => undefined}
-                                readOnly
-                            />
-                        </Box>
+                        <HeaderMetrics
+                            headerCanBeClicked
+                            rememberExpand={`precision-checker:${panel.title}`}
+                            sx={{ mt: 2 }}
+                            title={
+                                <Typography variant="body1" fontWeight={600}>
+                                    {panel.title} ({panel.history.length})
+                                </Typography>
+                            }
+                        >
+                            {(expanded) =>
+                                expanded && (
+                                    <Box sx={{ overflowX: "auto" }}>
+                                        <TradesTableSection
+                                            accounts={result.accounts}
+                                            exchangeType={result.exchangeType}
+                                            history={panel.history}
+                                            mode={panel.mode}
+                                            onHistoryChange={() => undefined}
+                                            readOnly
+                                        />
+                                    </Box>
+                                )
+                            }
+                        </HeaderMetrics>
                     </Grid>
                 ))}
             </Grid>

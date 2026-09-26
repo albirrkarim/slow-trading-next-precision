@@ -144,6 +144,28 @@ function build(result: PrecisionCheckerRunResult): PrecisionCheckerMetricRow[] {
           : "—",
     },
     {
+      key: "trade-entry-price-diff",
+      metric: "Entry price diff",
+      initial: "—",
+      production: "—",
+      backtest: "—",
+      diff:
+        trades.meanEntryPricePctDiff != null
+          ? `${trades.meanEntryPricePctDiff.toFixed(2)} pct/pair`
+          : "—",
+    },
+    {
+      key: "trade-exit-price-diff",
+      metric: "Exit price diff",
+      initial: "—",
+      production: "—",
+      backtest: "—",
+      diff:
+        trades.meanExitPricePctDiff != null
+          ? `${trades.meanExitPricePctDiff.toFixed(2)} pct/pair`
+          : "—",
+    },
+    {
       key: "trade-averaging-minute-diff",
       metric: "Averaging minute diff",
       initial: "—",
