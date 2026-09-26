@@ -12,6 +12,11 @@ export interface PrecisionRuntimeSnapshot {
   balance: Record<string, BalanceSummary>;
   openPositions: Position[];
   vPointsMap: Record<string, VolatilityPoint[]>;
+  /**
+   * Free-form strategy-owned records captured with the snapshot so replays
+   * reproduce them (e.g. streak pending re-entries). Engine never reads it.
+   */
+  strategy?: unknown;
 }
 
 /**

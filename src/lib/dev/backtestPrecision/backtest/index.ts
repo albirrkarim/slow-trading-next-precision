@@ -102,6 +102,7 @@ export async function precisionBacktest(
         : [],
     markPriceMap: {},
     vPointsMap,
+    strategy: structuredClone(initialState?.strategy),
   };
   let clockTime = state.currentTime;
   const history: RuntimeEngineState["openPositions"] = [];

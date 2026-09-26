@@ -17,9 +17,10 @@
  *   2. Engine eligibility checks  — `canAttemptEntry`, account limits,
  *      environment `isActionAllowed`. Always run; a strategy cannot
  *      disable them.
- *   3. `onStrategy` gate          — environment check AND strategy
- *      `onStrategy` must both approve. Veto only — it can reject a
- *      candidate, never create one (that is what `decisions` is for).
+ *   3. Environment approval      — `adapter.onStrategy` gates every
+ *      candidate regardless of producer. To constrain a family it does
+ *      not override, a strategy wraps `defaultDecision.<family>.find`
+ *      and filters the result — a separate veto member adds nothing.
  *   4. `onAction`                 — environment execution (sandbox fill or
  *      live order) plus notifications. Not strategy-overridable.
  *   5. `onExit`                   — environment persistence runs first,
@@ -31,7 +32,6 @@
 import type { Position } from "@/lib/system/trading";
 import type {
   OnExit,
-  OnStrategy,
   RuntimeAveragingDecision,
   RuntimeContext,
   RuntimeEntryDecision,
@@ -58,10 +58,10 @@ export type StrategySlug = "both" | "streak";
  * `averaging` and `exit` are evaluated per open position, matching the
  * monitoring loop. Omitting a family keeps the built-in producer for it.
  *
- * This is the capability `onStrategy` alone cannot provide: `both` needs
- * to emit a MAIN + COUNTER leg pair from one signal, `streak` needs to
- * emit re-entries at its anchor vPoint — both are new candidates the
- * default pipeline will never produce.
+ * This is the capability the `adapter.onStrategy` veto alone cannot
+ * provide: `both` needs to emit a MAIN + COUNTER leg pair from one
+ * signal, `streak` needs to emit re-entries at its anchor vPoint —
+ * both are new candidates the default pipeline will never produce.
  */
 export interface StrategyDecisionProducers {
   /** Produces the entry candidates for one capture-entry pass. */
@@ -85,26 +85,18 @@ export interface StrategyDecisionProducers {
 }
 
 /**
- * Strategy-owned persisted state slot.
- *
- * Records a strategy must survive restarts — e.g. streak's pending
- * re-entries (`pairId`, anchor vPoint, direction) — live under a
- * namespaced key such as `state.strategy.<slug>` rather than leaking into
- * engine-owned fields. The engine calls `hydrate` once on boot and
- * `serialize` when persisting state.
- */
-export interface StrategyStatePort {
-  /** Restores strategy-owned records from their persisted JSON value. */
-  hydrate(raw: unknown, context: RuntimeContext): void | Promise<void>;
-  /** Serializes strategy-owned records for the next persist cycle. */
-  serialize(): unknown;
-}
-
-/**
  * The port every strategy module exposes.
  *
  * Every member is optional except `name`: a strategy plugs in only the
  * pieces it needs; everything else keeps default behavior.
+ *
+ * Deliberately absent: `onStrategy` (producers express suppression by not
+ * emitting or by filtering a wrapped `defaultDecision`), `onAction`
+ * (execution is environment-owned — sandbox fill vs live order plus
+ * atomic pair rollback are adapter concerns, not strategy concerns), and
+ * a state port (strategy-owned records — e.g. streak pending re-entries —
+ * live in the free-form `RuntimeEngineState.strategy` slot that snapshots
+ * carry into test cases automatically).
  */
 export interface StrategyAPI {
   /** Module slug — must match the `src/lib/strategies/<slug>` folder. */
@@ -123,13 +115,6 @@ export interface StrategyAPI {
   decisions?: StrategyDecisionProducers;
 
   /**
-   * Final approval gate per candidate — composes with the environment's
-   * own checks by AND: `isActionAllowed(...) && onStrategy(...)`.
-   * Rejects a produced candidate; cannot create one.
-   */
-  onStrategy?: OnStrategy;
-
-  /**
    * Called with a closed position AFTER the environment's persistence
    * (account state + history append). Observation hook — not the exit
    * decision itself, which belongs to `decisions.exit`.
@@ -143,6 +128,4 @@ export interface StrategyAPI {
    */
   preflight?: (context: RuntimeContext) => void | Promise<void>;
 
-  /** Strategy-owned persisted state, if the strategy keeps any. */
-  state?: StrategyStatePort;
 }

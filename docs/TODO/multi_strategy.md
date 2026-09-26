@@ -117,8 +117,6 @@ work, the engine should accept a strategy module shaped roughly like:
 ```ts
 const strategy = {
   decisions: { entry, averaging, exit }, // candidate producers (default = current defaultDecision)
-  gate,                                  // today's onStrategy veto
-  positionState,                         // strategy-owned state init/serialization
 };
 ```
 
@@ -163,24 +161,31 @@ The plug contract is defined in `src/lib/strategy/type.d.ts` (`StrategyAPI`).
 
 Review of the proposal above: the adapter seam and lazy import are right,
 but `{ onStrategy, onExit }` alone under-covers the requirements — those
-two are a veto gate and a post-close persistence hook. The contract
-therefore keeps both and adds:
+two are a veto gate and a post-close persistence hook. The contract keeps
+`onExit` and adds:
 
 - `decisions` — per-family candidate producers mirroring
   `defaultDecision.{entry,averaging,exit}.find`. This is how a strategy
-  *produces* decisions (both's MAIN+COUNTER pair, streak's re-entries);
-  `onStrategy` can only veto what already exists.
-- `state` — `hydrate`/`serialize` port for strategy-owned persisted
-  records (e.g. streak pending re-entries) under a namespaced slot.
+  *produces* decisions (both's MAIN+COUNTER pair, streak's re-entries).
+- `state` — dropped as a port; strategy-owned persisted records (e.g.
+  streak pending re-entries) live in the free-form
+  `RuntimeEngineState.strategy` slot, which `PrecisionRuntimeSnapshot`
+  carries so test-case replays reproduce them automatically.
 - `preflight` — optional boot validation (e.g. hedge-mode position-mode
   check) before the strategy's first pair entry.
 
-Composition rules baked into the contract: `onStrategy` ANDs with the
-environment's `isActionAllowed` (strategies cannot disable account
-limits); `onExit` runs after environment persistence; `onAction` is never
+`strategy.onStrategy` was dropped: a veto adds nothing the producer cannot
+express — a strategy that wants to constrain a family it does not override
+wraps `defaultDecision.<family>.find` and filters the result. Approval of
+produced candidates stays environment-side (`adapter.onStrategy` ANDs with
+`isActionAllowed`; strategies cannot disable account limits); `onExit`
+runs after environment persistence; `onAction` is never
 strategy-overridable.
 
 Still open (tracked above): `config.strategy` field, per-account
 `entryLegs`, `futuresPositionMode`, the decision metadata slot carrying
-`pairId`/`role`, `Position.strategy.logic`, and atomic pair execution
-(`onAction` still returns a single `Position`).
+`pairId`/`role`, `Position.strategy.logic`, atomic pair execution
+(`onAction` still returns a single `Position`), and a production storage
+channel for `state.strategy` — engine state is rebuilt per-account on
+restart, so the slot currently survives snapshots/replays but not a live
+engine restart.

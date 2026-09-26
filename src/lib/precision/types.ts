@@ -185,6 +185,14 @@ export interface RuntimeEngineState {
    * and backtest inputs, never engine state.
    */
   volume24hMap?: Record<string, number>;
+
+  /**
+   * Free-form slot owned by the plugged decision strategy (e.g. streak's
+   * pending re-entry records). The engine carries and persists it inside
+   * the runtime state/snapshot but never interprets it — the strategy
+   * assigns and reads its own shape (`context.state.strategy`).
+   */
+  strategy?: unknown;
 }
 
 /**
