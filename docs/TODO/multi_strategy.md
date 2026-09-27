@@ -7,6 +7,9 @@ Streak on the shared runtime. Each point has a proposed solution to review
 **one at a time**. These are design proposals, not approved behavior or an
 implementation plan.
 
+The TypeScript below is a **sketch of proposed APIs**, not code that exists
+today. Names and field placement can change as each point is reviewed.
+
 Sources checked: `docs/SPECS/_SPECS.md`, the current runtime, production and
 backtest call sites, `slow-trading-next-hedge/docs/slow/HEDGE/BOTH_DIRECTION_TRADING.md`,
 and `slow-trading-next-streak/docs/slow/SPECS/TRADING.md`. The instance documents
@@ -46,6 +49,12 @@ the expected open legs after every event. Use those traces as backtest,
 sandbox, and live contract tests. Do not silently make one document override
 the other.
 
+```ts
+// Same market event, different policy result:
+both.exit.onLevelZero(pair)   // => exit both open legs
+streak.exit.onTop(longLeg)    // => exit LONG; SHORT stays open
+```
+
 ### 2. The hook changes candidates, not the whole trade lifecycle
 
 `StrategyDecisionProducers` returns ordinary entry decisions and one
@@ -67,6 +76,17 @@ single-position path as the default Multi intent. Call `onActionResult` once
 for the complete outcome, after state bookkeeping. Strategy modules still
 decide *what* to do; they do not submit exchange orders themselves.
 
+```ts
+type EntryIntent =
+  | { kind: "single-entry"; leg: RuntimeEntryDecision }
+  | { kind: "pair-entry"; pairId: string; legs: [RuntimeEntryDecision, RuntimeEntryDecision] };
+
+type EntryOutcome =
+  | { status: "filled"; positions: Position[] }
+  | { status: "failed"; recoveryPositions: Position[] };
+// The existing Multi decision maps to single-entry.
+```
+
 ### 3. One-position-per-symbol checks reject the second leg and re-entry
 
 The current spec explicitly requires one active position per symbol
@@ -80,14 +100,23 @@ Evidence: `docs/SPECS/TRADING.md` B.3.2,
 `src/lib/system/trading/{entry,entry-diagnostics}.ts`,
 `src/lib/precision/monitoring/{entry,manual}.ts`.
 
-**Proposed solution:** Centralize entry eligibility in one shared function used
-by automatic entry, manual entry, execution re-checks, and diagnostics. A fresh
+**Proposed solution:** Add pair-aware position eligibility beside the existing
+shared `guard.allows`, then call it from automatic entry, manual entry,
+execution re-checks, and diagnostics. A fresh
 worker requires the symbol to have no existing worker for that account. A
 missing-role re-entry is allowed only into the same `pairId` when that role is
 absent; it never permits a third leg or a second unrelated pair. Apply the
 same account, symbol, mode, and risk guards to both cases, with explicit
 exceptions only where the strategy spec requires them. Preserve the old
 one-position behavior for Multi.
+
+```ts
+entryEligibility.check({ accountSlug, symbol, kind: "fresh" });
+entryEligibility.check({
+  accountSlug, symbol, kind: "missing-role", pairId, role: "COUNTER",
+});
+// Both calls return { allowed, code, reason } for engine and dashboard.
+```
 
 ### 4. Worker slots and funding count positions, not pair workers
 
@@ -107,6 +136,17 @@ before any order: equal adjusted entry margin for a two-leg entry, both fees,
 both averaging reserves, and the required bailout buffer. A one-leg selection
 funds one leg. Reuse this same calculation for the execution guard, capacity
 preview, and diagnostics so the UI cannot promise a worker the engine rejects.
+
+```ts
+// For one account: MAIN + COUNTER with the same pairId occupy one slot.
+const active = openPositions.filter((p) => p.account === accountSlug && !p.closed);
+const workerIds = new Set(active.map((p) => p.strategy.meta?.pairId ?? positionKey(p)));
+const requiredUsdt = selectedLegs.reduce(
+  (total, leg) => total + planLegCost(leg), bailoutBufferUsdt,
+);
+const slotAvailable = maxOpenPositions === 0 || workerIds.size < maxOpenPositions;
+const canOpen = slotAvailable && spendableUsdt >= requiredUsdt;
+```
 
 ### 5. A pair entry has no failure boundary
 
@@ -132,6 +172,16 @@ unfinished attempts against exchange positions before another entry. Sandbox
 and backtest simulate the same outcomes. Exchange orders cannot be truly
 atomic; the contract must describe the compensating path.
 
+```ts
+type PairAttempt = {
+  id: string;
+  pairId: string;
+  phase: "planned" | "first-filled" | "complete" | "recovering";
+  filledPositionKeys: string[];
+};
+// Save "planned" before order 1; on restart reconcile any unfinished attempt.
+```
+
 ### 6. Exchange hedge support is not wired through live execution
 
 The Binance adapter understands `positionSide`, but production entry,
@@ -155,6 +205,13 @@ Sandbox enforces the configured Binance Futures/HEDGE prerequisites and models
 both sides separately; backtest uses the same position identity without
 calling Binance.
 
+```ts
+const positionSide = leg.direction === "LONG" ? "long" : "short";
+await exchange.createOrder({ ...order, positionSide });
+await exchange.ensureClosed({ symbol, direction: leg.direction, positionSide });
+// For a Hedge close, do not depend on reduceOnly without positionSide.
+```
+
 ### 7. Pair identity, role, and old positions need one durable meaning
 
 `Position.strategy` has an immutable entry record and mutable averaging ladder,
@@ -172,10 +229,27 @@ persisted metadata on both the decision and resulting position: strategy slug,
 stable pair ID, role, and entry-leg selection at the time of entry. Keep any
 strategy-specific `logic` payload separate and opaque. Derive a new pair ID
 once from account, normalized symbol, original vPoint ID, and original entry
-time; re-entries retain it, while each leg has its own stable position ID for
-history edits and Precision matching. Treat old roleless, pairless records as
-Multi/MAIN, using the existing legacy comparison key. Never recompute a
-position's strategy from today's config after it opens.
+time; re-entries retain it. Identify an individual leg for manual actions and
+history edits with a key derived from its existing immutable fields plus role;
+do not add a random persisted ID that would reduce Precision comparison.
+Treat old roleless, pairless records as Multi/MAIN, using the existing checker
+matching rule. Never recompute a position's strategy from today's config after
+it opens.
+
+```ts
+interface StrategyPositionMeta {
+  owner: "multi" | "both" | "streak";
+  pairId?: string;
+  role?: "MAIN" | "COUNTER";
+  entryLegs?: "MAIN" | "COUNTER" | "BOTH";
+}
+// Proposed: position.strategy.meta plus position.strategy.logic?: unknown.
+// The owning strategy parses logic; the shared runtime reads only meta.
+const positionKey = (p: Position) => [
+  p.account, p.symbol, p.opened.vPoint.id, p.opened.t,
+  p.direction, p.strategy.meta?.role ?? "MAIN",
+].join("|");
+```
 
 ### 8. vPoint use is account-wide today
 
@@ -197,6 +271,12 @@ Streak re-entry sees a newer confirmed vPoint, select the newest eligible
 point unused for that role and retain the original pair ID. Diagnostics must
 use the same usage query as entry production.
 
+```ts
+usage.has(point, { accountSlug, scope: "role", role: "COUNTER" });
+// "acct:MAIN" does not block COUNTER; legacy "acct" blocks both roles.
+usage.mark(point, `${accountSlug}:COUNTER`); // only after a successful fill
+```
+
 ### 9. Per-leg exits and averaging conflict with default monitors
 
 The monitor evaluates one position at a time. Hedge requires some coordinated
@@ -211,13 +291,20 @@ Evidence: `src/lib/precision/monitoring/{position,stages,manual}.ts`,
 
 **Proposed solution:** Let each strategy's policy choose an exit scope (`leg`
 or `pair`) and reason, while the shared monitor executes the resulting intent
-and accounts for every closed leg. Use stable position IDs to avoid processing
+and accounts for every closed leg. Use the derived position key to avoid processing
 a stale copied-array entry after a coordinated exit. Averaging remains
 leg-specific, but the strategy may allow its exact next adverse low-level
-step. Extend manual commands with an optional role/position ID for `Close
-Leg`, plus an explicit `Close Both`; keep roleless emergency exits
+step. Extend manual commands with an optional role/position key for `Close Leg`,
+plus an explicit `Close Both`; keep roleless emergency exits
 symbol-wide. Test partial pair-exit failure and retry without closing an
 already-flat leg twice.
+
+```ts
+type ExitIntent =
+  | { kind: "exit-leg"; positionKey: string; reason: PositionCloseReason }
+  | { kind: "exit-pair"; pairId: string; reason: PositionCloseReason };
+// Manual Close Leg supplies positionKey; Close Both supplies pairId.
+```
 
 ### 10. Strategy state survives a snapshot, not a production restart
 
@@ -242,6 +329,20 @@ re-entry and surface a recovery diagnostic rather than infer a fill or close
 from absence. Capture the hydrated state in Precision snapshots and test
 restart at each close/re-entry boundary.
 
+```ts
+interface SavedStrategyState {
+  version: 1;
+  pendingReentries: Array<{
+    pairId: string;
+    role: "MAIN" | "COUNTER";
+    direction: "LONG" | "SHORT";
+    anchorVPointId: string;
+    anchorT: number;
+  }>;
+}
+// Load per account/mode; reconcile it with positions/history before entry.
+```
+
 ### 11. Configuration and diagnostics still describe Multi
 
 Runtime/account config has no strategy choice, `openDirection`, or per-account
@@ -264,6 +365,37 @@ selected module through one helper used by production, both backtests, and
 one-off passes. Reject a strategy switch while open positions or pending
 re-entries still belong to the old strategy. Show per-role entry reasons,
 open legs, pair net PnL, and role-aware history/Precision results in the UI.
+
+```ts
+type StrategyName = "multi" | "both" | "streak";
+type EntryLegs = "MAIN" | "COUNTER" | "BOTH";
+const strategyName: StrategyName = config.management.strategy ?? "multi";
+const entryLegs: EntryLegs = account.trading.entryLegs ?? "BOTH";
+const strategy = strategies.resolve(strategyName);
+const engine = new RuntimeEngine(state, adapter, strategy);
+// Use the same resolver in production, Precision backtest, quick backtest,
+// and manual passes.
+```
+
+## One concrete run
+
+Suppose SUI confirms `TOP[1]-A`, the account selects `BOTH` legs, and
+`maxOpenPositions = 1`. One `pair-entry` proposes MAIN SHORT and COUNTER LONG.
+The funding guard checks both legs and their reserves; the worker view counts
+the pair as one slot. After both fills, the two positions share a pair ID and
+the source vPoint gains `account:MAIN` and `account:COUNTER` markers.
+
+The policies then diverge:
+
+| Later event | `both` proposal | `streak` proposal |
+|---|---|---|
+| `TOP[2]-B` | No level-0 pair target yet; each leg can still average or exit under its other rules. | LONG reaches its directional target, closes, and may re-enter as COUNTER at B; SHORT remains open. |
+| Later level `0` | Coordinated pair exit if the Hedge target rule is first to trigger. | Each leg follows its own target/stop policy; level `0` alone does not mean close both. |
+
+If the second entry order fails, the pair attempt is failed even if the first
+filled. The coordinator closes that first leg or persists it for recovery.
+No successful pair entry is reported and the source vPoint remains available
+until a complete entry succeeds.
 
 ## Suggested discussion order
 
