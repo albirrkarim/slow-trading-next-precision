@@ -954,7 +954,7 @@ function isEntrySignalVolatilityPointUsed(params: {
     return vpoints.usage.hasAccount(point, accountSlug);
   }
 
-  return point.used === true;
+  return (point.usedBy ?? []).length > 0;
 }
 
 /** Marks an entry signal's source volatility point as used after entry succeeds. */
@@ -966,17 +966,12 @@ function markEntrySignalVolatilityPointUsed(params: {
 }): boolean {
   // BOTH:ENTRY_ONLY_IN_UNIQUE_VOLATILITY_POINT_ID
   const point = findEntrySignalVolatilityPoint(params);
-  if (!point) {
+  const accountSlug = String(params.accountSlug || "").trim();
+  if (!point || !accountSlug) {
     return false;
   }
 
-  const accountSlug = String(params.accountSlug || "").trim();
-  if (accountSlug) {
-    vpoints.usage.mark(point, accountSlug);
-    return true;
-  }
-
-  point.used = true;
+  vpoints.usage.mark(point, accountSlug);
   return true;
 }
 

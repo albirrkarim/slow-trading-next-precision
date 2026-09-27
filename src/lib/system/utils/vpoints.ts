@@ -428,13 +428,13 @@ function retainRecent(params: {
   );
 }
 
-/** Removes legacy and strategy usage markers from one point. */
+/** Removes usage markers from one point. */
 function resetUsage(point: VolatilityPoint): void {
-  delete point.used;
   delete point.usedBy;
-  // Strip persisted markers written by the retired `usedBy<slug>` scheme.
+  // Strip persisted markers written by the retired `used`/`usedBy<slug>`
+  // schemes so old data keeps cleaning itself on every reset.
   for (const key of Object.keys(point)) {
-    if (key.startsWith("usedBy")) {
+    if (key === "used" || key.startsWith("usedBy")) {
       delete (point as VolatilityPoint & Record<string, unknown>)[key];
     }
   }

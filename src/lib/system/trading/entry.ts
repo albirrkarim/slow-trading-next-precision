@@ -57,8 +57,9 @@ function mapScaleValue(
 
 /**
  * Checks whether the source volatility point for an entry signal is already
- * used: account markers (`"<slug>"` or per-leg `"<slug>:<ROLE>"`) win,
- * callers without account identity read `used`.
+ * used: with an account slug it matches that account's markers
+ * (`"<slug>"` or per-leg `"<slug>:<ROLE>"`); without one, any marker means
+ * consumed.
  */
 function isVolatilityPointUsed(params: {
   accountSlug?: string;
@@ -79,27 +80,7 @@ function isVolatilityPointUsed(params: {
     return vpoints.usage.hasAccount(point, accountSlug);
   }
 
-  return point.used === true;
-}
-
-/** Builds an account-scoped copy for the decision engine. */
-function createAccountVolatilityMap(
-  context: RuntimeContext,
-  accountSlug: string,
-) {
-  return Object.fromEntries(
-    Object.entries(context.state.vPointsMap).map(([symbol, points]) => [
-      symbol,
-      points.map((point) => ({
-        ...point,
-        used: isVolatilityPointUsed({
-          accountSlug,
-          entrySignal: point,
-          volatilityPoints: points,
-        }),
-      })),
-    ]),
-  );
+  return (point.usedBy ?? []).length > 0;
 }
 
 function makeEntryRecommendation(
@@ -157,9 +138,7 @@ function evaluateRecommendations(
       Number(context.state.config.runtime.autoRemoveSymbolAbsLevel) || 0,
     ),
   );
-  const volatilityPointsMap = createAccountVolatilityMap(context, accountSlug);
-
-  for (const [symbol, points] of Object.entries(volatilityPointsMap)) {
+  for (const [symbol, points] of Object.entries(context.state.vPointsMap)) {
     const currentPoint = points.at(-1);
     if (
       !currentPoint ||
@@ -171,8 +150,6 @@ function evaluateRecommendations(
     ) {
       continue;
     }
-
-    currentPoint.symbol = symbol;
 
     if (symbol === "BTC") {
       continue;
@@ -188,21 +165,26 @@ function evaluateRecommendations(
       continue;
     }
 
-    if (currentPoint.used) {
-      continue;
-    }
-
     // BOTH:DECISION_V20_LEVEL_GATE
     // v20 enters every unused latest point inside the configured range.
     // It does not project lower levels or rank candidates by Speed timing.
-    currentPoint.used = true;
-    recommendations.push(
-      makeEntryRecommendation(
-        currentPoint,
-        resolvedMinEntryAbsLevel,
-        resolvedMaxEntryAbsLevel,
-      ),
+    if (
+      isVolatilityPointUsed({
+        accountSlug,
+        entrySignal: currentPoint,
+        volatilityPoints: points,
+      })
+    ) {
+      continue;
+    }
+
+    const recommendation = makeEntryRecommendation(
+      currentPoint,
+      resolvedMinEntryAbsLevel,
+      resolvedMaxEntryAbsLevel,
     );
+    recommendation.symbol = symbol;
+    recommendations.push(recommendation);
   }
 
   return recommendations;

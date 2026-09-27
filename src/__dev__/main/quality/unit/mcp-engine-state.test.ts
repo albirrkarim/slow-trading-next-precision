@@ -137,7 +137,7 @@ function makeState() {
         { id: "T_b", l: "T", lvl: 1, p: 13, pct: 3, t: 2 },
       ],
       ZRO: [
-        { id: "B_c", l: "B", lvl: -1, p: 1.5, pct: 5, t: 3, used: true },
+        { id: "B_c", l: "B", lvl: -1, p: 1.5, pct: 5, t: 3, usedBy: ["Main"] },
       ],
     },
     volume24hMap: { LINK: 12345 },
@@ -234,7 +234,7 @@ describe("MCP engine state read", () => {
     expect(link.count).toBe(2);
     expect(link.latest.id).toBe("T_b");
     expect(link.usedBy.Main).toEqual(["B_a"]);
-    expect(link.used).toEqual([]);
+    expect(link.used).toEqual(["B_a"]);
     expect(zro.used).toEqual(["B_c"]);
     expect(link.points).toBeUndefined();
   });

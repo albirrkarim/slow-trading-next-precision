@@ -148,7 +148,7 @@ function summarizeSymbolPoints(
   for (const point of list) {
     const id = String(point.id ?? "");
     if (!id) continue;
-    if (point.used === true) used.push(id);
+    if ((point.usedBy ?? []).length > 0) used.push(id);
     for (const marker of point.usedBy ?? []) {
       const slug = String(marker || "").trim();
       if (!slug) continue;

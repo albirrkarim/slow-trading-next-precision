@@ -493,15 +493,11 @@ function markVPointUsed(params: {
       : accountSlug
         ? [accountSlug]
         : [];
-  if (markers.length > 0) {
-    for (const marker of markers) {
-      vpoints.usage.mark(point, marker);
-    }
-    return;
+  // Consumption requires a marker; every engine caller passes the account's
+  // `vPointUsage`, so a call with neither markers nor slug records nothing.
+  for (const marker of markers) {
+    vpoints.usage.mark(point, marker);
   }
-
-  // Keep the legacy point-wide marker for callers without account identity.
-  point.used = true;
 }
 
 const positions = {

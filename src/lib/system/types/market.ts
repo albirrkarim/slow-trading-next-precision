@@ -171,24 +171,6 @@ export interface VolatilityPointDecision<TFeature = unknown> {
 }
 
 /**
- * Superseded fields kept declared so persisted points still typecheck and
- * account-less fallbacks keep working. New code should prefer the
- * `VolatilityPointDecision` replacements.
- */
-export interface VolatilityPointLegacy {
-  /**
-   * Legacy point-wide usage marker for callers without an account identity.
-   * Account-aware entry and averaging use the `usedBy` marker list instead.
-   */
-  used?: boolean;
-
-  /**
-   * Delta in ms between v point before and the current v point
-   */
-  delta?: number;
-}
-
-/**
  * Volatility Point is point that mark the wave of the price volatility
  *
  * Current point is determined based on the volatility point before wether its TOP or DOWN about 5% or more.
@@ -196,5 +178,4 @@ export interface VolatilityPointLegacy {
 export interface VolatilityPoint<TFeature = unknown>
   extends VolatilityPointBasic,
     VolatilityPointRuntime,
-    VolatilityPointDecision<TFeature>,
-    VolatilityPointLegacy {}
+    VolatilityPointDecision<TFeature> {}

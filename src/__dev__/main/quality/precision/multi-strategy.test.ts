@@ -290,7 +290,6 @@ describe("multi strategy entry decisions", () => {
     expect(first.some((decision) => decision.symbol === "BTC")).toBe(false);
 
     // The shared point itself is not marked used by decision evaluation.
-    expect(suiLatest.used).toBeUndefined();
     expect(suiLatest.usedBy).toBeUndefined();
 
     Object.assign(suiLatest, { usedBy: ["a1"] });
@@ -563,7 +562,6 @@ describe("multi strategy positions", () => {
     });
 
     expect(suiLatest.usedBy).toEqual(["a1"]);
-    expect(suiLatest.used).toBeUndefined();
 
     const decisions = await strategy.decisions.findEntries(context);
     expect(decisions.map((decision) => decision.accountSlug)).toEqual(["a2"]);
