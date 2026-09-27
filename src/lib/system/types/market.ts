@@ -137,7 +137,7 @@ export interface VolatilityPointRuntime {
  * markers after an action succeeds. The engine only stores and matches
  * the raw values.
  */
-export interface VolatilityPointDecision<TFeature = unknown> {
+export interface VolatilityPointDecision {
   /**
    * Usage markers written by the active strategy after an action succeeds.
    * Marker format is strategy-chosen; the runtime only stores and matches
@@ -146,28 +146,6 @@ export interface VolatilityPointDecision<TFeature = unknown> {
    * pair leg. Absent or empty means unused.
    */
   usedBy?: string[];
-
-  /**
-   * old: What feature so the system is decide to buy using this point
-   *
-   * new: act as temp feature. for entry
-   */
-  feature?: TFeature;
-
-  /**
-   * How sure the system to buy using this point
-   */
-  probability?: number;
-
-  /**
-   * Maximal USDT
-   */
-  maxUsdtEntry?: number;
-
-  /**
-   * Why the system decide to buy using this point
-   */
-  descisionLabel?: string;
 }
 
 /**
@@ -175,7 +153,7 @@ export interface VolatilityPointDecision<TFeature = unknown> {
  *
  * Current point is determined based on the volatility point before wether its TOP or DOWN about 5% or more.
  */
-export interface VolatilityPoint<TFeature = unknown>
+export interface VolatilityPoint
   extends VolatilityPointBasic,
     VolatilityPointRuntime,
-    VolatilityPointDecision<TFeature> {}
+    VolatilityPointDecision {}

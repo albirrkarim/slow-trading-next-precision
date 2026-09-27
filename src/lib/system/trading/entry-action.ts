@@ -97,10 +97,6 @@ function getFeeRate(
   );
 }
 
-function cloneValue<T>(value: T): T {
-  return value === undefined ? value : structuredClone(value);
-}
-
 function resolveRequestedEntryMargin(
   decision: RuntimeEntryDecision,
   spendableUsdt: number,
@@ -111,9 +107,7 @@ function resolveRequestedEntryMargin(
   // An already-resolved recommendation is a margin amount, not a probability
   // budget. This is how the dynamic/backtest recommendation contract defines it.
   if (Number.isFinite(configuredMargin) && configuredMargin > 0) {
-    return signal.maxUsdtEntry && signal.maxUsdtEntry > 0
-      ? Math.min(configuredMargin, signal.maxUsdtEntry)
-      : configuredMargin;
+    return configuredMargin;
   }
 
   const probability = Number(signal.amountProbab);
@@ -122,11 +116,7 @@ function resolveRequestedEntryMargin(
       ? Math.min(1, probability)
       : 0;
   const runtimeBudget = Math.max(0, spendableUsdt);
-  const requestedMargin = Math.floor(runtimeBudget * allocation);
-
-  return signal.maxUsdtEntry && signal.maxUsdtEntry > 0
-    ? Math.min(requestedMargin, signal.maxUsdtEntry)
-    : requestedMargin;
+  return Math.floor(runtimeBudget * allocation);
 }
 
 /**
@@ -273,17 +263,6 @@ function createEmptyAveragingState(
     reservedRemainingMarginUsdt: 0,
     steps: [],
   };
-}
-
-/** Normalizes the persisted entry feature exactly like the legacy executor. */
-function normalizeEntryFeature(
-  feature: EntryRecommendation["feature"],
-): Record<string, unknown> | undefined {
-  const cloned =
-    feature && typeof feature === "object"
-      ? (cloneValue(feature) as Record<string, unknown>)
-      : {};
-  return Object.keys(cloned).length > 0 ? cloned : undefined;
 }
 
 /** Everything needed to fill an approved entry decision, in any mode. */
@@ -497,8 +476,6 @@ function applyFill(
     strategy: {
       entry: {
         engine: plan.config.decisionEngineVersion,
-        feature: normalizeEntryFeature(plan.signal.feature),
-        label: plan.signal.descisionLabel,
       },
       averaging,
     },

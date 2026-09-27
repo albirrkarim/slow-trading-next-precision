@@ -91,17 +91,11 @@ function makeEntryRecommendation(
   let amountProbab = 0;
 
   if (point.l === "B") {
-    amountProbab = mapScaleValue(
-      -1,
-      -5,
-      point.lvl,
-      0.5,
-      point.probability ?? 1,
-    );
+    amountProbab = mapScaleValue(-1, -5, point.lvl, 0.5, 1);
   }
 
   if (point.l === "T") {
-    amountProbab = mapScaleValue(1, 5, point.lvl, 0.5, point.probability ?? 1);
+    amountProbab = mapScaleValue(1, 5, point.lvl, 0.5, 1);
   }
 
   const direction = point.l === "B" ? "LONG" : "SHORT";
