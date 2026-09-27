@@ -69,52 +69,96 @@ exist yet) plus the pair-aware data-type and execution extensions.
   are mostly adapter-side work (`src/lib/exchange/`,
   `platform/binance/futures/position-mode.ts`).
 
-## Still open
+## Still open — Q&A
 
-1. **`config.strategy` field + slug→module resolution.** No config field
-   exists yet and no call site passes a strategy — every
-   `new RuntimeEngine(...)` is invoked with two args today
-   (production `runtime.ts`, backtest `index.ts`, drivers). Resolution
-   should live in the adapter factories so backtest/sandbox/live resolve
-   identically.
+`A: ___` means a decision is needed from you.
 
-YES make the `config.strategy`:string
+1. **Q — Add `config.strategy` for slug→module selection?** No config
+   field exists yet and no call site passes a strategy — every
+   `new RuntimeEngine(...)` runs with two args today (production
+   `runtime.ts`, backtest `index.ts`, drivers).
+   **A:** YES — `config.strategy: string`. Resolution lives in the
+   adapter factories (lazy import per the proposal below) so
+   backtest/sandbox/live resolve identically.
 
-2. **Pair-aware entry eligibility.** The seam exists: `strategy.guard`
-   replaces the default gate, and `guard.entry.capacity`
-   (`guard/entry.ts`) is the piece to swap for role-aware dedupe and
-   pair-counting `maxOpenPositions` ("worker count is not doubled"). What
-   remains is the `both` strategy's own guard module and the pair/leg
-   metadata it reads (item 4).
+2. **Q — How does pair-aware entry eligibility land?**
+   **A:** Decided — via `strategy.guard`. `lib/strategies/both/guard`
+   replaces `guard.entry.capacity` with role-aware dedupe and pair
+   counting ("worker count is not doubled"), delegating `guard.common` +
+   `guard.entry.policy` for the rest. Pending the `both` module itself
+   and the metadata it reads (item 4).
+
+3. **Q — Atomic pair entry shape?** `onAction` returns `Position | null`
+   today; pair entry needs two coordinated fills with rollback (close
+   leg 1 if leg 2 fails). Options: **(a)** a `RuntimePairEntryDecision`
+   type where `onAction` returns `Position[]` — rollback lives wholly in
+   the adapter; **(b)** two leg decisions sharing `pairId`, executed as
+   one atomic batch by the adapter — reuses the single-position pipeline
+   but needs a batch/rollback protocol between engine and adapter.
+   **Recommendation:** (a). Atomic operational behavior is the adapter's
+   job per the boundary contract, and one decision = one trade intent
+   keeps `onActionResult` and balance/vPoint bookkeeping honest per pair
+   (each leg is still recorded individually from the returned array).
+   (b) leaves the engine orchestrating compensation — a rollback concept
+   leaking into strategy-neutral monitoring code. If keeping `onAction`'s
+   signature stable matters, an optional `adapter.onPairAction` member is
+   the narrower-diff variant of (a).
+   **A:** (a)
+
+4. **Q — Where do `pairId` / `role` / `entryLegs` live?** Decisions carry
+   `vPointUsage` but no generic strategy payload; positions already have
+   `strategy.entry.feature?: TFeature` (supersedes the earlier
+   `Position.strategy.logic` sketch). Extend the same pattern — a
+   free-form `decision.strategy`/`meta` slot the strategy types itself?
+   **Recommendation:** yes — `decision.strategy?: unknown`, named to match
+   `state.strategy` / `position.strategy`. The engine carries it
+   uninterpreted into `onAction`/`onActionResult`; the adapter copies it
+   into `position.strategy.*` when building the position so pair identity
+   survives the decision→position hop. Guard already sees the decision,
+   so the strategy's own gate can read role/`entryLegs` for capacity
+   without any engine change.
+   **A:** ___
+
+5. **Q — Coordinated pair exit?** `monitorPosition`/`exit` handle one
+   position per pass — `BOTH:VOLATILITY_TARGET_EXIT` /
+   `BOTH:EXIT_TOGETHER_WHEN_STOP_LOSS` need either a pair-exit decision
+   type or a post-exit counterpart lookup in `onActionResult` (safe —
+   stages iterate a copied array).
+   **Recommendation:** neither new machinery — same-pass producer logic.
+   Stages iterate the pre-pass copy of `openPositions`, so the sibling
+   leg is still visited this pass: when leg 1 closes, the strategy's
+   `decisions.exit.find` on leg 2 sees the pair state (leg 1 closed, via
+   the `pairId`/`role` metadata from item 4) and emits its exit in the
+   same cycle. Zero new engine surface; the strategy owns pair semantics.
+   Fall back to an explicit pair-exit decision only if one-tick ordering
+   proves fragile in backtests.
+   **A:** ___
+
+6. **Q — Config field placement?** `management.openDirection`
+   ("ONE_WAY" | "BOTH"), per-account `trading.entryLegs`, and
+   `futuresPositionMode` for hedge-mode validation are not in
+   `RuntimeManagementConfig` / `RuntimeAccountTradingConfig` yet.
+   Confirm names and locations?
+   **Recommendation:** `management.openDirection` (engine-wide mode),
+   `trading.entryLegs` per account ("MAIN" | "COUNTER" | "BOTH"), and
+   `futuresPositionMode` on `RuntimeAccountTradingConfig` — it is an
+   exchange-account property, not a management one, and `preflight`
+   validates it per account at boot.
+   **A:** yes
 
 
-   
-3. **Atomic pair execution.** `onAction` still returns `Position | null`.
-   Pair entry needs two coordinated fills with rollback (close leg 1 if
-   leg 2 fails) — either a `Run
-   timePairEntryDecision` returning
-   `Position[]` or two leg decisions sharing `pairId` executed atomically
-   by the adapter.
-
-
-
-4. **Decision metadata slot.** `pairId`/`role`/`entryLegs` are
-   strategy-owned data; decisions carry `vPointUsage` but no generic
-   strategy payload yet (tracked in `StrategyAPI.decisions` doc).
-5. **Coordinated exit.** `monitorPosition`/`exit` still handle one
-   position at a time — `BOTH:VOLATILITY_TARGET_EXIT` /
-   `BOTH:EXIT_TOGETHER_WHEN_STOP_LOSS` need a pair-exit decision or a
-   post-exit counterpart lookup. (Iteration is safe — stages iterate a
-   copied array.)
-6. **Config fields.** `management.openDirection` ("ONE_WAY" | "BOTH"),
-   per-account `trading.entryLegs`, and `futuresPositionMode` for
-   hedge-mode validation are not in `RuntimeManagementConfig` /
-   `RuntimeAccountTradingConfig`.
-7. **`state.strategy` persistence across restart.** The slot survives
-   snapshots/replays but not a live engine restart — `createState`
-   (`production/factory.ts`) rebuilds state per account and does not load
-   a persisted strategy record yet.
-
+7. **Q — `state.strategy` persistence across restart?** The slot
+   survives snapshots/replays but not a live engine restart —
+   `createState` (`production/factory.ts`) rebuilds per-account state
+   and never loads a persisted strategy record. Persist via a new
+   `runtimeStorage` channel, or fold into the existing status file?
+   **Recommendation:** a dedicated `runtimeStorage.strategy` channel —
+   one compact file per mode (live/sandbox), read in `createState` like
+   the status/vpoints bootstrap and flushed in the same `onStateChange`
+   write. The status file has its own schema and lifecycle (daily-PnL,
+   black-swan); strategy state is free-form `unknown`, so a separate
+   channel keeps both schemas decoupled and replay snapshots identical.
+   **A:** yes
 
 
 # Human proposed architecture
