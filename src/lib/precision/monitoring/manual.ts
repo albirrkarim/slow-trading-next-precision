@@ -220,14 +220,30 @@ async function run(
         continue;
       }
 
+      // A pair strategy reshapes the forced single entry into its
+      // candidate form (e.g. an atomic MAIN + COUNTER pairEntry); a
+      // skip-reason string means the strategy cannot take it.
+      const candidate =
+        context.strategy?.decisions?.entry?.shape?.(context, decision) ??
+        decision;
+      if (typeof candidate === "string") {
+        result.entries.push({
+          accountSlug: scope.accountSlug,
+          executed: false,
+          message: candidate,
+          symbol,
+        });
+        continue;
+      }
+
       const filled = await entryMonitoring.executeDecision(
         context,
-        decision,
+        candidate,
       );
       result.entries.push({
         accountSlug: scope.accountSlug,
         executed: Boolean(filled?.length),
-        message: filled?.length ? decision.message : "Entry action declined",
+        message: filled?.length ? candidate.message : "Entry action declined",
         symbol,
       });
     }

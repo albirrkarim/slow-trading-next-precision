@@ -177,6 +177,37 @@ function workerKey(position: Position): string {
 }
 
 /**
+ * Pair strategy active with both-direction entries — `both`/`streak`
+ * selected and `openDirection` `"BOTH"`. The type predicate narrows
+ * `config.strategy` to the pair slug for callers that render the paired
+ * view.
+ */
+function isPairMode(config: {
+  strategy?: string;
+  openDirection?: string;
+}): config is { strategy: "both" | "streak"; openDirection: "BOTH" } {
+  return (
+    (config.strategy === "both" || config.strategy === "streak") &&
+    config.openDirection === "BOTH"
+  );
+}
+
+/**
+ * Legs funded per worker — pair mode funds 2 legs (MAIN + COUNTER) when
+ * the account's `entryLegs` is `"BOTH"` (the default), else 1. Per spec
+ * §B one worker is one pair: its worker count is not doubled, but the
+ * entry margin and reserved averaging ladder are funded for both legs.
+ */
+function legsPerWorker(config: {
+  strategy?: string;
+  openDirection?: string;
+  entryLegs?: string;
+}): 1 | 2 {
+  const entryLegs = config.entryLegs ?? "BOTH";
+  return isPairMode(config) && entryLegs === "BOTH" ? 2 : 1;
+}
+
+/**
  * Collapses pair legs into one representative per pair — feeding
  * `tradingEntry.findDecisions` a view where a pair counts as one open
  * position keeps `maxOpenPositions` pair-aware without changing the shared
@@ -204,6 +235,8 @@ const pair = {
   collapse,
   direction: roleDirection,
   findSibling,
+  isPairMode,
+  legsPerWorker,
   meta: {
     ofDecision,
     ofPosition,

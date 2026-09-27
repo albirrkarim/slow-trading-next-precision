@@ -17,6 +17,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
+import pair from "@/lib/strategies/shared/pair";
 import openPositionPnlContribution from "./open-position-pnl-contribution";
 import OpenPositionItem from "./OpenPositionItem";
 import PairedOpenPositions from "./PairedOpenPositions";
@@ -120,11 +121,7 @@ export default function OpenPositions({
   const isWorstFirst = pnlSortOrder === "worst";
   // Pair strategies with BOTH open direction render the paired board;
   // every other configuration keeps the flat per-position list.
-  const pairSlug =
-    (config.strategy === "both" || config.strategy === "streak") &&
-    config.openDirection === "BOTH"
-      ? config.strategy
-      : null;
+  const pairSlug = pair.isPairMode(config) ? config.strategy : null;
 
   useEffect(() => {
     const initialTimeoutId = window.setTimeout(() => setNow(Date.now()), 0);

@@ -69,7 +69,7 @@ const onActionResult: OnActionResult = async (
 const both: StrategyAPI = {
   name: "both",
   decisions: {
-    entry: { find: pairEntry.findPairs },
+    entry: { find: pairEntry.findPairs, shape: pairEntry.fromSignal },
     averaging: {
       // BOTH:LOW_LEVEL_NEXT_ADVERSE_AVERAGING — a verified pair leg may
       // consume its exact next adverse watch step at level ±1; positions

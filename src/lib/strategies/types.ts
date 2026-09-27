@@ -82,6 +82,16 @@ export interface StrategyDecisionProducers {
    */
   entry?: {
     find(context: RuntimeContext): Promise<RuntimeEntryCandidate[]>;
+    /**
+     * Reshapes one operator-forced single entry into this strategy's
+     * candidate form (e.g. an atomic MAIN + COUNTER pair). Returns a
+     * skip-reason string when the strategy cannot take it. Omitted → the
+     * manual decision runs as-is.
+     */
+    shape?(
+      context: RuntimeContext,
+      decision: RuntimeEntryDecision,
+    ): RuntimeEntryCandidate | string;
   };
   /** Evaluates one open position for an averaging candidate. */
   averaging?: {

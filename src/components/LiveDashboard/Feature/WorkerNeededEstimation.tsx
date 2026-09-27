@@ -9,6 +9,7 @@ import type { RuntimeSystemCapacityEstimate, RuntimeWorkerNeededEstimate } from 
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
 
 import entrySequenceCandidates from "./entry-sequence-candidates";
+import pair from "@/lib/strategies/shared/pair";
 import type { RuntimeEffectiveConfig } from "@/lib/system/runtime";
 import type { VolatilityPoint } from "@/lib/system/types";
 import { runtimeEntrySequences } from "@/lib/system/trading";
@@ -97,9 +98,11 @@ function tooltipContent(lines: string[]) {
 function buildEffectiveBalanceTooltip({
   config,
   estimate,
+  pairMode,
 }: {
   config: RuntimeEffectiveConfig;
   estimate: RuntimeSystemCapacityEstimate;
+  pairMode: boolean;
 }) {
   const maxEntryPct = config.maxEntryBased24HourVolPct ?? 0.2;
   const spareDescription =
@@ -110,6 +113,11 @@ function buildEffectiveBalanceTooltip({
   return tooltipContent([
     "Peak effective capital needed at one time in the current range.",
     "For each active sequence: fitted entry margin + reserve ladder, plus the optional spare when enabled.",
+    ...(pairMode
+      ? [
+          "Pair mode: each worker is one MAIN + COUNTER pair — entry margin and reserve ladder are funded for both legs; worker count is not doubled.",
+        ]
+      : []),
     spareDescription,
     `Entry margin is fitted with 24h volume × ${formatPercent(maxEntryPct)}, max entry %, fixed max entry, and watch reserve settings.`,
     "At every timestamp SLOW sums active sequence capital. This card shows the maximum sum.",
@@ -122,40 +130,60 @@ function buildEffectiveBalanceTooltip({
 function buildMaxProfitUsdtTooltip({
   config,
   estimate,
+  pairMode,
 }: {
   config: RuntimeEffectiveConfig;
   estimate: RuntimeSystemCapacityEstimate;
+  pairMode: boolean;
 }) {
   const takeProfitPct = config.takeProfitPercent ?? 0;
 
-  return tooltipContent([
-    "Total take-profit potential for all captured sequences in this range.",
-    "Per sequence: entry margin × (take profit % × leverage) / 100.",
-    `Configured take profit: ${formatPercent(takeProfitPct)}. Leverage comes from the current entry leverage rules.`,
-    `Current result: ${formatFullUsdt(estimate.metrics.maxProfitUsdt)}.`,
-  ]);
+  return tooltipContent(
+    pairMode
+      ? [
+          "Cumulative gross take-profit of the MAIN leg only, per captured pair sequence: entry margin × (take profit % × leverage) / 100.",
+          "This is not pair net profit — COUNTER-leg PnL, fees, funding, and slippage need the complete pair lifecycle and are excluded.",
+          `Configured take profit: ${formatPercent(takeProfitPct)}. Leverage comes from the current entry leverage rules.`,
+          `Current result: ${formatFullUsdt(estimate.metrics.maxProfitUsdt)}.`,
+        ]
+      : [
+          "Total take-profit potential for all captured sequences in this range.",
+          "Per sequence: entry margin × (take profit % × leverage) / 100.",
+          `Configured take profit: ${formatPercent(takeProfitPct)}. Leverage comes from the current entry leverage rules.`,
+          `Current result: ${formatFullUsdt(estimate.metrics.maxProfitUsdt)}.`,
+        ],
+  );
 }
 
-function buildMaxProfitPctTooltip(estimate: RuntimeSystemCapacityEstimate) {
+function buildMaxProfitPctTooltip(
+  estimate: RuntimeSystemCapacityEstimate,
+  pairMode: boolean,
+) {
   return tooltipContent([
     "Profit efficiency against required effective balance.",
-    "Formula: max TP profit USDT / effective balance × 100.",
+    pairMode
+      ? "Formula: gross MAIN-leg TP / pair effective balance × 100."
+      : "Formula: max TP profit USDT / effective balance × 100.",
     `${formatFullUsdt(estimate.metrics.maxProfitUsdt)} / ${formatFullUsdt(
       estimate.metrics.maxEffectiveCapitalUsdt,
     )} × 100 = ${formatPercent(estimate.metrics.maxProfitPct)}.`,
   ]);
 }
 
-function buildWorkerNeededChartTooltip() {
+function buildWorkerNeededChartTooltip(pairMode: boolean) {
   return tooltipContent([
     "Shows how many worker slots are occupied over time.",
     "A worker starts when one configured coin enters an entry sequence: abs(vPoint level) >= 3.",
     "The worker is released when that coin returns to level 0, or when the sequence direction changes.",
     "The chart value is the count of overlapping active entry sequences at each timestamp.",
+    ...(pairMode ? ["Pair mode: one worker = one pair."] : []),
   ]);
 }
 
-function buildCapitalNeededChartTooltip(config: RuntimeEffectiveConfig) {
+function buildCapitalNeededChartTooltip(
+  config: RuntimeEffectiveConfig,
+  pairMode: boolean,
+) {
   const maxEntryPct = config.maxEntryBased24HourVolPct ?? 0.2;
   const spareDescription =
     config.entrySpareBufferEnabled === false
@@ -167,6 +195,11 @@ function buildCapitalNeededChartTooltip(config: RuntimeEffectiveConfig) {
     `For each sequence, SLOW starts from 24h quote volume × ${formatPercent(maxEntryPct)}.`,
     "Then it runs the same entry sizing logic used by trading: reserve ladder, max entry %, fixed max entry, trading mode, and leverage config.",
     "Per active sequence capital: fitted entry margin + reserved averaging ladder, plus the optional spare when enabled.",
+    ...(pairMode
+      ? [
+          "Pair mode: each worker is one MAIN + COUNTER pair — entry margin and reserve ladder are funded for both legs; worker count is not doubled.",
+        ]
+      : []),
     spareDescription,
     "The chart value is the sum of active sequence capital at each timestamp.",
   ]);
@@ -281,6 +314,8 @@ function WorkerNeededEstimationContent({
   volume24hBySymbol?: Record<string, number>;
   volatilityMap: Record<string, VolatilityPoint[]>;
 }) {
+  const legs = pair.legsPerWorker(config);
+  const pairMode = legs === 2;
   const estimate = useMemo(() => {
     const rangedVolatilityMap = runtimeEntrySequences.range.crop({
       endTimeMs: endTime,
@@ -296,11 +331,12 @@ function WorkerNeededEstimationContent({
         maxEntryAbsLevel: config.maxEntryAbsLevel,
         volatilityMap: rangedVolatilityMap,
       }),
+      legsPerWorker: legs,
       startTimeMs: startTime,
       volatilityMap: rangedVolatilityMap,
       volume24hBySymbol,
     });
-  }, [config, endTime, startTime, volatilityMap, volume24hBySymbol]);
+  }, [config, endTime, legs, startTime, volatilityMap, volume24hBySymbol]);
   const workerEstimate: RuntimeWorkerNeededEstimate = useMemo(
     () => ({
       metrics: {
@@ -332,22 +368,22 @@ function WorkerNeededEstimationContent({
           {metricLabel(
             "Effective balance",
             metricTooltip(
-              buildEffectiveBalanceTooltip({ config, estimate }),
+              buildEffectiveBalanceTooltip({ config, estimate, pairMode }),
               formatCompactUsdt(estimate.metrics.maxEffectiveCapitalUsdt),
             ),
           )}
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           {metricLabel(
-            "Max TP profit",
+            pairMode ? "Max MAIN-leg TP (gross)" : "Max TP profit",
             <>
               {metricTooltip(
-                buildMaxProfitUsdtTooltip({ config, estimate }),
+                buildMaxProfitUsdtTooltip({ config, estimate, pairMode }),
                 formatCompactUsdt(estimate.metrics.maxProfitUsdt),
               )}{" "}
               (
               {metricTooltip(
-                buildMaxProfitPctTooltip(estimate),
+                buildMaxProfitPctTooltip(estimate, pairMode),
                 formatPercent(estimate.metrics.maxProfitPct),
               )}
               )
@@ -370,7 +406,7 @@ function WorkerNeededEstimationContent({
           {chartHeader({
             color: WORKER_NEEDED_CHART_COLOR,
             title: "Worker needed",
-            tooltip: buildWorkerNeededChartTooltip(),
+            tooltip: buildWorkerNeededChartTooltip(pairMode),
           })}
           <MultiLineTimelined
             colors={[WORKER_NEEDED_CHART_COLOR]}
@@ -381,7 +417,7 @@ function WorkerNeededEstimationContent({
           {chartHeader({
             color: CAPITAL_NEEDED_CHART_COLOR,
             title: "Capital needed",
-            tooltip: buildCapitalNeededChartTooltip(config),
+            tooltip: buildCapitalNeededChartTooltip(config, pairMode),
           })}
           <MultiLineTimelined
             colors={[CAPITAL_NEEDED_CHART_COLOR]}

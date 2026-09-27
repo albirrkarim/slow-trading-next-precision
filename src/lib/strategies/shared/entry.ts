@@ -67,6 +67,57 @@ function entryLegsOf(context: RuntimeContext, accountSlug: string): EntryLegs {
 }
 
 /**
+ * Reshapes one produced entry signal into the pair-strategy candidate
+ * form: the signal unchanged under `openDirection: "ONE_WAY"`, a single
+ * role leg for `entryLegs` `MAIN`/`COUNTER`, or an atomic MAIN + COUNTER
+ * `pairEntry` for `BOTH` — with a skip-reason string when the combined
+ * legs cannot be funded. Used by `findPairs` for auto signals and by
+ * `decisions.entry.shape` for operator-forced entries (the `manual` flag
+ * carries onto the pair decision; legs inherit it via `buildLeg`'s
+ * signal spread).
+ */
+function fromSignal(
+  context: RuntimeContext,
+  signal: RuntimeEntryDecision,
+): RuntimeEntryCandidate | string {
+  const openDirection =
+    context.state.config.management.openDirection ?? "ONE_WAY";
+  if (openDirection !== "BOTH") return signal;
+
+  const entryLegs = entryLegsOf(context, signal.accountSlug);
+  const pairId = pair.buildId(
+    signal.accountSlug,
+    signal.symbol,
+    signal.entrySignal.id,
+  );
+
+  if (entryLegs !== "BOTH") {
+    return buildLeg(signal, entryLegs, pairId, entryLegs);
+  }
+
+  const legs = [
+    buildLeg(signal, "MAIN", pairId, entryLegs),
+    buildLeg(signal, "COUNTER", pairId, entryLegs),
+  ];
+  if (!fundable(context, legs)) {
+    return (
+      "Pair entry skipped: spendable balance cannot fund both MAIN and " +
+      "COUNTER legs, or one leg's entry plan is blocked."
+    );
+  }
+
+  return {
+    type: "pairEntry",
+    accountSlug: signal.accountSlug,
+    legs,
+    message: signal.message,
+    ...(signal.manual ? { manual: true } : {}),
+    strategy: { entryLegs, pairId },
+    symbol: signal.symbol,
+  } satisfies RuntimePairEntryDecision;
+}
+
+/**
  * Fresh-pair producer shared by pair strategies: runs the default v20
  * signal scan over a pair-collapsed position view (one pair = one worker
  * for `maxOpenPositions`), then reshapes each signal by the account's
@@ -77,41 +128,13 @@ function entryLegsOf(context: RuntimeContext, accountSlug: string): EntryLegs {
 async function findPairs(
   context: RuntimeContext,
 ): Promise<RuntimeEntryCandidate[]> {
-  const openDirection =
-    context.state.config.management.openDirection ?? "ONE_WAY";
-
   const collapsed = pairDiagnostics.view(context);
   const signals = await tradingEntry.findDecisions(collapsed);
-  if (openDirection !== "BOTH") return signals;
 
   const candidates: RuntimeEntryCandidate[] = [];
   for (const signal of signals) {
-    const entryLegs = entryLegsOf(context, signal.accountSlug);
-    const pairId = pair.buildId(
-      signal.accountSlug,
-      signal.symbol,
-      signal.entrySignal.id,
-    );
-
-    if (entryLegs !== "BOTH") {
-      candidates.push(buildLeg(signal, entryLegs, pairId, entryLegs));
-      continue;
-    }
-
-    const legs = [
-      buildLeg(signal, "MAIN", pairId, entryLegs),
-      buildLeg(signal, "COUNTER", pairId, entryLegs),
-    ];
-    if (!fundable(context, legs)) continue;
-
-    candidates.push({
-      type: "pairEntry",
-      accountSlug: signal.accountSlug,
-      legs,
-      message: signal.message,
-      strategy: { entryLegs, pairId },
-      symbol: signal.symbol,
-    } satisfies RuntimePairEntryDecision);
+    const candidate = fromSignal(context, signal);
+    if (typeof candidate !== "string") candidates.push(candidate);
   }
 
   return candidates;
@@ -120,6 +143,7 @@ async function findPairs(
 const pairEntry = {
   buildLeg,
   findPairs,
+  fromSignal,
   fundable,
 } as const;
 

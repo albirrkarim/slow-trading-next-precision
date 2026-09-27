@@ -120,13 +120,26 @@ function fitPreviewMarginToBailoutBuffer(
 
 /**
  * Calculates how many new entry workers the current balance can afford.
+ * `legsPerWorker` defaults to 1; pair strategies pass 2 — per spec §B one
+ * worker is one MAIN + COUNTER pair, so the worker cost covers both legs'
+ * entry margin plus reserve ladder (the entry margin itself stays per
+ * leg). `openWorkers` defaults to the raw position count; pair-mode
+ * callers pass the pair-collapsed count so one pair uses one
+ * `maxOpenPositions` slot.
  */
 function calculateRuntimeWorkerCapacity(params: {
   activePositions: Array<Pick<Position, "strategy">>;
   config: RuntimeWorkerCapacityConfig;
+  legsPerWorker?: number;
+  openWorkers?: number;
   spendableUsdt: number;
 }): RuntimeWorkerCapacity {
   const { activePositions, config } = params;
+  const legs =
+    typeof params.legsPerWorker === "number" &&
+    Number.isFinite(params.legsPerWorker)
+      ? Math.max(1, Math.floor(params.legsPerWorker))
+      : 1;
   const spendableUsdt = Math.max(0, params.spendableUsdt);
   const existingBailoutBufferUsdt =
     reserve.balance.getLargestUnreservedStepMarginUsdt(activePositions);
@@ -166,7 +179,7 @@ function calculateRuntimeWorkerCapacity(params: {
         existingBailoutBufferUsdt,
         maxNextLevels,
         pctAlloc,
-        requiredMultiplier,
+        requiredMultiplier: requiredMultiplier * legs,
         reserveLevels,
         spendableUsdt,
         watchEnabled,
@@ -189,7 +202,7 @@ function calculateRuntimeWorkerCapacity(params: {
     existingBailoutBufferUsdt,
     maxNextLevels,
     pctAlloc,
-    requiredMultiplier,
+    requiredMultiplier: requiredMultiplier * legs,
     reserveLevels,
     spendableUsdt,
     watchEnabled,
@@ -200,7 +213,7 @@ function calculateRuntimeWorkerCapacity(params: {
       ? Math.floor(entryBudgetUsdt / workerCostUsdt)
       : 0;
   const maxOpenPositions = resolveMaxOpenPositions(config.maxOpenPositions);
-  const currentOpenPositions = activePositions.length;
+  const currentOpenPositions = params.openWorkers ?? activePositions.length;
   const remainingPositionSlots =
     maxOpenPositions > 0
       ? Math.max(0, maxOpenPositions - currentOpenPositions)

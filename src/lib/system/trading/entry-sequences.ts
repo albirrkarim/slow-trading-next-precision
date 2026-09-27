@@ -445,11 +445,16 @@ function buildCapitalEventSeries({
 /**
  * Estimates maximum effective capital needed to capture all active vPoint
  * entry sequences in the visible range with the current entry settings.
+ * `legsPerWorker` defaults to 1; pair strategies pass 2 — per spec §B one
+ * worker is one MAIN + COUNTER pair, so the entry margin and reserved
+ * averaging ladder are funded per leg while worker counts and the
+ * MAIN-leg gross take-profit stay undoubled.
  */
 function estimateSystemMaximalCapacity({
   config,
   endTimeMs,
   entrySignals,
+  legsPerWorker,
   startTimeMs,
   volatilityMap,
   volume24hBySymbol,
@@ -457,6 +462,7 @@ function estimateSystemMaximalCapacity({
   config: RuntimeEffectiveConfig;
   endTimeMs?: number;
   entrySignals: EntryRecommendation[];
+  legsPerWorker?: number;
   startTimeMs?: number;
   volatilityMap: Record<string, VolatilityPoint[]>;
   volume24hBySymbol?: Record<string, number>;
@@ -492,6 +498,10 @@ function estimateSystemMaximalCapacity({
         pctAlloc,
       })
     : 1;
+  const legs =
+    typeof legsPerWorker === "number" && Number.isFinite(legsPerWorker)
+      ? Math.max(1, Math.floor(legsPerWorker))
+      : 1;
   const takeProfitPct = config.takeProfitPercent ?? 0;
   const intervals = collectEntrySequenceIntervals({
     entrySignals,
@@ -530,10 +540,10 @@ function estimateSystemMaximalCapacity({
       },
     });
     const workerCostUsdt = reserve.money.roundUsdt(
-      entryMarginUsdt * requiredMultiplier,
+      entryMarginUsdt * requiredMultiplier * legs,
     );
     const effectiveCapitalUsdt = reserve.money.roundUsdt(
-      entryMarginUsdt * (requiredMultiplier + (hasSpareBuffer ? 1 : 0)),
+      entryMarginUsdt * (requiredMultiplier + (hasSpareBuffer ? 1 : 0)) * legs,
     );
     const maxProfitPct =
       Number.isFinite(takeProfitPct) && takeProfitPct > 0
@@ -588,7 +598,10 @@ function estimateSystemMaximalCapacity({
       minWorkers: workerNeeded.metrics.min,
       sequenceCount: sequences.length,
       totalEntryMarginUsdt: reserve.money.roundUsdt(
-        sequences.reduce((total, sequence) => total + sequence.entryMarginUsdt, 0),
+        sequences.reduce(
+          (total, sequence) => total + sequence.entryMarginUsdt * legs,
+          0,
+        ),
       ),
       totalWorkerCostUsdt: reserve.money.roundUsdt(
         sequences.reduce((total, sequence) => total + sequence.workerCostUsdt, 0),

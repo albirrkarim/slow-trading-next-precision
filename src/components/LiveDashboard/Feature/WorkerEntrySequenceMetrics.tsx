@@ -5,6 +5,7 @@ import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import { Box, Paper, Typography } from "@mui/material";
 import { useMemo } from "react";
 import { calculateSlowWorkerCapacity } from "./worker-capacity";
+import pair from "@/lib/strategies/shared/pair";
 import type { RuntimeDashboardState } from "@/lib/system/dashboard";
 
 function formatUsdt(value: number) {
@@ -51,6 +52,7 @@ function WorkerEntrySequenceMetricsContent({
     () => calculateSlowWorkerCapacity(dashboardState),
     [dashboardState],
   );
+  const pairMode = pair.legsPerWorker(dashboardState.config) === 2;
 
   return (
     <Box>
@@ -59,7 +61,8 @@ function WorkerEntrySequenceMetricsContent({
           Available workers: {capacity.availableWorkers}
         </Typography>
         <Typography color="text.secondary" display="block" variant="caption">
-          Spendable {formatUsdt(capacity.spendableUsdt)} · Worker{" "}
+          Spendable {formatUsdt(capacity.spendableUsdt)} ·{" "}
+          {pairMode ? "Pair worker (MAIN + COUNTER)" : "Worker"}{" "}
           {formatUsdt(capacity.workerCostUsdt)}
         </Typography>
         {capacity.bailoutBufferUsdt > 0 && (

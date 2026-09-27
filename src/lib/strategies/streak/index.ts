@@ -4,6 +4,7 @@ import type { OnActionResult } from "@/lib/precision/types";
 
 import pair from "../shared/pair";
 import pairDiagnostics from "../shared/diagnostics";
+import pairEntry from "../shared/entry";
 import sharedPreflight from "../shared/preflight";
 import streakEntry from "./entry";
 import streakExit from "./exit";
@@ -76,7 +77,7 @@ const onActionResult: OnActionResult = async (
 const streak: StrategyAPI = {
   name: "streak",
   decisions: {
-    entry: { find: streakEntry.find },
+    entry: { find: streakEntry.find, shape: pairEntry.fromSignal },
     averaging: {
       // STREAK rail averaging — a pair leg consumes any adverse-side
       // vPoint as its next step (level-0 BOTTOMs included for a LONG);

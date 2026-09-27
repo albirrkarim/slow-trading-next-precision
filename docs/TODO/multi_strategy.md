@@ -467,3 +467,18 @@ strategy-overridable.
    simulates leg fills; live verifies the authoritative exchange position
    mode at preflight (configured-mode declaration) and again inside
    `onPairAction` before the first leg orders.
+7. **Pair-aware capacity (hedge §B Worker Pair)** — DONE.
+   `pair.legsPerWorker(config)` feeds `systemCapacity.estimate` and
+   `runtimeWorkerCapacity.calculate` (`legsPerWorker`, `openWorkers`):
+   one worker = one pair, entry margin + reserve ladder funded for both
+   legs, worker counts not doubled. System Maximal Capacity labels the TP
+   figure `Max MAIN-leg TP (gross)` in pair mode and states that
+   COUNTER PnL, fees, funding, and slippage are excluded.
+8. **Pair-aware manual forced entry** — DONE. `decisions.entry.shape`
+   (`pairEntry.fromSignal`) reshapes an operator-forced entry into a
+   `pairEntry` (or a single role leg per `entryLegs`) with `manual: true`,
+   or returns a skip reason when both legs cannot be funded.
+9. **Still open** — paired-view PnL sort; pair funding check ignores leg
+   1's averaging reserve when planning leg 2; rolled-back live legs leave
+   no history row; `both` stop cascade unexercised on real data; live
+   hedge pair/rollback not run on testnet; Live Preview (§C.4) deferred.
