@@ -183,6 +183,70 @@ exist yet) plus the pair-aware data-type and execution extensions.
    **A:** yes
 
 
+## FAQ
+
+**1. `onPairAction` vs. union return.** For item 3(a) there's a variant worth deciding now: keep `adapter.onAction(decision) → Position | null` single-position, and add a separate optional `adapter.onPairAction(pairDecision) → Position[] | null` — or widen `onAction`'s return to `Position | Position[] | null`. I lean toward `onPairAction`: the single-position invariant stays intact, adapters without pair support fail cleanly (undefined member → engine skips pair decisions with a warning), and existing env adapters don't churn. Preference?
+
+
+A: yes introduce the adapter.onPairAction
+
+```ts
+// RuntimeDecision union gains a member:
+type: "entry" | "averaging" | "exit" | "pairEntry"
+
+// executeDecision — one dispatch point
+const result =
+  decision.type === "pairEntry"
+    ? await context.adapter.onPairAction?.(decision, context) // Position[] | null
+    : await context.adapter.onAction(decision, context);      // Position  | null
+```
+
+
+**2. Is the strategy global or per-account?** `StrategySlug`/`config.strategy` is currently modeled as one slug for the whole runtime. If an account should run `both` while another runs `streak` (or plain default), the config field belongs on `RuntimeAccountTradingConfig` and resolution becomes per-account — which changes how `preflight` and `state.strategy` partitioning work. If it's global forever, `management.strategy` is enough. Which?
+
+
+A: the strategy is global, but each account can also be configured 
+
+trading.leg = "main" | "counter" | "both"
+
+**3. Hedge-mode: verify or set?** `preflight` can read the account's `futuresPositionMode` and refuse to boot — or should the system actively *set* hedge mode on the exchange at startup? I'd verify-and-refuse (mode flips can be rejected when positions are open, so silently setting is fragile) — confirm?
+
+A: send some notif to enabled notification chanel
+
+**4. `streak`'s contract surface.** Everything so far was designed against `both`'s known requirements. I haven't audited `slow-trading-next-streak` this session — e.g., whether its re-entry candidates need to bypass the vPoint signal path (`entrySignal`/`vPointUsage` are required-ish fields on entry decisions today) or need hooks beyond producers/`onActionResult`/`state.strategy`. I can review that repo and report gaps — want me to?
+
+**A: Audited — contract covers it; no new engine surface.** Streak is the
+pair-based reopen-loop variant (`STREAK_BREAK_TRADING.md`): MAIN/COUNTER
+legs, close-and-reopen each favorable leg at the next confirmed unused
+vPoint, per-leg independent stop loss, fresh pair when both legs die.
+
+- Pair machinery + role metadata → items 3/4.
+- Reopen loop → `decisions.entry` + `state.strategy` empty-role records.
+- Role-scoped vPoint consumption (FAQ 8 `usedByMain`/`usedByCounter`) →
+  `vPointUsage` already accepts `"<slug>:<ROLE>"` markers.
+- "Newest confirmed unused vPoint" anchor (FAQ 7) → persist only the
+  empty-role record (`{ pairId, role, blockedReason }`), resolve the
+  anchor fresh at produce time — never store a staling anchor.
+- Used-markers on fill only (FAQ 9) → already post-fill in commit.
+- Per-leg SL, TP%/SL+ disabled, OR-rule exits (FAQ 5/6) → strategy
+  `decisions.exit` composes the default producers minus those legs.
+- `entrySignal` required → strategy constructs `EntryRecommendation`
+  from its anchor vPoint; `vPointUsage` optional.
+
+**One new open item:** empty-role slot visibility (streak C.1) — the UI
+must show why an unfilled role is blocked. Recommend
+`state.strategy.roles` (per-role status, persisted + replayable, same
+flush as `pendingClose`) over extending `entry-diagnostics`, which
+explains default-pipeline skips today.
+
+
+
+**5. Rollout order confirmation.** My suggested sequence: types (`decision.strategy`, `position.strategy.logic`, pair decision type) → config fields + slug resolution → adapter pair execution → `both` module → `streak`. Any reordering, or implement all-in-one vs. staged commits?
+
+all in one
+
+
+
 # Human proposed architecture
 
 Here my proposed architecure.
