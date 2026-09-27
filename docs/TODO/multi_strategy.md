@@ -51,6 +51,13 @@ exist yet) plus the pair-aware data-type and execution extensions.
 - **Per-leg vPoint consumption** — `vPointUsage` on decisions +
   `VolatilityPoint.usedBy: string[]` markers (`"<slug>"` or
   `"<slug>:<ROLE>"` convention) are implemented.
+- **Strategy-provided approval gate** — `StrategyAPI.guard` replaces
+  `guard.allows` wholesale at every monitoring checkpoint
+  (`context.strategy?.guard ?? guard`, the same swap as `decisions`). The
+  shared gate is decomposed for delegation — `guard.common` (always-run
+  checks returning the resolved account), `guard.entry.{capacity,policy}`,
+  `guard.averaging` — so `src/lib/strategies/<slug>/guard` recomposes
+  instead of reimplementing.
 - **Environment approval extension** — `adapter.onActionEnvGuard`
   (production wires it to the persisted-catalog `isActionAllowed` check in
   `factory.ts`) sits alongside the shared `guard.allows` on every
@@ -73,18 +80,24 @@ exist yet) plus the pair-aware data-type and execution extensions.
 
 YES make the `config.strategy`:string
 
-2. **Pair-aware entry eligibility.** `guard.allows` capacity checks
-   (`guard/entry.ts`) still block any same-symbol position —
-   MAIN+COUNTER legs need role-aware dedupe, and `maxOpenPositions` must
-   count pairs ("worker count is not doubled"), not legs.
+2. **Pair-aware entry eligibility.** The seam exists: `strategy.guard`
+   replaces the default gate, and `guard.entry.capacity`
+   (`guard/entry.ts`) is the piece to swap for role-aware dedupe and
+   pair-counting `maxOpenPositions` ("worker count is not doubled"). What
+   remains is the `both` strategy's own guard module and the pair/leg
+   metadata it reads (item 4).
 
 
    
 3. **Atomic pair execution.** `onAction` still returns `Position | null`.
    Pair entry needs two coordinated fills with rollback (close leg 1 if
-   leg 2 fails) — either a `RuntimePairEntryDecision` returning
+   leg 2 fails) — either a `Run
+   timePairEntryDecision` returning
    `Position[]` or two leg decisions sharing `pairId` executed atomically
    by the adapter.
+
+
+
 4. **Decision metadata slot.** `pairId`/`role`/`entryLegs` are
    strategy-owned data; decisions carry `vPointUsage` but no generic
    strategy payload yet (tracked in `StrategyAPI.decisions` doc).

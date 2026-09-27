@@ -40,10 +40,11 @@ async function executeDecision(
   context: RuntimeContext,
   decision: RuntimeEntryDecision,
 ): Promise<Position | null> {
-  // B. Approve — shared guard.allows (per-attempt capacity + policy), then
-  //    the adapter's optional env extension (production's live catalog
-  //    re-read). Neither is strategy-overridable.
-  if (!guard.allows(decision, context)) return null;
+  // B. Approve — the active guard (strategy override or shared default),
+  //    then the adapter's optional env extension (production's live
+  //    catalog re-read). onActionEnvGuard is never strategy-overridable.
+  const activeGuard = context.strategy?.guard ?? guard;
+  if (!activeGuard.allows(decision, context)) return null;
   if (
     !(await (context.adapter.onActionEnvGuard?.(decision, context) ?? true))
   ) {

@@ -86,9 +86,11 @@ async function averaging(
   const decision = await producer.find(context, position);
   if (!decision) return null;
 
-  // B. Shared policy guard, then the adapter's optional env-specific
-  // extension before any position or balance mutation occurs.
-  if (!guard.allows(decision, context)) return null;
+  // B. Active guard (strategy override or shared default), then the
+  // adapter's optional env-specific extension before any position or
+  // balance mutation occurs.
+  const activeGuard = context.strategy?.guard ?? guard;
+  if (!activeGuard.allows(decision, context)) return null;
   if (
     !(await (context.adapter.onActionEnvGuard?.(decision, context) ?? true))
   ) {
@@ -175,9 +177,11 @@ async function exit(
   const decision = await producer.find(context, position);
   if (!decision) return false;
 
-  // B. Shared policy guard, then the adapter's optional env-specific
-  // extension before any position or balance mutation occurs.
-  if (!guard.allows(decision, context)) return false;
+  // B. Active guard (strategy override or shared default), then the
+  // adapter's optional env-specific extension before any position or
+  // balance mutation occurs.
+  const activeGuard = context.strategy?.guard ?? guard;
+  if (!activeGuard.allows(decision, context)) return false;
   if (
     !(await (context.adapter.onActionEnvGuard?.(decision, context) ?? true))
   ) {

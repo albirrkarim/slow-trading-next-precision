@@ -14,13 +14,18 @@
  *   1. `decisions.<family>.find`  — produces candidates (default:
  *      `defaultDecision.<family>`). A strategy replaces a producer only
  *      for the families it declares.
- *   2. Engine eligibility checks  — `guard.allows` (per-attempt
- *      capacity + policy). Always run; a strategy cannot disable them.
- *   3. Environment approval      — the shared `guard.allows` plus the
- *      adapter's optional `onActionEnvGuard` extension gate every
- *      candidate regardless of producer. To constrain a family it does
- *      not override, a strategy wraps `defaultDecision.<family>.find`
- *      and filters the result — a separate veto member adds nothing.
+ *   2. Eligibility + approval   — `(strategy.guard ?? guard).allows` gates
+ *      every candidate: shared checks (`guard.common`), per-attempt
+ *      capacity, and family policy (`guard.entry`, `guard.averaging`). A
+ *      strategy replaces the gate wholesale and reuses those pieces
+ *      inside its own `lib/strategies/<slug>/guard` — dropping shared
+ *      checks by not delegating drops real protections (runner toggle,
+ *      black-swan, daily-PnL stop).
+ *   3. Environment approval      — the adapter's optional
+ *      `onActionEnvGuard` extension gates every candidate regardless of
+ *      producer or guard. To constrain a family it does not override, a
+ *      strategy wraps `defaultDecision.<family>.find` and filters the
+ *      result — a separate veto member adds nothing.
  *   4. `onAction`                 — environment execution (sandbox fill or
  *      live order) plus notifications. Not strategy-overridable.
  *   5. `onActionResult`           — the strategy observes the outcome:
@@ -35,6 +40,7 @@ import type {
   OnActionResult,
   RuntimeAveragingDecision,
   RuntimeContext,
+  RuntimeDecision,
   RuntimeEntryDecision,
   RuntimeExitDecision,
 } from "@/lib/precision/types";
@@ -86,6 +92,32 @@ export interface StrategyDecisionProducers {
 }
 
 /**
+ * Strategy-provided approval gate — replaces `guard.allows` wholesale at
+ * every monitoring checkpoint (the same `strategy.guard ?? guard` swap as
+ * `decisions`). A strategy composes the shared pieces from
+ * `@/lib/precision/guard` inside its own gate instead of reimplementing
+ * them:
+ *
+ * ```ts
+ * // lib/strategies/both/guard.ts — pair-aware capacity, shared policy
+ * const account = guard.common(decision, context); // shared checks first
+ * if (!account) return false;
+ * if (decision.type === "entry") {
+ *   return (
+ *     pairCapacity(decision, context, account) &&
+ *     guard.entry.policy(decision, context)
+ *   );
+ * }
+ * return decision.type === "exit" || guard.averaging.allows(decision, context);
+ * ```
+ */
+export interface StrategyGuard {
+  /** Approves or vetoes one produced candidate — runs per attempt inside
+   * the sequential execution loop, after each prior fill mutates state. */
+  allows(decision: RuntimeDecision, context: RuntimeContext): boolean;
+}
+
+/**
  * The port every strategy module exposes.
  *
  * Every member is optional except `name`: a strategy plugs in only the
@@ -117,6 +149,14 @@ export interface StrategyAPI {
    * multi_strategy.md, not on fields invented per strategy.
    */
   decisions?: StrategyDecisionProducers;
+
+  /**
+   * Approval gate replacing the shared `guard.allows` — e.g. `both`
+   * overrides entry capacity so MAIN + COUNTER legs on one symbol both
+   * pass and `maxOpenPositions` counts pairs, while delegating
+   * `guard.common` and `guard.entry.policy` for everything else.
+   */
+  guard?: StrategyGuard;
 
   /**
    * Called after `adapter.onAction` ran a decision — `"success"` carries

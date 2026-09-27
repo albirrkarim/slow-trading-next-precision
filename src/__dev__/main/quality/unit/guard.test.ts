@@ -218,6 +218,100 @@ describe("guard.allows — shared environment approval gate", () => {
   });
 });
 
+describe("guard.common — shared checks exposed for strategy gates", () => {
+  it("returns the resolved account when shared checks pass, else null", () => {
+    const state = makeState();
+    const account = state.config.accounts[0];
+    expect(guard.common(entry(), contextFor(state))).toBe(account);
+    expect(
+      guard.common(entry({ accountSlug: "ghost" }), contextFor(state)),
+    ).toBeNull();
+  });
+
+  it("honors the runner toggle and manual bypass", () => {
+    const state = makeState();
+    state.config.runtime.runnerEnabled = false;
+    expect(guard.common(entry(), contextFor(state))).toBeNull();
+    expect(
+      guard.common(entry({ manual: true }), contextFor(state)),
+    ).toBe(state.config.accounts[0]);
+  });
+
+  it("decides exits entirely inside common — autoExit or forced flag", () => {
+    const state = makeState();
+    state.config.runtime.autoExitEnabled = false;
+    expect(guard.common(exit(), contextFor(state))).toBeNull();
+    expect(
+      guard.common(
+        exit({ position: { control: { forceExit: { reason: "x" } } } }),
+        contextFor(state),
+      ),
+    ).toBe(state.config.accounts[0]);
+  });
+
+  it("vetoes entries during black-swan but lets exits through", () => {
+    const state = makeState({ blackSwanProtective: true });
+    expect(guard.common(entry({ manual: true }), contextFor(state))).toBeNull();
+    expect(guard.common(exit(), contextFor(state))).toBe(
+      state.config.accounts[0],
+    );
+  });
+});
+
+describe("guard.entry.capacity / policy — decomposed entry gate", () => {
+  function open(overrides: Record<string, unknown> = {}) {
+    return {
+      account: "acc-1",
+      symbol: "SUI",
+      closed: false,
+      ...overrides,
+    } as never;
+  }
+
+  it("capacity vetoes a same-symbol open position", () => {
+    const state = makeState({ openPositions: [open()] });
+    const account = state.config.accounts[0];
+    expect(
+      guard.entry.capacity(entry(), contextFor(state), account as never),
+    ).toBe(false);
+  });
+
+  it("capacity enforces maxOpenPositions; zero means unlimited", () => {
+    const state = makeState({
+      openPositions: [open({ symbol: "DOGE" })],
+    });
+    const account = state.config.accounts[0];
+    account.trading.maxOpenPositions = 1;
+    expect(
+      guard.entry.capacity(entry(), contextFor(state), account as never),
+    ).toBe(false);
+    account.trading.maxOpenPositions = 0;
+    expect(
+      guard.entry.capacity(entry(), contextFor(state), account as never),
+    ).toBe(true);
+  });
+
+  it("policy ignores slot inventory — the split a strategy gate reuses", () => {
+    const state = makeState({ openPositions: [open()] });
+    expect(guard.entry.policy(entry(), contextFor(state))).toBe(true);
+  });
+
+  it("allows composes enabled + capacity + policy", () => {
+    const state = makeState({ openPositions: [open()] });
+    const account = state.config.accounts[0];
+    expect(
+      guard.entry.allows(entry(), contextFor(state), account as never),
+    ).toBe(false);
+    expect(
+      guard.entry.allows(
+        entry({ symbol: "DOGE" }),
+        contextFor(state),
+        account as never,
+      ),
+    ).toBe(false); // DOGE is outside the configured catalog
+  });
+});
+
 describe("vpoints.excursions.update — max excursion tracking", () => {
   const point = { p: 100, maxUpPct: undefined, maxDownPct: undefined };
 

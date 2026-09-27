@@ -37,25 +37,19 @@ function recordClosedPnlUsdt(
 }
 
 /**
- * Entry-family policy, evaluated after the common checks in `guard/index.ts`
- * (account exists, runner toggle, exit branch, black-swan flag). Veto order
- * mirrors the original production `isActionAllowed`.
+ * Per-attempt slot inventory — candidates execute one at a time and
+ * `state.openPositions` mutates between attempts, so same-symbol dedupe and
+ * max-open are re-verified inside the gate (before the manual bypass in
+ * `policy`, since slot limits hold for forced entries too). Exposed
+ * separately so a strategy gate replaces it — e.g. `both` dedupes by pair
+ * role and counts pairs — while still composing `policy`.
  */
-function allows(
+function capacity(
   decision: RuntimeEntryDecision,
   context: RuntimeContext,
   account: RuntimeAccountConfig,
 ): boolean {
-  const state = context.state;
-
-  if (!account.enabled) return false;
-
-  // Capacity: candidates execute one at a time and `state.openPositions`
-  // mutates between attempts, so same-symbol dedupe and max-open are
-  // re-verified per attempt — before the manual bypass below, since slot
-  // limits hold for forced entries too. Pair-aware strategies evolve this
-  // check: role-aware dedupe and `maxOpenPositions` counting pairs.
-  const openPositions = state.openPositions.filter(
+  const openPositions = context.state.openPositions.filter(
     (position) =>
       position.account === decision.accountSlug && !position.closed,
   );
@@ -70,7 +64,19 @@ function allows(
     0,
     Math.floor(Number(account.trading.maxOpenPositions) || 0),
   );
-  if (maximum !== 0 && openPositions.length >= maximum) return false;
+  return maximum === 0 || openPositions.length < maximum;
+}
+
+/**
+ * Shared entry policy — symbol catalog, minimum price, stale-signal veto,
+ * manual bypass, auto-entry toggle, entry cutoff, daily-PnL stop. Exposed
+ * separately so a strategy gate keeps it while replacing `capacity`.
+ */
+function policy(
+  decision: RuntimeEntryDecision,
+  context: RuntimeContext,
+): boolean {
+  const state = context.state;
 
   // BOTH:AUTO_REMOVE_CONFIGURED_SYMBOL_GUARD /
   // BOTH:BLOCK_ENTRY_BELOW_AUTO_REMOVE_MIN_PRICE — the management stage keeps
@@ -128,8 +134,24 @@ function allows(
   }).reached;
 }
 
+/**
+ * Entry-family gate, evaluated after the common checks in `guard/index.ts`
+ * (account exists, runner toggle, exit branch, black-swan flag). Veto order
+ * mirrors the original production `isActionAllowed`.
+ */
+function allows(
+  decision: RuntimeEntryDecision,
+  context: RuntimeContext,
+  account: RuntimeAccountConfig,
+): boolean {
+  if (!account.enabled) return false;
+  return capacity(decision, context, account) && policy(decision, context);
+}
+
 const entry = {
   allows,
+  capacity,
+  policy,
   dailyPnl: {
     recordClose: recordClosedPnlUsdt,
     resolve: resolveDailyPnlUsdt,
