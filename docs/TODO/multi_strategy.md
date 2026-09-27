@@ -1,127 +1,205 @@
-# What the current system cannot yet do for Both and Streak
+# Multi Strategy Assessment
 
-`RuntimeEngine` is a usable foundation. It accepts a `StrategyAPI` with entry,
-averaging, and exit decision producers, plus `preflight`, `onActionResult`, and
-strategy-owned state. This list is about concrete gaps in the *current
-end-to-end system*, not a claim that the engine needs replacing. Each item says
-where a Both or Streak action would fail today. We can decide how to address
-them one by one.
+# Introduction
 
-The copied strategy documents in `docs/TODO/strategy/` describe the intended
-behaviors; they are not automatically this repository's approved trading spec.
+Read the
+/Users/susanto/Documents/OpenSource/trading/slow-trading-next-precision/docs/PRECISION/_PRECISION.md
 
-## 1. No running flow selects a strategy
+Is this project are capable of accomodating the strategy of
 
-Production, one-off production passes, Precision backtest, and quick backtest
-construct `new RuntimeEngine(state, adapter)` without a strategy argument.
-There is no selected strategy in runtime config and no Both or Streak module to
-resolve. The engine therefore always uses its default Multi decision producers.
-Even a complete Both/Streak implementation would not run in any environment
-until those call sites pass it in.
+/Users/susanto/Documents/OpenSource/trading/slow-trading-next-hedge/docs/slow/HEDGE/BOTH_DIRECTION_TRADING.md
 
-Code: `src/lib/production/runtime.ts`,
-`src/lib/dev/backtestPrecision/`, `src/lib/dev/quick-backtest/`,
-`src/lib/strategy/type.d.ts`.
+and this
 
-## 2. Entry eligibility assumes one position per account and symbol
+/Users/susanto/Documents/OpenSource/trading/slow-trading-next-streak
 
-`precision/monitoring/entry.ts` rejects a decision when *any* open position
-already has the same account and symbol. A two-leg Both entry would fill the
-first leg, then reject the opposite leg. A Streak missing-role re-entry would
-also be rejected while the surviving leg remains open. Manual entry repeats
-the same check, so changing only the producer would not help. The existing
-one-position rule is correct for Multi; the missing capability is eligibility
-that can distinguish an existing pair's absent role from an unrelated second
-position.
+Is the data type and RuntimeEngine APIs can able to accomodate that instance strategy.
 
-Code: `src/lib/precision/monitoring/entry.ts`,
-`src/lib/precision/monitoring/manual.ts`,
-`src/lib/system/trading/entry-diagnostics.ts`.
+I plan of making the
 
-## 3. Capacity and funding are calculated per position, not per pair worker
+lib/strategies/both
+lib/strategies/streak
 
-The entry monitor compares `openPositions.length` with `maxOpenPositions`;
-capacity previews use `activePositions.length`. With a one-worker limit, the
-first leg occupies the only slot and the second leg fails, even if the
-same-symbol guard is relaxed. The entry funding plan also evaluates one
-decision at a time. It cannot approve the selected legs, fees, and reserves
-as one worker *before* placing the first order. That makes both execution and
-the dashboard's capacity preview disagree with pair-worker semantics.
+and this system can be used as foundation, to accomodate strategy that build on top of it.
 
-Code: `src/lib/precision/monitoring/entry.ts`,
-`src/lib/system/trading/worker-capacity.ts`,
-`src/lib/system/trading/entry-action.ts`.
+---
 
-## 4. Pair entry has no all-or-recover outcome
+# Answer
 
-The entry producer returns a flat `RuntimeEntryDecision[]`. The monitor
-executes and commits each decision separately: it pushes the position, updates
-balance, marks the vPoint, calls `onActionResult`, and persists before trying
-the next decision. `onAction` returns only one `Position | null`. If leg two
-fails, leg one has already become a successful entry. Neither the strategy
-hook nor the adapter can report a single pair-level result, compensate a live
-partial fill, or persist an unfinished attempt for restart reconciliation.
-This is a shared entry-action boundary, not a missing scheduler capability.
+Yes. The foundation can accommodate both strategies — this is exactly the
+"Version 2 (Flexible Strategy)" scope in `_PRECISION.md`. But the current
+`RuntimeEngine` API and `Position` type need specific extensions first.
 
-Code: `src/lib/precision/monitoring/entry.ts`,
-`src/lib/production/execution.ts`, `src/lib/strategy/type.d.ts`.
+## What already fits
 
-## 5. Live execution does not identify the hedge side
+- **Adapter boundary is the right seam.** `RuntimeEngineAdapter`
+  (clock/market/exchange/`onStrategy`/`onAction`/`onExit`/`onStateChange`) is
+  the correct plug point. Hedge and Streak differences live behind it.
+- **`openPositions: Position[]` is flat** — two legs (LONG+SHORT, same symbol)
+  can coexist in state without structural change.
+- **Role was already anticipated.** `_PRECISION.md` §D pairs positions by
+  "normalized role... `MAIN`" — the Precision Checker spec assumes `role`
+  will exist.
+- **Exchange layer already supports `positionSide`**
+  (`src/lib/exchange/types.ts`, binance/okx adapters) — hedge-mode order
+  mechanics are mostly adapter-side work.
+- **`usedBy: string[]` vPoint markers** are implemented — strategy-owned
+  marker strings (`"<slug>"` or `"<slug>:<ROLE>"`), supplied by decisions
+  via `vPointUsage`, giving per-leg granularity already.
+- **Both instance repos already converged on the same model**: `role`,
+  `pairId`, `entryLegs` on `Position`; pair identity =
+  `symbol + opened.vPoint.id + opened.t`
+  (`hedge/src/lib/trading/both-direction.ts`).
 
-The Binance exchange adapter supports `positionSide`, but production entry,
-averaging, and exit order parameters do not send it. Exit confirmation also
-omits it. A strategy decision cannot repair those orders because production
-constructs them afterward. For two opposing futures legs on one symbol, the
-live path cannot reliably open, average, close, or confirm the intended side.
-The account's actual Hedge Mode must also be checked before paired live orders.
-This gap is specific to live execution; backtest still needs equivalent leg
-identity, but not Binance order fields.
+## Gaps to close
 
-Code: `src/lib/production/execution.ts`,
-`src/lib/exchange/adapters/binance.ts`,
-`src/lib/exchange/ensure-closed.ts`.
+### Data types (`src/lib/system/trading/types.ts`, `src/lib/system/runtime/types.ts`)
 
-## 6. Pair identity and role do not travel through the entry path
+1. `Position` needs `role?: "MAIN" | "COUNTER"`, `pairId?: string`,
+   `entryLegs?: "MAIN" | "COUNTER" | "BOTH"`. Trivial — all three already
+   proven in the streak repo's model.
 
-`RuntimeEntryDecision` has no typed pair ID or leg role, and
-`entry-action.applyFill` does not transfer such metadata to the new position.
-The existing `Position.strategy.entry.feature` and `RuntimeEngineState.strategy`
-can already hold strategy-owned data, and `onActionResult` can update a filled
-position. So this is not a demand for a new storage system. The concrete gap
-is earlier: pair-aware eligibility, funding, live execution, and later
-role-specific actions need to know which pair and role a decision represents
-*before* or *as* it is filled. Streak re-entry also has to preserve the original
-pair identity while using a new entry point.
+I think it will be in 
 
-Code: `src/lib/precision/types.ts`,
-`src/lib/system/trading/entry-action.ts`,
-`src/lib/system/trading/types.ts`.
+Position.strategy.logic = {
+    role: "MAIN" | "COUNTER",
+    pairId: string,
+    entryLegs: "MAIN" | "COUNTER" | "BOTH",
+}
 
-## 7. A required pair close cannot be dispatched as one action
+the type will be 
 
-The exit producer and monitor operate on one position at a time. That already
-supports Streak's independent per-leg exit and averaging decisions. It does
-not guarantee that a Both rule requiring the counterpart to close will act on
-both legs in the same pass or give a result for a partial pair close. Manual
-exit accepts an account and symbols, not a leg role or pair ID, so an operator
-cannot explicitly request “close this leg” versus “close both.” The missing
-capability is coordinated targeting and outcome handling, not a new exit
-signal hook.
+Position.strategy.logic:any
 
-Code: `src/lib/precision/monitoring/position.ts`,
-`src/lib/precision/monitoring/manual.ts`,
-`src/lib/precision/monitoring/stages.ts`.
+then the strategy code will assign the type into it.
 
-## 8. Strategy state is not restored in production
+like known as StreakStrategyLogic or etc...
 
-`RuntimeEngineState.strategy` exists and Precision snapshots copy it, but
-production `createState` does not hydrate it and production persistence saves
-accounts and positions without it. A Streak leg that closes and is waiting for
-re-entry can lose its pending record after a restart; one-off passes can start
-from a fresh state too. The in-memory engine slot is sufficient, but the
-production storage lifecycle does not yet preserve it or reconcile it with
-positions and history.
 
-Code: `src/lib/production/state.ts`,
-`src/lib/production/factory.ts`,
-`src/lib/production/runtime.ts`.
+2. Streak needs a pending-reentry record (`PositionPendingReentry`:
+   pairId/role/direction/anchor vPoint) — either a `state.pendingReentries`
+   slot or strategy-owned state.
+
+   
+3. Config needs `management.openDirection` ("ONE_WAY" | "BOTH"), per-account
+   `trading.entryLegs`, and `futuresPositionMode` for hedge-mode validation.
+
+### RuntimeEngine API (`src/lib/precision/`)
+
+4. **One-position-per-symbol assumption** — `canAttemptEntry` blocks any
+   same-symbol position. Needs pair-aware eligibility, and
+   `maxOpenPositions` must count pairs ("worker count is not doubled"),
+   not legs.
+5. **Strategy can only veto, not generate.** `onStrategy(decision) => boolean`
+   gates candidates produced by the built-in `defaultDecision`. A `both`
+   strategy must *produce* pair entries; `streak` must produce re-entries.
+   Widen the extension point to an injectable decision provider or a
+   transform hook (`decisions => decisions`).
+6. **`onAction` returns `Position | null`** — pair entry needs two
+   coordinated fills with rollback (close leg 1 if leg 2 fails, per the
+   hedge FAQ). Either a `RuntimePairEntryDecision` type returning
+   `Position[]`, or two leg decisions sharing `pairId` executed atomically
+   by the adapter.
+7. **No coordinated exit** — `BOTH:VOLATILITY_TARGET_EXIT` and
+   `BOTH:EXIT_TOGETHER_WHEN_STOP_LOSS` close both legs;
+   `monitorPosition`/`exit` handles one position at a time. Needs a
+   pair-exit decision or a post-exit counterpart lookup. (Iteration is
+   safe — stages iterate a copied array.)
+8. **No preflight hook** — hedge-mode validation
+   (`PROD:VALIDATE_HEDGE_POSITION_MODE_*`) fits as an optional adapter
+   method called during `start()` or before pair entry.
+
+## On `lib/strategies/both` + `lib/strategies/streak`
+
+Reasonable plan, consistent with the grouped-API convention. To make it
+work, the engine should accept a strategy module shaped roughly like:
+
+```ts
+const strategy = {
+  decisions: { entry, averaging, exit }, // candidate producers (default = current defaultDecision)
+};
+```
+
+`streak` can build on `both` (it is "hedge + leg re-entry" per its doc), so
+`both` should expose the pair lifecycle primitives (`pair.matches`,
+`volatilityTarget.resolve`, role resolution) that `streak` reuses —
+mirroring how the instance repos share `both-direction.ts`.
+
+
+# Human proposed architecture
+
+Here my proposed architecure.
+
+the production adapter will have port to be plugged with strategy API.
+
+```tsx
+interface StrategyAPI {
+   onStrategy:OnStrategy
+   onExit:OnExit
+}
+```
+
+so the
+
+lib/strategies/both
+lib/strategies/streak
+
+will be just exposing `StrategyAPI`
+
+so in the production adapter we will have like 
+
+
+const choosenStragey = [config.strategy] lazy import
+
+so we plug choosenStragey.onStrategy  and choosenStragey.onExit into the production adapter
+
+---
+
+# Decided contract
+
+The plug contract is defined in `src/lib/strategy/type.d.ts` (`StrategyAPI`)
+and is wired into the shared engine: `RuntimeEngine(state, adapter, strategy?)`
+carries it on every `RuntimeContext` (`context.strategy`), so stages swap
+`defaultDecision.<family>` for `strategy.decisions.<family>` when present,
+fire `strategy.onActionResult` after each `onAction` outcome (before the
+env `onStateChange`/`onExit` persistence), and run `strategy.preflight`
+during `start()`.
+
+Review of the proposal above: the adapter seam and lazy import are right,
+but `{ onStrategy, onExit }` alone under-covers the requirements — those
+two are a veto gate and a post-close persistence hook. The contract keeps
+`onExit` and adds:
+
+- `decisions` — per-family candidate producers mirroring
+  `defaultDecision.{entry,averaging,exit}.find`. This is how a strategy
+  *produces* decisions (both's MAIN+COUNTER pair, streak's re-entries).
+- `onActionResult(result, decision, position)` — post-execution
+  observation covering both outcomes: `"success"` carries the produced
+  position (entries, averagings, and exits — a close is just a success
+  whose `decision.type === "exit"`), `"failed"` carries `null`. Strategy
+  bookkeeping commits on real fills, never on vetoed or failed
+  candidates.
+- `state` — dropped as a port; strategy-owned persisted records (e.g.
+  streak pending re-entries) live in the free-form
+  `RuntimeEngineState.strategy` slot, which `PrecisionRuntimeSnapshot`
+  carries so test-case replays reproduce them automatically.
+- `preflight` — optional boot validation (e.g. hedge-mode position-mode
+  check) before the strategy's first pair entry.
+
+`strategy.onStrategy` was dropped: a veto adds nothing the producer cannot
+express — a strategy that wants to constrain a family it does not override
+wraps `defaultDecision.<family>.find` and filters the result. Approval of
+produced candidates stays environment-side (`adapter.onStrategy` ANDs with
+`isActionAllowed`; strategies cannot disable account limits); `onExit`
+runs after environment persistence; `onAction` is never
+strategy-overridable.
+
+Still open (tracked above): `config.strategy` field plus the slug→module
+resolution that passes a `StrategyAPI` into `new RuntimeEngine(...)`
+(`src/lib/strategies/` does not exist yet), per-account `entryLegs`,
+`futuresPositionMode`, the decision metadata slot carrying
+`pairId`/`role`, `Position.strategy.logic`, atomic pair execution
+(`onAction` still returns a single `Position`), and a production storage
+channel for `state.strategy` — engine state is rebuilt per-account on
+restart, so the slot currently survives snapshots/replays but not a live
+engine restart.
