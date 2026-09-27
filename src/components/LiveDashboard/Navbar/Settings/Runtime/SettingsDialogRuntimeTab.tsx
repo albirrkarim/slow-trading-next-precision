@@ -21,7 +21,7 @@ import SettingsDialogSection from "../Components/SettingsDialogSection";
 import RuntimeMonitoringSettings from "./RuntimeMonitoringSettings";
 import type { ConfigDraft, ConfigDraftSetter } from "../settings-types";
 
-const DEFAULT_SYNC_ONLINE_BASE_URL = "https://wealth.reinventwp.com";
+const DEFAULT_SYNC_ONLINE_BASE_URL = "https://precision.reinventwp.com";
 
 interface SettingsDialogRuntimeTabProps {
   configDraft: ConfigDraft;
@@ -329,7 +329,7 @@ export default function SettingsDialogRuntimeTab({
                 onChange={(event) => {
                   setSyncOnlineBaseUrl(event.target.value);
                 }}
-                info="Dashboard URL to clone persistent storage from or push this server's storage to. Example: https://wealth.reinventwp.com"
+                info="Dashboard URL to clone persistent storage from or push this server's storage to. Example: https://precision.reinventwp.com"
                 sx={{ mb: 1.5 }}
               />
 

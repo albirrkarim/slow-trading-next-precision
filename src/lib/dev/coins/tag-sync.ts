@@ -7,7 +7,7 @@ const SYNC_HEADER = "x-coin-metadata-sync-token";
 const MANUAL_SYNC_PEERS = [
   "https://fast.reinventwp.com",
   "https://holy.reinventwp.com",
-  "https://wealth.reinventwp.com",
+  "https://precision.reinventwp.com",
 ];
 
 export interface CoinMetadataSyncBroadcastResult {

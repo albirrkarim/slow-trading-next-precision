@@ -2,7 +2,7 @@
 
 data is sent through export api, so i can just do one click and the background will sync between this online server and local on my macbook.
 
-on `https://wealth.reinventwp.com`
+on `https://precision.reinventwp.com`
 
 so the reproduce bug will be easier.
 
