@@ -8,33 +8,6 @@ import type {
   RuntimeEntryDecision,
 } from "../types";
 
-/** Checks account limits again after every sequential entry attempt. */
-function canAttemptEntry(
-  context: RuntimeContext,
-  decision: RuntimeEntryDecision,
-): boolean {
-  const account = context.helper.getAccount(decision.accountSlug);
-  if (!account.enabled) return false;
-
-  const openPositions = context.state.openPositions.filter(
-    (position) =>
-      position.account === decision.accountSlug && !position.closed,
-  );
-  if (
-    openPositions.some(
-      (position) => position.symbol.toUpperCase() === decision.symbol,
-    )
-  ) {
-    return false;
-  }
-
-  const maximum = Math.max(
-    0,
-    Math.floor(Number(account.trading.maxOpenPositions) || 0),
-  );
-  return maximum === 0 || openPositions.length < maximum;
-}
-
 /** Applies the successful entry to the runtime's mutable balance summary. */
 function recordEntryBalance(
   context: RuntimeContext,
@@ -58,18 +31,18 @@ function recordEntryBalance(
 }
 
 /**
- * Runs one approved entry decision through the strategy gate, the execution
- * action, and the shared balance/vPoint bookkeeping. Manual operator entries
- * reach the same path as decisions discovered by the default pipeline.
+ * Runs one produced entry decision through the approval gate, the
+ * environment execution, and the commit bookkeeping. Manual operator
+ * entries reach the same path as decisions discovered by the default
+ * pipeline.
  */
 async function executeDecision(
   context: RuntimeContext,
   decision: RuntimeEntryDecision,
 ): Promise<Position | null> {
-  if (!canAttemptEntry(context, decision)) return null;
-
-  // B. Shared policy guard, then the adapter's optional env-specific
-  // extension (e.g. production's live catalog re-read).
+  // B. Approve — shared guard.allows (per-attempt capacity + policy), then
+  //    the adapter's optional env extension (production's live catalog
+  //    re-read). Neither is strategy-overridable.
   if (!guard.allows(decision, context)) return null;
   if (
     !(await (context.adapter.onActionEnvGuard?.(decision, context) ?? true))
@@ -77,8 +50,8 @@ async function executeDecision(
     return null;
   }
 
-  // C. then the actual entry
-  // context.adapter.onAction
+  // C. Execute — adapter.onAction owns the fill; a strategy only observes
+  //    the outcome through onActionResult.
   const position = await context.adapter.onAction(decision, context);
   if (!position) {
     await context.strategy?.onActionResult?.("failed", decision, null, context);
@@ -93,6 +66,9 @@ async function executeDecision(
     );
   }
 
+  // D. Commit — open-position list, balance, and vPoint markers, then
+  //    strategy.onActionResult before onStateChange so strategy mutations
+  //    (pair legs, pending re-entries) persist in the same flush.
   context.state.openPositions.push(position);
   recordEntryBalance(
     context,
@@ -107,9 +83,6 @@ async function executeDecision(
     recommendation: decision.entrySignal,
     volatilityPoints: context.state.vPointsMap[decision.symbol],
   });
-  // Strategy bookkeeping (e.g. registering pair legs or pending re-entries)
-  // commits only on a real fill — before onStateChange so its state
-  // mutations persist in the same flush.
   await context.strategy?.onActionResult?.("success", decision, position, context);
   await context.adapter.onStateChange?.(context, decision.accountSlug);
 
@@ -117,12 +90,9 @@ async function executeDecision(
 }
 
 async function captureEntry(context: RuntimeContext): Promise<void> {
-  // A. the we decide the default entry signal
-  // context.state.config
-  // context.state.markPriceMap
-  // context.state.vPointsMap
-  // find existing function that doing that or maybe we create it inside the
-  // src/lib/precision/defaultDecision
+  // A. Produce candidates — the strategy's decisions.entry producer when
+  //    present, else defaultDecision.entry; inputs come from context.state
+  //    (config, markPriceMap, vPointsMap).
   const producer = context.strategy?.decisions?.entry ?? defaultDecision.entry;
   const decisions = await producer.find(context);
 

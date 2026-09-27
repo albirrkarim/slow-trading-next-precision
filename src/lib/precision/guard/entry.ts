@@ -50,6 +50,28 @@ function allows(
 
   if (!account.enabled) return false;
 
+  // Capacity: candidates execute one at a time and `state.openPositions`
+  // mutates between attempts, so same-symbol dedupe and max-open are
+  // re-verified per attempt — before the manual bypass below, since slot
+  // limits hold for forced entries too. Pair-aware strategies evolve this
+  // check: role-aware dedupe and `maxOpenPositions` counting pairs.
+  const openPositions = state.openPositions.filter(
+    (position) =>
+      position.account === decision.accountSlug && !position.closed,
+  );
+  if (
+    openPositions.some(
+      (position) => position.symbol.toUpperCase() === decision.symbol,
+    )
+  ) {
+    return false;
+  }
+  const maximum = Math.max(
+    0,
+    Math.floor(Number(account.trading.maxOpenPositions) || 0),
+  );
+  if (maximum !== 0 && openPositions.length >= maximum) return false;
+
   // BOTH:AUTO_REMOVE_CONFIGURED_SYMBOL_GUARD /
   // BOTH:BLOCK_ENTRY_BELOW_AUTO_REMOVE_MIN_PRICE — the management stage keeps
   // `state.config.management` in sync, so the gate reads the live symbols and

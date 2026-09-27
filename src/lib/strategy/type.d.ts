@@ -14,9 +14,8 @@
  *   1. `decisions.<family>.find`  — produces candidates (default:
  *      `defaultDecision.<family>`). A strategy replaces a producer only
  *      for the families it declares.
- *   2. Engine eligibility checks  — `canAttemptEntry`, account limits,
- *      environment `isActionAllowed`. Always run; a strategy cannot
- *      disable them.
+ *   2. Engine eligibility checks  — `guard.allows` (per-attempt
+ *      capacity + policy). Always run; a strategy cannot disable them.
  *   3. Environment approval      — the shared `guard.allows` plus the
  *      adapter's optional `onActionEnvGuard` extension gate every
  *      candidate regardless of producer. To constrain a family it does
