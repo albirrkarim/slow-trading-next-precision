@@ -62,7 +62,7 @@ function baseProps() {
     coinDescriptions: {} as Record<string, string>,
     coinTags: {} as Record<string, string[]>,
     config: {
-      openDirection: "BOTH",
+      entryLegs: "BOTH",
       strategy: "both",
       symbols: ["SUI"],
     } as never,

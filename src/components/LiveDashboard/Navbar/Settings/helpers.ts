@@ -91,7 +91,6 @@ export function makeConfigDraft(state: DashboardState): ConfigDraft {
     management: {
       name: state.config.name,
       description: state.config.description,
-      openDirection: state.config.openDirection,
       strategy: state.config.strategy,
       symbols: [...state.config.symbols],
       minimalAssetOnTrade: state.config.minimalAssetOnTrade,

@@ -529,7 +529,7 @@ describe("settings dialog save payload", () => {
     expect(screen.getByText("Preview: Disabled")).toBeTruthy();
   });
 
-  it("writes the strategy and open direction selects into management", async () => {
+  it("writes the strategy select into management", async () => {
     const user = userEvent.setup();
     const draft = makeConfigDraft(dashboardState());
     let nextDraft = draft;
@@ -544,12 +544,9 @@ describe("settings dialog save payload", () => {
       />,
     );
 
-    // Open Direction stays disabled until a pair strategy is selected.
-    const openDirection = screen.getByLabelText("Open Direction");
-    expect(
-      openDirection.getAttribute("aria-disabled") === "true" ||
-        (openDirection as HTMLInputElement).disabled === true,
-    ).toBe(true);
+    // Pair mode is per-account (`trading.entryLegs`) — no shared
+    // Open Direction select remains.
+    expect(screen.queryByLabelText("Open Direction")).toBeNull();
 
     await user.click(screen.getByLabelText("Strategy"));
     await user.click(screen.getByRole("option", { name: "Streak" }));
@@ -562,19 +559,15 @@ describe("settings dialog save payload", () => {
       />,
     );
 
-    await user.click(screen.getByLabelText("Open Direction"));
-    await user.click(screen.getByRole("option", { name: "Both" }));
-    expect(nextDraft.management.openDirection).toBe("BOTH");
-
     await user.click(screen.getByLabelText("Strategy"));
     await user.click(screen.getByRole("option", { name: "Default" }));
     expect(nextDraft.management.strategy).toBeUndefined();
   });
 
-  it("writes entry legs and futures position mode on the account entry group", async () => {
+  it("writes entry legs on the account entry group", async () => {
     const user = userEvent.setup();
 
-    function PairEntryHarness() {
+    function EntryLegsHarness() {
       const [tradingConfig, setTradingConfig] = useState(
         runtimeDefaults.trading.create(),
       );
@@ -584,30 +577,56 @@ describe("settings dialog save payload", () => {
             tradingConfig={tradingConfig}
             setTradingConfig={setTradingConfig}
           />
-          <span data-testid="pair-entry">
-            {String(tradingConfig.entryLegs)}|
-            {String(tradingConfig.futuresPositionMode)}
+          <span data-testid="entry-legs">
+            {String(tradingConfig.entryLegs)}
           </span>
         </>
       );
     }
 
-    render(<PairEntryHarness />);
-    expect(screen.getByTestId("pair-entry").textContent).toBe(
-      "undefined|undefined",
-    );
-
-    await user.click(screen.getByLabelText("Futures Position Mode"));
-    await user.click(screen.getByRole("option", { name: "Hedge" }));
-    expect(screen.getByTestId("pair-entry").textContent).toBe(
-      "undefined|HEDGE",
-    );
+    render(<EntryLegsHarness />);
+    expect(screen.getByTestId("entry-legs").textContent).toBe("undefined");
 
     await user.click(screen.getByLabelText("Entry Legs"));
     await user.click(screen.getByRole("option", { name: "Counter" }));
-    expect(screen.getByTestId("pair-entry").textContent).toBe(
-      "COUNTER|HEDGE",
+    expect(screen.getByTestId("entry-legs").textContent).toBe("COUNTER");
+  });
+
+  it("writes futures position mode via the Exchange Accounts dialog", async () => {
+    const user = userEvent.setup();
+    const axiosPut = vi.mocked(axios.put);
+    axiosPut.mockClear();
+    const draft = makeConfigDraft(dashboardState());
+    let nextDraft = draft;
+    const setConfigDraft = vi.fn((update) => {
+      nextDraft = typeof update === "function" ? update(nextDraft) : update;
+    });
+
+    render(
+      <SettingsDialogManagementTab
+        configDraft={nextDraft}
+        setConfigDraft={setConfigDraft}
+      />,
     );
+
+    await user.click(
+      screen.getByRole("button", { name: "Manage exchange accounts" }),
+    );
+    await user.click(await screen.findByLabelText("Futures Position Mode"));
+    await user.click(screen.getByRole("option", { name: "Hedge" }));
+
+    // The account-level field persists through the accounts PUT.
+    await waitFor(() => expect(axiosPut).toHaveBeenCalled());
+    const payload = axiosPut.mock.calls.find(
+      ([url]) => url === endpoints.system.account.list,
+    )?.[1] as {
+      accounts: { futuresPositionMode?: string; slug: string }[];
+    };
+    expect(
+      payload.accounts.find((account) => account.slug === "1")
+        ?.futuresPositionMode,
+    ).toBe("HEDGE");
+    axiosPut.mockClear();
   });
 
   it("allows storage cloning from a deployed dashboard host", () => {

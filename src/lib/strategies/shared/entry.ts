@@ -68,10 +68,10 @@ function entryLegsOf(context: RuntimeContext, accountSlug: string): EntryLegs {
 
 /**
  * Reshapes one produced entry signal into the pair-strategy candidate
- * form: the signal unchanged under `openDirection: "ONE_WAY"`, a single
- * role leg for `entryLegs` `MAIN`/`COUNTER`, or an atomic MAIN + COUNTER
- * `pairEntry` for `BOTH` — with a skip-reason string when the combined
- * legs cannot be funded. Used by `findPairs` for auto signals and by
+ * form: a single role leg for `entryLegs` `MAIN`/`COUNTER` — the
+ * per-account one-way path — or an atomic MAIN + COUNTER `pairEntry`
+ * for `BOTH`, with a skip-reason string when the combined legs cannot
+ * be funded. Used by `findPairs` for auto signals and by
  * `decisions.entry.shape` for operator-forced entries (the `manual` flag
  * carries onto the pair decision; legs inherit it via `buildLeg`'s
  * signal spread).
@@ -80,10 +80,6 @@ function fromSignal(
   context: RuntimeContext,
   signal: RuntimeEntryDecision,
 ): RuntimeEntryCandidate | string {
-  const openDirection =
-    context.state.config.management.openDirection ?? "ONE_WAY";
-  if (openDirection !== "BOTH") return signal;
-
   const entryLegs = entryLegsOf(context, signal.accountSlug);
   const pairId = pair.buildId(
     signal.accountSlug,
@@ -122,8 +118,7 @@ function fromSignal(
  * signal scan over a pair-collapsed position view (one pair = one worker
  * for `maxOpenPositions`), then reshapes each signal by the account's
  * `entryLegs` — an atomic `pairEntry` for `BOTH`, or a single role leg for
- * `MAIN`/`COUNTER`. Under `openDirection: "ONE_WAY"` the default signals
- * pass through unchanged.
+ * `MAIN`/`COUNTER` (the per-account one-way selection).
  */
 async function findPairs(
   context: RuntimeContext,

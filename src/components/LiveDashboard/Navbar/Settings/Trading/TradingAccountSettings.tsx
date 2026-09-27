@@ -26,18 +26,6 @@ const ENTRY_LEGS_OPTIONS = [
     value: NonNullable<RuntimeAccountTradingConfig["entryLegs"]>;
 }[];
 
-const FUTURES_POSITION_MODE_OPTIONS = [
-    { label: "Unset", value: "unset" },
-    { label: "One Way", value: "ONE_WAY" },
-    { label: "Hedge", value: "HEDGE" },
-] satisfies {
-    label: string;
-    value:
-        | "unset"
-        | NonNullable<RuntimeAccountTradingConfig["futuresPositionMode"]>;
-}[];
-
-
 interface SettingsDialogTradingTabProps {
     tradingConfig: RuntimeAccountTradingConfig;
     dashboardState?: DashboardState;
@@ -311,40 +299,9 @@ export default function TradingAccountSettings({
                                     >,
                                 }))
                             }
-                            info="Only used by pair strategies with Open Direction `BOTH`: `MAIN` or `COUNTER` trades a single leg per coin instead of the atomic pair. Affects future entries only; open legs keep the selection captured at entry."
+                            info="Pair strategies (`both`, `streak`): `BOTH` opens the atomic MAIN + COUNTER pair per signal; `MAIN` or `COUNTER` trades only that one-way leg per coin. Affects future entries only; open legs keep the selection captured at entry."
                         >
                             {ENTRY_LEGS_OPTIONS.map((option) => (
-                                <MenuItem
-                                    key={option.value}
-                                    value={option.value}
-                                >
-                                    {option.label}
-                                </MenuItem>
-                            ))}
-                        </SettingsInfoField>
-                    </Grid>
-
-                    <Grid size={{ xs: 12, md: 6 }}>
-                        <SettingsInfoField
-                            label="Futures Position Mode"
-                            select
-                            size="small"
-                            fullWidth
-                            value={tradingConfig.futuresPositionMode ?? "unset"}
-                            onChange={(event) =>
-                                setTradingConfig((prev) => ({
-                                    ...prev,
-                                    futuresPositionMode:
-                                        event.target.value === "unset"
-                                            ? undefined
-                                            : (event.target.value as NonNullable<
-                                                RuntimeAccountTradingConfig["futuresPositionMode"]
-                                            >),
-                                }))
-                            }
-                            info="Expected Binance futures position mode. Pair strategies require `HEDGE` — the runtime verifies it against the exchange and never flips it. `Unset` skips the verification."
-                        >
-                            {FUTURES_POSITION_MODE_OPTIONS.map((option) => (
                                 <MenuItem
                                     key={option.value}
                                     value={option.value}

@@ -121,7 +121,6 @@ function makeState(
       ],
       management: {
         exchangeType: "binance",
-        openDirection: "BOTH",
         symbols: ["SUI"],
         tradingMode: "futures",
       },
@@ -599,7 +598,6 @@ describe("both exit — armed volatility target + pendingClose cascade", () => {
       ],
       management: {
         exchangeType: "binance",
-        openDirection: "BOTH",
         symbols: ["SUI"],
         tradingMode: "futures",
       },
@@ -655,7 +653,6 @@ describe("both exit — armed volatility target + pendingClose cascade", () => {
       ],
       management: {
         exchangeType: "binance",
-        openDirection: "BOTH",
         symbols: ["SUI"],
         tradingMode: "futures",
       },
@@ -1091,9 +1088,9 @@ describe("streak — empty-role block reasons", () => {
 });
 
 describe("pair diagnostics — view + explain", () => {
-  it("returns undefined when openDirection is not BOTH", () => {
+  it("returns undefined when the account's entryLegs is not BOTH", () => {
     const state = makeState();
-    state.config.management.openDirection = "ONE_WAY";
+    state.config.accounts[0].trading.entryLegs = "MAIN";
     expect(
       pairDiagnostics.explain({
         accountSlug: "acc",
@@ -1216,6 +1213,50 @@ describe("pair diagnostics — view + explain", () => {
     expect(
       paired.accounts[0].diagnostics.find((d) => d.symbol === "DOGE")?.code,
     ).not.toBe("MAX_OPEN_POSITIONS_REACHED");
+  });
+});
+
+describe("strategy preflight — hedge position mode", () => {
+  it("skips the hedge-mode check in backtest", async () => {
+    // mode "backtest" has no exchange position mode to verify.
+    const state = makeState();
+    await expect(
+      both.preflight?.(makeContext(state)),
+    ).resolves.toBeUndefined();
+  });
+
+  it("requires hedge only on enabled accounts whose entryLegs is BOTH", async () => {
+    const state = makeState({ mode: "sandbox" });
+    state.config.accounts = [
+      // MAIN is the per-account one-way path — no hedge requirement.
+      { enabled: true, slug: "acc", trading: { entryLegs: "MAIN" } },
+      {
+        enabled: true,
+        futuresPositionMode: "HEDGE",
+        slug: "two",
+        trading: {},
+      },
+      { enabled: false, slug: "off", trading: {} },
+    ] as never;
+    await expect(
+      both.preflight?.(makeContext(state)),
+    ).resolves.toBeUndefined();
+  });
+
+  it("refuses to boot when a BOTH-legs account lacks hedge mode", async () => {
+    const state = makeState({ mode: "sandbox" });
+    await expect(both.preflight?.(makeContext(state))).rejects.toThrow(
+      `Pair strategy requires account futuresPositionMode "HEDGE" on ` +
+        `account "acc" while its entryLegs is "BOTH" (configured: unset).`,
+    );
+  });
+
+  it("reports the configured mode in the refusal", async () => {
+    const state = makeState({ mode: "sandbox" });
+    state.config.accounts[0].futuresPositionMode = "ONE_WAY";
+    await expect(both.preflight?.(makeContext(state))).rejects.toThrow(
+      "(configured: ONE_WAY)",
+    );
   });
 });
 

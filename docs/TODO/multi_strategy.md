@@ -79,15 +79,20 @@ loudly at engine construction.
 ### Config
 
 - `management.strategy?: string` — global slug selection.
-- `management.openDirection?: "ONE_WAY" | "BOTH"` — pair producers only
-  emit when `"BOTH"`.
+- `management.openDirection` — REMOVED. Pair emission is gated
+  per-account by `trading.entryLegs === "BOTH"` (the default); a
+  `MAIN`/`COUNTER` selection is the account's one-way leg. Stale
+  persisted values are ignored.
 - `trading.entryLegs?: "MAIN" | "COUNTER" | "BOTH"` — per-account leg
-  filter (default `BOTH`); affects future entries only.
-- `trading.futuresPositionMode?: "ONE_WAY" | "HEDGE"` — passed into
-  `getExchange` config so the Binance adapter sends `positionSide` and
-  drops `reduceOnly` in hedge mode.
-- All four keys are in `account-config.ts`'s flat↔split key lists, so the
-  settings JSON editors and config persistence round-trip them.
+  selection (default `BOTH`); affects future entries only.
+- `account.futuresPositionMode?: "ONE_WAY" | "HEDGE"` — an account-record
+  field (edited in Exchange Accounts) passed into `getExchange` config so
+  the Binance adapter sends `positionSide` and drops `reduceOnly` in hedge
+  mode; legacy `trading.futuresPositionMode` migrates on load.
+- `management.strategy` and `trading.entryLegs` are in
+  `account-config.ts`'s flat↔split key lists, so the settings JSON
+  editors and config persistence round-trip them;
+  `account.futuresPositionMode` persists with the accounts payload.
 
 ### Persistence
 
@@ -126,7 +131,8 @@ loudly at engine construction.
   `VOLATILITY_TARGET_EXIT` cascades. `guard` = `shared/guard.ts`
   (pair = one worker via `pairId` collapse, role-slot fill for
   `reopen` legs, shared `common`/`policy`/`averaging` delegation).
-  `preflight` = hedge-mode declaration check per enabled account.
+  `preflight` = hedge-mode declaration check per enabled
+  `entryLegs`-`BOTH` account.
 - **`src/lib/strategies/streak/`** — `decisions.entry` (`streak/entry.ts`)
   emits role re-entries from `state.strategy.roles` records (direction =
   opposite the survivor, anchor = newest confirmed vPoint after the
@@ -259,10 +265,15 @@ under **Status**.
    Confirm names and locations?
    **Recommendation:** `management.openDirection` (engine-wide mode),
    `trading.entryLegs` per account ("MAIN" | "COUNTER" | "BOTH"), and
-   `futuresPositionMode` on `RuntimeAccountTradingConfig` — it is an
-   exchange-account property, not a management one, and `preflight`
+   `futuresPositionMode` on `RuntimeAccountConfig` — it is an
+   exchange-account property, not a trading override, and `preflight`
    validates it per account at boot.
-   **A:** yes
+   **A:** yes — moved to the account record, edited in Exchange Accounts;
+   legacy `trading.futuresPositionMode` migrates on load.
+   **Update:** `management.openDirection` was later removed — the
+   per-account `trading.entryLegs` (`MAIN`/`COUNTER`) IS the one-way
+   selection and `BOTH` (default) gates pair emission per account;
+   stale persisted `openDirection` values are ignored.
 
 
 7. **Q — `state.strategy` persistence across restart?** The slot
@@ -416,10 +427,12 @@ strategy-overridable.
 # Remaining work
 
 1. **Dashboard controls for the new fields** — DONE. Management tab:
-   `Strategy` + `Open Direction` selects; account Trading tab (Entry
-   group): `Entry Legs` + `Futures Position Mode` selects.
+   `Strategy` select; account Trading tab (Entry group): `Entry Legs`
+   select; `Futures Position Mode` select on the Exchange Accounts
+   dialog.
 2. **Paired Open Positions (hedge C.1 + streak C.1)** — DONE. When
-   `config.strategy` is `both`/`streak` and `openDirection` is `BOTH`,
+   `config.strategy` is `both`/`streak` and the viewed account's
+   `entryLegs` is `BOTH`,
    Open Positions renders `PairedOpenPositions` (`MAIN | coin net USDT |
    COUNTER` rows from `strategies/shared/board.ts`); otherwise the flat
    list is unchanged.

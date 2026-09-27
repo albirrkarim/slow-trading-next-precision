@@ -70,12 +70,47 @@ function migrateTradingConfig(value: unknown): RuntimeAccountConfig["trading"] {
   } as RuntimeAccountConfig["trading"];
 }
 
+/** Keeps only the two valid futures position modes, dropping anything else. */
+function normalizeFuturesPositionMode(
+  value: unknown,
+): RuntimeAccountConfig["futuresPositionMode"] {
+  return value === "ONE_WAY" || value === "HEDGE" ? value : undefined;
+}
+
+/**
+ * Moves a legacy `trading.futuresPositionMode` onto the account record:
+ * a valid account-level value wins over the legacy one, and the trading
+ * copy is always dropped so writes stay at the account level.
+ */
+function migrateFuturesPositionMode(
+  account: Record<string, unknown>,
+): Record<string, unknown> {
+  const trading =
+    account.trading &&
+    typeof account.trading === "object" &&
+    !Array.isArray(account.trading)
+      ? (account.trading as Record<string, unknown>)
+      : undefined;
+  const futuresPositionMode =
+    normalizeFuturesPositionMode(account.futuresPositionMode) ??
+    (trading ? normalizeFuturesPositionMode(trading.futuresPositionMode) : undefined);
+  const next: Record<string, unknown> = { ...account };
+  if (trading) {
+    const { futuresPositionMode: _legacy, ...rest } = trading;
+    next.trading = rest;
+  }
+  delete next.futuresPositionMode;
+  if (futuresPositionMode) next.futuresPositionMode = futuresPositionMode;
+  return next;
+}
+
 /** Normalizes one account profile into the canonical persisted shape. */
 function createAccount(params: {
   credentials?: unknown;
   createdAt?: number;
   description?: unknown;
   enabled?: unknown;
+  futuresPositionMode?: unknown;
   name: unknown;
   sandbox?: unknown;
   slug: string;
@@ -87,9 +122,15 @@ function createAccount(params: {
     params.sandbox && typeof params.sandbox === "object"
       ? (params.sandbox as Record<string, unknown>)
       : {};
+  const migrated = migrateFuturesPositionMode({
+    futuresPositionMode: params.futuresPositionMode,
+    trading: params.trading,
+  });
+  const futuresPositionMode = migrated.futuresPositionMode as
+    RuntimeAccountConfig["futuresPositionMode"];
   const trading =
     params.trading && typeof params.trading === "object"
-      ? migrateTradingConfig(params.trading)
+      ? migrateTradingConfig(migrated.trading)
       : runtimeDefaults.trading.create();
   const tradingNotes =
     trading && typeof trading === "object" && "notes" in trading
@@ -103,6 +144,7 @@ function createAccount(params: {
     description: getString(params.description),
     credentials: normalizeCredentials(params.credentials),
     enabled: params.enabled !== false,
+    ...(futuresPositionMode ? { futuresPositionMode } : {}),
     trading: { ...trading, notes: tradingNotes },
     sandbox: {
       initialBalanceUSDT: Math.max(
@@ -185,6 +227,7 @@ function normalizeAccounts(params: {
         description: record.description,
         credentials: record.credentials,
         enabled: record.enabled,
+        futuresPositionMode: record.futuresPositionMode,
         trading: record.trading,
         sandbox: record.sandbox,
         createdAt: record.createdAt,
@@ -201,6 +244,7 @@ const runtimeAccounts = {
   create: createAccount,
   createDefault: createDefaultAccounts,
   normalize: normalizeAccounts,
+  futuresPositionMode: { migrate: migrateFuturesPositionMode },
   trading: { migrate: migrateTradingConfig },
   slug: {
     normalize: normalizeSlug,

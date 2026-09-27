@@ -97,27 +97,28 @@ function capacity(extra: {
 }
 
 describe("pair leg helpers", () => {
-  it("detects pair mode only for both/streak with BOTH open direction", () => {
+  it("detects pair mode for both/streak on an entryLegs-BOTH account", () => {
     expect(pair.isPairMode({})).toBe(false);
-    expect(pair.isPairMode({ strategy: "both" })).toBe(false);
-    expect(pair.isPairMode({ strategy: "both", openDirection: "BOTH" })).toBe(true);
-    expect(pair.isPairMode({ strategy: "streak", openDirection: "BOTH" })).toBe(true);
-    expect(pair.isPairMode({ strategy: "streak", openDirection: "ONE_WAY" })).toBe(false);
+    expect(pair.isPairMode({ entryLegs: "BOTH" })).toBe(false);
+    expect(pair.isPairMode({ strategy: "both" })).toBe(true);
+    expect(pair.isPairMode({ strategy: "both", entryLegs: "BOTH" })).toBe(true);
+    expect(pair.isPairMode({ strategy: "both", entryLegs: "MAIN" })).toBe(false);
+    expect(pair.isPairMode({ strategy: "streak" })).toBe(true);
+    expect(
+      pair.isPairMode({ strategy: "streak", entryLegs: "COUNTER" }),
+    ).toBe(false);
   });
 
-  it("counts two funded legs only in pair mode with BOTH entry legs", () => {
+  it("counts two funded legs only in pair mode", () => {
     expect(pair.legsPerWorker({})).toBe(1);
-    expect(pair.legsPerWorker({ openDirection: "BOTH" })).toBe(1);
-    expect(pair.legsPerWorker({ strategy: "both", openDirection: "BOTH" })).toBe(2);
+    expect(pair.legsPerWorker({ entryLegs: "BOTH" })).toBe(1);
+    expect(pair.legsPerWorker({ strategy: "both" })).toBe(2);
     expect(
-      pair.legsPerWorker({
-        entryLegs: "MAIN",
-        openDirection: "BOTH",
-        strategy: "both",
-      }),
+      pair.legsPerWorker({ entryLegs: "MAIN", strategy: "both" }),
     ).toBe(1);
+    expect(pair.legsPerWorker({ strategy: "streak" })).toBe(2);
     expect(
-      pair.legsPerWorker({ openDirection: "ONE_WAY", strategy: "streak" }),
+      pair.legsPerWorker({ entryLegs: "COUNTER", strategy: "streak" }),
     ).toBe(1);
   });
 });

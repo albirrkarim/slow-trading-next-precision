@@ -177,34 +177,33 @@ function workerKey(position: Position): string {
 }
 
 /**
- * Pair strategy active with both-direction entries — `both`/`streak`
- * selected and `openDirection` `"BOTH"`. The type predicate narrows
- * `config.strategy` to the pair slug for callers that render the paired
- * view.
+ * Pair mode is per-account: `both`/`streak` selected and the account's
+ * `entryLegs` is `"BOTH"` (the default) — `MAIN`/`COUNTER` is the
+ * account's one-way selection, trading only that role leg. The type
+ * predicate narrows `config.strategy` to the pair slug for callers that
+ * render the paired view.
  */
 function isPairMode(config: {
   strategy?: string;
-  openDirection?: string;
-}): config is { strategy: "both" | "streak"; openDirection: "BOTH" } {
+  entryLegs?: string;
+}): config is { strategy: "both" | "streak" } {
   return (
     (config.strategy === "both" || config.strategy === "streak") &&
-    config.openDirection === "BOTH"
+    (config.entryLegs ?? "BOTH") === "BOTH"
   );
 }
 
 /**
- * Legs funded per worker — pair mode funds 2 legs (MAIN + COUNTER) when
- * the account's `entryLegs` is `"BOTH"` (the default), else 1. Per spec
- * §B one worker is one pair: its worker count is not doubled, but the
- * entry margin and reserved averaging ladder are funded for both legs.
+ * Legs funded per worker — pair mode funds 2 legs (MAIN + COUNTER),
+ * a `MAIN`/`COUNTER` one-way account funds 1. Per spec §B one worker is
+ * one pair: its worker count is not doubled, but the entry margin and
+ * reserved averaging ladder are funded for both legs.
  */
 function legsPerWorker(config: {
   strategy?: string;
-  openDirection?: string;
   entryLegs?: string;
 }): 1 | 2 {
-  const entryLegs = config.entryLegs ?? "BOTH";
-  return isPairMode(config) && entryLegs === "BOTH" ? 2 : 1;
+  return isPairMode(config) ? 2 : 1;
 }
 
 /**

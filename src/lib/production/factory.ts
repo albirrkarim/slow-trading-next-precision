@@ -363,7 +363,7 @@ function createActionHandlers(
     // without the probe cannot verify and is left to reject the orders.
     if (
       accountRuntime.mode === "live" &&
-      accountRuntime.account.trading.futuresPositionMode === "HEDGE" &&
+      accountRuntime.account.futuresPositionMode === "HEDGE" &&
       accountRuntime.exchange.getFuturesPositionMode
     ) {
       try {
@@ -563,7 +563,7 @@ function createProductionFactory(): ProductionRuntimeFactory {
           // PROD:VALIDATE_HEDGE_POSITION_MODE — the configured futures
           // position mode is handed to the exchange adapter, which verifies
           // it against the authoritative account mode before orders.
-          futuresPositionMode: trading.futuresPositionMode,
+          futuresPositionMode: account.futuresPositionMode,
         });
         const exchangeAccount = accountState.toExchangeAccount(account);
 

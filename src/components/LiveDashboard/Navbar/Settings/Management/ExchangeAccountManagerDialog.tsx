@@ -15,6 +15,7 @@ import {
   IconButton,
   InputAdornment,
   FormControlLabel,
+  MenuItem,
   Stack,
   Switch,
   TextField,
@@ -25,7 +26,11 @@ import axios from "axios";
 import { endpoints } from "@/components/endpoints";
 import ButtonDialog from "@/components/ui/ButtonDialog";
 import IconButtonTooltip from "@/components/ui/IconButtonTooltip";
-import type { ExchangeAccountType } from "@/lib/exchange/types";
+import pair from "@/lib/strategies/shared/pair";
+import type {
+  ExchangeAccountType,
+  UnifiedFuturesPositionMode,
+} from "@/lib/exchange/types";
 
 import type { ConfigDraft, ConfigDraftSetter } from "../settings-types";
 import SettingsInfoField from "../Components/SettingsInfoField";
@@ -49,6 +54,17 @@ export function getExchangeAccountTypeLabel(
 ): string {
   return type === "binance" ? "Binance" : type;
 }
+
+const FUTURES_POSITION_MODE_OPTIONS = [
+  { label: "Unset", value: "unset" },
+  { label: "One-way", value: "ONE_WAY" },
+  { label: "Hedge", value: "HEDGE" },
+] satisfies {
+  label: string;
+  value:
+    | "unset"
+    | NonNullable<RuntimeAccountConfig["futuresPositionMode"]>;
+}[];
 
 function slugFromName(name: string): string {
   return name
@@ -169,6 +185,13 @@ export default function ExchangeAccountManagerDialog({
     configDraft.accounts.find(
       (account) => account.slug === effectiveEditingAccountId,
     ) ?? configDraft.accounts[0];
+  const pairModeMissingHedge =
+    pair.isPairMode({
+      entryLegs: editingExchangeAccount?.trading.entryLegs,
+      strategy: configDraft.management.strategy,
+    }) &&
+    Boolean(editingExchangeAccount?.enabled) &&
+    editingExchangeAccount?.futuresPositionMode !== "HEDGE";
   const currentRevealedCredentials =
     revealedCredentials.accountId === effectiveEditingAccountId
       ? revealedCredentials
@@ -261,6 +284,7 @@ export default function ExchangeAccountManagerDialog({
   const updateExchangeAccount = (
     accountId: string,
     updater: (account: RuntimeAccountConfig) => RuntimeAccountConfig,
+    options: { persist?: boolean } = {},
   ) => {
     applyAccountDraftUpdate((prev) => {
       let selectedAccount: RuntimeAccountConfig | undefined;
@@ -284,7 +308,7 @@ export default function ExchangeAccountManagerDialog({
           exchangeType: selectedAccount?.type ?? prev.management.exchangeType,
         },
       };
-    });
+    }, options);
   };
 
   const createExchangeAccountSlug = () => {
@@ -420,8 +444,9 @@ export default function ExchangeAccountManagerDialog({
                 Saved Accounts
               </Typography>
               <Typography color="text.secondary" variant="caption">
-                Choose a profile here only to edit its name, credentials, and
-                entry status. Every enabled account runs independently.
+                Choose a profile here only to edit its name, credentials,
+                position mode, and entry status. Every enabled account runs
+                independently.
               </Typography>
             </Box>
 
@@ -498,6 +523,8 @@ export default function ExchangeAccountManagerDialog({
                           variant="caption"
                         >
                           {getExchangeAccountTypeLabel(account.type)}
+                          {account.futuresPositionMode &&
+                            ` · ${account.futuresPositionMode === "HEDGE" ? "Hedge" : "One-way"}`}
                         </Typography>
                         {account.description && (
                           <Typography
@@ -562,6 +589,46 @@ export default function ExchangeAccountManagerDialog({
                         slotProps={{ input: { readOnly: true } }}
                         info="All SLOW accounts use the shared Binance exchange adapter."
                       />
+                    </Grid>
+
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <SettingsInfoField
+                        label="Futures Position Mode"
+                        select
+                        size="small"
+                        fullWidth
+                        value={
+                          editingExchangeAccount.futuresPositionMode ?? "unset"
+                        }
+                        onChange={(event) =>
+                          updateExchangeAccount(
+                            editingExchangeAccount.slug,
+                            (account) => ({
+                              ...account,
+                              futuresPositionMode:
+                                event.target.value === "unset"
+                                  ? undefined
+                                  : (event.target
+                                      .value as UnifiedFuturesPositionMode),
+                              updatedAt: Date.now(),
+                            }),
+                            { persist: true },
+                          )
+                        }
+                        error={pairModeMissingHedge}
+                        helperText={
+                          pairModeMissingHedge
+                            ? "Pair strategy needs Hedge mode — the runtime refuses to start while this account is enabled."
+                            : undefined
+                        }
+                        info="Binance futures position mode of this exchange account. Pair strategies (both / streak with entryLegs BOTH) require Hedge. SLOW never changes it on the exchange — switch it in Binance first, then match it here; live trading verifies it against Binance before every pair entry."
+                      >
+                        {FUTURES_POSITION_MODE_OPTIONS.map((option) => (
+                          <MenuItem key={option.value} value={option.value}>
+                            {option.label}
+                          </MenuItem>
+                        ))}
+                      </SettingsInfoField>
                     </Grid>
 
                     <Grid size={{ xs: 12 }}>

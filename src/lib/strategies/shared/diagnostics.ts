@@ -50,10 +50,13 @@ function explain(
   ) => string | undefined,
 ): PairDiagnosticsResult | undefined {
   const { context, accountSlug, symbol } = params;
-  const management = context.state.config.management;
-  if ((management.openDirection ?? "ONE_WAY") !== "BOTH") {
-    return undefined;
-  }
+  const account = context.state.config.accounts.find(
+    (candidate) => candidate.slug === accountSlug,
+  );
+  const entryLegs = account?.trading.entryLegs ?? "BOTH";
+  // A MAIN/COUNTER account is the per-account one-way path — the default
+  // single-entry explanation applies.
+  if (entryLegs !== "BOTH") return undefined;
 
   const legs: { meta: PairLegMeta; position: Position }[] = [];
   for (const position of context.state.openPositions) {
@@ -95,11 +98,7 @@ function explain(
     };
   }
 
-  const account = context.state.config.accounts.find(
-    (candidate) => candidate.slug === accountSlug,
-  );
-  const entryLegs = account?.trading.entryLegs ?? "BOTH";
-  if (params.decision && entryLegs === "BOTH") {
+  if (params.decision) {
     const pairId = pair.buildId(
       accountSlug,
       symbol,

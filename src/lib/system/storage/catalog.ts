@@ -198,10 +198,13 @@ async function load(): Promise<RuntimeStorageCatalog> {
   const config = {
     management: configRaw.management,
     runtime: configRaw.runtime,
-    accounts: accounts.map((account) => ({
-      ...account,
-      trading: runtimeAccounts.trading.migrate(account.trading),
-    })),
+    accounts: accounts.map((account) => {
+      const migrated = runtimeAccounts.futuresPositionMode.migrate(account);
+      return {
+        ...migrated,
+        trading: runtimeAccounts.trading.migrate(migrated.trading),
+      };
+    }),
   } as unknown as RuntimeConfig;
 
   return { config, mode: deriveMode(config.runtime) };

@@ -1,26 +1,26 @@
 import type { RuntimeContext } from "@/lib/precision/types";
 
 /**
- * PROD:VALIDATE_HEDGE_POSITION_MODE — while `openDirection` is `BOTH`,
- * every enabled account participates in pair entries and must declare
- * futures hedge mode; the exchange adapter then verifies the configured
- * mode against the authoritative account mode at order time. Preflight
- * refuses to boot on a missing/mismatched declaration rather than letting
- * a first pair fail mid-entry.
+ * PROD:VALIDATE_HEDGE_POSITION_MODE — every enabled account whose
+ * `entryLegs` is `BOTH` (the default) participates in pair entries and
+ * must declare futures hedge mode; the exchange adapter then verifies
+ * the configured mode against the authoritative account mode at order
+ * time. Preflight refuses to boot on a missing/mismatched declaration
+ * rather than letting a first pair fail mid-entry.
  */
 async function hedgePositionMode(context: RuntimeContext): Promise<void> {
-  const openDirection =
-    context.state.config.management.openDirection ?? "ONE_WAY";
-  if (openDirection !== "BOTH") return;
+  // Backtest simulations have no exchange position mode; sandbox and
+  // live accounts keep the check.
+  if (context.state.mode === "backtest") return;
 
   for (const account of context.state.config.accounts) {
     if (!account.enabled) continue;
-    if (account.trading.futuresPositionMode !== "HEDGE") {
+    if ((account.trading.entryLegs ?? "BOTH") !== "BOTH") continue;
+    if (account.futuresPositionMode !== "HEDGE") {
       throw new Error(
-        `Pair strategy requires trading.futuresPositionMode "HEDGE" on ` +
-          `account "${account.slug}" while management.openDirection is ` +
-          `"BOTH" (configured: ` +
-          `${account.trading.futuresPositionMode ?? "unset"}).`,
+        `Pair strategy requires account futuresPositionMode "HEDGE" on ` +
+          `account "${account.slug}" while its entryLegs is "BOTH" ` +
+          `(configured: ${account.futuresPositionMode ?? "unset"}).`,
       );
     }
   }

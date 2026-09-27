@@ -119,8 +119,8 @@ export default function OpenPositions({
     [positions],
   );
   const isWorstFirst = pnlSortOrder === "worst";
-  // Pair strategies with BOTH open direction render the paired board;
-  // every other configuration keeps the flat per-position list.
+  // Pair strategies render the paired board for an entryLegs-BOTH
+  // account; every other configuration keeps the flat per-position list.
   const pairSlug = pair.isPairMode(config) ? config.strategy : null;
 
   useEffect(() => {

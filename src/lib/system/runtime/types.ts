@@ -132,20 +132,13 @@ export type RuntimeBlackSwanState = BlackSwanState;
 export interface RuntimeAccountTradingConfig {
   maxOpenPositions?: number;
   /**
-   * Per-account leg selection for pair strategies (`both`, `streak`):
-   * `"BOTH"` (default) opens the MAIN + COUNTER pair on one signal, while
-   * `"MAIN"`/`"COUNTER"` restrict the account to that role. Ignored when
-   * `management.openDirection` is `"ONE_WAY"`. Changing it affects only
-   * future entries — open legs keep the role recorded on their position.
+   * Which legs this account trades under a pair strategy (`both`,
+   * `streak`): `"BOTH"` (default) opens the atomic MAIN + COUNTER pair
+   * on one signal, while `"MAIN"`/`"COUNTER"` restrict the account to
+   * that one-way role leg. Changing it affects only future entries —
+   * open legs keep the role recorded on their position.
    */
   entryLegs?: "MAIN" | "COUNTER" | "BOTH";
-  /**
-   * The account's configured exchange futures position mode. Pair
-   * strategies require `"HEDGE"`: at boot the strategy's `preflight`
-   * verifies the configured mode against the authoritative exchange mode
-   * and refuses to start on mismatch — the runtime never flips it.
-   */
-  futuresPositionMode?: UnifiedFuturesPositionMode;
   /** Inclusive minimum absolute vPoint level; undefined disables the bound. */
   minEntryAbsLevel?: number;
   /** Inclusive maximum absolute vPoint level; undefined disables the bound. */
@@ -207,6 +200,14 @@ export interface RuntimeAccountConfig {
   description: string;
   credentials: RuntimeAccountCredentials;
   enabled: boolean;
+  /**
+   * The exchange account's configured futures position mode. Pair
+   * strategies require `"HEDGE"`: the runtime verifies the configured
+   * mode against the authoritative exchange mode (strategy `preflight`
+   * at boot, the exchange adapter before orders) and refuses to trade
+   * on mismatch — it never flips the mode on the exchange.
+   */
+  futuresPositionMode?: UnifiedFuturesPositionMode;
   trading: RuntimeAccountTradingConfig;
   sandbox: {
     initialBalanceUSDT: number;
@@ -230,13 +231,6 @@ export interface RuntimeManagementConfig {
    * "default" is not itself a strategy module.
    */
   strategy?: string;
-  /**
-   * Entry direction policy. `"ONE_WAY"` (default) opens one leg per
-   * signal; `"BOTH"` lets a pair strategy emit atomic MAIN + COUNTER
-   * entries, which requires every participating account to run futures
-   * hedge mode (`trading.futuresPositionMode === "HEDGE"`).
-   */
-  openDirection?: "ONE_WAY" | "BOTH";
   /** Portfolio crash-protection thresholds shared by every account. */
   blackSwan?: RuntimeBlackSwanConfig;
   /** Monthly safe-haven targets shared by every account. */

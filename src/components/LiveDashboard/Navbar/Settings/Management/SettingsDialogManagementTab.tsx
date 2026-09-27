@@ -33,11 +33,6 @@ const STRATEGY_OPTIONS = [
   { label: "Streak", value: "streak" },
 ] satisfies { label: string; value: "default" | StrategySlug }[];
 
-const OPEN_DIRECTION_OPTIONS = [
-  { label: "One Way", value: "ONE_WAY" },
-  { label: "Both", value: "BOTH" },
-] satisfies { label: string; value: "ONE_WAY" | "BOTH" }[];
-
 function parseNumber(value: string) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -208,7 +203,7 @@ export default function SettingsDialogManagementTab({
 
               <SettingsInfoField
                 fullWidth
-                info="Pair strategies (`both`, `streak`) open MAIN + COUNTER legs per coin and require Open Direction `BOTH` plus hedge mode on every enabled account. `Default` keeps the single-position pipeline."
+                info="Pair strategies (`both`, `streak`) open MAIN + COUNTER legs per coin on accounts whose Entry Legs is `BOTH` (the default), which requires hedge mode on those accounts. `Default` keeps the single-position pipeline."
                 label="Strategy"
                 onChange={(event) =>
                   updateManagement({
@@ -223,27 +218,6 @@ export default function SettingsDialogManagementTab({
                 value={configDraft.management.strategy ?? "default"}
               >
                 {STRATEGY_OPTIONS.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </SettingsInfoField>
-
-              <SettingsInfoField
-                disabled={!configDraft.management.strategy}
-                fullWidth
-                info="`BOTH` lets a pair strategy open a MAIN and a COUNTER leg on the same coin — it requires hedge mode on every enabled account. Only applies when a pair strategy is selected."
-                label="Open Direction"
-                onChange={(event) =>
-                  updateManagement({
-                    openDirection: event.target.value as "ONE_WAY" | "BOTH",
-                  })
-                }
-                select
-                size="small"
-                value={configDraft.management.openDirection ?? "ONE_WAY"}
-              >
-                {OPEN_DIRECTION_OPTIONS.map((option) => (
                   <MenuItem key={option.value} value={option.value}>
                     {option.label}
                   </MenuItem>

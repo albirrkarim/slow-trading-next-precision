@@ -49,6 +49,16 @@ function toEffectiveConfig(context: RuntimeContext, accountSlug: string) {
   };
 }
 
+/** Resolves the account-level futures position mode configured for a slug. */
+function accountFuturesPositionMode(
+  context: RuntimeContext,
+  accountSlug: string,
+): UnifiedFuturesPositionMode | undefined {
+  return context.state.config.accounts.find(
+    (account) => account.slug === accountSlug,
+  )?.futuresPositionMode;
+}
+
 /**
  * BOTH:HEDGE_POSITION_SIDE — resolves the explicit exchange leg side for a
  * direction when the account runs hedge mode. Pair strategies require it:
@@ -57,10 +67,10 @@ function toEffectiveConfig(context: RuntimeContext, accountSlug: string) {
  * one-way mode — the legacy net-position behavior is untouched.
  */
 function hedgePositionSide(
-  config: { futuresPositionMode?: UnifiedFuturesPositionMode },
+  futuresPositionMode: UnifiedFuturesPositionMode | undefined,
   direction: Position["direction"],
 ): "long" | "short" | undefined {
-  if (config.futuresPositionMode !== "HEDGE") return undefined;
+  if (futuresPositionMode !== "HEDGE") return undefined;
   return direction === "LONG" ? "long" : "short";
 }
 
@@ -73,7 +83,7 @@ function hedgePositionSide(
  * `reduceOnly` (PROD:CONFIRM_FUTURES_EXIT_ON_EXCHANGE).
  */
 function closeOrderSide(
-  config: { futuresPositionMode?: UnifiedFuturesPositionMode },
+  futuresPositionMode: UnifiedFuturesPositionMode | undefined,
   position: Position,
   tradingMode: TradingMode,
 ): {
@@ -81,7 +91,7 @@ function closeOrderSide(
   reduceOnly: true | undefined;
   side: UnifiedOrderSide;
 } {
-  const hedgeSide = hedgePositionSide(config, position.direction);
+  const hedgeSide = hedgePositionSide(futuresPositionMode, position.direction);
   return {
     positionSide: hedgeSide,
     reduceOnly:
@@ -187,7 +197,10 @@ async function entry(params: {
     tradingMode,
     // Hedge-mode entries carry the leg side explicitly; Binance rejects a
     // pair leg without it.
-    positionSide: hedgePositionSide(plan.config, decision.direction),
+    positionSide: hedgePositionSide(
+      accountFuturesPositionMode(context, decision.accountSlug),
+      decision.direction,
+    ),
   };
   systemLog.log("[Execution] ENTRY Params:", orderParams);
   const order = await exchange.createOrder(orderParams);
@@ -240,7 +253,10 @@ async function averaging(params: {
     tradingMode,
     // Averaging adds to the same hedge leg — explicit positionSide keeps it
     // on the opening side.
-    positionSide: hedgePositionSide(plan.config, plan.position.direction),
+    positionSide: hedgePositionSide(
+      accountFuturesPositionMode(context, plan.position.account),
+      plan.position.direction,
+    ),
   };
   systemLog.log("[Execution] AVERAGING Params:", orderParams);
   const order = await exchange.createOrder(orderParams);
@@ -277,7 +293,11 @@ async function exit(params: {
   const config = toEffectiveConfig(context, decision.accountSlug);
   const mark = context.state.markPriceMap[decision.symbol.toUpperCase()];
 
-  const closeSide = closeOrderSide(config, position, tradingMode);
+  const closeSide = closeOrderSide(
+    accountFuturesPositionMode(context, position.account),
+    position,
+    tradingMode,
+  );
   const orderParams: UnifiedOrderParams = {
     tradeType: "EXIT",
     symbol: tradingSymbol,
@@ -325,9 +345,12 @@ async function closeLeg(params: {
 }): Promise<void> {
   const { context, position, exchange, reason } = params;
   const tradingSymbol = toTradingSymbol(position.symbol);
-  const config = toEffectiveConfig(context, position.account);
   const tradingMode = toExchangeTradingMode(position.tradingMode);
-  const closeSide = closeOrderSide(config, position, tradingMode);
+  const closeSide = closeOrderSide(
+    accountFuturesPositionMode(context, position.account),
+    position,
+    tradingMode,
+  );
 
   systemLog.warn(
     `[Execution] PAIR ROLLBACK ${position.symbol} ${position.direction} ` +

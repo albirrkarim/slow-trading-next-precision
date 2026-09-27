@@ -36,10 +36,8 @@ import both from "@/lib/strategies/both";
 
 function context({
   entryLegs = "BOTH",
-  openDirection = "BOTH",
 }: {
   entryLegs?: string;
-  openDirection?: string;
 } = {}): RuntimeContext {
   const account = {
     enabled: true,
@@ -59,7 +57,6 @@ function context({
       config: {
         accounts: [account],
         management: {
-          openDirection,
           symbols: ["SUI"],
           tradingMode: "futures",
         },
@@ -148,8 +145,8 @@ describe("manual forced entry — pair strategy shaping", () => {
     expect(candidate.vPointUsage).toEqual(["acc:MAIN"]);
   });
 
-  it("keeps the plain manual decision under ONE_WAY", async () => {
-    await manual.run(context({ openDirection: "ONE_WAY" }), {
+  it("routes a one-way (entryLegs MAIN) account to a single stamped MAIN leg", async () => {
+    await manual.run(context({ entryLegs: "MAIN" }), {
       disableEntry: true,
       forceEntries: [{ accountSlug: "acc", symbols: ["SUI"] }],
     });
@@ -158,7 +155,11 @@ describe("manual forced entry — pair strategy shaping", () => {
     expect(candidate.type).toBe("entry");
     expect(candidate.direction).toBe("SHORT");
     expect(candidate.manual).toBe(true);
-    expect(candidate.strategy).toBeUndefined();
+    expect(candidate.strategy).toEqual({
+      entryLegs: "MAIN",
+      pairId: "acc:SUI:vp-1",
+      role: "MAIN",
+    });
   });
 
   it("skips with a reason when the pair cannot be funded", async () => {
