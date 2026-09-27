@@ -49,11 +49,11 @@ export type FetchKlines = (
 ) => Promise<Kline[]>;
 
 /**
- * Volatility Point is point that mark the wave of the price volatility
- *
- * Current point is determined based on the volatility point before wether its TOP or DOWN about 5% or more.
+ * The emitted detection datum of a volatility point — written once by the
+ * detector when a pivot confirms and immutable afterwards. Persisted as the
+ * point's ground truth.
  */
-export interface VolatilityPoint<TFeature = unknown> {
+export interface VolatilityPointBasic {
   /**
    * Id for volatility point.
    *
@@ -96,42 +96,56 @@ export interface VolatilityPoint<TFeature = unknown> {
    * Volatility level based on previous points.
    */
   lvl: number;
+}
 
+/**
+ * Live bookkeeping attached to a point while the engine runs — refreshed on
+ * every mark-price pass or set when the point travels outside its symbol
+ * map. Absent on points that were never hydrated at runtime.
+ */
+export interface VolatilityPointRuntime {
   /**
    * Runtime owner symbol when a point is carried outside its symbol map.
-   *
-   * [EXCLUDE FROM DATASET]
    */
   symbol?: string;
 
   /**
-   * Legacy point-wide backtest usage marker. Account-aware entry and averaging
-   * use the `usedBy` marker list instead.
-   *
-   * [EXCLUDE FROM DATASET]
+   * Largest upward excursion of the tracked price above `p` since the point
+   * formed, in percent points, refreshed on every mark-price update.
+   * `maxUpPct >= VOLATILITY_THRESHOLD` means the detector's UP sequence is
+   * active again — a new TOP is forming but not yet emitted.
    */
-  used?: boolean;
+  maxUpPct?: number;
 
+  /**
+   * Largest downward excursion of the tracked price below `p` since the
+   * point formed, in percent points, refreshed on every mark-price update.
+   * `maxDownPct >= VOLATILITY_THRESHOLD` means the detector's DOWN sequence
+   * is active — a new BOTTOM is forming but not yet emitted.
+   */
+  maxDownPct?: number;
+
+  /**
+   * just for debugging
+   */
+  message?: string;
+}
+
+/**
+ * Strategy-facing inputs and consumption bookkeeping — the active strategy
+ * reads these when sizing and labeling entries and writes consumption
+ * markers after an action succeeds. The engine only stores and matches
+ * the raw values.
+ */
+export interface VolatilityPointDecision<TFeature = unknown> {
   /**
    * Usage markers written by the active strategy after an action succeeds.
    * Marker format is strategy-chosen; the runtime only stores and matches
    * the raw strings. Convention: `"<accountSlug>"` consumes the point for
    * the whole account, `"<accountSlug>:<ROLE>"` scopes consumption to one
    * pair leg. Absent or empty means unused.
-   *
-   * [EXCLUDE FROM DATASET]
    */
   usedBy?: string[];
-
-  /**
-   * Delta in ms between v point before and the current v point
-   */
-  delta?: number;
-
-  /**
-   * just for debugging
-   */
-  message?: string;
 
   /**
    * old: What feature so the system is decide to buy using this point
@@ -155,3 +169,32 @@ export interface VolatilityPoint<TFeature = unknown> {
    */
   descisionLabel?: string;
 }
+
+/**
+ * Superseded fields kept declared so persisted points still typecheck and
+ * account-less fallbacks keep working. New code should prefer the
+ * `VolatilityPointDecision` replacements.
+ */
+export interface VolatilityPointLegacy {
+  /**
+   * Legacy point-wide usage marker for callers without an account identity.
+   * Account-aware entry and averaging use the `usedBy` marker list instead.
+   */
+  used?: boolean;
+
+  /**
+   * Delta in ms between v point before and the current v point
+   */
+  delta?: number;
+}
+
+/**
+ * Volatility Point is point that mark the wave of the price volatility
+ *
+ * Current point is determined based on the volatility point before wether its TOP or DOWN about 5% or more.
+ */
+export interface VolatilityPoint<TFeature = unknown>
+  extends VolatilityPointBasic,
+    VolatilityPointRuntime,
+    VolatilityPointDecision<TFeature>,
+    VolatilityPointLegacy {}

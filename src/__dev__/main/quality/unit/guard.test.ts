@@ -5,6 +5,8 @@ import type {
   RuntimeContext,
   RuntimeEngineState,
 } from "@/lib/precision/types";
+import { VOLATILITY_THRESHOLD } from "@/lib/system/constants";
+import vpoints from "@/lib/system/utils/vpoints";
 
 const DAY_START = Date.UTC(2026, 5, 18);
 const NOW = DAY_START + 12 * 60 * 60 * 1000;
@@ -165,6 +167,41 @@ describe("guard.allows — shared environment approval gate", () => {
     expect(guard.dailyPnl.resolve(state)).toBe(0);
   });
 
+  it("vetoes entries while an opposite vPoint might already be forming", () => {
+    // BOTH:BLOCK_ENTRY_VPOINT_MIGHT_FORMED — the latest point saw a
+    // counter-excursion at the detector's activation threshold, so the
+    // signal stream is stale even though no new point has emitted yet.
+    const stale = {
+      id: "T_stale",
+      t: NOW - 60_000,
+      l: "T",
+      p: 1.5,
+      pct: 4,
+      vb: 1,
+      vq: 1,
+      lvl: 1,
+      maxDownPct: VOLATILITY_THRESHOLD,
+    };
+    const state = makeState({ vPointsMap: { SUI: [stale] as never[] } });
+    expect(guard.allows(entry(), contextFor(state))).toBe(false);
+    // Forced entries are blocked by the staleness guard as well.
+    expect(
+      guard.allows(entry({ manual: true }), contextFor(state)),
+    ).toBe(false);
+
+    // Below the threshold the signal is still current.
+    const fresh = { ...stale, maxDownPct: VOLATILITY_THRESHOLD - 0.5 };
+    const ok = makeState({ vPointsMap: { SUI: [fresh] as never[] } });
+    expect(guard.allows(entry(), contextFor(ok))).toBe(true);
+
+    // Only the frontier point matters — an older exhausted point does not
+    // veto once a newer one emitted.
+    const twoPoints = makeState({
+      vPointsMap: { SUI: [stale, fresh] as never[] },
+    });
+    expect(guard.allows(entry(), contextFor(twoPoints))).toBe(true);
+  });
+
   it("applies the seeded entry cutoff to automatic entries only", () => {
     const state = makeState({ entryCutoffTime: NOW - 1000 });
     expect(guard.allows(entry(), contextFor(state))).toBe(false);
@@ -178,6 +215,33 @@ describe("guard.allows — shared environment approval gate", () => {
     // Exits and averaging ignore the cutoff.
     expect(guard.allows(exit(), contextFor(state))).toBe(true);
     expect(guard.allows(averaging(), contextFor(state))).toBe(true);
+  });
+});
+
+describe("vpoints.excursions.update — max excursion tracking", () => {
+  const point = { p: 100, maxUpPct: undefined, maxDownPct: undefined };
+
+  it("tracks the largest up and down excursion from the point price", () => {
+    const p = { ...point } as never;
+    vpoints.excursions.update(p, 103);
+    expect((p as any).maxUpPct).toBeCloseTo(3);
+    expect((p as any).maxDownPct).toBe(0);
+
+    vpoints.excursions.update(p, 95);
+    expect((p as any).maxUpPct).toBeCloseTo(3);
+    expect((p as any).maxDownPct).toBeCloseTo(5);
+
+    // Smaller moves never shrink the tracked max.
+    vpoints.excursions.update(p, 99);
+    expect((p as any).maxUpPct).toBeCloseTo(3);
+    expect((p as any).maxDownPct).toBeCloseTo(5);
+  });
+
+  it("ignores non-finite prices and unusable points", () => {
+    const p = { p: 0 } as never;
+    vpoints.excursions.update(p, 10);
+    expect((p as any).maxUpPct).toBeUndefined();
+    vpoints.excursions.update({ ...point } as never, Number.NaN);
   });
 });
 

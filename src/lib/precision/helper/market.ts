@@ -139,6 +139,19 @@ function create(
       }
 
       Object.assign(state.markPriceMap, Object.fromEntries(entries));
+
+      // BOTH:BLOCK_ENTRY_VPOINT_MIGHT_FORMED — keep the latest vPoint's max
+      // excursions current against the freshest mark price, so the entry
+      // guard sees a counter-point that is forming but not emitted.
+      for (const [pointSymbol, points] of Object.entries(state.vPointsMap)) {
+        const latestPoint = points.at(-1);
+        if (!latestPoint) continue;
+        vpoints.excursions.update(
+          latestPoint,
+          state.markPriceMap[pointSymbol]?.price as number,
+        );
+      }
+
       markPriceUpdatedAt[interval] = currentTime;
     },
 

@@ -599,6 +599,28 @@ level `0` unless the minimum excludes it.
 
 TC: `BOTH:LOW_LEVEL_NO_ACTION_AVERAGING`
 
+### B.3.9 Block entry while a counter vPoint might already be formed
+
+A vPoint only emits into `state.vPointsMap` after its retrace completes, so a
+newly forming opposite point is invisible to entry evaluation. Between a
+point's formation and the next point's emission the latest signal is stale:
+the market has already reversed, yet `.at(-1)` still names the old point.
+
+Every retained vPoint tracks `maxUpPct`/`maxDownPct` — the largest upward and
+downward excursions of the tracked mark price relative to the point's own
+price `p`, updated on every `updateMarkPrice` pass (websocket marks in
+production, closed-candle marks in backtest). When either excursion on the
+symbol's latest vPoint reaches `VOLATILITY_THRESHOLD`, the detector's
+counter-sequence is already active — an opposite point is forming but not yet
+emitted — so the entry must be rejected.
+
+The guard lives in the shared Precision guard (`src/lib/precision/guard`), so
+it applies identically to live, sandbox, and backtest entries, including
+forced manual entries: the signal premise is broken regardless of who
+requested the entry.
+
+TC: `BOTH:BLOCK_ENTRY_VPOINT_MIGHT_FORMED`
+
 ## B.4 Exit (`src/lib/system/trading/exit.ts`)
 
 The exit behavior may vary based on user-defined config. The codebase must be able to consume these exit configs:

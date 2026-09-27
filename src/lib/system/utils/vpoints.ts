@@ -470,6 +470,24 @@ function markUsage(point: VolatilityPoint, marker: string): void {
   }
 }
 
+/**
+ * Refreshes a point's `maxUpPct`/`maxDownPct` against the latest tracked
+ * price — the largest excursion relative to the point's own `p` since it
+ * formed. Callers update only the newest point per symbol because the
+ * detector re-anchors `lastPivotPrice` to each emitted point: once this
+ * excursion reaches `VOLATILITY_THRESHOLD`, the counter-sequence is active
+ * — an opposite vPoint is forming but not yet emitted — which is what
+ * BOTH:BLOCK_ENTRY_VPOINT_MIGHT_FORMED vets entries against.
+ */
+function updateExcursion(point: VolatilityPoint, price: number): void {
+  if (!Number.isFinite(price) || !Number.isFinite(point.p) || point.p <= 0) {
+    return;
+  }
+  const driftPct = ((price - point.p) / point.p) * 100;
+  point.maxUpPct = Math.max(0, point.maxUpPct ?? 0, driftPct);
+  point.maxDownPct = Math.max(0, point.maxDownPct ?? 0, -driftPct);
+}
+
 const vpoints = {
   createMemory,
   detectVPoints,
@@ -477,6 +495,9 @@ const vpoints = {
   processKline,
   resetUsage,
   retainRecent,
+  excursions: {
+    update: updateExcursion,
+  },
   usage: {
     has: hasUsage,
     hasAccount: hasAccountUsage,

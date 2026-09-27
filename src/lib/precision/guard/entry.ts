@@ -1,3 +1,4 @@
+import { VOLATILITY_THRESHOLD } from "@/lib/system/constants";
 import autoRemove from "@/lib/system/trading/auto-remove";
 import runtimeDailyPnlLimit from "@/lib/system/trading/daily-pnl-limit";
 import type { RuntimeAccountConfig } from "@/lib/system/runtime";
@@ -66,6 +67,19 @@ function allows(
       minimumPrice: state.config.runtime.autoRemoveSymbolMinPrice,
       price: state.markPriceMap[symbol]?.price,
     })
+  ) {
+    return false;
+  }
+
+  // BOTH:BLOCK_ENTRY_VPOINT_MIGHT_FORMED — when the latest vPoint's tracked
+  // excursion reaches VOLATILITY_THRESHOLD, the detector's counter-sequence
+  // is already active: a new opposite point is forming but not yet emitted,
+  // so the signal this entry rests on is stale. Blocks forced entries too.
+  const latestPoint = state.vPointsMap[symbol]?.at(-1);
+  if (
+    latestPoint &&
+    Math.max(latestPoint.maxUpPct ?? 0, latestPoint.maxDownPct ?? 0) >=
+      VOLATILITY_THRESHOLD
   ) {
     return false;
   }
