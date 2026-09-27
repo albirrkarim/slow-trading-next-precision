@@ -3,6 +3,7 @@ import type { Marker } from "@/components/LiveDashboard/converter";
 import { common, orange, purple } from "@mui/material/colors";
 import type { UTCTimestamp } from "lightweight-charts";
 import type { RuntimeHistoryPosition } from "@/lib/system/trading";
+import format from "@/lib/system/utils/format";
 
 type TradeMarkerPosition = Pick<
   RuntimeHistoryPosition,
@@ -38,7 +39,9 @@ export function buildTradeMarkersFromHistory(
           (trade.pnl.netPct ?? 0) >= 0 ? purple[500] : orange[500],
         position: "aboveBar",
         shape: "arrowDown",
-        text: `EXIT ${trade.opened.vPoint.id}`,
+        text: trade.closed!.vPoint?.id
+          ? `EXIT ${trade.closed!.vPoint.id} paired with ${format.vPointForLog(trade.opened.vPoint)}`
+          : `EXIT paired with ${format.vPointForLog(trade.opened.vPoint)}`,
         time: Math.floor(trade.closed!.t / 1000) as UTCTimestamp,
       });
     }

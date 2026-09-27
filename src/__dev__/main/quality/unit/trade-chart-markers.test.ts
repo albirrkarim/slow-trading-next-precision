@@ -30,6 +30,7 @@ describe("trade chart markers", () => {
             feeUsdt: 0,
             reason: "TAKE_PROFIT",
             message: "[EXIT] BTC",
+            vPoint: { id: "BTC_9", lvl: -1 },
           },
           pnl: { netPct: 2.5 },
           symbol: "btc",
@@ -41,7 +42,7 @@ describe("trade chart markers", () => {
     expect(markers).toHaveLength(2);
     expect(markers.map((marker) => marker.text)).toEqual([
       "ENTRY BTC_1",
-      "EXIT BTC_1",
+      "EXIT BTC_9 paired with BTC_1 (lvl -1)",
     ]);
     expect(markers.map((marker) => Number(marker.time))).toEqual([2, 3]);
   });

@@ -1,6 +1,7 @@
 import type { UTCTimestamp } from "lightweight-charts";
 import type { VolatilityPoint } from "@/lib/system/types";
 import type { Position } from "@/lib/system/trading";
+import format from "@/lib/system/utils/format";
 import { DEFAULT_COLORS } from "@/components/client/constants";
 import { green, red } from "@mui/material/colors";
 
@@ -118,7 +119,13 @@ export function convertPositionIntoEntryExitPair({
 
       const exitTextParts: string[] = [];
       if (p.executionMode) exitTextParts.push(`[${p.executionMode}]`);
-      if (p.opened.vPoint.id) exitTextParts.push(`${p.opened.vPoint.id}`);
+      if (p.closed?.vPoint?.id) {
+        exitTextParts.push(
+          `${p.closed.vPoint.id} paired with ${format.vPointForLog(p.opened.vPoint)}`,
+        );
+      } else if (p.opened.vPoint.id) {
+        exitTextParts.push(`paired with ${format.vPointForLog(p.opened.vPoint)}`);
+      }
       exitTextParts.push(`${usedSymbol} EXIT`);
       // if (p.exitTimeHuman) exitTextParts.push(`(${p.exitTimeHuman})`);
       if (p.strategy.entry.label) exitTextParts.push(`- ${p.strategy.entry.label}`);
