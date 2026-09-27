@@ -826,6 +826,7 @@ export default function OpenPositionItem({
                   <Box sx={{ p: 1, backgroundColor: "background.default" }}>
                     <TradeChartBase
                       activePosition={position}
+                      defaultInterval="1m"
                       symbol={position.symbol}
                       exchange={exchangeType}
                       marketType={

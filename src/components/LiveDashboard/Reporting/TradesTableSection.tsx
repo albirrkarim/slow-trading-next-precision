@@ -282,6 +282,7 @@ function TradeChartDialog({
         <Box sx={{ p: 1, backgroundColor: "background.default" }}>
           <TradeChartBase
             activePosition={buildTradeChartPosition(row)}
+            defaultInterval="1m"
             symbol={row.symbol}
             exchange={exchangeType}
             marketType={
