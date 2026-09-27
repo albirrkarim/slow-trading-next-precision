@@ -110,14 +110,18 @@ exist yet) plus the pair-aware data-type and execution extensions.
    `strategy.entry.feature?: TFeature` (supersedes the earlier
    `Position.strategy.logic` sketch). Extend the same pattern — a
    free-form `decision.strategy`/`meta` slot the strategy types itself?
-   **Recommendation:** yes — `decision.strategy?: unknown`, named to match
-   `state.strategy` / `position.strategy`. The engine carries it
-   uninterpreted into `onAction`/`onActionResult`; the adapter copies it
-   into `position.strategy.*` when building the position so pair identity
-   survives the decision→position hop. Guard already sees the decision,
-   so the strategy's own gate can read role/`entryLegs` for capacity
-   without any engine change.
-   **A:** ___
+   **A:** Confirmed — `decision.strategy?: unknown` on the decision types
+   (matching `state.strategy` / `position.strategy` naming) plus
+   `position.strategy.logic?: unknown` as the landing slot. The engine
+   copies `decision.strategy → position.strategy.logic` in
+   `executeDecision`'s commit step after a successful `onAction` — once,
+   uniformly across backtest/sandbox/live, so adapters never reimplement
+   the copy. Falls out free: the strategy's `guard` reads
+   `role`/`entryLegs` off the decision for pair-aware capacity,
+   `onActionResult` correlates legs from decision + position, and
+   `decisions.exit.find` reads `position.strategy.logic.pairId` for the
+   counterpart lookup in item 5. Averaging/exit decisions use the slot
+   only for producer→guard→callback correlation — no propagation.
 
 5. **Q — Coordinated pair exit?** `monitorPosition`/`exit` handle one
    position per pass — `BOTH:VOLATILITY_TARGET_EXIT` /
@@ -132,7 +136,25 @@ exist yet) plus the pair-aware data-type and execution extensions.
    same cycle. Zero new engine surface; the strategy owns pair semantics.
    Fall back to an explicit pair-exit decision only if one-tick ordering
    proves fragile in backtests.
-   **A:** ___
+   **A:** Confirmed — no new engine machinery. `decisions.exit` +
+   `onActionResult` + `state.strategy` cover it, order-independent:
+
+   - The monitoring loop iterates a snapshot copy
+     (`for (const position of [...state.openPositions])`), while a close
+     `splice`s the position out of the live array — so the sibling leg is
+     always still visited that pass.
+   - Same pass (sibling ordered after the closing leg): `both`'s
+     `decisions.exit.find` sees the counterpart missing from
+     `openPositions` (via `pairId` from item 4) and emits its exit
+     immediately.
+   - Any order: MAIN's `onActionResult("success")` writes
+     `state.strategy.pendingClose[pairId]` — the strategy-owned flag —
+     which runs **before** `onStateChange`, so it persists atomically
+     with the close. COUNTER's next `exit.find` emits on the flag.
+   - `onActionResult` for COUNTER's close clears the flag.
+   - Replays reproduce it via `PrecisionRuntimeSnapshot`; a restart
+     mid-pair-exit resumes it once item 7's `runtimeStorage.strategy`
+     channel lands.
 
 6. **Q — Config field placement?** `management.openDirection`
    ("ONE_WAY" | "BOTH"), per-account `trading.entryLegs`, and
