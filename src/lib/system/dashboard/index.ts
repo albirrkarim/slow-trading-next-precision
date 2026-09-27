@@ -559,15 +559,17 @@ async function buildRealtime(params: {
     state: snapshot,
   });
 
-  const [binanceHealth, instanceIp] = await Promise.all([
+  const [binanceHealth, instanceIp, strategy] = await Promise.all([
     runtimeBinanceHealth.snapshot.read({ limit: 20 }),
     runtimeInstanceIp.storage.read(),
+    runtimeStorage.strategy.load(mode).catch(() => undefined),
   ]);
 
   return {
     ...snapshot,
     binanceHealth,
     instanceIp: instanceIp ?? undefined,
+    strategy,
   };
 }
 
@@ -608,15 +610,17 @@ async function buildCombined(
     );
   }
 
-  const [binanceHealth, instanceIp] = await Promise.all([
+  const [binanceHealth, instanceIp, strategy] = await Promise.all([
     runtimeBinanceHealth.snapshot.read({ limit: 20 }),
     runtimeInstanceIp.storage.read(),
+    runtimeStorage.strategy.load(mode).catch(() => undefined),
   ]);
 
   return {
     ...combineStates(states),
     binanceHealth,
     instanceIp: instanceIp ?? undefined,
+    strategy,
   };
 }
 

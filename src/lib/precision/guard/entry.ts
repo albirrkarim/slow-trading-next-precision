@@ -5,7 +5,7 @@ import type { RuntimeAccountConfig } from "@/lib/system/runtime";
 import type {
   RuntimeContext,
   RuntimeEngineState,
-  RuntimeEntryDecision,
+  RuntimeEntryCandidate,
 } from "../types";
 
 /** Resolves today's accumulated closed-trade PnL, resetting on UTC rollover. */
@@ -45,7 +45,7 @@ function recordClosedPnlUsdt(
  * role and counts pairs — while still composing `policy`.
  */
 function capacity(
-  decision: RuntimeEntryDecision,
+  decision: RuntimeEntryCandidate,
   context: RuntimeContext,
   account: RuntimeAccountConfig,
 ): boolean {
@@ -73,7 +73,7 @@ function capacity(
  * separately so a strategy gate keeps it while replacing `capacity`.
  */
 function policy(
-  decision: RuntimeEntryDecision,
+  decision: RuntimeEntryCandidate,
   context: RuntimeContext,
 ): boolean {
   const state = context.state;
@@ -140,7 +140,7 @@ function policy(
  * mirrors the original production `isActionAllowed`.
  */
 function allows(
-  decision: RuntimeEntryDecision,
+  decision: RuntimeEntryCandidate,
   context: RuntimeContext,
   account: RuntimeAccountConfig,
 ): boolean {

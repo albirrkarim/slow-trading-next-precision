@@ -8,6 +8,7 @@ import type {
 import { systemLog } from "@/lib/system/logging";
 import { runtimeStages } from "@/lib/system/runtime";
 import { runtimeLogs, runtimeStorage } from "@/lib/system/storage";
+import strategies from "@/lib/strategies";
 import coinManagement from "./coin-management";
 import factoryModule from "./factory";
 import type { ProductionRuntimeFactory } from "./types";
@@ -24,6 +25,17 @@ const COIN_MANAGEMENT_TICK_MS = 30_000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Builds an engine with the configured strategy module plugged in. */
+async function createEngine(
+  state: RuntimeEngineState,
+  adapter: RuntimeEngineAdapter,
+): Promise<RuntimeEngine> {
+  const strategy = await strategies.resolve(
+    state.config.management.strategy,
+  );
+  return new RuntimeEngine(state, adapter, strategy);
 }
 
 /** Owns one process-level production engine lifecycle and its shutdown signal. */
@@ -65,7 +77,7 @@ class ProductionRuntime {
       this.startCoinManagementLoop();
 
       try {
-        const engine = new RuntimeEngine(state, adapter);
+        const engine = await createEngine(state, adapter);
         this.engine = engine;
         await engine.start();
       } catch (error) {
@@ -246,7 +258,8 @@ class ProductionRuntime {
         signal: new AbortController().signal,
         state: this.state,
       });
-      return new RuntimeEngine(this.state, adapter).runExclusive(task);
+      const engine = await createEngine(this.state, adapter);
+      return engine.runExclusive(task);
     }
 
     const factory = factoryModule.create();
@@ -258,7 +271,8 @@ class ProductionRuntime {
       signal: new AbortController().signal,
       state,
     });
-    return new RuntimeEngine(state, adapter).runExclusive(task);
+    const engine = await createEngine(state, adapter);
+    return engine.runExclusive(task);
   }
 
   /**

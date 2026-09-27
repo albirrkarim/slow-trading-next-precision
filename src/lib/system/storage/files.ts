@@ -62,6 +62,9 @@ const prod = {
   get status() {
     return `${prodDir()}/status.json`;
   },
+  get strategy() {
+    return `${prodDir()}/strategy.json`;
+  },
 
   accountRoot: accountDir,
   account: accountModeFiles,

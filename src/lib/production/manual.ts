@@ -40,6 +40,8 @@ async function forceEntry(params: {
 async function forceExit(params: {
   accountSlug?: string;
   symbol: string;
+  /** Hedge-mode leg targeting; omitted exits every direction on the symbol. */
+  direction?: "LONG" | "SHORT";
 }): Promise<RuntimeManualPassResult> {
   const runtime = singleton.get();
   const symbol = normalizeSymbol(params.symbol);
@@ -48,7 +50,11 @@ async function forceExit(params: {
       monitoring.manual.run(context, {
         disableEntry: true,
         forceExits: [
-          { accountSlug: params.accountSlug, symbols: [symbol] },
+          {
+            accountSlug: params.accountSlug,
+            direction: params.direction,
+            symbols: [symbol],
+          },
         ],
       }),
     { overrideRunnerGate: true },

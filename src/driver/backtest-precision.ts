@@ -13,7 +13,9 @@ import type { VolatilityPoint } from "@/lib/system/types";
 import { getFeeCalculator } from "@/lib/exchange/fees";
 import tradingAveraging from "@/lib/system/trading/averaging";
 import entryAction from "@/lib/system/trading/entry-action";
+import pairAction from "@/lib/system/trading/pair-action";
 import tradingExit from "@/lib/system/trading/exit";
+import strategies from "@/lib/strategies";
 import { preparePrecisionDataset } from "@/lib/dev/backtestPrecision/backtest/data";
 import {
   createInitialBalance,
@@ -125,6 +127,12 @@ async function main() {
             ? await tradingExit.execute(context, decision)
             : null;
     },
+    onPairAction: async (decision, context) =>
+      pairAction.execute({
+        context,
+        decision,
+        executeLeg: (leg, ctx) => entryAction.execute(ctx, leg),
+      }),
     onExit: async (position) => {
       history.push(position);
     },
@@ -154,7 +162,10 @@ async function main() {
   }, LOG_EVERY_MS);
   memTimer.unref();
 
-  const engine = new RuntimeEngine(state, adapter);
+  const strategy = await strategies.resolve(
+    state.config.management.strategy,
+  );
+  const engine = new RuntimeEngine(state, adapter, strategy);
   await engine.start();
   clearInterval(memTimer);
   console.log(`DONE positions=${history.length}`);

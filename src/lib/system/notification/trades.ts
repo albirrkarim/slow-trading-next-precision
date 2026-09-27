@@ -10,18 +10,22 @@ const FAILED_TITLES: Record<RuntimeDecision["type"], string> = {
   averaging: "AVERAGING ORDER FAILED",
   entry: "BUY ORDER FAILED",
   exit: "EXIT ORDER FAILED",
+  pairEntry: "PAIR ENTRY ORDER FAILED",
 };
 
 const SUCCESS_KEYS: Record<RuntimeDecision["type"], string> = {
   averaging: "NOTIF_AVERAGE",
   entry: "NOTIF_ENTRY",
   exit: "NOTIF_EXIT",
+  // A pair entry is an entry action — reuse the entry channel key.
+  pairEntry: "NOTIF_ENTRY",
 };
 
 const FAILED_KEYS: Record<RuntimeDecision["type"], string> = {
   averaging: "NOTIF_AVERAGE_FAILED",
   entry: "NOTIF_ENTRY_FAILED",
   exit: "NOTIF_EXIT_FAILED",
+  pairEntry: "NOTIF_ENTRY_FAILED",
 };
 
 function normalizeSymbol(value: unknown): string {
@@ -58,7 +62,10 @@ function buildSuccessTitle(params: {
   const symbol = normalizeSymbol(position.symbol);
   const prefix = modePrefix(params.mode);
 
-  if (params.decision.type === "entry") {
+  if (
+    params.decision.type === "entry" ||
+    params.decision.type === "pairEntry"
+  ) {
     return (
       `${prefix}[ENTRY] | ${symbol} ${position.direction} | ` +
       `USDT: ${formatUsdt(position.exposure.marginUsdt)} @ ` +

@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { RuntimeContext } from "@/lib/precision/types";
 
 const mocks = vi.hoisted(() => ({
-  executeDecision: vi.fn(async () => ({})),
+  // executeDecision returns the committed positions array (one per leg).
+  executeDecision: vi.fn(async () => [{}]),
 }));
 
 vi.mock("@/lib/precision/monitoring/entry", () => ({

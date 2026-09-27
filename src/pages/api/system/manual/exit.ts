@@ -22,6 +22,16 @@ export default async function handler(
       return;
     }
 
+    // Hedge-mode pair legs share account+symbol; the optional direction
+    // narrows the exit to one leg. Omitted keeps the legacy behavior.
+    const rawDirection = String(req.body?.direction || "")
+      .trim()
+      .toUpperCase();
+    const direction =
+      rawDirection === "LONG" || rawDirection === "SHORT"
+        ? rawDirection
+        : undefined;
+
     const catalog = await runtimeStorage.catalog.load();
     const activeMode = catalog.mode;
     const requestedSlug = String(req.body?.account || "").trim();
@@ -39,7 +49,9 @@ export default async function handler(
     });
     const hasOpenPosition = accountState.positions.some(
       (position) =>
-        !position.closed && position.symbol.toUpperCase() === symbol,
+        !position.closed &&
+        position.symbol.toUpperCase() === symbol &&
+        (!direction || position.direction === direction),
     );
     if (!hasOpenPosition) {
       res.status(404).json({
@@ -50,6 +62,7 @@ export default async function handler(
 
     const result = await production.manual.exit({
       accountSlug: account.slug,
+      direction,
       symbol,
     });
 

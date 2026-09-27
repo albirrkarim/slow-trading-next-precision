@@ -25,6 +25,12 @@ export interface ProductionAdapterOptions {
   onActionEnvGuard?: RuntimeEngineAdapter["onActionEnvGuard"];
   /** Submits or simulates an approved production action. */
   onAction: RuntimeEngineAdapter["onAction"];
+  /**
+   * Executes an approved pair entry atomically — sequential legs with
+   * compensating-close rollback on a partial fill. Optional: engines only
+   * call it for `pairEntry` decisions a strategy producer emits.
+   */
+  onPairAction?: RuntimeEngineAdapter["onPairAction"];
   /** Persists a closed position after the shared runtime confirms an exit. */
   onExit: RuntimeEngineAdapter["onExit"];
   /** Persists account state after the shared runtime updates balances. */
@@ -57,6 +63,7 @@ export interface ProductionStateOptions
     | "dailyPnlUsdt"
     | "dailyPnlDay"
     | "blackSwanProtective"
+    | "strategy"
   > {
   /** Live exchange or sandbox mode. */
   mode: Extract<RuntimeEngineState["mode"], "live" | "sandbox">;

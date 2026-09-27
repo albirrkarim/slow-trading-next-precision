@@ -166,6 +166,13 @@ export interface PositionStrategyState<TFeature = unknown> {
    * Updated by the shared runtime on every averaging fill.
    */
   averaging: PositionAveragingState;
+  /**
+   * Free-form strategy-owned bookkeeping copied from `decision.strategy` by
+   * the shared entry commit (pair strategies land `{pairId, role, ...}`
+   * here so each leg keeps its identity). The runtime moves the bytes but
+   * never interprets the shape — same neutrality as `state.strategy`.
+   */
+  logic?: unknown;
 }
 
 export interface PositionPnlPoint {
@@ -232,6 +239,7 @@ export type PositionCloseReason =
   | "STOP_LOSS_PLUS_TP"
   | "VOLATILITY_TARGET_TP"
   | "VOLATILITY_TARGET_SL"
+  | "VOLATILITY_TARGET_EXIT"
   | "POST_AVERAGE_RESCUE_EXIT"
   | "POST_AVERAGE_STOP_LOSS"
   /** @deprecated Retained so existing persisted history remains readable. */

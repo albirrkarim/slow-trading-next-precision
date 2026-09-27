@@ -1,6 +1,5 @@
 "use client";
 
-import { endpoints } from "@/components/endpoints";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
@@ -17,9 +16,9 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import axios from "axios";
-import { useEffect, useState } from "react";
-import type { RuntimeAccountEntryDiagnostics, RuntimeEntryDiagnostic, RuntimeEntryDiagnosticsSnapshot, RuntimeSharedEntryGuardDiagnostic } from "@/lib/system/trading";
+import type { RuntimeAccountEntryDiagnostics, RuntimeEntryDiagnostic } from "@/lib/system/trading";
+
+import { useEntryDiagnostics } from "./use-entry-diagnostics";
 
 export default function EntryBlockers() {
   return (
@@ -39,39 +38,10 @@ export default function EntryBlockers() {
 }
 
 function EntryBlockersContent() {
-  const [accounts, setAccounts] = useState<
-    RuntimeAccountEntryDiagnostics[]
-  >([]);
-  const [sharedGuards, setSharedGuards] = useState<
-    RuntimeSharedEntryGuardDiagnostic[]
-  >([]);
-  const [error, setError] = useState("");
-  const [generatedAt, setGeneratedAt] = useState(0);
-  const [loading, setLoading] = useState(true);
-
-  async function refresh() {
-    setError("");
-    setLoading(true);
-    try {
-      const response = await axios.get<RuntimeEntryDiagnosticsSnapshot>(
-        endpoints.system.manual.diagnostics,
-      );
-      setAccounts(response.data.accounts);
-      setSharedGuards(response.data.sharedGuards);
-      setGeneratedAt(response.data.generatedAt);
-    } catch (refreshError: any) {
-      setError(
-        refreshError?.response?.data?.error ??
-          "Could not load entry decisions.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    void refresh();
-  }, []);
+  const { error, loading, refresh, snapshot } = useEntryDiagnostics();
+  const accounts = snapshot?.accounts ?? [];
+  const sharedGuards = snapshot?.sharedGuards ?? [];
+  const generatedAt = snapshot?.generatedAt ?? 0;
 
   return (
     <Box sx={{ mt: 0.5 }}>

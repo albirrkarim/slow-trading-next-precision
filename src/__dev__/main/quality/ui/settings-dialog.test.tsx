@@ -529,6 +529,87 @@ describe("settings dialog save payload", () => {
     expect(screen.getByText("Preview: Disabled")).toBeTruthy();
   });
 
+  it("writes the strategy and open direction selects into management", async () => {
+    const user = userEvent.setup();
+    const draft = makeConfigDraft(dashboardState());
+    let nextDraft = draft;
+    const setConfigDraft = vi.fn((update) => {
+      nextDraft = typeof update === "function" ? update(nextDraft) : update;
+    });
+
+    const { rerender } = render(
+      <SettingsDialogManagementTab
+        configDraft={nextDraft}
+        setConfigDraft={setConfigDraft}
+      />,
+    );
+
+    // Open Direction stays disabled until a pair strategy is selected.
+    const openDirection = screen.getByLabelText("Open Direction");
+    expect(
+      openDirection.getAttribute("aria-disabled") === "true" ||
+        (openDirection as HTMLInputElement).disabled === true,
+    ).toBe(true);
+
+    await user.click(screen.getByLabelText("Strategy"));
+    await user.click(screen.getByRole("option", { name: "Streak" }));
+    expect(nextDraft.management.strategy).toBe("streak");
+
+    rerender(
+      <SettingsDialogManagementTab
+        configDraft={nextDraft}
+        setConfigDraft={setConfigDraft}
+      />,
+    );
+
+    await user.click(screen.getByLabelText("Open Direction"));
+    await user.click(screen.getByRole("option", { name: "Both" }));
+    expect(nextDraft.management.openDirection).toBe("BOTH");
+
+    await user.click(screen.getByLabelText("Strategy"));
+    await user.click(screen.getByRole("option", { name: "Default" }));
+    expect(nextDraft.management.strategy).toBeUndefined();
+  });
+
+  it("writes entry legs and futures position mode on the account entry group", async () => {
+    const user = userEvent.setup();
+
+    function PairEntryHarness() {
+      const [tradingConfig, setTradingConfig] = useState(
+        runtimeDefaults.trading.create(),
+      );
+      return (
+        <>
+          <TradingAccountSettings
+            tradingConfig={tradingConfig}
+            setTradingConfig={setTradingConfig}
+          />
+          <span data-testid="pair-entry">
+            {String(tradingConfig.entryLegs)}|
+            {String(tradingConfig.futuresPositionMode)}
+          </span>
+        </>
+      );
+    }
+
+    render(<PairEntryHarness />);
+    expect(screen.getByTestId("pair-entry").textContent).toBe(
+      "undefined|undefined",
+    );
+
+    await user.click(screen.getByLabelText("Futures Position Mode"));
+    await user.click(screen.getByRole("option", { name: "Hedge" }));
+    expect(screen.getByTestId("pair-entry").textContent).toBe(
+      "undefined|HEDGE",
+    );
+
+    await user.click(screen.getByLabelText("Entry Legs"));
+    await user.click(screen.getByRole("option", { name: "Counter" }));
+    expect(screen.getByTestId("pair-entry").textContent).toBe(
+      "COUNTER|HEDGE",
+    );
+  });
+
   it("allows storage cloning from a deployed dashboard host", () => {
     const syncOnlineStorageToLocal = vi.fn(async () => undefined);
 

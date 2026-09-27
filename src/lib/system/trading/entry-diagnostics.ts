@@ -366,7 +366,8 @@ async function build(
     });
   }
 
-  const decisions = await tradingEntry.findDecisions(context);
+  const view = context.strategy?.diagnostics?.view?.(context) ?? context;
+  const decisions = await tradingEntry.findDecisions(view);
   const decisionByKey = new Map(
     decisions.map((decision) => [
       `${decision.accountSlug}:${decision.symbol}`,
@@ -423,6 +424,18 @@ async function build(
         continue;
       }
 
+      const decision = decisionByKey.get(`${account.slug}:${symbol}`);
+      const explained = context.strategy?.diagnostics?.explain?.({
+        accountSlug: account.slug,
+        context,
+        decision,
+        symbol,
+      });
+      if (explained) {
+        diagnostics.push({ ...base, ...explained });
+        continue;
+      }
+
       if (!point || !isActionable(point.lvl, minLevel)) continue;
 
       if (maxLevel !== undefined && Math.abs(point.lvl) > maxLevel) {
@@ -435,7 +448,6 @@ async function build(
         continue;
       }
 
-      const decision = decisionByKey.get(`${account.slug}:${symbol}`);
       if (decision) {
         const plan = entryAction.plan(context, decision);
         if (plan) {
@@ -461,7 +473,7 @@ async function build(
       }
 
       const blocked = explainMissingDecision(
-        context,
+        view,
         account.slug,
         symbol,
       );

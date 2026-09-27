@@ -19,6 +19,12 @@ export interface RuntimeManualEntryScope {
 export interface RuntimeManualExitScope {
   accountSlug?: string;
   symbols: string[];
+  /**
+   * Trade direction restriction — hedge-mode pair legs share account and
+   * symbol, so one leg is targeted by direction; omitted keeps the old
+   * "every direction on the symbol" behavior.
+   */
+  direction?: "LONG" | "SHORT";
 }
 
 export interface RuntimeManualPassParams {
@@ -168,6 +174,9 @@ async function run(
         continue;
       }
       if (!symbols.has(position.symbol.toUpperCase())) continue;
+      if (scope.direction && position.direction !== scope.direction) {
+        continue;
+      }
 
       position.control = {
         ...position.control,
@@ -211,14 +220,14 @@ async function run(
         continue;
       }
 
-      const position = await entryMonitoring.executeDecision(
+      const filled = await entryMonitoring.executeDecision(
         context,
         decision,
       );
       result.entries.push({
         accountSlug: scope.accountSlug,
-        executed: Boolean(position),
-        message: position ? decision.message : "Entry action declined",
+        executed: Boolean(filled?.length),
+        message: filled?.length ? decision.message : "Entry action declined",
         symbol,
       });
     }

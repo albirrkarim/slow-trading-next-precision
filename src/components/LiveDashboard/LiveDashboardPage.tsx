@@ -188,6 +188,16 @@ export default function DynamicTradeHistoryPage({
   }, []);
 
   const dashboardAccounts = dashboardState?.accounts ?? [];
+  // Accounts participating in the paired view: enabled, plus the dashboard
+  // account filter when one is selected.
+  const participatingAccountSlugs = dashboardAccounts
+    .filter(
+      (account) =>
+        account.enabled &&
+        (!dashboardState?.accountFilter ||
+          account.slug === dashboardState.accountFilter),
+    )
+    .map((account) => account.slug);
   const selectedAccountSlug =
     storedAccountSlug &&
     dashboardAccounts.some((account) => account.slug === storedAccountSlug)
@@ -548,10 +558,13 @@ export default function DynamicTradeHistoryPage({
       return;
     }
 
-    setExitingSymbol(`${position.account}:${symbol}`);
+    // Hedge-mode pair legs share account+symbol — direction targets one leg.
+    const direction = position.direction;
+    setExitingSymbol(`${position.account}:${symbol}:${direction}`);
     try {
       await axios.post(endpoints.system.manual.exit, {
         account: position.account,
+        direction,
         symbol,
       });
       enqueueSnackbar(`Successfully exited ${symbol}`, { variant: "success" });
@@ -905,6 +918,7 @@ export default function DynamicTradeHistoryPage({
                 />
 
                 <OpenPositions
+                  accounts={participatingAccountSlugs}
                   availableTags={coinMetadata.tags.map((tag) => tag.text)}
                   coinDescriptions={coinMetadata.coinDescriptions}
                   coinTags={coinMetadata.coinTags}
@@ -915,6 +929,7 @@ export default function DynamicTradeHistoryPage({
                   spendableQuoteAsset={
                     dashboardState.balances.spendableQuoteAsset
                   }
+                  strategyState={dashboardState.strategy}
                   exitingSymbol={exitingSymbol}
                   onCoinDescriptionChange={(symbol, description) =>
                     void updateCoinMetadata(symbol, { description })
@@ -980,6 +995,7 @@ export default function DynamicTradeHistoryPage({
                 </Grid>
                 <Grid size={{ xl: 5, lg: 5, md: 6, xs: 12 }}>
                   <OpenPositions
+                    accounts={participatingAccountSlugs}
                     availableTags={coinMetadata.tags.map((tag) => tag.text)}
                     coinDescriptions={coinMetadata.coinDescriptions}
                     coinTags={coinMetadata.coinTags}
@@ -990,6 +1006,7 @@ export default function DynamicTradeHistoryPage({
                     spendableQuoteAsset={
                       dashboardState.balances.spendableQuoteAsset
                     }
+                    strategyState={dashboardState.strategy}
                     exitingSymbol={exitingSymbol}
                     onCoinDescriptionChange={(symbol, description) =>
                       void updateCoinMetadata(symbol, { description })

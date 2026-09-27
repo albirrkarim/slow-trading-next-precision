@@ -153,6 +153,7 @@ function create(options: ProductionAdapterOptions): RuntimeEngineAdapter {
     },
     market: createMarket(options),
     onAction: options.onAction,
+    onPairAction: options.onPairAction,
     onCycleComplete: options.onCycleComplete,
     onExit: options.onExit,
     onManagement: options.onManagement,

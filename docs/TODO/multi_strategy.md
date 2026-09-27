@@ -26,52 +26,144 @@ and this system can be used as foundation, to accomodate strategy that build on 
 
 # Status (updated 2026-09-27)
 
-Yes — and the plug contract plus engine wiring have since **landed**. What
-remains is the strategy modules themselves (`src/lib/strategies/` does not
-exist yet) plus the pair-aware data-type and execution extensions.
+**Implemented.** The multi-strategy contract, both strategy modules, and
+every supporting engine/adapter/storage extension landed. Selecting a
+strategy is `management.strategy` — resolved identically in backtest,
+quick-backtest, the standalone driver, sandbox, and live through
+`strategies.resolve` (`src/lib/strategies/index.ts`), which lazy-imports
+the module into `new RuntimeEngine(state, adapter, strategy)`. An absent
+slug keeps the built-in default pipeline unchanged; an unknown slug fails
+loudly at engine construction.
 
 ## Landed
 
-- **`StrategyAPI` contract** — `src/lib/strategy/type.d.ts`: `name`,
-  `decisions.{entry,averaging,exit}.find`, `onActionResult`, `preflight`.
-  `StrategySlug = "both" | "streak"` is already declared.
-- **Engine wiring** — `RuntimeEngine(state, adapter, strategy?)`
-  (`src/lib/precision/RuntimeEngine.ts`) carries `context.strategy` on every
-  `RuntimeContext`; stages swap `defaultDecision.<family>` for
-  `strategy.decisions.<family>` when present (entry in
-  `monitoring/entry.ts`, averaging + exit in `monitoring/position.ts`),
-  fire `strategy.onActionResult` after each `onAction` outcome — before the
-  env `onStateChange`/`onExit` persistence — and run `strategy.preflight`
-  during `start()`.
-- **Strategy-owned state slot** — `RuntimeEngineState.strategy?: unknown`
-  (`src/lib/precision/types.ts`). Carried into `PrecisionRuntimeSnapshot`
-  (`src/lib/system/runtime/test-case.ts`) and written into captured test
-  cases (`src/lib/production/precision-test-case/recorder.ts`), so
-  precision-checker replays reproduce strategy records automatically.
-- **Per-leg vPoint consumption** — `vPointUsage` on decisions +
-  `VolatilityPoint.usedBy: string[]` markers (`"<slug>"` or
-  `"<slug>:<ROLE>"` convention) are implemented.
-- **Strategy-provided approval gate** — `StrategyAPI.guard` replaces
-  `guard.allows` wholesale at every monitoring checkpoint
-  (`context.strategy?.guard ?? guard`, the same swap as `decisions`). The
-  shared gate is decomposed for delegation — `guard.common` (always-run
-  checks returning the resolved account), `guard.entry.{capacity,policy}`,
-  `guard.averaging` — so `src/lib/strategies/<slug>/guard` recomposes
-  instead of reimplementing.
-- **Environment approval extension** — `adapter.onActionEnvGuard`
-  (production wires it to the persisted-catalog `isActionAllowed` check in
-  `factory.ts`) sits alongside the shared `guard.allows` on every
-  decision, whatever its producer.
-- **Strategy-owned entry payload** — `Position.strategy.entry.feature?:
-  TFeature` is the generic strategy slot on the canonical position —
-  supersedes the earlier `Position.strategy.logic` sketch.
-- **Exchange layer supports `positionSide`** — hedge-mode order mechanics
-  are mostly adapter-side work (`src/lib/exchange/`,
-  `platform/binance/futures/position-mode.ts`).
+### Contract + engine
 
-## Still open — Q&A
+- **`StrategyAPI`** — `src/lib/strategies/types.ts`: `name`,
+  `decisions.{entry,averaging,exit}.find`, `guard.allows`,
+  `onActionResult`, `preflight`. `StrategySlug = "both" | "streak"`.
+- **Engine wiring** — `RuntimeEngine(state, adapter, strategy?)` carries
+  `context.strategy` on every `RuntimeContext`; stages swap
+  `defaultDecision.<family>` for `strategy.decisions.<family>` when
+  present, fire `strategy.onActionResult` after each action outcome —
+  before env `onStateChange`/`onExit` persistence — and run
+  `strategy.preflight` during `start()`.
+- **Strategy-owned state slot** — `RuntimeEngineState.strategy?: unknown`;
+  carried by `PrecisionRuntimeSnapshot` and the production test-case
+  recorder, so replays reproduce strategy records.
+- **Decision metadata slot** — `decision.strategy?: unknown` on every
+  decision type; the entry commit copies it verbatim onto
+  `position.strategy.logic` once, uniformly across environments
+  (`monitoring/entry.ts`).
+- **Pair decision + dispatch** — `RuntimePairEntryDecision`
+  (`type: "pairEntry"`, `legs: RuntimeEntryDecision[]`) joins the
+  `RuntimeDecision` union; `RuntimeEntryCandidate` covers
+  `entry | pairEntry`. `executeDecision` dispatches `pairEntry` to the
+  optional `adapter.onPairAction → Position[] | null`, commits each leg
+  (push, `recordEntryBalance`, role-scoped `markVPointUsed`, `logic`
+  stamp), fires `onActionResult` once per pair, and flushes state once.
+  Adapters without `onPairAction` degrade cleanly: skip + logged warning +
+  `onActionResult("failed")`.
+- **Pair executor** — `src/lib/system/trading/pair-action.ts` runs legs
+  sequentially and invokes `rollbackLeg` on already-filled legs when a
+  later leg fails. Production rollback closes the leg live via
+  `execution.closeLeg`; sandbox discards the uncommitted simulated fill.
+- **Per-leg vPoint consumption** — `vPointUsage` +
+  `VolatilityPoint.usedBy` markers (`"<slug>"` or `"<slug>:<ROLE>"`).
+- **Decomposed guard** — `guard.common`, `guard.entry.{capacity,policy}`,
+  `guard.averaging`; `strategy.guard.allows` replaces `guard.allows`
+  wholesale at every checkpoint and recomposes the shared pieces.
+- **`adapter.onActionEnvGuard`** — production's persisted-catalog
+  `isActionAllowed` ANDs onto every decision.
 
-`A: ___` means a decision is needed from you.
+### Config
+
+- `management.strategy?: string` — global slug selection.
+- `management.openDirection?: "ONE_WAY" | "BOTH"` — pair producers only
+  emit when `"BOTH"`.
+- `trading.entryLegs?: "MAIN" | "COUNTER" | "BOTH"` — per-account leg
+  filter (default `BOTH`); affects future entries only.
+- `trading.futuresPositionMode?: "ONE_WAY" | "HEDGE"` — passed into
+  `getExchange` config so the Binance adapter sends `positionSide` and
+  drops `reduceOnly` in hedge mode.
+- All four keys are in `account-config.ts`'s flat↔split key lists, so the
+  settings JSON editors and config persistence round-trip them.
+
+### Persistence
+
+- `runtimeStorage.strategy` — dedicated compact channel
+  (`storageFiles.runtimeStrategyPath`), loaded in `createState` and
+  flushed inside `onStateChange` alongside the existing channels.
+- Production `onExit` flushes `state.strategy` (`persistStrategy` in
+  `factory.ts`) right after `onActionResult`, so strategy bookkeeping
+  (e.g. `pendingClose`) persists atomically with the close.
+
+### Production / live
+
+- `onPairAction` in `factory.ts`: live hedge-mode verification
+  (`exchange.getFuturesPositionMode`) before the first leg — mismatch or
+  probe failure notifies `tradeNotif.failed` and returns null; legs
+  execute through `execution.entry` inside `runWithExchangeAccount`;
+  rollback closes filled legs via `execution.closeLeg`; per-leg
+  `tradeNotif.executed` notifications; state + strategy flush once.
+- `execution.ts` resolves explicit `positionSide` (LONG→`"long"`,
+  SHORT→`"short"`) under hedge mode and omits `reduceOnly` on closes.
+
+### Strategy modules
+
+- **`src/lib/strategies/both/`** — `decisions.entry` = shared pair
+  producer (`shared/entry.ts findPairs`: collapses open pairs for
+  pair-aware capacity, filters legs by `entryLegs`, emits one
+  `RuntimePairEntryDecision` per signal). `decisions.averaging` = shared
+  producer with `levelGate: "lowLevel"` for paired legs (exact next
+  adverse step at ±1; no level skips). `decisions.exit` (`both/exit.ts`)
+  = armed level-0 `VOLATILITY_TARGET_EXIT` (lvl-0 entries arm on the
+  first non-zero level) → `pendingClose` cascade (sibling force-close
+  with the originating reason) → shared evaluator with counter-leg
+  `takeProfitPercent`/`useStopLossPlus` disabled until the profit-side
+  level passes (`hasProfitLevelPassed`). `onActionResult` maintains
+  `state.strategy.pendingClose` for `STOP_LOSS`/`STOP_LOSS_BY_USDT_LOSS`/
+  `VOLATILITY_TARGET_EXIT` cascades. `guard` = `shared/guard.ts`
+  (pair = one worker via `pairId` collapse, role-slot fill for
+  `reopen` legs, shared `common`/`policy`/`averaging` delegation).
+  `preflight` = hedge-mode declaration check per enabled account.
+- **`src/lib/strategies/streak/`** — `decisions.entry` (`streak/entry.ts`)
+  emits role re-entries from `state.strategy.roles` records (direction =
+  opposite the survivor, anchor = newest confirmed vPoint after the
+  survivor's entry not role-used, `reopen: true` meta, role-scoped
+  `vPointUsage`, drift check + `record.reason` empty-slot status) then
+  delegates fresh pairs to `findPairs`. `decisions.averaging` = shared
+  producer with `levelGate: "adverse"` (any adverse-side point, level-0
+  included). `decisions.exit` (`streak/exit.ts`) = direction-based rail:
+  first confirmed post-entry TOP (LONG) / BOTTOM (SHORT) via
+  `reserve.vpoints.findPositionTargetPoint` force-closes that leg only —
+  no cascade — else the shared evaluator with TP%/SL+ disabled until the
+  favorable-distance exception (≥ `VOLATILITY_THRESHOLD` from the latest
+  vPoint). `onActionResult` maintains `roles` records. Same `guard` and
+  `preflight` as `both`.
+- **Shared helpers** — `strategies/shared/`: `pair.ts` (`PairLegMeta`
+  validation, `buildId`, `roleMarker`, `findSibling`, `workerKey`,
+  `collapse`), `entry.ts` (pair producer + funding pre-check via
+  `entryAction.plan`), `guard.ts`, `close.ts` (forced-exit decision
+  builder), `preflight.ts`, `state.ts` (versioned `state.strategy`
+  accessor).
+
+### Supporting extensions
+
+- `tradingExit.findDecision(context, position, { config })` — shared
+  evaluator accepts per-call config overrides (used for counter/TP
+  gating without mutating persisted account config).
+- `tradingAveraging.findDecision` + `generateRecommendations` accept
+  `levelGate?: "lowLevel" | "adverse"` — the `|lvl| > 1` observation
+  gate relaxes per strategy while the no-level-skip check stays.
+- `tradingEntry.recommendation.make` exposed for strategy-built entry
+  signals from arbitrary anchor vPoints.
+- Notification maps include `pairEntry` (reuses the entry channel).
+
+## Decided — Q&A (all implemented)
+
+Every item below is decided and landed in the implementation described
+under **Status**.
 
 1. **Q — Add `config.strategy` for slug→module selection?** No config
    field exists yet and no call site passes a strategy — every
@@ -80,6 +172,10 @@ exist yet) plus the pair-aware data-type and execution extensions.
    **A:** YES — `config.strategy: string`. Resolution lives in the
    adapter factories (lazy import per the proposal below) so
    backtest/sandbox/live resolve identically.
+   **Landed:** `management.strategy` + `strategies.resolve` lazy-import
+   called once per engine construction in `production/runtime.ts`,
+   `backtestPrecision/backtest/index.ts`, `quick-backtest/index.ts`, and
+   `driver/backtest-precision.ts`.
 
 2. **Q — How does pair-aware entry eligibility land?**
    **A:** Decided — via `strategy.guard`. `lib/strategies/both/guard`
@@ -278,7 +374,7 @@ so we plug choosenStragey.onStrategy  and choosenStragey.onExit into the product
 
 # Decided contract
 
-The plug contract is defined in `src/lib/strategy/type.d.ts` (`StrategyAPI`)
+The plug contract is defined in `src/lib/strategies/types.ts` (`StrategyAPI`)
 and is wired into the shared engine: `RuntimeEngine(state, adapter, strategy?)`
 carries it on every `RuntimeContext` (`context.strategy`), so stages swap
 `defaultDecision.<family>` for `strategy.decisions.<family>` when present,
@@ -314,3 +410,60 @@ produced candidates stays environment-side (`guard.allows` ANDs with
 `adapter.onActionEnvGuard`; strategies cannot disable account limits); a
 close is observed through `onActionResult`; `onAction` is never
 strategy-overridable.
+
+---
+
+# Remaining work
+
+1. **Dashboard controls for the new fields** — DONE. Management tab:
+   `Strategy` + `Open Direction` selects; account Trading tab (Entry
+   group): `Entry Legs` + `Futures Position Mode` selects.
+2. **Paired Open Positions (hedge C.1 + streak C.1)** — DONE. When
+   `config.strategy` is `both`/`streak` and `openDirection` is `BOTH`,
+   Open Positions renders `PairedOpenPositions` (`MAIN | coin net USDT |
+   COUNTER` rows from `strategies/shared/board.ts`); otherwise the flat
+   list is unchanged.
+   - `both`: a leg that closes while its sibling survives is snapshotted
+     into `state.strategy.closed[pairId]` (`PairClosedLeg`) and shown with
+     a `Closed` chip until the pair fully closes; the coin net includes
+     its realized PnL.
+   - `streak`: every configured coin × participating account gets a row;
+     an empty role shows `state.strategy.roles[pairId].reason` inline
+     (producer drift/anchor waits, guard veto, failed re-entry); coins
+     with no pair show the Entry Decisions reason via the shared
+     `use-entry-diagnostics` store.
+   - Manual exit targets one leg (`direction` on the manual-exit API).
+3. **Entry diagnostics for strategy pipelines** — DONE.
+   `StrategyAPI.diagnostics` (`view` + `explain`, read-only): pair
+   strategies evaluate a pair-collapsed view and report `PAIR_OPEN`,
+   `PAIR_ROLE_EMPTY` (streak re-entry reason), and
+   `PAIR_FUNDING_INSUFFICIENT`.
+4. **Integration verification on real data** — DONE for a 30-day
+   quick-backtest (account `1` config, AAVE/LINK/MON/SUI/ZRO, futures,
+   `maxOpenPositions` 8, 150 USDT, window ending 2026-09-27).
+   Invariants checked on every closed leg: pair legs open together in
+   opposite directions, one pair per symbol, concurrent pairs ≤ max,
+   `both` stop/target cascades close the sibling with the same reason,
+   `both` counter never TP/SL+ while MAIN is open, `streak` role legs
+   never overlap, reopen direction is opposite the survivor, streak
+   target exits close one leg only on the correct TOP/BOTTOM label, no
+   streak stop cascade. **0 violations** for both strategies.
+   - `both`: 59 pairs / 118 legs, +1.12%. MAIN mostly exits by SL+ (55);
+     COUNTER by `VOLATILITY_TARGET_EXIT` (34). No stop-loss fired, so the
+     stop cascade path is covered by unit tests only.
+   - `streak`: 27 pairs, 32 reopens / 86 legs, +1.97%. Exits are led by
+     SL+ (36, re-enabled by the favorable-distance exception) and
+     `POST_AVERAGE_RESCUE_EXIT` (32); the rail target fired 8 times.
+   - Observed config interaction (pre-existing, not strategy-specific):
+     a fresh pair entered at ZRO `T[5]` and both legs closed one minute
+     later by `EXIT_ON_VPOINT_LEVEL` because the account allows entries
+     at levels ≥ `exitOnVPointAbsLevel`. Keep `maxEntryAbsLevel` below
+     `exitOnVPointAbsLevel`, or add an entry guard for it.
+5. **Backtest heap** — deferred (separate task). Year-long runs still need `npm run
+   backtest:precision` (the standalone driver) or a raised
+   `--max-old-space-size` under `next dev`; running long backtests in a
+   child process is the proper fix.
+6. **Sandbox hedge mode is modeled, not verified** — by design: sandbox
+   simulates leg fills; live verifies the authoritative exchange position
+   mode at preflight (configured-mode declaration) and again inside
+   `onPairAction` before the first leg orders.

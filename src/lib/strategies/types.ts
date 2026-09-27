@@ -3,7 +3,8 @@
  *
  * Each module under `src/lib/strategies/<slug>` default-exports an object
  * implementing `StrategyAPI`. The environment adapter (production factory,
- * backtest harness) resolves `config.strategy` to the matching module — the
+ * backtest harness) resolves `management.strategy` through
+ * `strategies.resolve` to the matching module — the
  * plug is env-neutral so the same strategy runs identically in backtest,
  * sandbox, and live.
  *
@@ -26,8 +27,9 @@
  *      producer or guard. To constrain a family it does not override, a
  *      strategy wraps `defaultDecision.<family>.find` and filters the
  *      result — a separate veto member adds nothing.
- *   4. `onAction`                 — environment execution (sandbox fill or
- *      live order) plus notifications. Not strategy-overridable.
+ *   4. `onAction`/`onPairAction`  — environment execution (sandbox fill or
+ *      live order) plus notifications; `pairEntry` decisions route to the
+ *      adapter's atomic pair hook. Not strategy-overridable.
  *   5. `onActionResult`           — the strategy observes the outcome:
  *      success carries the produced position (entries, averagings, and
  *      exits alike), failure carries null.
@@ -41,13 +43,14 @@ import type {
   RuntimeAveragingDecision,
   RuntimeContext,
   RuntimeDecision,
+  RuntimeEntryCandidate,
   RuntimeEntryDecision,
   RuntimeExitDecision,
 } from "@/lib/precision/types";
 
 /**
  * Strategy modules live at `src/lib/strategies/<slug>` and are selected by
- * `config.strategy`. Absent config means the built-in default pipeline —
+ * `management.strategy`. Absent config means the built-in default pipeline —
  * "default" is not itself a strategy module.
  */
 export type StrategySlug = "both" | "streak";
@@ -71,9 +74,14 @@ export type StrategySlug = "both" | "streak";
  * both are new candidates the default pipeline will never produce.
  */
 export interface StrategyDecisionProducers {
-  /** Produces the entry candidates for one capture-entry pass. */
+  /**
+   * Produces the entry candidates for one capture-entry pass. A pair
+   * strategy emits `RuntimePairEntryDecision`s alongside (or instead of)
+   * single entries; the engine dispatches each to `adapter.onPairAction`
+   * or `adapter.onAction` by `decision.type`.
+   */
   entry?: {
-    find(context: RuntimeContext): Promise<RuntimeEntryDecision[]>;
+    find(context: RuntimeContext): Promise<RuntimeEntryCandidate[]>;
   };
   /** Evaluates one open position for an averaging candidate. */
   averaging?: {
@@ -102,7 +110,7 @@ export interface StrategyDecisionProducers {
  * // lib/strategies/both/guard.ts — pair-aware capacity, shared policy
  * const account = guard.common(decision, context); // shared checks first
  * if (!account) return false;
- * if (decision.type === "entry") {
+ * if (decision.type === "entry" || decision.type === "pairEntry") {
  *   return (
  *     pairCapacity(decision, context, account) &&
  *     guard.entry.policy(decision, context)
@@ -143,10 +151,10 @@ export interface StrategyAPI {
    * where a `both` strategy emits paired legs and `streak` emits
    * re-entries.
    *
-   * Pair/leg metadata (`pairId`, `role`, `entryLegs`) is strategy-owned
-   * data the decision types do not yet carry — it rides on the pending
-   * `decision.strategy`/per-decision metadata slot tracked in
-   * multi_strategy.md, not on fields invented per strategy.
+   * Pair/leg metadata (`pairId`, `role`, `entryLegs`) rides on the
+   * free-form `decision.strategy` slot: the engine carries it
+   * uninterpreted and copies it onto `position.strategy.logic` at commit,
+   * so each leg keeps its identity for the whole persisted lifecycle.
    */
   decisions?: StrategyDecisionProducers;
 
@@ -177,4 +185,25 @@ export interface StrategyAPI {
    */
   preflight?: (context: RuntimeContext) => void | Promise<void>;
 
+  /** Optional dashboard explanation hooks — read-only; must never mutate state. */
+  diagnostics?: {
+    /**
+     * Context the default entry diagnostics evaluate; pair strategies
+     * collapse legs so a pair counts as one worker.
+     */
+    view?(context: RuntimeContext): RuntimeContext;
+    /**
+     * Strategy-specific explanation for one account/symbol, or undefined
+     * to fall back to the default explanation. `decision` is the default
+     * signal for that account/symbol when the (view) scan produced one.
+     */
+    explain?(params: {
+      context: RuntimeContext;
+      accountSlug: string;
+      symbol: string;
+      decision?: RuntimeEntryDecision;
+    }):
+      | { code: string; reason: string; status: "blocked" | "ready" }
+      | undefined;
+  };
 }

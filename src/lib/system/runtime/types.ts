@@ -14,7 +14,10 @@ import type {
   NotificationTypeConfig,
 } from "../notification/config";
 import type { ExchangeType } from "../types/market";
-import type { TradingMode } from "@/lib/exchange/types";
+import type {
+  TradingMode,
+  UnifiedFuturesPositionMode,
+} from "@/lib/exchange/types";
 
 /** Execution mode persisted per account slice. */
 export type RuntimeMode = "live" | "sandbox";
@@ -128,6 +131,21 @@ export type RuntimeBlackSwanState = BlackSwanState;
 /** Account-owned strategy settings consumed by the runtime engine. */
 export interface RuntimeAccountTradingConfig {
   maxOpenPositions?: number;
+  /**
+   * Per-account leg selection for pair strategies (`both`, `streak`):
+   * `"BOTH"` (default) opens the MAIN + COUNTER pair on one signal, while
+   * `"MAIN"`/`"COUNTER"` restrict the account to that role. Ignored when
+   * `management.openDirection` is `"ONE_WAY"`. Changing it affects only
+   * future entries — open legs keep the role recorded on their position.
+   */
+  entryLegs?: "MAIN" | "COUNTER" | "BOTH";
+  /**
+   * The account's configured exchange futures position mode. Pair
+   * strategies require `"HEDGE"`: at boot the strategy's `preflight`
+   * verifies the configured mode against the authoritative exchange mode
+   * and refuses to start on mismatch — the runtime never flips it.
+   */
+  futuresPositionMode?: UnifiedFuturesPositionMode;
   /** Inclusive minimum absolute vPoint level; undefined disables the bound. */
   minEntryAbsLevel?: number;
   /** Inclusive maximum absolute vPoint level; undefined disables the bound. */
@@ -205,6 +223,20 @@ export interface RuntimeManagementConfig {
   tradingMode: TradingMode;
   exchangeType: ExchangeType;
   decisionEngineVersion?: string;
+  /**
+   * Selected strategy module slug under `src/lib/strategies/<slug>`,
+   * resolved by each environment factory into the engine's
+   * `context.strategy`. Absent means the built-in default pipeline —
+   * "default" is not itself a strategy module.
+   */
+  strategy?: string;
+  /**
+   * Entry direction policy. `"ONE_WAY"` (default) opens one leg per
+   * signal; `"BOTH"` lets a pair strategy emit atomic MAIN + COUNTER
+   * entries, which requires every participating account to run futures
+   * hedge mode (`trading.futuresPositionMode === "HEDGE"`).
+   */
+  openDirection?: "ONE_WAY" | "BOTH";
   /** Portfolio crash-protection thresholds shared by every account. */
   blackSwan?: RuntimeBlackSwanConfig;
   /** Monthly safe-haven targets shared by every account. */

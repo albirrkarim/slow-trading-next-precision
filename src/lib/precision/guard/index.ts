@@ -23,7 +23,7 @@ function common(
   if (!account) return null;
 
   const manual =
-    decision.type === "entry"
+    decision.type === "entry" || decision.type === "pairEntry"
       ? Boolean(decision.manual)
       : decision.type === "exit"
         ? Boolean(decision.position.control?.forceExit)

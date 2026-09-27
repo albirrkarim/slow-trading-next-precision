@@ -9,6 +9,7 @@ import {
   type UnifiedOrderParams,
   type UnifiedOrderResponse,
 } from "@/lib/exchange";
+import type { UnifiedFuturesPositionMode } from "@/lib/exchange/types";
 import type {
   RuntimeAveragingDecision,
   RuntimeContext,
@@ -45,6 +46,52 @@ function toEffectiveConfig(context: RuntimeContext, accountSlug: string) {
   return {
     ...context.state.config.management,
     ...context.helper.getAccountConfig(accountSlug),
+  };
+}
+
+/**
+ * BOTH:HEDGE_POSITION_SIDE — resolves the explicit exchange leg side for a
+ * direction when the account runs hedge mode. Pair strategies require it:
+ * LONG orders send `positionSide: "long"`, SHORT orders `"short"`, so an
+ * account holds both directions on one symbol simultaneously. Undefined in
+ * one-way mode — the legacy net-position behavior is untouched.
+ */
+function hedgePositionSide(
+  config: { futuresPositionMode?: UnifiedFuturesPositionMode },
+  direction: Position["direction"],
+): "long" | "short" | undefined {
+  if (config.futuresPositionMode !== "HEDGE") return undefined;
+  return direction === "LONG" ? "long" : "short";
+}
+
+/**
+ * Resolves the order-side fields shared by every full close: SELL closes
+ * a LONG and BUY closes a SHORT. BOTH:HEDGE_CLOSE_POSITION_SIDE — hedge-
+ * mode closes send the leg's `positionSide` instead of reduceOnly: the
+ * exchange selects the leg to unwind from the side marker, and Binance
+ * rejects reduceOnly under hedge mode. One-way futures closes carry
+ * `reduceOnly` (PROD:CONFIRM_FUTURES_EXIT_ON_EXCHANGE).
+ */
+function closeOrderSide(
+  config: { futuresPositionMode?: UnifiedFuturesPositionMode },
+  position: Position,
+  tradingMode: TradingMode,
+): {
+  positionSide: "long" | "short" | undefined;
+  reduceOnly: true | undefined;
+  side: UnifiedOrderSide;
+} {
+  const hedgeSide = hedgePositionSide(config, position.direction);
+  return {
+    positionSide: hedgeSide,
+    reduceOnly:
+      tradingMode === TradingMode.FUTURES && hedgeSide === undefined
+        ? true
+        : undefined,
+    side:
+      position.direction === "LONG"
+        ? UnifiedOrderSide.SELL
+        : UnifiedOrderSide.BUY,
   };
 }
 
@@ -138,6 +185,9 @@ async function entry(params: {
     quantity,
     price: plan.markPrice,
     tradingMode,
+    // Hedge-mode entries carry the leg side explicitly; Binance rejects a
+    // pair leg without it.
+    positionSide: hedgePositionSide(plan.config, decision.direction),
   };
   systemLog.log("[Execution] ENTRY Params:", orderParams);
   const order = await exchange.createOrder(orderParams);
@@ -188,6 +238,9 @@ async function averaging(params: {
     quantity,
     price: plan.markPrice,
     tradingMode,
+    // Averaging adds to the same hedge leg — explicit positionSide keeps it
+    // on the opening side.
+    positionSide: hedgePositionSide(plan.config, plan.position.direction),
   };
   systemLog.log("[Execution] AVERAGING Params:", orderParams);
   const order = await exchange.createOrder(orderParams);
@@ -224,19 +277,17 @@ async function exit(params: {
   const config = toEffectiveConfig(context, decision.accountSlug);
   const mark = context.state.markPriceMap[decision.symbol.toUpperCase()];
 
+  const closeSide = closeOrderSide(config, position, tradingMode);
   const orderParams: UnifiedOrderParams = {
     tradeType: "EXIT",
     symbol: tradingSymbol,
-    side:
-      position.direction === "LONG"
-        ? UnifiedOrderSide.SELL
-        : UnifiedOrderSide.BUY,
+    side: closeSide.side,
     type: toExchangeOrderType(config.orderType),
     quantity: position.exposure.quantity,
     price: mark?.price,
     tradingMode,
-    // PROD:CONFIRM_FUTURES_EXIT_ON_EXCHANGE
-    reduceOnly: tradingMode === TradingMode.FUTURES,
+    positionSide: closeSide.positionSide,
+    reduceOnly: closeSide.reduceOnly,
   };
   systemLog.debug("[Execution] EXIT Params:", orderParams);
   const order = await exchange.createOrder(orderParams);
@@ -246,6 +297,7 @@ async function exit(params: {
     const confirmation = await exchange.ensureClosed({
       direction: position.direction,
       symbol: tradingSymbol,
+      positionSide: closeSide.positionSide,
     });
     if (!confirmation.closed) {
       throw new Error(
@@ -258,8 +310,60 @@ async function exit(params: {
   return tradingExit.execute(context, decision);
 }
 
+/**
+ * Compensating close for a filled pair leg whose sibling leg failed —
+ * called by `adapter.onPairAction` rollback before the engine commits
+ * anything. Places a market close on the leg's hedge side (no reduceOnly —
+ * Binance rejects it under hedge mode) and confirms the exchange leg is
+ * flat so a failed pair never leaves an unpaired live position.
+ */
+async function closeLeg(params: {
+  context: RuntimeContext;
+  position: Position;
+  exchange: IExchange;
+  reason: string;
+}): Promise<void> {
+  const { context, position, exchange, reason } = params;
+  const tradingSymbol = toTradingSymbol(position.symbol);
+  const config = toEffectiveConfig(context, position.account);
+  const tradingMode = toExchangeTradingMode(position.tradingMode);
+  const closeSide = closeOrderSide(config, position, tradingMode);
+
+  systemLog.warn(
+    `[Execution] PAIR ROLLBACK ${position.symbol} ${position.direction} ` +
+      `(account ${position.account}): ${reason}`,
+  );
+  const order = await exchange.createOrder({
+    tradeType: "EXIT",
+    symbol: tradingSymbol,
+    side: closeSide.side,
+    type: UnifiedOrderType.MARKET,
+    quantity: position.exposure.quantity,
+    tradingMode,
+    positionSide: closeSide.positionSide,
+    reduceOnly: closeSide.reduceOnly,
+  });
+  systemLog.log("[Execution] PAIR ROLLBACK Result:", JSON.stringify(order));
+
+  if (tradingMode === TradingMode.FUTURES) {
+    const confirmation = await exchange.ensureClosed({
+      direction: position.direction,
+      symbol: tradingSymbol,
+      positionSide: closeSide.positionSide,
+    });
+    if (!confirmation.closed) {
+      throw new Error(
+        `Pair rollback left ${confirmation.remainingAmount} ` +
+          `${tradingSymbol} open for ${position.account} — manual ` +
+          `intervention required (reason: ${reason})`,
+      );
+    }
+  }
+}
+
 const execution = {
   averaging,
+  closeLeg,
   entry,
   exit,
 } as const;

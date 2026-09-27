@@ -8,7 +8,9 @@ import vpoints from "@/lib/system/utils/vpoints";
 import { getFeeCalculator } from "@/lib/exchange/fees";
 import tradingAveraging from "@/lib/system/trading/averaging";
 import entryAction from "@/lib/system/trading/entry-action";
+import pairAction from "@/lib/system/trading/pair-action";
 import tradingExit from "@/lib/system/trading/exit";
+import strategies from "@/lib/strategies";
 import type { BacktestPrecisionParams } from "../api/precision-api-types";
 import { preparePrecisionDataset } from "./data";
 import {
@@ -177,6 +179,18 @@ export async function precisionBacktest(
       captureBalance();
       return executed;
     },
+    // BTEST:PAIR_ENTRY_SIMULATED_ATOMIC — simulated legs never touch an
+    // exchange, so a failed later leg discards the earlier uncommitted
+    // fills; identical semantics to live's compensating-close rollback.
+    onPairAction: async (decision, context) => {
+      const filled = await pairAction.execute({
+        context,
+        decision,
+        executeLeg: (leg, ctx) => entryAction.execute(ctx, leg),
+      });
+      captureBalance();
+      return filled;
+    },
     onExit: async (position) => {
       history.push(position);
     },
@@ -186,7 +200,12 @@ export async function precisionBacktest(
     onNotif: () => true,
   };
 
-  const engine = new RuntimeEngine(state, adapter);
+  // The configured strategy module plugs producers/guard/bookkeeping into
+  // the same engine — absent means the built-in default pipeline.
+  const strategy = await strategies.resolve(
+    params.config.management.strategy,
+  );
+  const engine = new RuntimeEngine(state, adapter, strategy);
   await engine.start();
   captureBalance();
 

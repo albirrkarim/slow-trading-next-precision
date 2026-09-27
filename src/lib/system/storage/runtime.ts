@@ -75,6 +75,37 @@ async function readJsonFile(filePath: string): Promise<unknown> {
   return fs.readJSON(filePath).catch(() => undefined);
 }
 
+/**
+ * Loads the strategy-owned state slice persisted under
+ * `strategy.json[mode]` — the free-form payload `state.strategy` carries
+ * at runtime (pair pending-closes, role ledgers). `undefined` when no
+ * slice exists for the mode.
+ */
+async function loadStrategy(mode: RuntimeMode): Promise<unknown> {
+  const raw = await readJsonFile(storageFiles.prod.strategy);
+  return isRecord(raw) ? raw[mode] : undefined;
+}
+
+/**
+ * Atomically persists the strategy-owned state slice for one mode. The
+ * value is written verbatim (compact JSON); `undefined` clears the slice
+ * on the next flush while leaving the other mode's record intact.
+ */
+async function saveStrategy(
+  mode: RuntimeMode,
+  value: unknown,
+): Promise<void> {
+  await jsonFile.update.atomic(storageFiles.prod.strategy, (raw) => {
+    const file = isRecord(raw) ? raw : {};
+    if (value === undefined) {
+      const next = { ...file };
+      delete next[mode];
+      return next;
+    }
+    return { ...file, [mode]: value };
+  });
+}
+
 /** Loads one account's owned positions + balance for one mode. */
 async function loadAccountMode(params: {
   accountSlug: string;
@@ -503,6 +534,10 @@ const runtimeStorage = {
     load: loadStatus,
     save: saveStatus,
     update: updateStatus,
+  },
+  strategy: {
+    load: loadStrategy,
+    save: saveStrategy,
   },
   history: {
     append: appendHistory,

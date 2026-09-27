@@ -71,6 +71,11 @@ export interface RuntimeDashboardState {
   history: RuntimeHistoryPosition[];
   /** Open positions for the active mode. */
   openPositions: RuntimeHistoryPosition[];
+  /**
+   * Persisted strategy-owned slot (`state.strategy`) for the active mode;
+   * read through the strategies board helpers.
+   */
+  strategy?: unknown;
   /** Dashboard summary statistics. */
   stats: {
     /** Number of closed trade rows. */

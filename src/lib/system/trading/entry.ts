@@ -318,6 +318,14 @@ function getSymbols(
 const entry = {
   findDecisions,
   getSymbols,
+  recommendation: {
+    /**
+     * Builds an `EntryRecommendation` from an arbitrary volatility point —
+     * strategy producers reuse it for re-entry anchors where the candidate
+     * point is not the symbol's latest.
+     */
+    make: makeEntryRecommendation,
+  },
   threshold: {
     resolve: resolveEntryAbsLevel,
     resolveMax: resolveEntryAbsLevel,

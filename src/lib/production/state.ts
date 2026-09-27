@@ -13,6 +13,9 @@ function create(options: ProductionStateOptions): RuntimeEngineState {
     markPriceMap: options.markPriceMap ?? {},
     mode: options.mode,
     openPositions: options.openPositions,
+    // Strategy-owned persisted slot (pair ledgers, pending re-entries) —
+    // loaded verbatim from `strategy.json[mode]`, never interpreted here.
+    strategy: options.strategy,
     vPointsMap: options.vPointsMap ?? {},
   };
 }

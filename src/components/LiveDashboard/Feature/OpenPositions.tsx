@@ -19,11 +19,14 @@ import { useEffect, useMemo, useState } from "react";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import openPositionPnlContribution from "./open-position-pnl-contribution";
 import OpenPositionItem from "./OpenPositionItem";
+import PairedOpenPositions from "./PairedOpenPositions";
 import type { RuntimeHistoryPosition } from "@/lib/system/trading";
 import type { RuntimeMode , RuntimeEffectiveConfig } from "@/lib/system/runtime";
 import type { VolatilityPoint } from "@/lib/system/types";
 
 interface OpenPositionsProps {
+  /** Participating account slugs for the paired view (enabled + filtered). */
+  accounts?: string[];
   availableTags: string[];
   coinDescriptions: Record<string, string>;
   coinTags: Record<string, string[]>;
@@ -32,6 +35,8 @@ interface OpenPositionsProps {
   exchangeType: RuntimeEffectiveConfig["exchangeType"];
   positions: RuntimeHistoryPosition[];
   spendableQuoteAsset: number;
+  /** Persisted `state.strategy` slot powering the paired view. */
+  strategyState?: unknown;
   exitingSymbol?: string | null;
   onCoinDescriptionChange: (symbol: string, description: string) => void;
   onCoinTagsChange: (symbol: string, tags: string[]) => void;
@@ -83,6 +88,7 @@ function sortPositionsByPnl(
 }
 
 export default function OpenPositions({
+  accounts,
   availableTags,
   coinDescriptions,
   coinTags,
@@ -91,6 +97,7 @@ export default function OpenPositions({
   exchangeType,
   positions,
   spendableQuoteAsset,
+  strategyState,
   exitingSymbol,
   onCoinDescriptionChange,
   onCoinTagsChange,
@@ -111,6 +118,13 @@ export default function OpenPositions({
     [positions],
   );
   const isWorstFirst = pnlSortOrder === "worst";
+  // Pair strategies with BOTH open direction render the paired board;
+  // every other configuration keeps the flat per-position list.
+  const pairSlug =
+    (config.strategy === "both" || config.strategy === "streak") &&
+    config.openDirection === "BOTH"
+      ? config.strategy
+      : null;
 
   useEffect(() => {
     const initialTimeoutId = window.setTimeout(() => setNow(Date.now()), 0);
@@ -120,6 +134,54 @@ export default function OpenPositions({
       window.clearInterval(intervalId);
     };
   }, []);
+
+  const renderPosition = (
+    position: RuntimeHistoryPosition,
+    index?: number,
+  ) => {
+    const volatilityPoints = getPositionVolatilityPoints(
+      volatilityMap,
+      position.symbol,
+    );
+
+    return (
+      <OpenPositionItem
+        key={`${position.symbol}-${position.direction}-${position.opened.t ?? index}`}
+        availableTags={availableTags}
+        coinDescription={coinDescriptions[position.symbol] ?? ""}
+        coinTags={coinTags[position.symbol] ?? []}
+        config={config}
+        currentVolatilityLevel={volatilityPoints.at(-1)?.lvl}
+        exchangeType={exchangeType}
+        pnlContributionShare={openPositionPnlContribution.share(
+          position.pnl.netUsdt ?? 0,
+          totalAbsolutePnlUsdt,
+        )}
+        position={position}
+        now={now}
+        spendableQuoteAsset={spendableQuoteAsset}
+        exitingSymbol={
+          exitingSymbol ===
+          `${position.account}:${position.symbol}:${position.direction}`
+            ? position.symbol
+            : null
+        }
+        onCoinDescriptionChange={onCoinDescriptionChange}
+        onCoinTagsChange={onCoinTagsChange}
+        onExit={onExit}
+        tagColors={tagColors}
+        tagDescriptions={tagDescriptions}
+        volatilityPoints={volatilityPoints}
+        volume24h={
+          volume24hBySymbol[
+            String(position.symbol || "")
+              .trim()
+              .toUpperCase()
+          ]
+        }
+      />
+    );
+  };
 
   return (
     <HeaderMetrics
@@ -176,66 +238,37 @@ export default function OpenPositions({
       {(expanded) =>
         expanded && (
           <Box sx={{ overflowY: "auto", maxHeight: "600px", mt: 1 }}>
-            <Stack spacing={1}>
-              {sortedPositions.map((position, index) => {
-                const volatilityPoints = getPositionVolatilityPoints(
-                  volatilityMap,
-                  position.symbol,
-                );
+            {pairSlug ? (
+              <PairedOpenPositions
+                accounts={accounts ?? []}
+                positions={positions}
+                renderOpen={renderPosition}
+                slug={pairSlug}
+                strategyState={strategyState}
+                symbols={config.symbols ?? []}
+              />
+            ) : (
+              <Stack spacing={1}>
+                {sortedPositions.map((position, index) =>
+                  renderPosition(position, index),
+                )}
 
-                return (
-                  <OpenPositionItem
-                    key={`${position.symbol}-${position.opened.t ?? index}`}
-                    availableTags={availableTags}
-                    coinDescription={coinDescriptions[position.symbol] ?? ""}
-                    coinTags={coinTags[position.symbol] ?? []}
-                    config={config}
-                    currentVolatilityLevel={volatilityPoints.at(-1)?.lvl}
-                    exchangeType={exchangeType}
-                    pnlContributionShare={openPositionPnlContribution.share(
-                      position.pnl.netUsdt ?? 0,
-                      totalAbsolutePnlUsdt,
-                    )}
-                    position={position}
-                    now={now}
-                    spendableQuoteAsset={spendableQuoteAsset}
-                    exitingSymbol={
-                      exitingSymbol === `${position.account}:${position.symbol}`
-                        ? position.symbol
-                        : null
-                    }
-                    onCoinDescriptionChange={onCoinDescriptionChange}
-                    onCoinTagsChange={onCoinTagsChange}
-                    onExit={onExit}
-                    tagColors={tagColors}
-                    tagDescriptions={tagDescriptions}
-                    volatilityPoints={volatilityPoints}
-                    volume24h={
-                      volume24hBySymbol[
-                        String(position.symbol || "")
-                          .trim()
-                          .toUpperCase()
-                      ]
-                    }
-                  />
-                );
-              })}
-
-              {positions.length === 0 && (
-                <Box
-                  sx={{
-                    border: 1,
-                    borderColor: "divider",
-                    borderRadius: 1,
-                    color: "text.secondary",
-                    p: 2,
-                    textAlign: "center",
-                  }}
-                >
-                  <Typography variant="body2">No open positions</Typography>
-                </Box>
-              )}
-            </Stack>
+                {positions.length === 0 && (
+                  <Box
+                    sx={{
+                      border: 1,
+                      borderColor: "divider",
+                      borderRadius: 1,
+                      color: "text.secondary",
+                      p: 2,
+                      textAlign: "center",
+                    }}
+                  >
+                    <Typography variant="body2">No open positions</Typography>
+                  </Box>
+                )}
+              </Stack>
+            )}
           </Box>
         )
       }

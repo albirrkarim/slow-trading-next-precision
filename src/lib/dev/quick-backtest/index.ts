@@ -12,8 +12,10 @@ import vpoints from "@/lib/system/utils/vpoints";
 import tradingAveraging from "@/lib/system/trading/averaging";
 import tradingEntry from "@/lib/system/trading/entry";
 import entryAction from "@/lib/system/trading/entry-action";
+import pairAction from "@/lib/system/trading/pair-action";
 import tradingExit from "@/lib/system/trading/exit";
 import pnl from "@/lib/system/trading/pnl";
+import strategies from "@/lib/strategies";
 import type { Position } from "@/lib/system/trading/types";
 import { prepareQuickBacktestDataset } from "./dataset";
 import quickBacktestReport from "./report";
@@ -268,6 +270,14 @@ async function runSingle({
       }
       return null;
     },
+    // Simulated pair legs discard on a failed later leg — same atomic
+    // contract as the live compensating-close rollback.
+    onPairAction: async (decision, context) =>
+      pairAction.execute({
+        context,
+        decision,
+        executeLeg: (leg, ctx) => entryAction.execute(ctx, leg),
+      }),
     onExit: async (position) => {
       history.push(position);
       snapshot(state.currentTime);
@@ -281,7 +291,10 @@ async function runSingle({
     onNotif: () => false,
   };
 
-  const engine = new RuntimeEngine(state, adapter);
+  const strategy = await strategies.resolve(
+    state.config.management.strategy,
+  );
+  const engine = new RuntimeEngine(state, adapter, strategy);
   await engine.start();
   snapshot(endTime);
 

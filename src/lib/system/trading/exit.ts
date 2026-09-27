@@ -1166,9 +1166,16 @@ function getEffectiveConfig(
   };
 }
 
+/**
+ * Evaluates one open position against the full OR-ed exit rule family.
+ * `options.config` layers strategy overrides onto the effective account
+ * config — e.g. a pair strategy suppressing `takeProfitPercent`/`SL+` on a
+ * counter leg without touching the persisted trading config.
+ */
 async function findDecision(
   context: RuntimeContext,
   position: Position,
+  options?: { config?: Partial<ExitEvaluationConfig> },
 ): Promise<RuntimeExitDecision | null> {
   const symbol = position.symbol.toUpperCase();
   const mark = context.state.markPriceMap[symbol];
@@ -1180,7 +1187,10 @@ async function findDecision(
   const volatilityPoints = structuredClone(
     context.state.vPointsMap[symbol] ?? [],
   );
-  const config = getEffectiveConfig(context, position.account);
+  const config: ExitEvaluationConfig = {
+    ...getEffectiveConfig(context, position.account),
+    ...options?.config,
+  };
   const roundTripFeeRatio = context.adapter.exchange.getRoundTripFeeRate({
     type: config.orderType ?? "taker",
   });

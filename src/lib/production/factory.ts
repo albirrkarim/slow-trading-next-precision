@@ -11,9 +11,11 @@ import {
 } from "@/lib/exchange/account-context";
 import { resolveMarketTypeForTradingMode } from "@/lib/exchange/utils";
 import type {
+  RuntimeContext,
   RuntimeDecision,
   RuntimeEngineAdapter,
   RuntimeEngineState as PrecisionRuntimeState,
+  RuntimeEntryDecision,
 } from "@/lib/precision/types";
 import { systemLog } from "@/lib/system/logging";
 import type {
@@ -29,6 +31,7 @@ import tradingAveraging from "@/lib/system/trading/averaging";
 import autoRemove from "@/lib/system/trading/auto-remove";
 import blackSwan from "@/lib/system/trading/black-swan";
 import entryAction from "@/lib/system/trading/entry-action";
+import pairAction from "@/lib/system/trading/pair-action";
 import tradingExit from "@/lib/system/trading/exit";
 import { tradeNotif } from "@/lib/system/notification";
 import type { BalanceSummary, Position } from "@/lib/system/trading";
@@ -153,6 +156,61 @@ async function isActionAllowed(
   return true;
 }
 
+/**
+ * Live refreshes the authoritative exchange balance before order
+ * execution; shared by single and pair actions.
+ */
+async function refreshLiveBalance(
+  context: RuntimeContext,
+  accountRuntime: AccountRuntime,
+  accountSlug: string,
+): Promise<void> {
+  if (accountRuntime.mode !== "live") return;
+  try {
+    await runWithExchangeAccount(accountRuntime.exchangeAccount, async () => {
+      const exchangeBalance =
+        await accountRuntime.exchange.getBalance("USDT_USDT");
+      if (exchangeBalance) {
+        accountState.applyLiveQuoteAsset(
+          accountRuntime.state.balance,
+          exchangeBalance.quoteAsset,
+        );
+      }
+    });
+    context.state.balance[accountSlug] = accountState.buildBalance({
+      balance: accountRuntime.state.balance,
+      positions: context.state.openPositions.filter(
+        (position) =>
+          position.account === accountSlug && !position.closed,
+      ),
+    });
+  } catch (error) {
+    systemLog.warn(
+      `[Precision Runtime] balance refresh failed for ${accountSlug}`,
+      error,
+    );
+  }
+}
+
+/**
+ * Persists the strategy-owned state slice (`state.strategy`) for the
+ * active mode — fires alongside account/vPoint flushes so a restart
+ * replays strategy bookkeeping from the same commit boundary.
+ */
+async function persistStrategy(context: RuntimeContext): Promise<void> {
+  await runtimeStorage.strategy
+    .save(
+      context.state.mode === "sandbox" ? "sandbox" : "live",
+      context.state.strategy,
+    )
+    .catch((error) => {
+      systemLog.error(
+        "[Precision Runtime] strategy state persist failed",
+        error,
+      );
+    });
+}
+
 function createActionHandlers(
   accountRuntimes: AccountRuntimes,
   onVPointsChanged: (
@@ -160,7 +218,7 @@ function createActionHandlers(
   ) => Promise<void>,
 ): Pick<
   RuntimeEngineAdapter,
-  "onAction" | "onExit" | "onStateChange" | "onActionEnvGuard"
+  "onAction" | "onPairAction" | "onExit" | "onStateChange" | "onActionEnvGuard"
 > {
   const onActionEnvGuard: RuntimeEngineAdapter["onActionEnvGuard"] = async (
     decision,
@@ -193,39 +251,16 @@ function createActionHandlers(
     const runInAccount = <T>(fn: () => Promise<T>) =>
       runWithExchangeAccount(accountRuntime.exchangeAccount, fn);
 
-    // Live refreshes the authoritative exchange balance before every order.
-    if (accountRuntime.mode === "live") {
-      try {
-        await runInAccount(async () => {
-          const exchangeBalance =
-            await accountRuntime.exchange.getBalance("USDT_USDT");
-          if (exchangeBalance) {
-            accountState.applyLiveQuoteAsset(
-              accountRuntime.state.balance,
-              exchangeBalance.quoteAsset,
-            );
-          }
-        });
-        context.state.balance[decision.accountSlug] =
-          accountState.buildBalance({
-            balance: accountRuntime.state.balance,
-            positions: context.state.openPositions.filter(
-              (position) =>
-                position.account === decision.accountSlug && !position.closed,
-            ),
-          });
-      } catch (error) {
-        systemLog.warn(
-          `[Precision Runtime] balance refresh failed for ${decision.accountSlug}`,
-          error,
-        );
-      }
-    }
+    await refreshLiveBalance(context, accountRuntime, decision.accountSlug);
 
     // Sandbox shares the exact simulated fills used by backtest — one code
     // path for position math; only the fill source differs from live.
+    // pairEntry never reaches onAction — the engine dispatches it to
+    // onPairAction; returning null keeps this executor total.
     let position: Position | null;
-    if (accountRuntime.mode === "sandbox") {
+    if (decision.type === "pairEntry") {
+      position = null;
+    } else if (accountRuntime.mode === "sandbox") {
       if (decision.type === "entry") {
         position = await executeSafely(() =>
           entryAction.execute(context, decision),
@@ -305,10 +340,144 @@ function createActionHandlers(
     return position;
   };
 
+  // BOTH:PAIR_ENTRY_ATOMIC — the pair executes leg-by-leg through the same
+  // simulated/live executors as single entries; when a later leg fails the
+  // filled legs unwind (compensating close live, discard in simulation) so
+  // an account never holds an unpaired leg from a partial fill.
+  const onPairAction: RuntimeEngineAdapter["onPairAction"] = async (
+    decision,
+    context,
+  ) => {
+    const accountRuntime = accountRuntimes.get(decision.accountSlug);
+    if (!accountRuntime) return null;
+
+    let actionError: unknown;
+    const runInAccount = <T>(fn: () => Promise<T>) =>
+      runWithExchangeAccount(accountRuntime.exchangeAccount, fn);
+
+    await refreshLiveBalance(context, accountRuntime, decision.accountSlug);
+
+    // PROD:VALIDATE_HEDGE_POSITION_MODE — pair entries need hedge mode on
+    // live. The configured mode flows into the exchange adapter, which
+    // throws when the authoritative account mode disagrees; an adapter
+    // without the probe cannot verify and is left to reject the orders.
+    if (
+      accountRuntime.mode === "live" &&
+      accountRuntime.account.trading.futuresPositionMode === "HEDGE" &&
+      accountRuntime.exchange.getFuturesPositionMode
+    ) {
+      try {
+        const actual = await runInAccount(() =>
+          accountRuntime.exchange.getFuturesPositionMode!(),
+        );
+        if (actual !== "HEDGE") {
+          throw new Error(
+            `Pair entry requires hedge mode: ${decision.accountSlug} ` +
+              `account is in ${actual} mode`,
+          );
+        }
+      } catch (error) {
+        systemLog.error(
+          `[Precision Runtime] hedge-mode verification failed for ` +
+            `${decision.accountSlug}/${decision.symbol}`,
+          error,
+        );
+        await tradeNotif
+          .failed({ context, decision, error, mode: accountRuntime.mode })
+          .catch(() => undefined);
+        return null;
+      }
+    }
+
+    const executeLeg = async (leg: RuntimeEntryDecision) =>
+      accountRuntime.mode === "sandbox"
+        ? entryAction.execute(context, leg)
+        : runInAccount(() =>
+            execution.entry({
+              context,
+              decision: leg,
+              exchange: accountRuntime.exchange,
+            }),
+          );
+
+    let filled: Position[] | null;
+    try {
+      filled = await pairAction.execute({
+        context,
+        decision,
+        executeLeg,
+        rollbackLeg: async (leg, position) => {
+          if (accountRuntime.mode === "sandbox") {
+            // Simulated legs were never committed — the discard is the
+            // rollback; logged so the aborted pair is auditable.
+            systemLog.warn(
+              `[Precision Runtime] pair leg rolled back ` +
+                `${position.symbol} ${position.direction} ` +
+                `(${decision.accountSlug})`,
+            );
+            return;
+          }
+          await runInAccount(() =>
+            execution.closeLeg({
+              context,
+              position,
+              exchange: accountRuntime.exchange,
+              reason: `pair leg ${leg.direction} failed`,
+            }),
+          );
+        },
+      });
+    } catch (error) {
+      actionError = error;
+      systemLog.error(
+        `[Precision Runtime] pairEntry failed for ` +
+          `${decision.accountSlug}/${decision.symbol}`,
+        error,
+      );
+      filled = null;
+    }
+
+    try {
+      if (filled) {
+        // Each leg is a real fill — notify per leg with its own decision so
+        // the entry title/dedupe identity stay accurate.
+        for (const [index, position] of filled.entries()) {
+          await tradeNotif.executed({
+            context,
+            decision: decision.legs[index],
+            mode: accountRuntime.mode,
+            position,
+          });
+        }
+      } else {
+        await tradeNotif.failed({
+          context,
+          decision,
+          error:
+            actionError ??
+            new Error("pairEntry execution produced no positions"),
+          mode: accountRuntime.mode,
+        });
+      }
+    } catch (notifError) {
+      systemLog.error(
+        `[Precision Runtime] pairEntry notification failed for ` +
+          `${decision.accountSlug}/${decision.symbol}`,
+        notifError,
+      );
+    }
+
+    return filled;
+  };
+
   const onExit: RuntimeEngineAdapter["onExit"] = async (position, context) => {
     const accountRuntime = accountRuntimes.get(position.account);
     if (!accountRuntime) return;
     await persistAccount(context, accountRuntime);
+    // PROD:STRATEGY_STATE_PERSIST — a close is the commit boundary for
+    // strategy bookkeeping (pending pair closes, role ledgers) written in
+    // onActionResult just before this hook.
+    await persistStrategy(context);
     await runtimeStorage.history
       .append({ mode: accountRuntime.mode, position })
       .catch((error) => {
@@ -330,9 +499,16 @@ function createActionHandlers(
     // Entries and averagings write `usedBy` markers on vPoints right before this
     // hook fires; flushing the retained window writes those markers to disk.
     await onVPointsChanged(context.state.vPointsMap);
+    await persistStrategy(context);
   };
 
-  return { onAction, onExit, onStateChange, onActionEnvGuard };
+  return {
+    onAction,
+    onPairAction,
+    onExit,
+    onStateChange,
+    onActionEnvGuard,
+  };
 }
 
 /** Recent vPoints seeded per symbol when production boots. */
@@ -384,6 +560,10 @@ function createProductionFactory(): ProductionRuntimeFactory {
         });
         const exchange = getExchange(trading.exchangeType, {
           defaultTradingMode: toExchangeTradingMode(trading.tradingMode),
+          // PROD:VALIDATE_HEDGE_POSITION_MODE — the configured futures
+          // position mode is handed to the exchange adapter, which verifies
+          // it against the authoritative account mode before orders.
+          futuresPositionMode: trading.futuresPositionMode,
         });
         const exchangeAccount = accountState.toExchangeAccount(account);
 
@@ -505,6 +685,12 @@ function createProductionFactory(): ProductionRuntimeFactory {
           ({}) as Awaited<ReturnType<typeof runtimeStorage.status.load>>,
       );
 
+    // PROD:STRATEGY_STATE_LOAD — the strategy-owned slot resumes across
+    // restarts exactly where the last commit flush left it.
+    const persistedStrategy = await runtimeStorage.strategy
+      .load(mode === "sandbox" ? "sandbox" : "live")
+      .catch(() => undefined);
+
     const runtimeState = state.create({
       balance,
       blackSwanProtective: blackSwan.state.isProtective(
@@ -520,6 +706,7 @@ function createProductionFactory(): ProductionRuntimeFactory {
       dailyPnlUsdt: persistedStatus.dailyPnlLimitState?.usdt,
       mode,
       openPositions,
+      strategy: persistedStrategy,
       vPointsMap,
       markPriceMap: {},
     });
@@ -564,6 +751,7 @@ function createProductionFactory(): ProductionRuntimeFactory {
         latestState?.balance[accountSlug ?? ""]?.available ?? 0,
       liveFeed,
       onAction: handlers.onAction,
+      onPairAction: handlers.onPairAction,
       onCycleComplete: productionStages.cycleComplete,
       onExit: handlers.onExit,
       onManagement: productionStages.management,

@@ -22,6 +22,21 @@ function generateRecommendations(params: {
   currentTimeMs?: number;
   quoteAsset?: number;
   reservedQuoteAsset?: number;
+  /**
+   * BOTH:LOW_LEVEL_NEXT_ADVERSE_AVERAGING — pair strategies opt in to relax
+   * the `|lvl| > 1` observation gate:
+   *
+   * - `"lowLevel"` admits the exact next adverse watch step at level ±1 —
+   *   the `both` spec's relaxation.
+   * - `"adverse"` admits any adverse-side point regardless of level
+   *   (BOTTOM for LONG, TOP for SHORT), including level 0 — the `streak`
+   *   rail design, where the direction-based target owns exits so an
+   *   adverse level-0 point is an averaging step, not an exit.
+   *
+   * Only the observation gate relaxes; the deeper-than-next-step check
+   * still prevents level skips.
+   */
+  levelGate?: "lowLevel" | "adverse";
 }) {
   // BOTH:WATCH_MECHANISM
   // A. Normalize runtime input for the averaging scan.
@@ -66,12 +81,16 @@ function generateRecommendations(params: {
       continue;
     }
 
+    const direction = position.direction || "LONG";
+    const levelGate = params.levelGate;
+    const isActionable =
+      reserve.vpoints.isActionableAveragingLevel(lastPoint) ||
+      (levelGate === "lowLevel" && Math.abs(lastPoint.lvl) === 1) ||
+      (levelGate === "adverse" &&
+        lastPoint.l === (direction === "LONG" ? "B" : "T"));
+
     // Check if we should recommend an averaging entry
-    if (
-      maxNextLevels > 0 &&
-      reserve.vpoints.isActionableAveragingLevel(lastPoint)
-    ) {
-      const direction = position.direction || "LONG";
+    if (maxNextLevels > 0 && isActionable) {
 
       // D. Do not restart averaging after the first post-entry target vPoint.
       if (
@@ -118,10 +137,17 @@ function generateRecommendations(params: {
   };
 }
 
-/** Finds the averaging decision for one open position, matching the legacy scan. */
+/**
+ * Finds the averaging decision for one open position, matching the legacy
+ * scan. `options.levelGate` relaxes the `|lvl| > 1` observation gate for
+ * verified pair legs — `"lowLevel"` admits the exact next adverse ±1 step
+ * (`both`), `"adverse"` admits any adverse-side point including level 0
+ * (`streak` rail averaging). Ordinary one-way behavior stays unchanged.
+ */
 async function findDecision(
   context: RuntimeContext,
   position: Position,
+  options?: { levelGate?: "lowLevel" | "adverse" },
 ): Promise<RuntimeAveragingDecision | null> {
   const accountConfig = context.helper.getAccountConfig(position.account);
   const balance = context.helper.getAccountBalance(position.account);
@@ -131,6 +157,7 @@ async function findDecision(
   };
   const result = generateRecommendations({
     activePositions: [position],
+    levelGate: options?.levelGate,
     config,
     quoteAsset: balance.available,
     reservedQuoteAsset: balance.reserved,

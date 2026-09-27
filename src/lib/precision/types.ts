@@ -1,4 +1,4 @@
-import type { StrategyAPI } from "@/lib/strategy/type";
+import type { StrategyAPI } from "@/lib/strategies";
 import type { FetchKlines, Kline, VolatilityPoint } from "@/lib/system/types";
 import type {
   AveragingRecommendation,
@@ -261,11 +261,56 @@ export interface RuntimeEntryDecision {
   /** Base symbol being entered, e.g. `SUI`. */
   symbol: string;
   /**
+   * Free-form strategy-owned payload carried through guard, adapter, and
+   * `onActionResult` uninterpreted. On a successful entry the shared commit
+   * copies it onto `position.strategy.logic`, so pair identity (pairId,
+   * role, entryLegs) survives the decision→position hop without the engine
+   * knowing its shape.
+   */
+  strategy?: unknown;
+  /**
    * Strategy-owned usage markers written onto the source vPoint after the
    * entry fills. Defaults to `[accountSlug]`; pair strategies emit
    * `"<slug>:<ROLE>"` markers instead.
    */
   vPointUsage?: string[];
+}
+
+/**
+ * Atomic both-direction entry candidate: an ordered set of leg decisions
+ * that must all fill or all unwind. Produced by pair strategies (e.g.
+ * `both` emits MAIN+COUNTER legs per signal) and executed through
+ * `adapter.onPairAction`, which owns sequential leg submission and
+ * compensating-close rollback when a later leg fails.
+ *
+ * Top-level `accountSlug`/`symbol`/`message` describe the pair as a unit so
+ * the shared guard's entry policy (catalog, min price, stale vPoint,
+ * cutoff, daily PnL) applies unchanged — all pair legs share them by
+ * contract.
+ */
+export interface RuntimePairEntryDecision {
+  /** Discriminant identifying this decision as an atomic pair entry. */
+  type: "pairEntry";
+  /** Account that owns the balance and the resulting positions. */
+  accountSlug: string;
+  /** Human-readable reason shown in notifications and logs. */
+  message: string;
+  /** Operator-forced entry: bypasses the auto-entry runtime gate. */
+  manual?: boolean;
+  /** Base symbol both legs trade, e.g. `SUI`. */
+  symbol: string;
+  /**
+   * Ordered leg decisions — every leg is a complete entry decision
+   * (direction, entrySignal, per-leg `vPointUsage`, per-leg `strategy`
+   * meta). Execution and compensation run in array order.
+   */
+  legs: RuntimeEntryDecision[];
+  /**
+   * Strategy-owned pair payload carried into guard and `onActionResult`
+   * uninterpreted (per-leg meta lives on `legs[].strategy` and lands on
+   * each `position.strategy.logic` at commit time).
+   */
+  strategy?: unknown;
 }
 
 /**
@@ -284,6 +329,12 @@ export interface RuntimeAveragingDecision {
   recommendation: AveragingRecommendation;
   /** Base symbol of the open position. */
   symbol: string;
+  /**
+   * Free-form strategy-owned payload carried through guard, adapter, and
+   * `onActionResult` uninterpreted; correlations only — the averaged
+   * position already exists.
+   */
+  strategy?: unknown;
   /**
    * Strategy-owned usage markers written onto the consumed vPoint after the
    * fill. Defaults to `[accountSlug]`; strategies may emit per-leg markers
@@ -306,13 +357,22 @@ export interface RuntimeExitDecision {
   position: Position;
   /** Base symbol of the open position. */
   symbol: string;
+  /** Free-form strategy-owned payload carried into guard and
+   * `onActionResult` uninterpreted (e.g. coordinated pair-close markers). */
+  strategy?: unknown;
   /** Exit evaluation output (reason, target price, full/partial close). */
   tradeDecision: TradeDecision;
 }
 
+/** Entry-like candidates the entry-capture stage can dispatch. */
+export type RuntimeEntryCandidate =
+  | RuntimeEntryDecision
+  | RuntimePairEntryDecision;
+
 /** Any action a stage can ask the strategy gate and adapter to execute. */
 export type RuntimeDecision =
   | RuntimeEntryDecision
+  | RuntimePairEntryDecision
   | RuntimeAveragingDecision
   | RuntimeExitDecision;
 
@@ -332,15 +392,17 @@ export type OnExit = (
 ) => Promise<void>;
 
 /**
- * Observation hook fired once `adapter.onAction` ran: `"success"` carries
- * the produced position, `"failed"` a null — so strategy bookkeeping can
- * distinguish a real fill from a rejected execution. Vetoed candidates
- * never reach `onAction`, so they produce no result.
+ * Observation hook fired once `adapter.onAction`/`onPairAction` ran:
+ * `"success"` carries the produced position (or the leg array for a
+ * `pairEntry` decision — the pair is the bookkeeping unit), `"failed"` a
+ * null — so strategy bookkeeping can distinguish a real fill from a
+ * rejected execution. Vetoed candidates never reach `onAction`, so they
+ * produce no result.
  */
 export type OnActionResult = (
   result: "success" | "failed",
   decision: RuntimeDecision,
-  position: Position | null,
+  position: Position | Position[] | null,
   context: RuntimeContext,
 ) => Promise<void> | void;
 
@@ -402,6 +464,22 @@ export interface RuntimeEngineAdapter {
     decision: RuntimeDecision,
     context: RuntimeContext,
   ) => Promise<Position | null>;
+
+  /**
+   * Executes an approved pair entry atomically: the environment submits the
+   * legs sequentially and must unwind already-filled legs (compensating
+   * close live, discard in simulation) when a later leg fails — the engine
+   * commits the pair to shared state only on full success.
+   *
+   * Returns every produced position in leg order, or null when the pair did
+   * not complete. Environments without pair support may leave it unset; the
+   * engine then rejects `pairEntry` decisions with a logged warning instead
+   * of falling back to per-leg `onAction` calls.
+   */
+  onPairAction?: (
+    decision: RuntimePairEntryDecision,
+    context: RuntimeContext,
+  ) => Promise<Position[] | null>;
 
   /** Persists a closed position after the shared runtime updates its state. */
   onExit: OnExit
