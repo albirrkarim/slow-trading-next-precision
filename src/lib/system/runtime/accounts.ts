@@ -60,12 +60,12 @@ function migrateTradingConfig(value: unknown): RuntimeAccountConfig["trading"] {
     value && typeof value === "object" && !Array.isArray(value)
       ? (value as Record<string, unknown>)
       : {};
-  const { minActionableAbsoluteLevel, ...trading } = record;
+  const { minEntryAbsLevel, ...trading } = record;
   return {
     ...trading,
     ...(trading.minEntryAbsLevel === undefined &&
-    typeof minActionableAbsoluteLevel === "number"
-      ? { minEntryAbsLevel: minActionableAbsoluteLevel }
+    typeof minEntryAbsLevel === "number"
+      ? { minEntryAbsLevel: minEntryAbsLevel }
       : {}),
   } as RuntimeAccountConfig["trading"];
 }
