@@ -17,7 +17,8 @@
  *   2. Engine eligibility checks  — `canAttemptEntry`, account limits,
  *      environment `isActionAllowed`. Always run; a strategy cannot
  *      disable them.
- *   3. Environment approval      — `adapter.onStrategy` gates every
+ *   3. Environment approval      — the shared `guard.allows` plus the
+ *      adapter's optional `onActionEnvGuard` extension gate every
  *      candidate regardless of producer. To constrain a family it does
  *      not override, a strategy wraps `defaultDecision.<family>.find`
  *      and filters the result — a separate veto member adds nothing.
@@ -59,7 +60,7 @@ export type StrategySlug = "both" | "streak";
  * `averaging` and `exit` are evaluated per open position, matching the
  * monitoring loop. Omitting a family keeps the built-in producer for it.
  *
- * This is the capability the `adapter.onStrategy` veto alone cannot
+ * This is the capability the guard veto alone cannot
  * provide: `both` needs to emit a MAIN + COUNTER leg pair from one
  * signal, `streak` needs to emit re-entries at its anchor vPoint —
  * both are new candidates the default pipeline will never produce.
@@ -91,8 +92,9 @@ export interface StrategyDecisionProducers {
  * Every member is optional except `name`: a strategy plugs in only the
  * pieces it needs; everything else keeps default behavior.
  *
- * Deliberately absent: `onStrategy` (producers express suppression by not
- * emitting or by filtering a wrapped `defaultDecision`), `onAction`
+ * Deliberately absent: a strategy-side veto member (producers express
+ * suppression by not emitting or by filtering a wrapped
+ * `defaultDecision`), `onAction`
  * (execution is environment-owned — sandbox fill vs live order plus
  * atomic pair rollback are adapter concerns, not strategy concerns),
  * `onExit` (a close is just an `onActionResult("success")` whose

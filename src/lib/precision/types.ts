@@ -125,7 +125,11 @@ export interface RuntimeClock {
   now(): number;
 }
 
-export interface RuntimeEngineState {
+/**
+ * Core runtime state every environment supplies to the engine — time,
+ * positions, config, balances, and market data.
+ */
+export interface RuntimeEngineStateBasic {
   /**
    * Global time for the backtest
    */
@@ -195,6 +199,48 @@ export interface RuntimeEngineState {
    */
   strategy?: unknown;
 }
+
+/**
+ * Inputs the shared `precision/guard` gate reads — each environment seeds or
+ * refreshes them instead of re-implementing policy. All optional: absent
+ * means "no bound" for backtests and "evaluate as unset" for production.
+ */
+export interface RuntimeEngineStateGuard {
+  /**
+   * Accumulated net USDT PnL of trades closed on `dailyPnlDay`, maintained
+   * by the shared exit path (`guard.dailyPnl.recordClose`). The shared
+   * guard evaluates it against `runtime.autoEntryDailyPnlLimitUSDT`
+   * without scanning trade history. Production additionally refreshes it
+   * from the combined live+sandbox persisted read each management cycle.
+   */
+  dailyPnlUsdt?: number;
+
+  /**
+   * UTC day key (`YYYY-MM-DD`) `dailyPnlUsdt` belongs to. A mismatched day
+   * resolves the accumulator to zero — the daily stop resets at UTC
+   * midnight.
+   */
+  dailyPnlDay?: string;
+
+  /**
+   * Black Swan protective flag read by the shared guard to veto entries
+   * and averaging. Production's risk-sentinel stage refreshes it each cycle;
+   * backtests seed it from the captured snapshot so protective windows
+   * replay identically.
+   */
+  blackSwanProtective?: boolean;
+
+  /**
+   * BTEST:STOP_AUTO_ENTRY_BEFORE_END — optional Unix-ms bound the shared
+   * guard applies to automatic entries. Backtest adapters seed it from the
+   * run window; production leaves it unset.
+   */
+  entryCutoffTime?: number;
+}
+
+export interface RuntimeEngineState
+  extends RuntimeEngineStateBasic,
+    RuntimeEngineStateGuard {}
 
 /**
  * Approved entry candidate produced by the shared decision pipeline.
@@ -275,7 +321,7 @@ export interface RuntimeVPointMemory {
   readonly value: unknown;
 }
 
-export type OnStrategy = (
+export type OnActionEnvGuard = (
   decision: RuntimeDecision,
   context: RuntimeContext,
 ) => Promise<boolean>;
@@ -336,13 +382,16 @@ export interface RuntimeEngineAdapter {
   ) => Promise<void>;
 
   /**
-   * Environment's final approval gate between a produced candidate and
-   * `onAction`. Each environment applies its own policy — production runs
-   * `isActionAllowed` (account eligibility, daily-PnL stop), backtests
-   * apply run-window cutoffs — so env rules stay out of the shared engine
-   * and the decision producers.
+   * Optional environment-specific approval extension that runs after the
+   * shared guard (`precision/guard`) and before `onAction`. The
+   * shared guard already covers the state-readable policy identical across
+   * environments (runtime toggles, account enablement, configured symbols,
+   * minimum price, daily-PnL stop, entry cutoff, black-swan flag); this
+   * hook is only for checks that need live IO — e.g. production re-reading
+   * the persisted catalog/status at the execution boundary. Backtests
+   * leave it unset so replayed windows follow the shared guard exactly.
    */
-  onStrategy: OnStrategy;
+  onActionEnvGuard?: OnActionEnvGuard;
 
   /**
    * Executes an approved decision in the environment: simulated fills in

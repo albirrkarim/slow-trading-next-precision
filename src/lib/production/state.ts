@@ -5,8 +5,11 @@ import type { ProductionStateOptions } from "./types";
 function create(options: ProductionStateOptions): RuntimeEngineState {
   return {
     balance: options.balance,
+    blackSwanProtective: options.blackSwanProtective,
     config: options.config,
     currentTime: options.currentTime ?? Date.now(),
+    dailyPnlDay: options.dailyPnlDay,
+    dailyPnlUsdt: options.dailyPnlUsdt,
     markPriceMap: options.markPriceMap ?? {},
     mode: options.mode,
     openPositions: options.openPositions,

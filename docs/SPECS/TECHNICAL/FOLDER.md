@@ -64,14 +64,16 @@ The adapter contract (`RuntimeEngineAdapter`) is the environment boundary:
 - `market.getKlines` — the only market-data input, bounded by `currentTime`.
 - `exchange` — balance/fee reads.
 - `onAction` / `onExit` — execute an approved decision, return the position.
-- `onStrategy` — final approval/veto gate for environments that deviate.
+- `onActionEnvGuard` — optional env-specific approval extension layered on
+  the shared `guard.allows` (which runs for every decision, all envs).
 - `onStateChange` — persist after mutations (positions, vPoint markers).
 - `onNewVPoint`, `onStageStats`, `onCycleComplete`, `onManagement`,
   `onRiskSentinel` — environment-owned stage and persistence hooks.
 
 There is no `RuntimeStrategy` type and no `src/lib/strategy` root. Multi is
 the built-in default: `defaultDecision` calls `system/trading` directly and
-`onStrategy` remains the arrangement/veto gate.
+the shared `guard` plus the optional `onActionEnvGuard` extension remain
+the approval/veto gate.
 
 ## 3. `production/` — the live/sandbox environment
 
@@ -191,7 +193,8 @@ shared types. `config/` — env helpers. `constants.ts` — shared constants.
 4. Each due stage runs serialized: helpers refresh `markPriceMap` /
    `vPointsMap` (new points persist via `onNewVPoint`), monitoring bodies
    evaluate exits/averaging/entries through `defaultDecision` →
-   `system/trading`, `adapter.onStrategy` gates, `adapter.onAction`/`onExit`
+   `system/trading`, `guard.allows` + `adapter.onActionEnvGuard` gate,
+   `adapter.onAction`/`onExit`
    executes, results mutate `state.openPositions`/`balance` and mark vPoints.
 5. `onStateChange` persists account state and vPoint markers to storage;
    `onStageStats`/`onCycleComplete` record pass stats and stage timing.

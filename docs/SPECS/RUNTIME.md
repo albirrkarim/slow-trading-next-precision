@@ -208,9 +208,12 @@ show `DAILY_PNL_LIMIT_REACHED`. If later exits raise the current day's net PnL
 above the threshold, automatic entry can resume; the value resets naturally at
 the next UTC day.
 
-Production reads the day's closed PnL from persisted live+sandbox history and
-vetoes entries in `onStrategy`; the backtest adapter evaluates the same rule
-over its closed-position history, so backtest entries pause identically.
+The shared guard (`src/lib/precision/guard`) evaluates
+`state.dailyPnlUsdt`/`state.dailyPnlDay` — an accumulator the engine updates on
+every close — against the configured threshold, so production and backtest veto
+identically. Production additionally refreshes the state from the combined
+live+sandbox persisted history each management cycle, keeping the cross-mode
+semantics.
 
 TC: `BOTH:AUTO_ENTRY_DAILY_PNL_LIMIT_USDT`
 

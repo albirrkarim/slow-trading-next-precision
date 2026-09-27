@@ -106,12 +106,17 @@ const adapter: RuntimeEngineAdapter = {
   clock,
   market,
   exchange,
-  onStrategy,
   onAction,
   onExit,
   onNotif,
 };
 ```
+
+Every produced candidate first passes the shared guard in
+`guard/` — state-only policy identical in all environments (runtime
+toggles, account enablement, configured symbols, minimum price,
+black-swan flag, entry cutoff, daily-PnL stop). The optional
+`onActionEnvGuard` adds environment checks that need live IO.
 
 | Capability | Backtest | Production |
 | --- | --- | --- |
@@ -119,7 +124,7 @@ const adapter: RuntimeEngineAdapter = {
 | `market.getKlines` | Reads cached historical klines | REST klines fallback for uncovered windows |
 | `market.live` | Omitted | Shared kline websocket feed (Binance only) |
 | `exchange` | Usually empty or simulated | Exposes production exchange operations |
-| `onStrategy` | Shared strategy | The same shared strategy |
+| `onActionEnvGuard` | Omitted — the shared guard covers replay policy | Re-reads persisted catalog/status at the execution boundary |
 | `onAction` | Simulates an accepted action | Submits sandbox or live execution |
 | `onExit` | Collects closed backtest history | Persists closed-position history |
 | `onStateChange` | Usually omitted | Persists account state and vPoint usage markers |
@@ -184,7 +189,6 @@ const adapter: RuntimeEngineAdapter = {
     getKlines: dataset.getKlines,
   },
   exchange: {},
-  onStrategy: async () => true,
   onAction: async (decision, context) =>
     simulateAction(decision, context),
   onExit: async (position) => {
@@ -277,8 +281,8 @@ const adapter: RuntimeEngineAdapter = {
   exchange: {
     getBalance: () => latestCachedBalance,
   },
-  onStrategy: async (decision, context) =>
-    approveStrategy(decision, context),
+  onActionEnvGuard: async (decision, context) =>
+    recheckPersistedCatalogAndStatus(decision, context),
   onAction: async (decision, context) =>
     executeLiveAction(decision, context),
   onExit: async (position, context) =>
@@ -350,7 +354,11 @@ the injected adapter instead:
 const klines = await context.adapter.market.getKlines(request);
 const decisions = await defaultDecision.entry.find(context);
 for (const decision of decisions) {
-  const approved = await context.adapter.onStrategy(decision, context);
+  if (!guard.allows(decision, context)) continue;
+  const approved = await (context.adapter.onActionEnvGuard?.(
+    decision,
+    context,
+  ) ?? true);
   if (!approved) continue;
 
   const position = await context.adapter.onAction(decision, context);

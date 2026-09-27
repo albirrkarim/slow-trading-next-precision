@@ -7,7 +7,6 @@ import type { VolatilityPoint } from "@/lib/system/types";
 import vpoints from "@/lib/system/utils/vpoints";
 import { getFeeCalculator } from "@/lib/exchange/fees";
 import tradingAveraging from "@/lib/system/trading/averaging";
-import runtimeDailyPnlLimit from "@/lib/system/trading/daily-pnl-limit";
 import entryAction from "@/lib/system/trading/entry-action";
 import tradingExit from "@/lib/system/trading/exit";
 import type { BacktestPrecisionParams } from "../api/precision-api-types";
@@ -58,9 +57,6 @@ export async function precisionBacktest(
   const { symbols } = dataset;
   const datasetStartTime = dataset.startTime;
   const endTime = dataset.endTime;
-  const entryCutoffTime = isPrecisionChecker
-    ? Number.POSITIVE_INFINITY
-    : endTime - BACKTEST_ENTRY_CUTOFF_MS;
 
   // i think we make the backtest forward two month,
   // so we can make the initial vPointsMap first.
@@ -93,6 +89,12 @@ export async function precisionBacktest(
       initialState !== undefined
         ? structuredClone(initialState.balance)
         : createInitialBalance(params),
+    // BTEST:STOP_AUTO_ENTRY_BEFORE_END — the shared env guard applies this
+    // bound; precision-checker replays leave it unset so entries match what
+    // production did to the end of the window.
+    entryCutoffTime: isPrecisionChecker
+      ? undefined
+      : endTime - BACKTEST_ENTRY_CUTOFF_MS,
     config: params.config,
     currentTime,
     mode: "backtest",
@@ -103,6 +105,9 @@ export async function precisionBacktest(
     markPriceMap: {},
     vPointsMap,
     strategy: structuredClone(initialState?.strategy),
+    blackSwanProtective: initialState?.blackSwanProtective,
+    dailyPnlDay: initialState?.dailyPnlDay,
+    dailyPnlUsdt: initialState?.dailyPnlUsdt,
   };
   let clockTime = state.currentTime;
   const history: RuntimeEngineState["openPositions"] = [];
@@ -159,34 +164,6 @@ export async function precisionBacktest(
             .getBothSideFeePercent({ currency: "USDT", type }) / 100
         );
       },
-    },
-    onStrategy: async (decision, context) => {
-      // BTEST:STOP_AUTO_ENTRY_BEFORE_END
-      // Keep monitoring existing positions during the final four days, but do
-      // not open new positions that cannot complete their lifecycle in-range.
-      if (
-        decision.type === "entry" &&
-        context.state.currentTime >= entryCutoffTime
-      ) {
-        return false;
-      }
-
-      // BOTH:AUTO_ENTRY_DAILY_PNL_LIMIT_USDT — mirrors the production
-      // isActionAllowed veto: automatic entries pause once the current UTC
-      // day's closed net PnL reaches the configured stop. `history` holds
-      // this run's closed positions, matching production's persisted daily
-      // history read. Manual forced entries are exempt, same as production.
-      if (decision.type === "entry" && !decision.manual) {
-        const evaluation = runtimeDailyPnlLimit.guard.evaluate({
-          currentTimeMs: context.state.currentTime,
-          positions: history,
-          thresholdUsdt:
-            context.state.config.runtime.autoEntryDailyPnlLimitUSDT,
-        });
-        if (evaluation.reached) return false;
-      }
-
-      return true;
     },
     onAction: async (decision, context) => {
       const executed =

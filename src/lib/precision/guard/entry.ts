@@ -1,0 +1,103 @@
+import autoRemove from "@/lib/system/trading/auto-remove";
+import runtimeDailyPnlLimit from "@/lib/system/trading/daily-pnl-limit";
+import type { RuntimeAccountConfig } from "@/lib/system/runtime";
+import type {
+  RuntimeContext,
+  RuntimeEngineState,
+  RuntimeEntryDecision,
+} from "../types";
+
+/** Resolves today's accumulated closed-trade PnL, resetting on UTC rollover. */
+function resolveDailyPnlUsdt(state: RuntimeEngineState): number {
+  const day = runtimeDailyPnlLimit.period.getCurrentUtc(
+    state.currentTime,
+  ).day;
+  return state.dailyPnlDay === day ? (state.dailyPnlUsdt ?? 0) : 0;
+}
+
+/**
+ * Adds one closed trade's net USDT PnL to the state accumulator; called once
+ * per close from the shared exit path so every environment counts closes
+ * identically.
+ */
+function recordClosedPnlUsdt(
+  state: RuntimeEngineState,
+  netUsdt?: number,
+): void {
+  if (!Number.isFinite(netUsdt)) return;
+  const day = runtimeDailyPnlLimit.period.getCurrentUtc(
+    state.currentTime,
+  ).day;
+  if (state.dailyPnlDay !== day) {
+    state.dailyPnlDay = day;
+    state.dailyPnlUsdt = 0;
+  }
+  state.dailyPnlUsdt = (state.dailyPnlUsdt ?? 0) + (netUsdt ?? 0);
+}
+
+/**
+ * Entry-family policy, evaluated after the common checks in `guard/index.ts`
+ * (account exists, runner toggle, exit branch, black-swan flag). Veto order
+ * mirrors the original production `isActionAllowed`.
+ */
+function allows(
+  decision: RuntimeEntryDecision,
+  context: RuntimeContext,
+  account: RuntimeAccountConfig,
+): boolean {
+  const state = context.state;
+
+  if (!account.enabled) return false;
+
+  // BOTH:AUTO_REMOVE_CONFIGURED_SYMBOL_GUARD /
+  // BOTH:BLOCK_ENTRY_BELOW_AUTO_REMOVE_MIN_PRICE — the management stage keeps
+  // `state.config.management` in sync, so the gate reads the live symbols and
+  // minimum price from state. Both checks also block forced entries.
+  const symbol = autoRemove.symbol.normalize(decision.symbol);
+  if (
+    !state.config.management.symbols
+      .map(autoRemove.symbol.normalize)
+      .includes(symbol)
+  ) {
+    return false;
+  }
+  if (
+    autoRemove.price.isBelowMinimum({
+      minimumPrice: state.config.runtime.autoRemoveSymbolMinPrice,
+      price: state.markPriceMap[symbol]?.price,
+    })
+  ) {
+    return false;
+  }
+
+  if (decision.manual) return true;
+  if (!state.config.runtime.autoEntryEnabled) return false;
+
+  // BTEST:STOP_AUTO_ENTRY_BEFORE_END — environments bound the entry window
+  // by seeding `state.entryCutoffTime`; unset means no cutoff.
+  if (
+    state.entryCutoffTime !== undefined &&
+    state.currentTime >= state.entryCutoffTime
+  ) {
+    return false;
+  }
+
+  // BOTH:AUTO_ENTRY_DAILY_PNL_LIMIT_USDT — the engine accumulates closed
+  // trade PnL on `state.dailyPnlUsdt`; production additionally refreshes it
+  // from the combined live+sandbox persisted read each management cycle.
+  return !runtimeDailyPnlLimit.guard.evaluatePnl({
+    currentTimeMs: state.currentTime,
+    pnlUsdt: resolveDailyPnlUsdt(state),
+    thresholdUsdt: state.config.runtime.autoEntryDailyPnlLimitUSDT,
+  }).reached;
+}
+
+const entry = {
+  allows,
+  dailyPnl: {
+    recordClose: recordClosedPnlUsdt,
+    resolve: resolveDailyPnlUsdt,
+  },
+} as const;
+
+export default entry;

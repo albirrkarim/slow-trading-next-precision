@@ -28,7 +28,6 @@ import type { RuntimeAccountModeState } from "@/lib/system/storage";
 import tradingAveraging from "@/lib/system/trading/averaging";
 import autoRemove from "@/lib/system/trading/auto-remove";
 import blackSwan from "@/lib/system/trading/black-swan";
-import runtimeDailyPnlLimit from "@/lib/system/trading/daily-pnl-limit";
 import entryAction from "@/lib/system/trading/entry-action";
 import tradingExit from "@/lib/system/trading/exit";
 import { tradeNotif } from "@/lib/system/notification";
@@ -94,49 +93,35 @@ async function persistAccount(
 }
 
 /**
- * Final approval gate for every runtime decision. Manual operator actions
- * bypass `runnerEnabled` like the legacy manual routes, while Black Swan
- * protection still blocks every entry and averaging — including forced
- * ones — and the persisted daily-PnL stop blocks automatic entries.
+ * Environment-specific approval extension running after the shared
+ * guard (`precision/guard`). Only keeps the checks that need live
+ * IO: the account runtime must exist, and the persisted black-swan flag
+ * and catalog are re-read at the execution boundary so changes made
+ * between management cycles still veto. Everything state-readable —
+ * runtime toggles, account enablement, daily-PnL stop — is shared.
  */
 async function isActionAllowed(
   decision: RuntimeDecision,
   runtimeState: PrecisionRuntimeState,
   accountRuntimes: AccountRuntimes,
 ): Promise<boolean> {
-  const accountRuntime = accountRuntimes.get(decision.accountSlug);
-  if (!accountRuntime) return false;
+  if (!accountRuntimes.get(decision.accountSlug)) return false;
 
-  const manual =
-    decision.type === "entry"
-      ? Boolean(decision.manual)
-      : decision.type === "exit"
-        ? Boolean(decision.position.control?.forceExit)
-        : false;
-
-  if (!manual && !runtimeState.config.runtime.runnerEnabled) return false;
-
-  if (decision.type === "exit") {
-    return manual || runtimeState.config.runtime.autoExitEnabled;
-  }
+  // Exits never need fresh persisted reads.
+  if (decision.type === "exit") return true;
 
   const status = await runtimeStorage.status
-    .load(
-      runtimeState.mode === "sandbox" ? "sandbox" : "live",
-    )
-    .catch(() => ({}) as Awaited<ReturnType<typeof runtimeStorage.status.load>>);
+    .load(runtimeState.mode === "sandbox" ? "sandbox" : "live")
+    .catch(
+      () => ({}) as Awaited<ReturnType<typeof runtimeStorage.status.load>>,
+    );
 
-  // Black Swan protection blocks entries and averaging, including manual
-  // entries — the legacy cycle emptied every entry signal during a crisis.
-  if (blackSwan.state.isProtective(status.blackSwan)) {
-    return false;
-  }
+  // Freshness re-read on top of `state.blackSwanProtective`: a crisis
+  // flagged between management cycles still vetoes entries and averaging,
+  // including forced ones.
+  if (blackSwan.state.isProtective(status.blackSwan)) return false;
 
-  if (decision.type === "averaging") {
-    return true;
-  }
-
-  if (!accountRuntime.account.enabled) return false;
+  if (decision.type === "averaging") return true;
 
   // PROD:AUTO_REMOVE_LATEST_CONFIG_ENTRY_GUARD — the management cycle may
   // have removed this coin or tightened the minimum price after the signal
@@ -165,25 +150,6 @@ async function isActionAllowed(
     }
   }
 
-  if (manual) return true;
-  if (!runtimeState.config.runtime.autoEntryEnabled) return false;
-
-  // BOTH:AUTO_ENTRY_DAILY_PNL_LIMIT_USDT — the management stage persists
-  // `dailyPnlLimitState`; this veto mirrors the backtest adapter's history
-  // evaluation over the same UTC day.
-  const limit = status.dailyPnlLimitState;
-  if (limit) {
-    const evaluation = runtimeDailyPnlLimit.guard.evaluatePnl({
-      currentTimeMs: runtimeState.currentTime,
-      pnlUsdt: limit.usdt,
-      thresholdUsdt:
-        runtimeState.config.runtime.autoEntryDailyPnlLimitUSDT,
-    });
-    if (evaluation.reached && evaluation.day === limit.d) {
-      return false;
-    }
-  }
-
   return true;
 }
 
@@ -194,9 +160,9 @@ function createActionHandlers(
   ) => Promise<void>,
 ): Pick<
   RuntimeEngineAdapter,
-  "onAction" | "onExit" | "onStateChange" | "onStrategy"
+  "onAction" | "onExit" | "onStateChange" | "onActionEnvGuard"
 > {
-  const onStrategy: RuntimeEngineAdapter["onStrategy"] = async (
+  const onActionEnvGuard: RuntimeEngineAdapter["onActionEnvGuard"] = async (
     decision,
     context,
   ) => isActionAllowed(decision, context.state, accountRuntimes);
@@ -366,7 +332,7 @@ function createActionHandlers(
     await onVPointsChanged(context.state.vPointsMap);
   };
 
-  return { onAction, onExit, onStateChange, onStrategy };
+  return { onAction, onExit, onStateChange, onActionEnvGuard };
 }
 
 /** Recent vPoints seeded per symbol when production boots. */
@@ -529,14 +495,29 @@ function createProductionFactory(): ProductionRuntimeFactory {
       }
     }
 
+    // Hydrate the shared guard's state inputs from persisted status: the
+    // combined daily-PnL accumulator and the black-swan flag, so the first
+    // cycle guards exactly like a steady-state restart.
+    const persistedStatus = await runtimeStorage.status
+      .load(mode === "sandbox" ? "sandbox" : "live")
+      .catch(
+        () =>
+          ({}) as Awaited<ReturnType<typeof runtimeStorage.status.load>>,
+      );
+
     const runtimeState = state.create({
       balance,
+      blackSwanProtective: blackSwan.state.isProtective(
+        persistedStatus.blackSwan,
+      ),
       config: {
         accounts: catalog.config.accounts,
         management: catalog.config.management,
         runtime: buildRuntimeConfig(catalog.config.runtime),
       },
       currentTime: Date.now(),
+      dailyPnlDay: persistedStatus.dailyPnlLimitState?.d,
+      dailyPnlUsdt: persistedStatus.dailyPnlLimitState?.usdt,
       mode,
       openPositions,
       vPointsMap,
@@ -595,7 +576,7 @@ function createProductionFactory(): ProductionRuntimeFactory {
       onRiskSentinel: productionStages.riskSentinel,
       onStageStats: productionStages.stageStats,
       onStateChange: handlers.onStateChange,
-      onStrategy: handlers.onStrategy,
+      onActionEnvGuard: handlers.onActionEnvGuard,
       signal,
     });
   };

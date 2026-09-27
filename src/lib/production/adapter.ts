@@ -161,7 +161,7 @@ function create(options: ProductionAdapterOptions): RuntimeEngineAdapter {
     onStageStats: options.onStageStats,
     onStateChange: options.onStateChange,
     onNotif: options.onNotif ?? (() => true),
-    onStrategy: options.onStrategy,
+    onActionEnvGuard: options.onActionEnvGuard,
   };
 }
 

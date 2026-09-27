@@ -111,7 +111,6 @@ describe("ProductionRuntime.captureState", () => {
       onAction: async () => null,
       onExit: async () => undefined,
       onNotif: () => true,
-      onStrategy: async () => true,
     };
 
     await runtime.start({

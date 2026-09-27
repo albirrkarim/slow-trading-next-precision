@@ -157,7 +157,6 @@ function createAdapter(
     onAction: async () => null,
     onExit: async () => undefined,
     onNotif: () => true,
-    onStrategy: async () => true,
     ...overrides,
   };
 }

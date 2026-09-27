@@ -275,6 +275,9 @@ async function runRiskSentinel(
     mode,
     previous,
   });
+  // Refresh the shared guard's state input so same-cycle decisions see the
+  // protective flag without waiting for the persisted re-read.
+  context.state.blackSwanProtective = blackSwan.state.isProtective(next);
 
   // Emergency exits: flag the positions selected by the configured crisis
   // policy, then let the shared monitor run the normal exit pipeline.
@@ -484,6 +487,10 @@ async function runManagement(
     pnlUsdt,
     thresholdUsdt: context.state.config.runtime.autoEntryDailyPnlLimitUSDT,
   });
+  // Refresh the shared guard's state input from the combined live+sandbox
+  // read; per-close increments keep it current between management cycles.
+  context.state.dailyPnlDay = evaluation.day;
+  context.state.dailyPnlUsdt = evaluation.pnlUsdt;
 
   await runtimeStorage.status.update(mode, (current) => {
     current.dailyPnlLimitState = { d: evaluation.day, usdt: evaluation.pnlUsdt };

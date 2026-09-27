@@ -2,6 +2,7 @@ import positions from "../utils/positions";
 import type { Position } from "@/lib/system/trading";
 
 import defaultDecision from "../defaultDecision";
+import guard from "../guard";
 import type {
   RuntimeContext,
   RuntimeEntryDecision,
@@ -67,9 +68,14 @@ async function executeDecision(
 ): Promise<Position | null> {
   if (!canAttemptEntry(context, decision)) return null;
 
-  // B. Call the onStrategy for the final confirmation approved to entry
-  // context.adapter.onStrategy
-  if (!(await context.adapter.onStrategy(decision, context))) return null;
+  // B. Shared policy guard, then the adapter's optional env-specific
+  // extension (e.g. production's live catalog re-read).
+  if (!guard.allows(decision, context)) return null;
+  if (
+    !(await (context.adapter.onActionEnvGuard?.(decision, context) ?? true))
+  ) {
+    return null;
+  }
 
   // C. then the actual entry
   // context.adapter.onAction

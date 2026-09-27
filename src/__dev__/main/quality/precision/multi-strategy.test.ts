@@ -242,7 +242,6 @@ function makeContext(
     onAction: async () => null,
     onExit: async () => undefined,
     onNotif: () => true,
-    onStrategy: async () => true,
   };
 
   return { adapter, helper, state };

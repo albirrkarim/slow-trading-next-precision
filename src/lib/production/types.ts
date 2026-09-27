@@ -21,8 +21,8 @@ export interface ProductionAdapterOptions {
    * REST `getKlines` only backfills windows the stream cannot cover.
    */
   liveFeed?: RuntimeMarketFeed;
-  /** Final strategy approval before an action is submitted. */
-  onStrategy: RuntimeEngineAdapter["onStrategy"];
+  /** Optional env-specific approval extension layered on the shared guard. */
+  onActionEnvGuard?: RuntimeEngineAdapter["onActionEnvGuard"];
   /** Submits or simulates an approved production action. */
   onAction: RuntimeEngineAdapter["onAction"];
   /** Persists a closed position after the shared runtime confirms an exit. */
@@ -51,7 +51,12 @@ export interface ProductionAdapterOptions {
 export interface ProductionStateOptions
   extends Pick<
     RuntimeEngineState,
-    "config" | "balance" | "openPositions"
+    | "config"
+    | "balance"
+    | "openPositions"
+    | "dailyPnlUsdt"
+    | "dailyPnlDay"
+    | "blackSwanProtective"
   > {
   /** Live exchange or sandbox mode. */
   mode: Extract<RuntimeEngineState["mode"], "live" | "sandbox">;

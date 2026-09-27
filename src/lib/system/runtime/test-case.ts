@@ -17,6 +17,13 @@ export interface PrecisionRuntimeSnapshot {
    * reproduce them (e.g. streak pending re-entries). Engine never reads it.
    */
   strategy?: unknown;
+
+  /** Closed-trade net USDT PnL accumulated on `dailyPnlDay` (UTC key). */
+  dailyPnlUsdt?: number;
+  /** UTC day key (`YYYY-MM-DD`) `dailyPnlUsdt` belongs to. */
+  dailyPnlDay?: string;
+  /** Black Swan protective flag captured so replays veto like production. */
+  blackSwanProtective?: boolean;
 }
 
 /**

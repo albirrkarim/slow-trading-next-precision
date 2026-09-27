@@ -209,19 +209,19 @@ class RuntimeEngine {
   exchange,
 
   /**
-   * with the strategy outside we can doing manythings
-   * adapt to our 3 instance.
-   *
+   * optional env-specific approval extension layered on the shared
+   * `precision/guard` policy — e.g. production re-reads the persisted
+   * catalog/status at the execution boundary. Backtests leave it unset.
    */
-  onStrategy,
+  onActionEnvGuard,
 
   onAction,
 
   onNotif
   }
 
-  constructor({ config, market, exchange,onStrategy, onAction, onNotif}){
-    this.onStrategy = onStrategy
+  constructor({ config, market, exchange, onActionEnvGuard, onAction, onNotif}){
+    this.onActionEnvGuard = onActionEnvGuard
     this.onAction = onAction
     this.onNotif = onNotif
     this.config = config;
@@ -267,8 +267,12 @@ class RuntimeEngine {
 
     // updating the volatility points
 
-    // on strategy feeded with the latest volatility points
-    const decision = await this.onStrategy(this.state,vpointsMap)
+    // a decision producer reads the latest volatility points
+    const decision = await producer.entry.find(context)
+
+    // the shared guard + optional env extension approve it
+    // const approved = guard.allows(decision, context)
+    //   && (await this.onActionEnvGuard?.(decision, context) ?? true)
 
     // maybe the decision
     // const result = await this.onAction()

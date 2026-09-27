@@ -2,6 +2,7 @@ import positions from "../utils/positions";
 import type { Position } from "@/lib/system/trading";
 
 import defaultDecision from "../defaultDecision";
+import guard from "../guard";
 import type {
   RuntimeAveragingDecision,
   RuntimeContext,
@@ -85,9 +86,14 @@ async function averaging(
   const decision = await producer.find(context, position);
   if (!decision) return null;
 
-  // B. Give the outer strategy an opportunity to approve or reject the
-  // candidate before any position or balance mutation occurs.
-  if (!(await context.adapter.onStrategy(decision, context))) return null;
+  // B. Shared policy guard, then the adapter's optional env-specific
+  // extension before any position or balance mutation occurs.
+  if (!guard.allows(decision, context)) return null;
+  if (
+    !(await (context.adapter.onActionEnvGuard?.(decision, context) ?? true))
+  ) {
+    return null;
+  }
 
   // C. Ask the environment adapter to execute the averaging action.
   // Backtest/sandbox adapters simulate the fill; a live adapter submits it.
@@ -169,9 +175,14 @@ async function exit(
   const decision = await producer.find(context, position);
   if (!decision) return false;
 
-  // B. Give the outer strategy an opportunity to approve or reject the
-  // candidate before any position or balance mutation occurs.
-  if (!(await context.adapter.onStrategy(decision, context))) return false;
+  // B. Shared policy guard, then the adapter's optional env-specific
+  // extension before any position or balance mutation occurs.
+  if (!guard.allows(decision, context)) return false;
+  if (
+    !(await (context.adapter.onActionEnvGuard?.(decision, context) ?? true))
+  ) {
+    return false;
+  }
 
   // C. Ask the environment adapter to execute the exit action.
   // Backtest/sandbox adapters simulate the close; a live adapter submits it.
@@ -185,10 +196,12 @@ async function exit(
     throw new Error("Exit action returned a position without closed details.");
   }
 
-  // D. Remove the successfully closed position from runtime state.
+  // D. Remove the successfully closed position from runtime state and add
+  // its realized PnL to the shared daily accumulator the env guard reads.
   const positionIndex = context.state.openPositions.indexOf(position);
   if (positionIndex < 0) return false;
   context.state.openPositions.splice(positionIndex, 1);
+  guard.dailyPnl.recordClose(context.state, closedPosition.pnl.netUsdt);
 
   // E. Release margin and reserve, then rebuild the account balance summary
   // from the realized PnL and returned entry margin.

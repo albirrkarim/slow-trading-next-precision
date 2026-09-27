@@ -50,7 +50,7 @@ dissolved into the homes they semantically belong to: decision/execution
 functions into `src/lib/system/trading`, the generic vPoint detector into
 `src/lib/system/utils`, and position bookkeeping into `src/lib/precision/utils`.
 The runtime contract has no `RuntimeStrategy` type: the engine calls those
-functions directly, and `RuntimeEngineAdapter.onStrategy` remains the
+functions directly, and `RuntimeEngineAdapter.onActionEnvGuard` remains the
 arrangement/veto gate for environments that need to deviate from the default
 behavior.
 
@@ -200,7 +200,7 @@ production  -> system + exchange + precision
 `RuntimeAccountConfig`, `RuntimeManagementConfig`, `RuntimeControlConfig`)
 because `system/storage` owns catalog persistence. There is no injected
 strategy port: `RuntimeEngine` calls the dissolved default functions directly,
-and `adapter.onStrategy` is the gate where environments approve, veto, or
+and `adapter.onActionEnvGuard` is the gate where environments approve, veto, or
 arrange decisions.
 
 The default-strategy functions in `system/trading` consume `RuntimeContext`
@@ -262,7 +262,7 @@ environment behavior through ports:
 - Monitoring.
 
 Strategy behavior is not a port. The engine calls the dissolved default
-functions directly; `adapter.onStrategy` is only the approval gate before an
+functions directly; `adapter.onActionEnvGuard` is only the approval gate before an
 action runs. Precision must not load files, instantiate exchanges, send
 notifications, or reimplement strategy rules inside orchestration code.
 
@@ -347,7 +347,7 @@ against clean APIs; non-goal pages remain in legacy code until deletion.
       decision/execution functions into `system/trading`, the vPoint detector
       into `system/utils`, position bookkeeping into `precision/utils`. There
       is no `RuntimeStrategy` port — the engine calls the functions directly
-      and `adapter.onStrategy` stays the arrangement gate.
+      and `adapter.onActionEnvGuard` stays the arrangement gate.
 - [x] The engine contract (`RuntimeContext`, `RuntimeEngineAdapter`,
       `RuntimeEngineState`, `RuntimeClock`, decisions) lives in
       `precision/types`; the persisted config family stays in
@@ -449,7 +449,7 @@ against clean APIs; non-goal pages remain in legacy code until deletion.
       Every stage reports measured
       `stageRuns` stats via `onStageStats` and the tick summary via
       `onCycleComplete` into `status.lastRun*`. The production
-      `onStrategy` gate now blocks entries and averaging while Black Swan
+      `onActionEnvGuard` gate now blocks entries and averaging while Black Swan
       protection is active (including manual entries, matching the legacy
       signal purge), blocks automatic entries when the persisted daily-PnL
       stop is reached, and lets manual/force-exit decisions bypass
@@ -613,7 +613,7 @@ required outcome without carrying its old architecture into the clean core.
 - Shared utilities and types belong under `lib/system`.
 - Multi is the default strategy of the precision system, dissolved into
   `lib/system/trading`, `lib/system/utils`, and `lib/precision/utils`;
-  `RuntimeEngine` calls those functions directly and `adapter.onStrategy` is
+  `RuntimeEngine` calls those functions directly and `adapter.onActionEnvGuard` is
   the arrangement/veto gate.
 - Legacy NN, dynamic types, price norm, and decision versions are not part of
   the new foundation.

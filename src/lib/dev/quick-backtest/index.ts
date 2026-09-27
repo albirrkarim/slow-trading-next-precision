@@ -168,7 +168,6 @@ async function runSingle({
   });
   const { endTime } = dataset;
   const startTime = Math.max(dataset.startTime, rangeStart);
-  const entryCutoffTime = endTime - QUICK_BACKTEST_ENTRY_CUTOFF_MS;
 
   const state: RuntimeEngineState = {
     balance: {
@@ -182,6 +181,8 @@ async function runSingle({
         total: startingBalanceUSDT,
       },
     },
+    // BTEST:STOP_AUTO_ENTRY_BEFORE_END — shared env guard bound.
+    entryCutoffTime: endTime - QUICK_BACKTEST_ENTRY_CUTOFF_MS,
     config,
     currentTime: startTime,
     mode: "backtest",
@@ -254,16 +255,6 @@ async function runSingle({
             .getBothSideFeePercent({ currency: "USDT", type }) / 100
         );
       },
-    },
-    onStrategy: async (decision, context) => {
-      // BTEST:STOP_AUTO_ENTRY_BEFORE_END
-      if (
-        decision.type === "entry" &&
-        context.state.currentTime >= entryCutoffTime
-      ) {
-        return false;
-      }
-      return true;
     },
     onAction: async (decision, context) => {
       if (decision.type === "entry") {

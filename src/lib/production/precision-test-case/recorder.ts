@@ -319,6 +319,9 @@ async function start(
     config: cloneConfigWithoutCredentials(state.config),
     initialState: {
       balance: clone(state.balance),
+      blackSwanProtective: state.blackSwanProtective,
+      dailyPnlDay: state.dailyPnlDay,
+      dailyPnlUsdt: state.dailyPnlUsdt,
       openPositions: clone(state.openPositions),
       vPointsMap: snapshotVPoints(state.vPointsMap, state.openPositions),
       strategy: clone(state.strategy),
@@ -376,6 +379,9 @@ async function end(state: RuntimeEngineState): Promise<PrecisionTestCaseResult> 
     ...initialTestCase,
     endState: {
       balance: clone(state.balance),
+      blackSwanProtective: state.blackSwanProtective,
+      dailyPnlDay: state.dailyPnlDay,
+      dailyPnlUsdt: state.dailyPnlUsdt,
       openPositions: clone(state.openPositions),
       vPointsMap: diffVPoints(
         initialTestCase.initialState.vPointsMap,
