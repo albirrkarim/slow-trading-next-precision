@@ -207,7 +207,7 @@ const result =
 
 A: the strategy is global, but each account can also be configured 
 
-trading.leg = "main" | "counter" | "both"
+trading.entryLegs = "MAIN" | "COUNTER" | "BOTH"
 
 **3. Hedge-mode: verify or set?** `preflight` can read the account's `futuresPositionMode` and refuse to boot — or should the system actively *set* hedge mode on the exchange at startup? I'd verify-and-refuse (mode flips can be rejected when positions are open, so silently setting is fragile) — confirm?
 
