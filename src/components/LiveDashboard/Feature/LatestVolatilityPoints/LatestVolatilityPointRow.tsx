@@ -29,7 +29,6 @@ import { calculateSlowWorkerCapacity } from "../worker-capacity";
 import LatestVolatilityPointChartDialog from "./LatestVolatilityPointChartDialog";
 import type { VolatilityPointLabelFrequency } from "./types";
 import {
-  buildVolatilityPointJson,
   isVolatilityPointUsedByAccount,
   simplifyId,
   VPOINT_LEVEL_COLOR_MAP,
@@ -414,12 +413,9 @@ export default function LatestVolatilityPointRow({
             <pre
               style={{
                 fontSize: "12px",
-                margin: 0,
-                maxHeight: "200px",
-                overflow: "auto",
               }}
             >
-              {buildVolatilityPointJson(point)}
+              {JSON.stringify(point, null, 2)}
             </pre>
           )}
         </ButtonDialog>

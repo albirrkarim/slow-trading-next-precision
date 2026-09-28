@@ -22,11 +22,7 @@ import {
   getVolume24hRiskColor,
   isLowVolume24h,
 } from "./volume";
-import {
-  buildVolatilityPointJson,
-  simplifyId,
-  VPOINT_LEVEL_COLOR_MAP,
-} from "./utils";
+import { simplifyId, VPOINT_LEVEL_COLOR_MAP } from "./utils";
 import type { RuntimeDashboardState } from "@/lib/system/dashboard";
 import type { VolatilityPoint } from "@/lib/system/types";
 
@@ -225,11 +221,9 @@ export default function LatestVolatilityPointCard({
                 style={{
                   fontSize: "12px",
                   margin: 0,
-                  overflow: "auto",
-                  maxHeight: "200px",
                 }}
               >
-                {buildVolatilityPointJson(point)}
+                {JSON.stringify(point, null, 2)}
               </pre>
             )}
           </>

@@ -34,11 +34,3 @@ export function isVolatilityPointUsedByAccount(
       marker.startsWith(`${normalizedSlug}:`),
   );
 }
-
-/**
- * Serializes a volatility point for the JSON inspector, always exposing the
- * `usedBy` marker array so unused points still document the field.
- */
-export function buildVolatilityPointJson(point: VolatilityPoint): string {
-  return JSON.stringify({ ...point, usedBy: point.usedBy ?? [] }, null, 2);
-}

@@ -1,6 +1,5 @@
 import {
   buildConfiguredCoinTagComposition,
-  buildVolatilityPointJson,
   buildConfiguredCoinTagCompositionGroups,
   countConfiguredVolatilityPointLabels,
   countVolatilityPointLabels,
@@ -41,17 +40,6 @@ describe("latest volatility point volume", () => {
     expect(isVolatilityPointUsedByAccount(legPoint, "main")).toBe(true);
     expect(isVolatilityPointUsedByAccount(point, "second")).toBe(false);
     expect(isVolatilityPointUsedByAccount(point, "")).toBe(false);
-  });
-
-  it("always prints the usedBy marker array in the JSON inspector payload", () => {
-    const used = buildVolatilityPointJson({
-      id: "B_example",
-      usedBy: ["main:MAIN", "main:COUNTER"],
-    } as any);
-    const unused = buildVolatilityPointJson({ id: "B_other" } as any);
-
-    expect(JSON.parse(used).usedBy).toEqual(["main:MAIN", "main:COUNTER"]);
-    expect(JSON.parse(unused).usedBy).toEqual([]);
   });
 
   it("marks only finite 24h volumes below $1M as low volume", () => {
