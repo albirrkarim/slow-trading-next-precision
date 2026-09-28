@@ -28,6 +28,7 @@ import NavbarBalanceSummary from "./NavbarBalanceSummary";
 import NavbarBalanceRefreshButton from "./NavbarBalanceRefreshButton";
 import NavbarInstanceIp from "./NavbarInstanceIp";
 import NavbarStageRuns from "./NavbarStageRuns";
+import NavbarStrategyChip from "./NavbarStrategyChip";
 import NavbarVolatilityThreshold from "./NavbarVolatilityThreshold";
 import SettingsDialog from "./Settings/SettingsDialog";
 import type {
@@ -145,6 +146,14 @@ export function NavbarIdentitySection({
       }}
     >
       <SidebarButton />
+
+      {dashboardState && (
+        <NavbarStrategyChip
+          strategy={
+            configDraft?.management.strategy || dashboardState.config.strategy
+          }
+        />
+      )}
 
       <NavbarInstanceIp snapshot={dashboardState?.instanceIp} />
 
