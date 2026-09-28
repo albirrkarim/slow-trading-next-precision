@@ -28,11 +28,7 @@ import ManualEntryDialog from "../ManualEntryDialog";
 import { calculateSlowWorkerCapacity } from "../worker-capacity";
 import LatestVolatilityPointChartDialog from "./LatestVolatilityPointChartDialog";
 import type { VolatilityPointLabelFrequency } from "./types";
-import {
-  isVolatilityPointUsedByAccount,
-  simplifyId,
-  VPOINT_LEVEL_COLOR_MAP,
-} from "./utils";
+import { simplifyId, VPOINT_LEVEL_COLOR_MAP } from "./utils";
 import VolatilityPointLabelFrequencyBar from "./VolatilityPointLabelFrequencyBar";
 import FundingRateCell from "./FundingRateCell";
 import {
@@ -334,45 +330,52 @@ export default function LatestVolatilityPointRow({
             {moment(point.t).fromNow()}
           </Typography>
         </Tooltip>
-        {enabledAccounts.length > 0 && (
-          <Box
-            aria-label="Account vPoint usage"
-            role="group"
-            sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.75 }}
-          >
-            {enabledAccounts.map((account) => {
-              const used = isVolatilityPointUsedByAccount(
-                point,
-                account.slug,
-              );
-              const status = used ? "used" : "unused";
+        <Box
+          aria-label="vPoint usage markers"
+          role="group"
+          sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.75 }}
+        >
+          {(point.usedBy ?? []).length === 0 && (
+            <Tooltip arrow title="No account has consumed this vPoint.">
+              <Chip
+                aria-label="unused"
+                icon={<RadioButtonUncheckedIcon fontSize="small" />}
+                label="unused"
+                size="small"
+                sx={{ fontSize: "0.7rem", height: 24 }}
+                variant="outlined"
+              />
+            </Tooltip>
+          )}
+          {(point.usedBy ?? []).map((marker) => {
+            const account = enabledAccounts.find(
+              (item) =>
+                marker === item.slug || marker.startsWith(`${item.slug}:`),
+            );
 
-              return (
-                <Tooltip
-                  arrow
-                  key={account.slug}
-                  title={`${account.name} (${account.slug}): this vPoint is ${status} for entry.`}
-                >
-                  <Chip
-                    aria-label={`${account.name}: ${status}`}
-                    color={used ? "success" : "default"}
-                    icon={
-                      used ? (
-                        <CheckCircleOutlineIcon fontSize="small" />
-                      ) : (
-                        <RadioButtonUncheckedIcon fontSize="small" />
-                      )
-                    }
-                    label={`${account.name} · ${status}`}
-                    size="small"
-                    sx={{ fontSize: "0.7rem", height: 24 }}
-                    variant={used ? "filled" : "outlined"}
-                  />
-                </Tooltip>
-              );
-            })}
-          </Box>
-        )}
+            return (
+              <Tooltip
+                arrow
+                key={marker}
+                title={
+                  account
+                    ? `${account.name} consumed this vPoint for entry (${marker}).`
+                    : `${marker} consumed this vPoint for entry.`
+                }
+              >
+                <Chip
+                  aria-label={`used by ${marker}`}
+                  color="success"
+                  icon={<CheckCircleOutlineIcon fontSize="small" />}
+                  label={marker}
+                  size="small"
+                  sx={{ fontSize: "0.7rem", height: 24 }}
+                  variant="filled"
+                />
+              </Tooltip>
+            );
+          })}
+        </Box>
       </TableCell>
 
       <TableCell>
