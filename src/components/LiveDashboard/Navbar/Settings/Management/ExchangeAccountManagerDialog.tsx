@@ -56,14 +56,11 @@ export function getExchangeAccountTypeLabel(
 }
 
 const FUTURES_POSITION_MODE_OPTIONS = [
-  { label: "Unset", value: "unset" },
   { label: "One-way", value: "ONE_WAY" },
   { label: "Hedge", value: "HEDGE" },
 ] satisfies {
   label: string;
-  value:
-    | "unset"
-    | NonNullable<RuntimeAccountConfig["futuresPositionMode"]>;
+  value: NonNullable<RuntimeAccountConfig["futuresPositionMode"]>;
 }[];
 
 function slugFromName(name: string): string {
@@ -340,6 +337,7 @@ export default function ExchangeAccountManagerDialog({
       description: "",
       credentials: { apiKey: "", apiSecret: "" },
       enabled: true,
+      futuresPositionMode: "ONE_WAY",
       trading: structuredClone(template.trading),
       sandbox: {
         initialBalanceUSDT: template.sandbox.initialBalanceUSDT,
@@ -523,8 +521,7 @@ export default function ExchangeAccountManagerDialog({
                           variant="caption"
                         >
                           {getExchangeAccountTypeLabel(account.type)}
-                          {account.futuresPositionMode &&
-                            ` · ${account.futuresPositionMode === "HEDGE" ? "Hedge" : "One-way"}`}
+                          {` · ${account.futuresPositionMode === "HEDGE" ? "Hedge" : "One-way"}`}
                         </Typography>
                         {account.description && (
                           <Typography
@@ -598,18 +595,16 @@ export default function ExchangeAccountManagerDialog({
                         size="small"
                         fullWidth
                         value={
-                          editingExchangeAccount.futuresPositionMode ?? "unset"
+                          editingExchangeAccount.futuresPositionMode ??
+                          "ONE_WAY"
                         }
                         onChange={(event) =>
                           updateExchangeAccount(
                             editingExchangeAccount.slug,
                             (account) => ({
                               ...account,
-                              futuresPositionMode:
-                                event.target.value === "unset"
-                                  ? undefined
-                                  : (event.target
-                                      .value as UnifiedFuturesPositionMode),
+                              futuresPositionMode: event.target
+                                .value as UnifiedFuturesPositionMode,
                               updatedAt: Date.now(),
                             }),
                             { persist: true },
