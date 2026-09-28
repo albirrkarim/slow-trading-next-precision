@@ -320,7 +320,7 @@ export default function DynamicTradeHistoryPage({
         reinitialize,
         exchangeType,
         verbose: true,
-        logCategories: ["debug"],
+        logCategories: [],
       });
       setMarketCapUSDBySymbol(
         initialization.data.data.marketCapUSDBySymbol ?? {},
@@ -342,7 +342,7 @@ export default function DynamicTradeHistoryPage({
         startTime: config.startTime,
         endTime: config.endTime,
         verbose: true,
-        logCategories: ["debug"],
+        logCategories: [],
         exchangeType,
       });
 
