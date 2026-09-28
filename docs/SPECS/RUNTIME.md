@@ -506,6 +506,25 @@ previous memory without doubling runner-cycle RAM.
 
 TC: `PROD:SLOW_RUNTIME_MEMORY_LEAN`
 
+### A.5.3 Sandbox account reset
+
+The dashboard sandbox reset wipes one account's persisted sandbox positions,
+balance memory, and shared-history rows, then additionally strips that
+account's records from the global `strategy.json["sandbox"]` slice — records
+scoped by a `<slug>:…` pair key (closed-leg snapshots, pending closes) or an
+`accountSlug` field (role ledgers) — while other accounts' records and the
+live slice survive.
+
+Because the running engine owns its own in-memory copies, the reset also
+applies the same purge to the live `RuntimeEngine.state` through a serialized
+manual pass — splicing the account's `openPositions`, rebuilding its balance
+summary from the reset memory file, and purging `state.strategy` — so a later
+`persistAccount`/`persistStrategy` flush cannot resurrect the wiped files.
+The in-memory pass is skipped when the engine holds no state or runs in live
+mode.
+
+TC: `PROD:SANDBOX_ACCOUNT_RESET`
+
 ### A.6 Worker capacity and historical entry sequences
 
 The dashboard shows how many equal-sized additional entry workers fit in the

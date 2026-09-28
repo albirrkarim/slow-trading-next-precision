@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import production from "@/lib/production";
 import { systemDashboard } from "@/lib/system/dashboard";
 import runtimeAccounts from "@/lib/system/runtime/accounts";
 import { systemLog } from "@/lib/system/logging";
@@ -36,6 +37,12 @@ export default async function handler(
       account: account.slug,
       initialBalanceUSDT: initialBalance,
     });
+    // PROD:SANDBOX_ACCOUNT_RESET — the account's strategy-owned records
+    // (pending re-entries, pair bookkeeping) are stripped from the shared
+    // per-mode slice, then the live engine's in-memory state is purged so a
+    // later persist cannot resurrect the wiped files.
+    await runtimeStorage.strategy.purgeAccount("sandbox", account.slug);
+    await production.runtime.get().resetSandboxAccount(account.slug);
     res
       .status(200)
       .json(

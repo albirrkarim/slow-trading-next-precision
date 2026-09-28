@@ -7,7 +7,12 @@ import type {
 } from "@/lib/precision/types";
 import { systemLog } from "@/lib/system/logging";
 import { runtimeStages } from "@/lib/system/runtime";
-import { runtimeLogs, runtimeStorage } from "@/lib/system/storage";
+import runtimeAccounts from "@/lib/system/runtime/accounts";
+import {
+  runtimeAccountState,
+  runtimeLogs,
+  runtimeStorage,
+} from "@/lib/system/storage";
 import strategies from "@/lib/strategies";
 import coinManagement from "./coin-management";
 import factoryModule from "./factory";
@@ -220,6 +225,43 @@ class ProductionRuntime {
   /** Returns the mutable state owned by the currently loaded runtime. */
   getState(): RuntimeEngineState | undefined {
     return this.state;
+  }
+
+  /**
+   * Applies a sandbox account reset to the in-memory engine state, serialized
+   * with trading stages. Without this, the next `persistAccount`/`persistStrategy`
+   * flush would write the still-open in-memory positions, balance, and strategy
+   * records back over the wiped files. Skipped until a state exists — the
+   * reset files are already authoritative for the next `createState`.
+   */
+  async resetSandboxAccount(accountSlug: string): Promise<void> {
+    const slug = runtimeAccounts.slug.normalize(accountSlug);
+    if (!slug || !this.state) return;
+    await this.runManual(async (context) => {
+      // A live-mode engine never holds the wiped sandbox positions.
+      if (context.state.mode !== "sandbox") return;
+      for (
+        let index = context.state.openPositions.length - 1;
+        index >= 0;
+        index -= 1
+      ) {
+        if (context.state.openPositions[index]?.account === slug) {
+          context.state.openPositions.splice(index, 1);
+        }
+      }
+      const memory = await runtimeStorage.account.load({
+        accountSlug: slug,
+        mode: "sandbox",
+      });
+      context.state.balance[slug] = runtimeAccountState.buildBalance({
+        balance: memory.balance,
+        positions: [],
+      });
+      context.state.strategy = runtimeStorage.strategy.purgeAccountRecords(
+        context.state.strategy,
+        slug,
+      );
+    });
   }
 
   /** Applies saved account trading settings to the active engine state. */

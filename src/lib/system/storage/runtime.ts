@@ -106,6 +106,51 @@ async function saveStrategy(
   });
 }
 
+/**
+ * Drops one account's records from a strategy-state slice in place. Strategy
+ * bookkeeping scopes records to an account either by a `<slug>:…` pair key
+ * (closed-leg snapshots, pending closes, role ledgers) or by an
+ * `accountSlug` field on the record itself; other accounts' records and
+ * non-record fields like the `v` version tag survive untouched.
+ */
+function purgeAccountRecords(
+  state: unknown,
+  accountSlug: string,
+): unknown {
+  if (!isRecord(state)) return state;
+  for (const value of Object.values(state)) {
+    if (!isRecord(value)) continue;
+    for (const [key, record] of Object.entries(value)) {
+      if (
+        key === accountSlug ||
+        key.startsWith(`${accountSlug}:`) ||
+        (isRecord(record) && record.accountSlug === accountSlug)
+      ) {
+        delete value[key];
+      }
+    }
+  }
+  return state;
+}
+
+/**
+ * Atomically strips one account's records from the persisted strategy slice
+ * of one mode (`strategy.json[mode]`) — used by sandbox reset so a wiped
+ * account's pending re-entries and pair bookkeeping cannot linger. Other
+ * accounts' records and the sibling mode's slice are preserved.
+ */
+async function purgeStrategyAccount(
+  mode: RuntimeMode,
+  accountSlug: string,
+): Promise<void> {
+  await jsonFile.update.atomic(storageFiles.prod.strategy, (raw) => {
+    const file = isRecord(raw) ? raw : {};
+    const slice = file[mode];
+    if (!isRecord(slice)) return file;
+    return { ...file, [mode]: purgeAccountRecords(slice, accountSlug) };
+  });
+}
+
 /** Loads one account's owned positions + balance for one mode. */
 async function loadAccountMode(params: {
   accountSlug: string;
@@ -537,6 +582,8 @@ const runtimeStorage = {
   },
   strategy: {
     load: loadStrategy,
+    purgeAccount: purgeStrategyAccount,
+    purgeAccountRecords,
     save: saveStrategy,
   },
   history: {
