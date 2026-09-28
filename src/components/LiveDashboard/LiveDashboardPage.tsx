@@ -8,7 +8,6 @@ import {
   Button,
   Grid,
   LinearProgress,
-  Stack,
   Typography,
   useMediaQuery,
 } from "@mui/material";
@@ -978,22 +977,7 @@ export default function DynamicTradeHistoryPage({
               </>
             ) : (
               <Grid container spacing={2}>
-                <Grid size={{ xl: 4, lg: 3, md: 6, xs: 12 }}>
-                  <Stack>
-                    <BlackSwanStatusSection
-                      onRefresh={execute}
-                      state={dashboardState}
-                    />
-                    <BinanceCooldownStatusSection
-                      onReset={applyBinanceHealth}
-                      state={dashboardState}
-                    />
-                    <PrecisionTestCaseControls
-                      activeMode={dashboardState.activeMode}
-                    />
-                  </Stack>
-                </Grid>
-                <Grid size={{ xl: 5, lg: 5, md: 6, xs: 12 }}>
+                <Grid size={{ xl: 9, lg: 8, md: 12, xs: 12 }}>
                   <OpenPositions
                     accounts={participatingAccountSlugs}
                     availableTags={coinMetadata.tags.map((tag) => tag.text)}
@@ -1046,6 +1030,18 @@ export default function DynamicTradeHistoryPage({
                     />
 
                     <EntryBlockers />
+
+                    <BlackSwanStatusSection
+                      onRefresh={execute}
+                      state={dashboardState}
+                    />
+                    <BinanceCooldownStatusSection
+                      onReset={applyBinanceHealth}
+                      state={dashboardState}
+                    />
+                    <PrecisionTestCaseControls
+                      activeMode={dashboardState.activeMode}
+                    />
                   </Grid>
                 )}
               </Grid>
