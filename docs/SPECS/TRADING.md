@@ -603,7 +603,12 @@ Setting the minimum to `1` allows entry on absolute level `1`; clearing it
 disables the minimum. Setting the maximum to `0` restricts entry to absolute
 level `0` unless the minimum excludes it.
 
+Saving account trading settings updates the running production/sandbox engine
+state before entry decisions and dashboard diagnostics use the new bounds.
+The saved value `0` stays an active bound without restarting the runtime.
+
 TC: `BOTH:LOW_LEVEL_NO_ACTION_AVERAGING`
+TC: `PROD:ACCOUNT_TRADING_SAVE_RUNTIME_REFRESH`
 
 ### B.3.9 Block entry while a counter vPoint might already be formed
 

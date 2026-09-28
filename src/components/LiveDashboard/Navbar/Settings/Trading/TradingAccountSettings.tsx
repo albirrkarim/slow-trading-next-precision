@@ -5,7 +5,8 @@ import { adaptiveAveraging  } from "@/lib/system/trading";
 import {
     Grid,
     MenuItem,
-    Stack
+    Stack,
+    Typography
 } from "@mui/material";
 
 import SettingsCheckbox from "../Components/SettingsCheckbox";
@@ -63,6 +64,15 @@ export default function TradingAccountSettings({
             <SettingsGroup title="Entry">
                 <Grid container spacing={2}>
                     <Grid size={{ xs: 12 }}>
+                        <Typography color="text.secondary" variant="overline">
+                            Drift Guard
+                        </Typography>
+                    </Grid>
+
+                    <Grid
+                        size={{ xs: 12, md: 6 }}
+                        sx={{ alignItems: "center", display: "flex" }}
+                    >
                         <SettingsCheckbox
                             checked={
                                 tradingConfig.lateEntryVPointPriceDriftEnabled !== false
@@ -114,6 +124,16 @@ export default function TradingAccountSettings({
                             }}
                             info="Optional override of the late-entry price drift cap in percent. Empty keeps the automatic limit (0.5% when the volatility threshold is below 5%, otherwise 1%); 0 blocks any profitable drift. Applies to automatic entries only and is checked when a signal is selected and again before execution."
                         />
+                    </Grid>
+
+                    <Grid size={{ xs: 12 }}>
+                        <Typography
+                            color="text.secondary"
+                            sx={{ pt: 1 }}
+                            variant="overline"
+                        >
+                            Entry Levels
+                        </Typography>
                     </Grid>
 
                     <Grid size={{ xs: 12, md: 6 }}>
@@ -170,6 +190,16 @@ export default function TradingAccountSettings({
                             }}
                             info="Inclusive maximum absolute vPoint level for a new entry. Clear the field to disable this bound. A value of 0 permits only level 0; a maximum below the minimum permits no entries."
                         />
+                    </Grid>
+
+                    <Grid size={{ xs: 12 }}>
+                        <Typography
+                            color="text.secondary"
+                            sx={{ pt: 1 }}
+                            variant="overline"
+                        >
+                            Position Limits
+                        </Typography>
                     </Grid>
 
                     <Grid size={{ xs: 12, md: 6 }}>
@@ -268,6 +298,16 @@ export default function TradingAccountSettings({
                         />
                     </Grid>
 
+                    <Grid size={{ xs: 12 }}>
+                        <Typography
+                            color="text.secondary"
+                            sx={{ pt: 1 }}
+                            variant="overline"
+                        >
+                            Leverage
+                        </Typography>
+                    </Grid>
+
                     <Grid size={{ xs: 12, md: 6 }}>
                         <SettingsInfoField
                             label="Max Leverage"
@@ -315,6 +355,16 @@ export default function TradingAccountSettings({
                             }}
                             info="Forces every futures entry to use this leverage, overriding the engine and Max Leverage values. Set 0 to use the normal calculation. Spot always uses 1x."
                         />
+                    </Grid>
+
+                    <Grid size={{ xs: 12 }}>
+                        <Typography
+                            color="text.secondary"
+                            sx={{ pt: 1 }}
+                            variant="overline"
+                        >
+                            Pairing
+                        </Typography>
                     </Grid>
 
                     <Grid size={{ xs: 12, md: 6 }}>

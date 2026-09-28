@@ -222,6 +222,22 @@ class ProductionRuntime {
     return this.state;
   }
 
+  /** Applies saved account trading settings to the active engine state. */
+  async refreshAccountTrading(): Promise<void> {
+    // PROD:ACCOUNT_TRADING_SAVE_RUNTIME_REFRESH — serialize the update with
+    // trading stages so decisions and diagnostics use the same saved bounds.
+    await this.runManual(async (context) => {
+      const savedAccounts = await runtimeStorage.catalog.accounts.list();
+      const savedBySlug = new Map(
+        savedAccounts.map((account) => [account.slug, account]),
+      );
+      for (const account of context.state.config.accounts) {
+        const saved = savedBySlug.get(account.slug);
+        if (saved) account.trading = structuredClone(saved.trading);
+      }
+    });
+  }
+
   /**
    * Runs an operator-initiated task serialized with the engine's scheduled
    * stages. When the live engine is unavailable — runner disabled or never

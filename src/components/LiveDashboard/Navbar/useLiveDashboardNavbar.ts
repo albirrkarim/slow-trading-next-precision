@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 
 import { endpoints } from "@/components/endpoints";
+import { entryDiagnosticsStore } from "../Feature/use-entry-diagnostics";
 import { systemLog } from "@/lib/system/logging";
 
 import {
@@ -151,6 +152,7 @@ export function useLiveDashboardNavbar({
       setIsConfigDraftDirty(false);
       handleClose?.();
       await onRefresh();
+      await entryDiagnosticsStore.refresh();
     } catch (error: any) {
       systemLog.error(error);
       alert(error.response?.data?.error ?? "Save config failed");

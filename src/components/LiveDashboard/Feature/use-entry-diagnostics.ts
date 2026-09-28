@@ -50,6 +50,9 @@ async function request(): Promise<void> {
   return inFlight;
 }
 
+/** Re-fetches the snapshot shared by entry cards and the decisions panel. */
+export const entryDiagnosticsStore = { refresh: request } as const;
+
 /** Shared entry-diagnostics snapshot with one fetch behind all subscribers. */
 export function useEntryDiagnostics() {
   const [local, setLocal] = useState(store);
@@ -63,7 +66,7 @@ export function useEntryDiagnostics() {
     };
   }, []);
 
-  const refresh = useCallback(() => request(), []);
+  const refresh = useCallback(() => entryDiagnosticsStore.refresh(), []);
 
   return {
     error: local.error,

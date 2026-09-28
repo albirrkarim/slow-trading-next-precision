@@ -10,7 +10,7 @@ export default async function handler(
   res: NextApiResponse,
 ) {
   try {
-    await production.runtime.get();
+    const runtime = production.runtime.get();
 
     if (req.method === "GET") {
       const accounts = await runtimeStorage.catalog.accounts.list();
@@ -76,6 +76,7 @@ export default async function handler(
       const accounts = await runtimeStorage.catalog.accounts.save(
         body.accounts,
       );
+      await runtime.refreshAccountTrading();
       for (const removed of removedAccounts) {
         await runtimeStorage.catalog.account.deleteState(removed.slug);
       }
