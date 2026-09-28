@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
-import { Button } from "@mui/material";
+import { Alert, Box, Button, CircularProgress } from "@mui/material";
 
 import ButtonDialog from "@/components/ui/ButtonDialog";
 import DailyPnlCalendarDialog, {
@@ -13,14 +13,24 @@ import DailyPnlCalendarDialog, {
 import type { ConfigDraft } from "@/components/settings/settings-types";
 import type { Position } from "@/lib/system/trading";
 
-export default function BacktestDailyPnlCalendar(props: {
-  positions: Position[];
+import type { LazyArtifact } from "./use-backtest-artifacts";
+
+/** Dialog body — mounts only when the calendar opens — loads positions. */
+function CalendarContent({
+  positions,
+  settings,
+}: {
+  positions: LazyArtifact<Position[]>;
   settings?: ConfigDraft;
 }) {
-  const { positions, settings } = props;
+  const { ensure } = positions;
+  useEffect(() => {
+    void ensure();
+  }, [ensure]);
+
   const history = useMemo(
-    () => positions.map(toDailyPnlCalendarTrade),
-    [positions],
+    () => (positions.data ?? []).map(toDailyPnlCalendarTrade),
+    [positions.data],
   );
   const startingBalanceUSDT = useMemo(
     () =>
@@ -37,6 +47,33 @@ export default function BacktestDailyPnlCalendar(props: {
     () => buildTradePnlBalanceSnapshots({ history, startingBalanceUSDT }),
     [history, startingBalanceUSDT],
   );
+
+  if (positions.error) {
+    return <Alert severity="error">{positions.error}</Alert>;
+  }
+  if (!positions.data) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+        <CircularProgress size={24} />
+      </Box>
+    );
+  }
+
+  return (
+    <DailyPnlCalendarDialog
+      description="Closed positions from this backtest run."
+      history={history}
+      balanceSnapshots={balanceSnapshots}
+      startingBalanceUSDT={startingBalanceUSDT}
+    />
+  );
+}
+
+export default function BacktestDailyPnlCalendar(props: {
+  positions: LazyArtifact<Position[]>;
+  settings?: ConfigDraft;
+}) {
+  const { positions, settings } = props;
 
   return (
     <ButtonDialog
@@ -56,12 +93,7 @@ export default function BacktestDailyPnlCalendar(props: {
       )}
     >
       {() => (
-        <DailyPnlCalendarDialog
-          description="Closed positions from this backtest run."
-          history={history}
-          balanceSnapshots={balanceSnapshots}
-          startingBalanceUSDT={startingBalanceUSDT}
-        />
+        <CalendarContent positions={positions} settings={settings} />
       )}
     </ButtonDialog>
   );

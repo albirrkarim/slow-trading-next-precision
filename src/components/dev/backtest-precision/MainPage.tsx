@@ -29,6 +29,7 @@ import BacktestBalanceChart from "./BalanceChart";
 import BacktestDailyPnlCalendar from "./DailyPnlCalendar";
 import Leaderboards from "./Leaderboards";
 import type { BacktestConfig } from "./types";
+import { useBacktestArtifacts } from "./use-backtest-artifacts";
 import VPointsResult from "./VPointsResult";
 
 const BACKTEST_KEY = "precision";
@@ -83,6 +84,7 @@ export default function DynamicTradeAnalytics() {
     );
 
     const [data, setData] = useState<BacktestPrecisionResponse | null>(null);
+    const artifacts = useBacktestArtifacts(data?.cacheKey);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [savingLeaderboard, setSavingLeaderboard] = useState(false);
@@ -202,14 +204,6 @@ export default function DynamicTradeAnalytics() {
                     backtestConfig.name ||
                     backtestConfig.description ||
                     backtestConfig.range,
-                result: data.cachePath
-                    ? undefined
-                    : {
-                          balanceSnapshots: data.balanceSnapshots,
-                          exchangeType: data.exchangeType,
-                          positions: data.positions,
-                          vPointsMap: data.vPointsMap,
-                      },
             });
             setSaveNotice({ severity: "success", text: "Saved to leaderboards." });
         } catch (e) {
@@ -386,19 +380,24 @@ export default function DynamicTradeAnalytics() {
             {data && (
                 <Box sx={{ m: 1 }}>
                     <BacktestDailyPnlCalendar
-                        positions={data.positions}
+                        positions={artifacts.positions}
                         settings={backtestConfig.settings}
                     />
-                    <BacktestBalanceChart
-                        accounts={backtestConfig.settings?.accounts}
-                        snapshots={data.balanceSnapshots}
-                    />
+                    {data.counts.snapshots > 0 && (
+                        <BacktestBalanceChart
+                            accounts={backtestConfig.settings?.accounts}
+                            snapshots={artifacts.snapshots}
+                        />
+                    )}
                 </Box>
             )}
             {data && (
                 <VPointsResult
                     accounts={backtestConfig.settings?.accounts}
-                    result={data}
+                    artifacts={artifacts}
+                    counts={data.counts}
+                    exchangeType={data.exchangeType}
+                    summary={data.summary}
                 />
             )}
 

@@ -60,6 +60,8 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
 
   // B. Reuse the saved result unless a freshness flag forces a recompute.
   //    `upToDateKlines` also refreshes the candle dataset inside the run.
+  //    The response stays slim — artifact fields are served lazily through
+  //    the detail endpoint — so a cache hit only needs meta.json.
   const useCache =
     (params as { mode?: string }).mode !== "precision-checker";
   const cacheKey = backtestResultCache.key({
@@ -70,11 +72,12 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
   });
   const cachePath = backtestResultCache.dirFor(cacheKey);
   if (useCache && !upToDateDecisionBacktest && !upToDateKlines) {
-    const cached = await backtestResultCache.read(cacheKey);
+    const cached = await backtestResultCache.readMeta(cacheKey);
     if (cached) {
       const body: BacktestPrecisionResponse = {
         ...cached,
         cached: true,
+        cacheKey,
         cachePath,
       };
       res.json(body);
@@ -82,8 +85,26 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
     }
   }
 
+  // Non-cached callers (precision-checker replays) keep the historical
+  // full-result response and never touch the shared cache — their
+  // `initialState` is not part of the cache key.
+  if (!useCache) {
+    const full = await precisionBacktest({
+      ...params,
+      range,
+      endTime,
+      startTime,
+      upToDateKlines,
+      upToDateDecisionBacktest,
+      verbose,
+    });
+    res.json({ ...full, cacheKey, cachePath });
+    return;
+  }
+
   const result = await precisionBacktest({
     ...params,
+    artifacts: { dir: cachePath },
     range,
     endTime,
     startTime,
@@ -92,26 +113,26 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
     verbose,
   });
 
-  const body: BacktestPrecisionResponse = { ...result, cached: false };
-  if (useCache) {
-    try {
-      await backtestResultCache.write({
-        key: cacheKey,
-        params: {
-          ...params,
-          endTime,
-          range,
-          startTime,
-          upToDateDecisionBacktest,
-          upToDateKlines,
-          verbose,
-        },
-        result,
-      });
-      body.cachePath = cachePath;
-    } catch (error) {
-      console.error("[backtest-precision] Failed to persist result", error);
-    }
+  const body: BacktestPrecisionResponse = {
+    counts: result.counts,
+    exchangeType: result.exchangeType,
+    summary: result.summary,
+    cached: false,
+    cacheKey,
+    cachePath,
+  };
+  try {
+    await backtestResultCache.finalize(cacheKey, result, {
+      ...params,
+      endTime,
+      range,
+      startTime,
+      upToDateDecisionBacktest,
+      upToDateKlines,
+      verbose,
+    });
+  } catch (error) {
+    console.error("[backtest-precision] Failed to persist result", error);
   }
 
   res.json(body);

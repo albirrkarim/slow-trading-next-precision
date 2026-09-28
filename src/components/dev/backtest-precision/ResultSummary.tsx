@@ -21,75 +21,20 @@ import {
 
 import { DEFAULT_COLORS } from "@/lib/system/utils/ui/colors";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
-import type { BacktestBalanceSnapshot } from "@/lib/dev/backtestPrecision/backtest/backtest-precision-types";
-import type { Position } from "@/lib/system/trading";
+import type {
+    BacktestExitBuckets,
+    BacktestReasonCount,
+    BacktestRunSummary,
+} from "@/lib/dev/backtestPrecision/backtest/backtest-precision-types";
 
-interface ExitReasonSlice {
-    [key: string]: number | string;
-    count: number;
-    reason: string;
-}
+type ExitReasonSlice = BacktestReasonCount;
 
-/** Counts closed positions by exit reason within one pnl-sign bucket. */
-function countExitReasons(
-    positions: Position[],
-    profit: boolean,
-): ExitReasonSlice[] {
-    const counts = new Map<string, number>();
-    for (const position of positions) {
-        if (!position.closed) continue;
-        const isProfit = (position.pnl.netUsdt ?? 0) > 0;
-        if (isProfit !== profit) continue;
-        const reason = position.closed.reason || "UNKNOWN";
-        counts.set(reason, (counts.get(reason) ?? 0) + 1);
-    }
-    return Array.from(counts, ([reason, count]) => ({ count, reason })).sort(
-        (left, right) =>
-            right.count - left.count || left.reason.localeCompare(right.reason),
-    );
-}
-
-/** Counts closed positions by coin symbol within one pnl-sign bucket. */
-function countSymbols(
-    positions: Position[],
-    profit: boolean,
-): ExitReasonSlice[] {
-    const counts = new Map<string, number>();
-    for (const position of positions) {
-        if (!position.closed) continue;
-        const isProfit = (position.pnl.netUsdt ?? 0) > 0;
-        if (isProfit !== profit) continue;
-        const symbol = position.symbol.replace(/_USDT$/, "").toUpperCase();
-        counts.set(symbol, (counts.get(symbol) ?? 0) + 1);
-    }
-    return Array.from(counts, ([reason, count]) => ({ count, reason })).sort(
-        (left, right) =>
-            right.count - left.count || left.reason.localeCompare(right.reason),
-    );
-}
-
-/** Realized per-account pnl from the first to the last balance snapshot. */
-function summarizeAccounts(
-    snapshots: Record<string, BacktestBalanceSnapshot[]>,
-) {
-    return Object.entries(snapshots).map(([slug, list]) => {
-        const first = list[0];
-        const last = list[list.length - 1];
-        const start =
-            first && first.startingBalance > 0
-                ? first.startingBalance
-                : (first?.total ?? 0);
-        const end = last?.total ?? start;
-        const pnlUsdt = end - start;
-        return {
-            slug,
-            start,
-            end,
-            pnlUsdt,
-            gainPct: start > 0 ? (pnlUsdt / start) * 100 : null,
-        };
-    });
-}
+const EMPTY_BUCKETS: BacktestExitBuckets = {
+    loss: [],
+    lossCoins: [],
+    profit: [],
+    profitCoins: [],
+};
 
 function ExitReasonPie(props: { data: ExitReasonSlice[]; title: string }) {
     const { data, title } = props;
@@ -177,13 +122,14 @@ function ExitReasonPie(props: { data: ExitReasonSlice[]; title: string }) {
 /**
  * Backtest outcome summary: per-account realized PNL against the starting
  * balance, plus exit-reason pie charts split into profit and loss buckets.
+ * Aggregates arrive precomputed with the run response — no position arrays
+ * are needed in the client.
  */
 export default function BacktestResultSummary(props: {
     accounts?: Array<{ name?: string; slug: string }>;
-    positions: Position[];
-    snapshots: Record<string, BacktestBalanceSnapshot[]>;
+    summary: BacktestRunSummary;
 }) {
-    const { accounts, positions, snapshots } = props;
+    const { accounts, summary } = props;
     const nameBySlug = useMemo(
         () =>
             new Map(
@@ -191,20 +137,19 @@ export default function BacktestResultSummary(props: {
             ),
         [accounts],
     );
-    const rows = useMemo(() => summarizeAccounts(snapshots), [snapshots]);
+    const rows = summary.accounts;
 
-    /** Wins/losses per account from closed positions only. */
-    const winLossByAccount = useMemo(() => {
-        const map = new Map<string, { wins: number; losses: number }>();
-        for (const position of positions) {
-            if (!position.closed) continue;
-            const entry = map.get(position.account) ?? { wins: 0, losses: 0 };
-            if ((position.pnl.netUsdt ?? 0) > 0) entry.wins += 1;
-            else entry.losses += 1;
-            map.set(position.account, entry);
-        }
-        return map;
-    }, [positions]);
+    /** Wins/losses per account from the tracked run aggregates. */
+    const winLossByAccount = useMemo(
+        () =>
+            new Map(
+                summary.accounts.map((row) => [
+                    row.slug,
+                    { wins: row.wins, losses: row.losses },
+                ]),
+            ),
+        [summary],
+    );
 
     const totals = useMemo(() => {
         const winLoss = { wins: 0, losses: 0 };
@@ -224,33 +169,28 @@ export default function BacktestResultSummary(props: {
         };
     }, [rows, winLossByAccount]);
 
-    // Account slugs in configured order, then any extras found on positions.
+    // Account slugs in configured order, then any extras seen in the run.
     const accountSlugs = useMemo(() => {
-        const seen = new Set(positions.map((position) => position.account));
+        const seen = new Set([
+            ...summary.accounts.map((row) => row.slug),
+            ...Object.keys(summary.exits),
+        ]);
         const ordered = (accounts ?? [])
             .map((account) => account.slug)
             .filter((slug) => seen.delete(slug));
         return [...ordered, ...seen];
-    }, [accounts, positions]);
+    }, [accounts, summary]);
 
     const slicesByAccount = useMemo(
         () =>
-            accountSlugs.map((slug) => {
-                const own = positions.filter(
-                    (position) => position.account === slug,
-                );
-                return {
-                    slug,
-                    profit: countExitReasons(own, true),
-                    loss: countExitReasons(own, false),
-                    profitCoins: countSymbols(own, true),
-                    lossCoins: countSymbols(own, false),
-                };
-            }),
-        [accountSlugs, positions],
+            accountSlugs.map((slug) => ({
+                slug,
+                ...(summary.exits[slug] ?? EMPTY_BUCKETS),
+            })),
+        [accountSlugs, summary],
     );
 
-    if (rows.length === 0 && positions.every((position) => !position.closed)) {
+    if (rows.length === 0 && accountSlugs.length === 0) {
         return null;
     }
 

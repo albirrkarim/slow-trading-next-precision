@@ -2,7 +2,11 @@ import type {
   BacktestTestCase,
   PrecisionRuntimeSnapshot,
 } from "@/lib/system/runtime";
-import type { BacktestPrecisionResult } from "../backtest/backtest-precision-types";
+import type {
+  BacktestRunCounts,
+  BacktestRunSummary,
+} from "../backtest/backtest-precision-types";
+import type { ExchangeType } from "@/lib/system/types";
 
 export type {
   BacktestTestCase,
@@ -25,14 +29,19 @@ export interface BacktestPrecisionParams extends BacktestTestCase {
 }
 
 /**
- * POST /api/dev/backtest-precision response body. The result fields are the
- * same shape persisted under `cachePath`; the envelope adds cache metadata
- * for debugging. `cachePath` is omitted for precision-checker replays and
- * when persisting the result failed.
+ * POST /api/dev/backtest-precision response body. Runs stream their artifact
+ * arrays (positions, vPoints, balance snapshots) into chunked part files
+ * under `cachePath`, so the body carries only aggregates and cache metadata;
+ * the UI loads each field lazily through /api/dev/backtest-precision/detail.
  */
-export interface BacktestPrecisionResponse extends BacktestPrecisionResult {
+export interface BacktestPrecisionResponse {
+  exchangeType: ExchangeType;
+  counts: BacktestRunCounts;
+  summary: BacktestRunSummary;
   /** True when the body was served from the saved result cache. */
   cached?: boolean;
+  /** Stable key identifying the run's artifact directory. */
+  cacheKey?: string;
   /** Absolute path of the cache directory holding this result's artifacts. */
   cachePath?: string;
 }

@@ -1,20 +1,31 @@
 import { createHash } from "crypto";
 import fs from "fs-extra";
 import path from "path";
-import { jsonFile } from "@/lib/system/storage";
 import sanitize from "@/lib/system/storage/sanitize";
-import type { ExchangeType } from "@/lib/system/types";
-import type { BacktestPrecisionParams } from "./precision-api-types";
-import type { BacktestPrecisionResult } from "../backtest/backtest-precision-types";
+import type { ExchangeType, VolatilityPoint } from "@/lib/system/types";
+import type {
+  BacktestBalanceSnapshot,
+  BacktestChunkedResult,
+  BacktestPrecisionResult,
+  BacktestRunCounts,
+  BacktestRunSummary,
+} from "../backtest/backtest-precision-types";
+import backtestArtifacts from "../backtest/artifacts";
 
-const CACHE_VERSION = 3;
+/**
+ * Cache layout version. v4 streams artifacts into fixed-size part files
+ * (positions/, vpoints/<symbol>/, snapshots/<slug>/) plus meta.json; v3 used
+ * monolithic field files. The version feeds the key so old entries miss and
+ * recompute; `read`/`readField` still understand v3 for saved cachePaths.
+ */
+const CACHE_VERSION = 4;
+const CHUNKED_LAYOUT = 4;
 
 // Local-only cache — `storage/persistent` syncs between instances, so
 // results live under the gitignored `storage/cache/` next to `datasets/`.
-// Layout: backtest-precision/<hash>/<result key>.json + meta.json.
 const RESULTS_DIR = path.resolve("storage/cache/backtest-precision");
 
-const RESULT_FIELDS = [
+const LEGACY_FIELDS = [
   "balanceSnapshots",
   "positions",
   "vPointsMap",
@@ -22,9 +33,12 @@ const RESULT_FIELDS = [
 
 interface BacktestResultCacheMeta {
   createdAt: number;
-  exchangeType: ExchangeType;
+  exchangeType?: ExchangeType;
+  counts?: BacktestRunCounts;
+  summary?: BacktestRunSummary;
+  parts?: unknown;
   /** Effective request params with credential values masked out. */
-  params: Record<string, unknown>;
+  params?: Record<string, unknown>;
   v: number;
 }
 
@@ -34,6 +48,8 @@ interface BacktestResultCacheIdentity {
   range: string;
   startTime?: number;
 }
+
+type BacktestDetailField = "positions" | "vpoints" | "snapshots";
 
 /** Serializes with sorted object keys so hashing ignores input field order. */
 function stableStringify(value: unknown): string {
@@ -74,28 +90,73 @@ function key(identity: BacktestResultCacheIdentity): string {
     .digest("hex");
 }
 
-/** Rebuilds the saved result from its per-key files, or null on miss/corruption. */
+async function readMetaFile(dir: string): Promise<BacktestResultCacheMeta | null> {
+  try {
+    return (await fs.readJson(path.join(dir, "meta.json"))) as BacktestResultCacheMeta;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Reads only meta.json — never the artifact parts — so a cache hit stays
+ * cheap regardless of result size. Returns null for missing entries and for
+ * older layout versions, which recompute instead.
+ */
+async function readMeta(cacheKey: string): Promise<{
+  counts: BacktestRunCounts;
+  exchangeType: ExchangeType;
+  summary: BacktestRunSummary;
+} | null> {
+  const meta = await readMetaFile(cacheDir(cacheKey));
+  if (meta?.v !== CHUNKED_LAYOUT) return null;
+  if (!meta.exchangeType || !meta.counts || !meta.summary) return null;
+  return {
+    counts: meta.counts,
+    exchangeType: meta.exchangeType,
+    summary: meta.summary,
+  };
+}
+
+/**
+ * Materializes the full result — chunked dirs concatenate part files,
+ * legacy dirs read the monolithic field files. Intended for one-off server
+ * consumers (leaderboard metrics), not the per-request UI path.
+ */
 async function read(
   cacheKey: string,
 ): Promise<BacktestPrecisionResult | null> {
   const dir = cacheDir(cacheKey);
+  const meta = await readMetaFile(dir);
+  // Parts exist even when a run died before meta.json was written.
+  const chunked =
+    meta?.v === CHUNKED_LAYOUT ||
+    (await fs.pathExists(path.join(dir, "positions")));
+
   try {
-    const meta = (await fs.readJson(
-      path.join(dir, "meta.json"),
-    )) as BacktestResultCacheMeta;
-    if (meta?.v !== CACHE_VERSION || !meta.exchangeType) {
-      return null;
+    if (chunked) {
+      const [positions, vPointsMap, balanceSnapshots] = await Promise.all([
+        backtestArtifacts.read.positions(dir),
+        backtestArtifacts.read.vpoints(dir),
+        backtestArtifacts.read.snapshots(dir),
+      ]);
+      return {
+        balanceSnapshots:
+          balanceSnapshots as Record<string, BacktestBalanceSnapshot[]>,
+        exchangeType: meta?.exchangeType ?? "binance",
+        positions,
+        vPointsMap: vPointsMap as Record<string, VolatilityPoint[]>,
+      };
     }
 
+    if (meta?.v !== 3 || !meta.exchangeType) return null;
     const result = {
       exchangeType: meta.exchangeType,
     } as Record<keyof BacktestPrecisionResult, unknown>;
-    for (const field of RESULT_FIELDS) {
+    for (const field of LEGACY_FIELDS) {
       result[field] = await fs.readJson(path.join(dir, `${field}.json`));
     }
-    if (!Array.isArray(result.positions)) {
-      return null;
-    }
+    if (!Array.isArray(result.positions)) return null;
     return result as unknown as BacktestPrecisionResult;
   } catch {
     return null;
@@ -103,34 +164,73 @@ async function read(
 }
 
 /**
- * Persists one result key per file so each artifact is inspectable alone.
- * `meta.json` records the effective request params — the full inference input
- * — with credential values masked, so a cached run can be reproduced and
- * debugged without re-deriving what produced it.
+ * Writes meta.json after a run already streamed its artifacts into the
+ * directory — no result field is re-serialized here. Records the effective
+ * request params with credential values masked so a cached run can be
+ * reproduced and debugged.
  */
-async function write(params: {
-  key: string;
-  params: BacktestPrecisionParams;
-  result: BacktestPrecisionResult;
-}): Promise<void> {
-  const dir = cacheDir(params.key);
-  for (const field of RESULT_FIELDS) {
-    await jsonFile.write.atomic(
-      path.join(dir, `${field}.json`),
-      params.result[field],
-    );
-  }
-
+async function finalize(
+  cacheKey: string,
+  result: BacktestChunkedResult,
+  params: Record<string, unknown>,
+): Promise<void> {
   // `initialState` is a full runtime snapshot — far too large for meta, and
   // precision-checker replays never reach this writer anyway.
-  const { initialState: _initialState, ...requestParams } = params.params;
+  const { initialState: _initialState, ...requestParams } = params;
   const meta: BacktestResultCacheMeta = {
+    counts: result.counts,
     createdAt: Date.now(),
-    exchangeType: params.result.exchangeType,
+    exchangeType: result.exchangeType,
     params: sanitize.maskSecrets(requestParams) as Record<string, unknown>,
-    v: CACHE_VERSION,
+    parts: result.parts,
+    summary: result.summary,
+    v: CHUNKED_LAYOUT,
   };
-  await fs.outputJson(path.join(dir, "meta.json"), meta, { spaces: 2 });
+  await fs.outputJson(path.join(cacheDir(cacheKey), "meta.json"), meta, {
+    spaces: 2,
+  });
+}
+
+/**
+ * Serves one artifact field for the lazy detail endpoint. `name` scopes
+ * vpoints to a symbol and snapshots to an account slug. Legacy (v3) dirs
+ * answer from their monolithic field files.
+ */
+async function readField(
+  cacheKey: string,
+  field: BacktestDetailField,
+  name?: string,
+): Promise<unknown> {
+  const dir = cacheDir(cacheKey);
+  if (!(await fs.pathExists(dir))) return null;
+  const meta = await readMetaFile(dir);
+  const chunked =
+    meta?.v === CHUNKED_LAYOUT ||
+    (await fs.pathExists(path.join(dir, "positions")));
+
+  try {
+    if (chunked) {
+      if (field === "positions") return backtestArtifacts.read.positions(dir);
+      if (field === "vpoints") return backtestArtifacts.read.vpoints(dir, name);
+      return backtestArtifacts.read.snapshots(dir, name);
+    }
+
+    const legacyFile = (legacyField: keyof BacktestPrecisionResult) =>
+      path.join(dir, `${legacyField}.json`);
+    if (field === "positions") {
+      const file = legacyFile("positions");
+      return (await fs.pathExists(file)) ? fs.readJson(file) : null;
+    }
+    const mapFile =
+      field === "vpoints"
+        ? legacyFile("vPointsMap")
+        : legacyFile("balanceSnapshots");
+    if (!(await fs.pathExists(mapFile))) return null;
+    const map = (await fs.readJson(mapFile)) as Record<string, unknown>;
+    return name ? (map[name] ?? []) : map;
+  } catch {
+    return null;
+  }
 }
 
 const backtestResultCache = {
@@ -138,9 +238,11 @@ const backtestResultCache = {
     return RESULTS_DIR;
   },
   dirFor,
+  finalize,
   key,
   read,
-  write,
+  readField,
+  readMeta,
 } as const;
 
 export default backtestResultCache;

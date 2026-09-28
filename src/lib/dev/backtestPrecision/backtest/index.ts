@@ -12,25 +12,43 @@ import pairAction from "@/lib/system/trading/pair-action";
 import tradingExit from "@/lib/system/trading/exit";
 import strategies from "@/lib/strategies";
 import type { BacktestPrecisionParams } from "../api/precision-api-types";
+import backtestArtifacts from "./artifacts";
+import type {
+  BacktestArtifactTarget,
+  BacktestChunkedResult,
+  BacktestPrecisionResult,
+} from "./backtest-precision-types";
 import { preparePrecisionDataset } from "./data";
+import backtestStats from "./stats";
 import {
   createInitialBalance,
   createInitialVPointsMap,
   createProgressLogger,
   snapshotAccountBalances,
 } from "./utils";
-import type { BacktestPrecisionResult } from "./backtest-precision-types";
 
 const BACKTEST_ENTRY_CUTOFF_MS = 4 * 24 * 60 * 60 * 1000;
 const VPOINT_WARMUP_MS = 2 * 30 * 24 * 60 * 60_000;
 
 interface PrecisionBacktestParams extends BacktestPrecisionParams {
   mode?: "backtest" | "precision-checker";
+  /**
+   * Set by the API layer (never read from the request body): streams result
+   * artifacts to fixed-size part files so long runs retain only the current
+   * chunk in memory instead of every closed position, vPoint, and snapshot.
+   */
+  artifacts?: BacktestArtifactTarget;
 }
 
+export function precisionBacktest(
+  params: PrecisionBacktestParams & { artifacts: BacktestArtifactTarget },
+): Promise<BacktestChunkedResult>;
+export function precisionBacktest(
+  params: PrecisionBacktestParams,
+): Promise<BacktestPrecisionResult>;
 export async function precisionBacktest(
   params: PrecisionBacktestParams,
-): Promise<BacktestPrecisionResult> {
+): Promise<BacktestChunkedResult | BacktestPrecisionResult> {
   // Precision checker replays a recorded production window, so entries must
   // be allowed all the way to the end to match what production did.
   const isPrecisionChecker = params.mode === "precision-checker";
@@ -80,10 +98,29 @@ export async function precisionBacktest(
           datasetStartTime,
           currentTime,
         );
+  const spool = params.artifacts
+    ? backtestArtifacts.spool.create(
+        params.artifacts.dir,
+        params.artifacts.chunkSize,
+      )
+    : null;
+  const stats = backtestStats.tracker.create();
+
   // The engine trims state.vPointsMap to the same recent window production
   // uses; the full map returned to callers is rebuilt from this untouched
-  // seed plus every point reported through `onNewVPoint`.
-  const initialVPointsMap = structuredClone(vPointsMap);
+  // seed plus every point reported through `onNewVPoint`. A chunked run
+  // streams the seed to disk before the engine mutates the working map.
+  if (spool) {
+    for (const [symbol, points] of Object.entries(vPointsMap)) {
+      for (const point of points) {
+        await spool.pushVPoint(symbol, point);
+        stats.onVPoint();
+      }
+    }
+  }
+  const initialVPointsMap: Record<string, VolatilityPoint[]> = spool
+    ? {}
+    : structuredClone(vPointsMap);
   const detectedVPoints: Record<string, VolatilityPoint[]> = {};
 
   const state: RuntimeEngineState = {
@@ -114,12 +151,17 @@ export async function precisionBacktest(
   let clockTime = state.currentTime;
   const history: RuntimeEngineState["openPositions"] = [];
   const balanceSnapshots: BacktestPrecisionResult["balanceSnapshots"] = {};
-  const captureBalance = () => {
+  const captureBalance = async () => {
     const snapshots = snapshotAccountBalances(
       state.balance,
       state.currentTime,
     );
     for (const [slug, snapshot] of Object.entries(snapshots)) {
+      stats.onSnapshot(slug, snapshot);
+      if (spool) {
+        await spool.pushSnapshot(slug, snapshot);
+        continue;
+      }
       const list = (balanceSnapshots[slug] ??= []);
       const last = list[list.length - 1];
       if (last && last.t === snapshot.t) {
@@ -129,11 +171,11 @@ export async function precisionBacktest(
       }
     }
   };
-  captureBalance();
+  await captureBalance();
   const logProgress = createProgressLogger(
     clockTime,
     endTime,
-    () => history.length,
+    () => stats.counts().closedPositions,
   );
   logProgress(clockTime);
 
@@ -182,7 +224,7 @@ export async function precisionBacktest(
             : decision.type === "exit"
               ? await tradingExit.execute(context, decision)
               : null;
-      captureBalance();
+      await captureBalance();
       return executed;
     },
     // BTEST:PAIR_ENTRY_SIMULATED_ATOMIC — simulated legs never touch an
@@ -205,13 +247,23 @@ export async function precisionBacktest(
           (leg) => leg.blockReason,
         )?.blockReason;
       }
-      captureBalance();
+      await captureBalance();
       return filled;
     },
     onExit: async (position) => {
+      stats.onExit(position);
+      if (spool) {
+        await spool.pushPosition(position);
+        return;
+      }
       history.push(position);
     },
     onNewVPoint: async (symbol, newVPoint) => {
+      stats.onVPoint();
+      if (spool) {
+        await spool.pushVPoint(symbol, newVPoint);
+        return;
+      }
       (detectedVPoints[symbol] ??= []).push(newVPoint);
     },
     onNotif: () => true,
@@ -224,7 +276,21 @@ export async function precisionBacktest(
   );
   const engine = new RuntimeEngine(state, adapter, strategy);
   await engine.start();
-  captureBalance();
+  await captureBalance();
+
+  if (spool) {
+    for (const position of state.openPositions) {
+      stats.onOpen();
+      await spool.pushPosition(position);
+    }
+    const parts = await spool.finalize();
+    return {
+      counts: stats.counts(),
+      exchangeType: params.config.management.exchangeType,
+      parts,
+      summary: stats.summary(),
+    };
+  }
 
   const resultVPointsMap = Object.fromEntries(
     [
