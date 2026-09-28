@@ -4,9 +4,15 @@ Sandbox entry must also send this notification, with the notification subject pr
 
 TC: `PROD:NOTIF_ENTRY`
 
-- Entry Failed: Sent when SLOW wants to enter but order execution or validation fails.
+- Entry Failed: Sent only when real execution fails — an exchange rejection,
+  order placement, leverage setup, or fill error. A decision refused by an
+  entry gate (funding plan, late-entry drift, minimum price, zero resolved
+  margin, or a zero-sized exchange quantity) is a skip, not a failure: it
+  sends no notification and writes no error log. The blocking reason stays
+  visible through the dashboard entry diagnostics.
 
 TC: `PROD:NOTIF_ENTRY_FAILED`
+TC: `BOTH:ENTRY_GATE_SKIP_NO_NOTIF`
 
 - Exit: Sent when SLOW successfully closes a position.
 

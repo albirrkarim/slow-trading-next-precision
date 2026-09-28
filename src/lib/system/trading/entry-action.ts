@@ -293,17 +293,29 @@ export interface EntryFill {
   t: number;
 }
 
+/** A plan attempt: the executable plan plus the gate reason when blocked. */
+export interface EntryPlanAttempt {
+  blockReason?: string;
+  plan: EntryPlan | null;
+}
+
 /**
  * Computes the entry funding plan for an approved decision without executing.
- * Both simulated fills and live order placement share this plan.
+ * Both simulated fills and live order placement share this plan. When the
+ * plan cannot be built, `blockReason` names the gate that stopped it.
  */
-function buildPlan(
+function planAttempt(
   context: RuntimeContext,
   decision: RuntimeEntryDecision,
-): EntryPlan | null {
+): EntryPlanAttempt {
   const symbol = decision.symbol.toUpperCase();
   const mark = getMark(context, symbol);
-  if (!mark) return null;
+  if (!mark) {
+    return {
+      blockReason: `No valid mark price for ${symbol}; entry skipped.`,
+      plan: null,
+    };
+  }
 
   const config = getEffectiveConfig(context, decision.accountSlug);
   const { balance, spendable } = getSpendableBalance(
@@ -325,12 +337,12 @@ function buildPlan(
       price: mark.price,
     })
   ) {
-    systemLog.info(
+    const reason =
       `Entry blocked because ${symbol}'s latest price ${mark.price} USDT ` +
-        `is below the configured coin-management minimum of ` +
-        `${autoRemoveMinPrice} USDT.`,
-    );
-    return null;
+      `is below the configured coin-management minimum of ` +
+      `${autoRemoveMinPrice} USDT.`;
+    systemLog.info(reason);
+    return { blockReason: reason, plan: null };
   }
 
   // BOTH:LATE_ENTRY_VPOINT_PRICE_DRIFT_PCT — final execution check on the
@@ -345,8 +357,9 @@ function buildPlan(
       vPointPrice: signal.p,
     });
     if (drift.blocked) {
-      systemLog.debug(drift.reason ?? "Entry blocked by late-entry drift.");
-      return null;
+      const reason = drift.reason ?? "Entry blocked by late-entry drift.";
+      systemLog.debug(reason);
+      return { blockReason: reason, plan: null };
     }
   }
 
@@ -357,7 +370,14 @@ function buildPlan(
   });
   const feeRate = getFeeRate(context, config, "buy");
   const requestedMarginUsdt = resolveRequestedEntryMargin(decision, spendable);
-  if (requestedMarginUsdt <= 0) return null;
+  if (requestedMarginUsdt <= 0) {
+    return {
+      blockReason:
+        `Resolved entry margin for ${symbol} is ` +
+        `${requestedMarginUsdt.toFixed(2)} USDT; nothing spendable to allocate.`,
+      plan: null,
+    };
+  }
 
   const direction = decision.direction;
   const activePositions = context.state.openPositions.filter(
@@ -377,37 +397,73 @@ function buildPlan(
     volume24h: context.state.volume24hMap?.[symbol],
   });
 
+  if (fundingPlan.blockCode) {
+    return {
+      blockReason: fundingPlan.blockReason ?? fundingPlan.blockCode,
+      plan: null,
+    };
+  }
   if (
-    fundingPlan.blockCode ||
-    fundingPlan.estimatedMarginUsdt < reserve.constants.minimalUsdtToTrade ||
+    fundingPlan.estimatedMarginUsdt < reserve.constants.minimalUsdtToTrade
+  ) {
+    return {
+      blockReason:
+        `Entry margin too small ` +
+        `${fundingPlan.estimatedMarginUsdt.toFixed(2)} ` +
+        `minimal ${reserve.constants.minimalUsdtToTrade.toFixed(2)}`,
+      plan: null,
+    };
+  }
+  if (
     fundingPlan.estimatedMarginUsdt +
       fundingPlan.estimatedFeeUsdt +
       fundingPlan.reserveBudgetUsdt >
-      fundingPlan.spendableUsdt
+    fundingPlan.spendableUsdt
   ) {
-    return null;
+    return {
+      blockReason:
+        "Entry cost exceeds spendable balance. " +
+        `spendableUSDT:${fundingPlan.spendableUsdt.toFixed(2)} ` +
+        `entryMarginUSDT:${fundingPlan.estimatedMarginUsdt.toFixed(2)} ` +
+        `estimatedFeeUSDT:${fundingPlan.estimatedFeeUsdt.toFixed(2)} ` +
+        `reserveBudgetUSDT:${fundingPlan.reserveBudgetUsdt.toFixed(2)}`,
+      plan: null,
+    };
   }
 
   const reserveLevels = config.watchReserveLevels ?? 2;
 
   return {
-    config,
-    direction,
-    entryLevel: signal.lvl ?? 0,
-    feeRate,
-    fundingPlan,
-    leverage,
-    markPrice: mark.price,
-    // Orders are sized by the fee-adjusted notional, not the margin budget.
-    preferredQuantity: fundingPlan.availableNotionalUsdt / mark.price,
-    signal,
-    watch: {
-      enabled: config.enableWatchLogic !== false,
-      maxNextLevels: config.watchMaxNextAveragingLevels ?? reserveLevels,
-      pctAlloc: config.watchReservePctAlloc ?? 2,
-      reserveLevels,
+    plan: {
+      config,
+      direction,
+      entryLevel: signal.lvl ?? 0,
+      feeRate,
+      fundingPlan,
+      leverage,
+      markPrice: mark.price,
+      // Orders are sized by the fee-adjusted notional, not the margin budget.
+      preferredQuantity: fundingPlan.availableNotionalUsdt / mark.price,
+      signal,
+      watch: {
+        enabled: config.enableWatchLogic !== false,
+        maxNextLevels: config.watchMaxNextAveragingLevels ?? reserveLevels,
+        pctAlloc: config.watchReservePctAlloc ?? 2,
+        reserveLevels,
+      },
     },
   };
+}
+
+/**
+ * Computes the entry funding plan for an approved decision without executing.
+ * Both simulated fills and live order placement share this plan.
+ */
+function buildPlan(
+  context: RuntimeContext,
+  decision: RuntimeEntryDecision,
+): EntryPlan | null {
+  return planAttempt(context, decision).plan;
 }
 
 /**
@@ -505,30 +561,60 @@ function applyFill(
   return position;
 }
 
+/** The entry fill result — simulated or live — plus the gate reason when
+ * the entry was skipped instead of executed. */
+export interface EntryExecutionResult {
+  blockReason?: string;
+  position: Position | null;
+}
+
+/**
+ * Executes a simulated entry fill like `execute`, also reporting which gate
+ * stopped the entry when no position is produced.
+ */
+function executeWithReason(
+  context: RuntimeContext,
+  decision: RuntimeEntryDecision,
+): EntryExecutionResult {
+  const attempt = planAttempt(context, decision);
+  if (!attempt.plan) {
+    return { blockReason: attempt.blockReason, position: null };
+  }
+
+  const position = applyFill(context, decision, attempt.plan, {
+    executionMode: "sandbox",
+    price: attempt.plan.markPrice,
+    quantity: attempt.plan.preferredQuantity,
+    t: context.state.currentTime,
+  });
+
+  return {
+    blockReason: position
+      ? undefined
+      : `Executed entry fill for ${decision.symbol.toUpperCase()} produced ` +
+        "an invalid position.",
+    position,
+  };
+}
+
 /** Executes a simulated entry fill and returns the new open position. */
 function execute(
   context: RuntimeContext,
   decision: RuntimeEntryDecision,
 ): Position | null {
-  const entryPlan = buildPlan(context, decision);
-  if (!entryPlan) return null;
-
-  return applyFill(context, decision, entryPlan, {
-    executionMode: "sandbox",
-    price: entryPlan.markPrice,
-    quantity: entryPlan.preferredQuantity,
-    t: context.state.currentTime,
-  });
+  return executeWithReason(context, decision).position;
 }
 
 const entryAction = {
   applyFill,
   execute,
+  executeWithReason,
   funding: {
     calculate: calculateEntryFundingPlan,
     requestedMargin: resolveRequestedEntryMargin,
   },
   plan: buildPlan,
+  planAttempt,
 } as const;
 
 export default entryAction;

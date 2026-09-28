@@ -257,14 +257,23 @@ function createActionHandlers(
     // path for position math; only the fill source differs from live.
     // pairEntry never reaches onAction — the engine dispatches it to
     // onPairAction; returning null keeps this executor total.
+    // BOTH:ENTRY_GATE_SKIP_NO_NOTIF — a decision refused by an entry gate is
+    // a skip, not a failure: no error log, no notification; the blocking
+    // reason stays visible through the dashboard entry diagnostics.
     let position: Position | null;
+    let gateSkipped = false;
     if (decision.type === "pairEntry") {
       position = null;
     } else if (accountRuntime.mode === "sandbox") {
       if (decision.type === "entry") {
-        position = await executeSafely(() =>
-          entryAction.execute(context, decision),
+        const result = await executeSafely(() =>
+          entryAction.executeWithReason(context, decision),
         );
+        position = result?.position ?? null;
+        gateSkipped =
+          actionError === undefined &&
+          !position &&
+          Boolean(result?.blockReason);
       } else if (decision.type === "averaging") {
         position = await executeSafely(() =>
           tradingAveraging.execute(context, decision),
@@ -277,7 +286,7 @@ function createActionHandlers(
     } else if (decision.type === "entry") {
       // Live places real exchange orders, then applies the executed fill
       // through the same position math the simulation uses.
-      position = await executeSafely(() =>
+      const result = await executeSafely(() =>
         runInAccount(() =>
           execution.entry({
             context,
@@ -286,6 +295,9 @@ function createActionHandlers(
           }),
         ),
       );
+      position = result?.position ?? null;
+      gateSkipped =
+        actionError === undefined && !position && Boolean(result?.blockReason);
     } else if (decision.type === "averaging") {
       position = await executeSafely(() =>
         runInAccount(() =>
@@ -319,7 +331,7 @@ function createActionHandlers(
           mode: accountRuntime.mode,
           position,
         });
-      } else {
+      } else if (!gateSkipped) {
         await tradeNotif.failed({
           context,
           decision,
@@ -389,16 +401,28 @@ function createActionHandlers(
       }
     }
 
-    const executeLeg = async (leg: RuntimeEntryDecision) =>
-      accountRuntime.mode === "sandbox"
-        ? entryAction.execute(context, leg)
-        : runInAccount(() =>
-            execution.entry({
-              context,
-              decision: leg,
-              exchange: accountRuntime.exchange,
-            }),
-          );
+    let pairGateSkipped = false;
+    const executeLeg = async (leg: RuntimeEntryDecision) => {
+      const result =
+        accountRuntime.mode === "sandbox"
+          ? entryAction.executeWithReason(context, leg)
+          : await runInAccount(() =>
+              execution.entry({
+                context,
+                decision: leg,
+                exchange: accountRuntime.exchange,
+              }),
+            );
+
+      // A gate-refused leg aborts the pair quietly — the skip is not an
+      // execution failure, so it must not raise the failed notification.
+      if (!result.position && result.blockReason) {
+        pairGateSkipped = true;
+        return null;
+      }
+
+      return result.position;
+    };
 
     let filled: Position[] | null;
     try {
@@ -449,7 +473,7 @@ function createActionHandlers(
             position,
           });
         }
-      } else {
+      } else if (!pairGateSkipped) {
         await tradeNotif.failed({
           context,
           decision,

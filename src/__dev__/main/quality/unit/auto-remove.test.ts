@@ -706,6 +706,25 @@ describe("entryAction.plan minimum-price guard", () => {
       entryAction.plan(planContext(2, 2), decision),
     ).not.toBeNull();
   });
+
+  it("reports the blocking gate reason through planAttempt", () => {
+    const attempt = entryAction.planAttempt(planContext(1.5, 2), decision);
+    expect(attempt.plan).toBeNull();
+    expect(attempt.blockReason).toContain(
+      "below the configured coin-management minimum",
+    );
+  });
+
+  it("reports the blocking gate reason through executeWithReason", () => {
+    const result = entryAction.executeWithReason(
+      planContext(1.5, 2),
+      decision,
+    );
+    expect(result.position).toBeNull();
+    expect(result.blockReason).toContain(
+      "below the configured coin-management minimum",
+    );
+  });
 });
 
 describe("entry.getSymbols", () => {

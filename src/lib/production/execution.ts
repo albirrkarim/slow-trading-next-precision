@@ -18,7 +18,9 @@ import type {
 } from "@/lib/precision/types";
 import { systemLog } from "@/lib/system/logging";
 import tradingAveraging from "@/lib/system/trading/averaging";
-import entryAction from "@/lib/system/trading/entry-action";
+import entryAction, {
+  type EntryExecutionResult,
+} from "@/lib/system/trading/entry-action";
 import tradingExit from "@/lib/system/trading/exit";
 import type { Position } from "@/lib/system/trading";
 
@@ -141,15 +143,27 @@ async function resolveExecutedFill(params: {
   return { price: executedPrice, quantity: executedQty };
 }
 
-/** Places a live entry order from the shared plan, then records the fill. */
+/**
+ * Places a live entry order from the shared plan, then records the fill.
+ * A plan refused by an entry gate returns the reason without throwing —
+ * it is a skip, not an execution failure. Only exchange-side problems
+ * (leverage setup, order placement, fill resolution) throw.
+ */
 async function entry(params: {
   context: RuntimeContext;
   decision: RuntimeEntryDecision;
   exchange: IExchange;
-}): Promise<Position | null> {
+}): Promise<EntryExecutionResult> {
   const { context, decision, exchange } = params;
-  const plan = entryAction.plan(context, decision);
-  if (!plan) return null;
+  const attempt = entryAction.planAttempt(context, decision);
+  if (!attempt.plan) {
+    return {
+      blockReason:
+        attempt.blockReason ?? "entry execution produced no position",
+      position: null,
+    };
+  }
+  const plan = attempt.plan;
 
   const tradingSymbol = toTradingSymbol(decision.symbol);
   const tradingMode = toExchangeTradingMode(plan.config.tradingMode);
@@ -182,7 +196,14 @@ async function entry(params: {
     plan.preferredQuantity,
     tradingSymbol,
   );
-  if (quantity === 0) return null;
+  if (quantity === 0) {
+    return {
+      blockReason:
+        `Exchange adjusted ${tradingSymbol} entry quantity to 0 from ` +
+        `${plan.preferredQuantity}; entry skipped.`,
+      position: null,
+    };
+  }
 
   const orderParams: UnifiedOrderParams = {
     tradeType: "ENTRY",
@@ -214,12 +235,14 @@ async function entry(params: {
     symbol: tradingSymbol,
   });
 
-  return entryAction.applyFill(context, decision, plan, {
-    executionMode: "live",
-    price: fill.price,
-    quantity: fill.quantity,
-    t: context.state.currentTime,
-  });
+  return {
+    position: await entryAction.applyFill(context, decision, plan, {
+      executionMode: "live",
+      price: fill.price,
+      quantity: fill.quantity,
+      t: context.state.currentTime,
+    }),
+  };
 }
 
 /** Places a live averaging order from the shared plan, then records the fill. */
