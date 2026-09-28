@@ -262,6 +262,8 @@ function TradeChartDialog({
   row: SlowTradingReportRow;
 }) {
   const tradeEndMs = row.closed?.t ?? row.opened.t;
+  const legMeta = pair.meta.ofPosition(row);
+  const legPrefix = legMeta ? `${legMeta.role} leg ` : "";
 
   return (
     <ButtonDialog
@@ -290,7 +292,9 @@ function TradeChartDialog({
               (row.tradingMode?.toUpperCase() as any) ??
               (exchangeType === "tokocrypto" ? "SPOT" : "FUTURES")
             }
-            markers={buildTradeMarkersFromHistory(history, row.symbol)}
+            markers={buildTradeMarkersFromHistory(history, row.symbol, (trade) =>
+              pair.meta.ofPosition(trade as SlowTradingReportRow)?.role,
+            )}
             startTimeMs={row.opened.t - TRADE_CHART_CONTEXT_MS}
             endTimeMs={tradeEndMs + TRADE_CHART_CONTEXT_MS}
             volatilitySource="storage"
@@ -301,13 +305,13 @@ function TradeChartDialog({
                   <strong>Account:</strong> {row.account}
                 </Typography>
                 <Typography variant="body2">
-                  <strong>Entry:</strong> {row.exposure.averageEntryPrice?.toFixed(6)} @{" "}
+                  <strong>{legPrefix}Entry:</strong> {row.exposure.averageEntryPrice?.toFixed(6)} @{" "}
                   {row.opened.t
                     ? format.timeForLog(row.opened.t)
                     : "—"}
                 </Typography>
                 <Typography variant="body2">
-                  <strong>Exit:</strong> {row.closed?.price?.toFixed(6)} @{" "}
+                  <strong>{legPrefix}Exit:</strong> {row.closed?.price?.toFixed(6)} @{" "}
                   {row.closed?.t ? format.timeForLog(row.closed.t) : "—"}
                 </Typography>
                 <Typography

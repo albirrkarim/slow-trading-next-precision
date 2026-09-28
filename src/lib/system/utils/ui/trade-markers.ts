@@ -8,12 +8,17 @@ import format from "@/lib/system/utils/format";
 type TradeMarkerPosition = Pick<
   RuntimeHistoryPosition,
   "closed" | "opened" | "pnl" | "symbol"
->;
+> & { strategy?: RuntimeHistoryPosition["strategy"] };
 
-/** Builds entry and exit chart markers for trade rows matching one symbol. */
+/**
+ * Builds entry and exit chart markers for trade rows matching one symbol.
+ * `roleOf` optionally resolves a strategy-owned leg role per trade — defined
+ * roles prefix the label (`MAIN leg ENTRY …`, `COUNTER leg EXIT …`).
+ */
 export function buildTradeMarkersFromHistory(
   history: TradeMarkerPosition[],
   symbol: string,
+  roleOf?: (trade: TradeMarkerPosition) => string | undefined,
 ): Marker[] {
   const normalizedSymbol = symbol.trim().toUpperCase();
   const markers: Marker[] = [];
@@ -23,12 +28,15 @@ export function buildTradeMarkersFromHistory(
       return;
     }
 
+    const role = roleOf?.(trade)?.trim();
+    const rolePrefix = role ? `${role} leg ` : "";
+
     if (Number.isFinite(trade.opened.t)) {
       markers.push({
         color: common.black,
         position: "belowBar",
         shape: "arrowUp",
-        text: `ENTRY ${trade.opened.vPoint.id}`,
+        text: `${rolePrefix}ENTRY ${trade.opened.vPoint.id}`,
         time: Math.floor(trade.opened.t / 1000) as UTCTimestamp,
       });
     }
@@ -40,8 +48,8 @@ export function buildTradeMarkersFromHistory(
         position: "aboveBar",
         shape: "arrowDown",
         text: trade.closed!.vPoint?.id
-          ? `EXIT ${trade.closed!.vPoint.id} paired with ${format.vPointForLog(trade.opened.vPoint)}`
-          : `EXIT paired with ${format.vPointForLog(trade.opened.vPoint)}`,
+          ? `${rolePrefix}EXIT ${trade.closed!.vPoint.id} paired with ${format.vPointForLog(trade.opened.vPoint)}`
+          : `${rolePrefix}EXIT paired with ${format.vPointForLog(trade.opened.vPoint)}`,
         time: Math.floor(trade.closed!.t / 1000) as UTCTimestamp,
       });
     }
