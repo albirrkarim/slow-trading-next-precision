@@ -1,7 +1,9 @@
 import systemConfig from "@/lib/system/config";
 import systemTime from "@/lib/system/time";
+import fs from "fs-extra";
 import type { NextApiRequest, NextApiResponse } from "next";
 import backtestResultCache from "./cache";
+import backtestWorker from "./worker-client";
 import type {
   BacktestPrecisionParams,
   BacktestPrecisionResponse,
@@ -102,16 +104,42 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
     return;
   }
 
-  const result = await precisionBacktest({
+  const stagingDir = backtestResultCache.stagingDirFor(cacheKey);
+  const runParams = {
     ...params,
-    artifacts: { dir: cachePath },
+    artifacts: { dir: stagingDir },
     range,
     endTime,
     startTime,
     upToDateKlines,
     upToDateDecisionBacktest,
     verbose,
-  });
+  };
+  let result;
+  try {
+    result =
+      process.env.NODE_ENV === "development"
+        ? await backtestWorker.run(runParams)
+        : await precisionBacktest(runParams);
+    await backtestResultCache.finalize(
+      cacheKey,
+      result,
+      {
+        ...params,
+        endTime,
+        range,
+        startTime,
+        upToDateDecisionBacktest,
+        upToDateKlines,
+        verbose,
+      },
+      stagingDir,
+    );
+    await backtestResultCache.publish(cacheKey, stagingDir);
+  } catch (error) {
+    await fs.remove(stagingDir);
+    throw error;
+  }
 
   const body: BacktestPrecisionResponse = {
     counts: result.counts,
@@ -121,19 +149,5 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
     cacheKey,
     cachePath,
   };
-  try {
-    await backtestResultCache.finalize(cacheKey, result, {
-      ...params,
-      endTime,
-      range,
-      startTime,
-      upToDateDecisionBacktest,
-      upToDateKlines,
-      verbose,
-    });
-  } catch (error) {
-    console.error("[backtest-precision] Failed to persist result", error);
-  }
-
   res.json(body);
 }

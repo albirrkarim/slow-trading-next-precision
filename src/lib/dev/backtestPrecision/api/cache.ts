@@ -1,4 +1,4 @@
-import { createHash } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import fs from "fs-extra";
 import path from "path";
 import sanitize from "@/lib/system/storage/sanitize";
@@ -79,6 +79,16 @@ function dirFor(cacheKey: string): string {
   return cacheDir(cacheKey);
 }
 
+/** Gives each run a private artifact directory until its metadata is complete. */
+function stagingDirFor(cacheKey: string): string {
+  return path.join(RESULTS_DIR, ".staging", `${cacheKey}-${randomUUID()}`);
+}
+
+/** Replaces a finished cache entry without exposing partially written parts. */
+async function publish(cacheKey: string, stagingDir: string): Promise<void> {
+  await fs.move(stagingDir, cacheDir(cacheKey), { overwrite: true });
+}
+
 /**
  * Hashes the effective backtest identity (range/bounds + full config) so the
  * same inputs reuse one saved result. Credentials feed the hash only; they
@@ -128,10 +138,9 @@ async function read(
 ): Promise<BacktestPrecisionResult | null> {
   const dir = cacheDir(cacheKey);
   const meta = await readMetaFile(dir);
-  // Parts exist even when a run died before meta.json was written.
-  const chunked =
-    meta?.v === CHUNKED_LAYOUT ||
-    (await fs.pathExists(path.join(dir, "positions")));
+  // An interrupted run may have part files but no valid metadata.
+  if (!meta) return null;
+  const chunked = meta.v === CHUNKED_LAYOUT;
 
   try {
     if (chunked) {
@@ -173,6 +182,7 @@ async function finalize(
   cacheKey: string,
   result: BacktestChunkedResult,
   params: Record<string, unknown>,
+  dir = cacheDir(cacheKey),
 ): Promise<void> {
   // `initialState` is a full runtime snapshot — far too large for meta, and
   // precision-checker replays never reach this writer anyway.
@@ -186,7 +196,7 @@ async function finalize(
     summary: result.summary,
     v: CHUNKED_LAYOUT,
   };
-  await fs.outputJson(path.join(cacheDir(cacheKey), "meta.json"), meta, {
+  await fs.outputJson(path.join(dir, "meta.json"), meta, {
     spaces: 2,
   });
 }
@@ -204,9 +214,8 @@ async function readField(
   const dir = cacheDir(cacheKey);
   if (!(await fs.pathExists(dir))) return null;
   const meta = await readMetaFile(dir);
-  const chunked =
-    meta?.v === CHUNKED_LAYOUT ||
-    (await fs.pathExists(path.join(dir, "positions")));
+  if (!meta) return null;
+  const chunked = meta.v === CHUNKED_LAYOUT;
 
   try {
     if (chunked) {
@@ -243,6 +252,8 @@ const backtestResultCache = {
   read,
   readField,
   readMeta,
+  publish,
+  stagingDirFor,
 } as const;
 
 export default backtestResultCache;
