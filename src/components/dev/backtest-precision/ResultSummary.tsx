@@ -154,9 +154,11 @@ export default function BacktestResultSummary(props: {
     const totals = useMemo(() => {
         const winLoss = { wins: 0, losses: 0 };
         let start = 0;
+        let end = 0;
         let pnlUsdt = 0;
         for (const row of rows) {
             start += row.start;
+            end += row.end;
             pnlUsdt += row.pnlUsdt;
             const entry = winLossByAccount.get(row.slug);
             winLoss.wins += entry?.wins ?? 0;
@@ -164,7 +166,9 @@ export default function BacktestResultSummary(props: {
         }
         return {
             ...winLoss,
+            end,
             pnlUsdt,
+            start,
             gainPct: start > 0 ? (pnlUsdt / start) * 100 : null,
         };
     }, [rows, winLossByAccount]);
@@ -210,6 +214,8 @@ export default function BacktestResultSummary(props: {
                         <TableHead>
                             <TableRow>
                                 <TableCell>Account</TableCell>
+                                <TableCell align="right">Start</TableCell>
+                                <TableCell align="right">Final</TableCell>
                                 <TableCell align="right">PNL (USDT)</TableCell>
                                 <TableCell align="right">Gain</TableCell>
                                 <TableCell align="right">Win Rate</TableCell>
@@ -230,6 +236,12 @@ export default function BacktestResultSummary(props: {
                                         <TableCell>
                                             {nameBySlug.get(row.slug)?.trim() ||
                                                 row.slug}
+                                        </TableCell>
+                                        <TableCell align="right">
+                                            ${row.start.toFixed(2)}
+                                        </TableCell>
+                                        <TableCell align="right">
+                                            ${row.end.toFixed(2)}
                                         </TableCell>
                                         <TableCell
                                             align="right"
@@ -292,6 +304,12 @@ export default function BacktestResultSummary(props: {
                                     }}
                                 >
                                     <TableCell>All</TableCell>
+                                    <TableCell align="right">
+                                        ${totals.start.toFixed(2)}
+                                    </TableCell>
+                                    <TableCell align="right">
+                                        ${totals.end.toFixed(2)}
+                                    </TableCell>
                                     <TableCell
                                         align="right"
                                         sx={{

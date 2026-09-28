@@ -25,6 +25,7 @@ import axios from "axios";
 import type { ReactElement } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ButtonDialog from "@/components/ui/ButtonDialog";
+import { strategyChipLabel } from "@/components/dashboard/navigation/NavbarStrategyChip";
 import { endpoints } from "../../endpoints";
 import type { BacktestLeaderboardEntry } from "@/lib/dev/backtestPrecision/leaderboards";
 import type { BacktestConfig } from "./types";
@@ -154,6 +155,16 @@ const HEADER_GROUPS: HeaderGroup[] = [
         id: "t",
         label: "Saved At",
         tooltip: "Local time the run was persisted via the \"Save run to leaderboards\" button.\nSource: entry.t on the saved file (storage/leaderboards/[hash].json).",
+    },
+    {
+        id: "backtestConfig.range",
+        label: "Range",
+        tooltip: "The backtest menu's range selection used for this run (e.g. 1month, 1year).\nSource: backtestConfig.range on the saved entry.",
+    },
+    {
+        id: "backtestConfig.settings.management.strategy",
+        label: "Strategy",
+        tooltip: "The management.strategy selection active for this run (Both, Streak, or a custom slug).\nSaved entries without a settings block ran the built-in default pipeline.\nSource: backtestConfig.settings.management.strategy on the saved entry.",
     },
     {
         id: "leaderboard.gainPct",
@@ -341,6 +352,22 @@ const DURATION_FIELDS = new Set([
 
 const PLAIN_FIELDS = new Set(["leaderboard.positionsClosed", "leaderboard.sharpeRatio"]);
 
+/** Text leaf columns: field id -> cell formatter. Sorting uses the raw leaf. */
+const TEXT_FIELDS = new Map<string, (value: unknown) => string>([
+    [
+        "backtestConfig.range",
+        (value) =>
+            typeof value === "string" && value.trim() ? value : "-",
+    ],
+    [
+        "backtestConfig.settings.management.strategy",
+        (value) =>
+            strategyChipLabel(
+                typeof value === "string" ? value : undefined,
+            ),
+    ],
+]);
+
 /** Total leaf columns plus the trailing Actions column. */
 const TABLE_COLSPAN =
     HEADER_GROUPS.reduce(
@@ -383,7 +410,7 @@ export default function Leaderboards({
                     </IconButton>
                 </Tooltip>
             )}
-            maxWidth="xl"
+            maxWidth={false}
             title="Leaderboards"
             titleLong="Backtest Leaderboards"
         >
@@ -511,7 +538,8 @@ function LeaderboardsContent({
                           entry.id)
                     : fieldId === "t"
                       ? formatTime(entry.t)
-                      : formatCell(fieldId, value)}
+                      : TEXT_FIELDS.get(fieldId)?.(value) ??
+                        formatCell(fieldId, value)}
             </TableCell>
         );
     };

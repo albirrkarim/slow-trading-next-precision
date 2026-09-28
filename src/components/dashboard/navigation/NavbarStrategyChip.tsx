@@ -8,8 +8,8 @@ const STRATEGY_LABELS: Record<string, string> = {
   streak: "Streak",
 };
 
-/** Resolves the navbar chip label for the configured `management.strategy`. */
-function strategyChipLabel(strategy?: string): string {
+/** Resolves the display label for a `management.strategy` slug. */
+export function strategyChipLabel(strategy?: string): string {
   if (!strategy) return "Default";
   return (
     STRATEGY_LABELS[strategy] ??
