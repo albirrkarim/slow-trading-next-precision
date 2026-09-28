@@ -414,7 +414,13 @@ export default function TradingAccountSettings({
                 }
             >
                 <Grid container spacing={2}>
-                    <Grid size={{ xs: 12, md: 6 }}>
+                    <Grid size={{ xs: 12 }}>
+                        <Typography color="text.secondary" variant="overline">
+                            Levels & Reserve
+                        </Typography>
+                    </Grid>
+
+                    <Grid size={{ xs: 12, md: 4 }}>
                         <SettingsInfoField
                             disabled={!averagingEnabled}
                             label="Reserve Next Levels"
@@ -436,7 +442,7 @@ export default function TradingAccountSettings({
                         />
                     </Grid>
 
-                    <Grid size={{ xs: 12, md: 6 }}>
+                    <Grid size={{ xs: 12, md: 4 }}>
                         <SettingsInfoField
                             disabled={!averagingEnabled}
                             label="Reserve Multiplier"
@@ -482,7 +488,20 @@ export default function TradingAccountSettings({
                         />
                     </Grid>
 
-                    <Grid size={{ xs: 12, md: 8 }}>
+                    <Grid size={{ xs: 12 }}>
+                        <Typography
+                            color="text.secondary"
+                            sx={{ pt: 1 }}
+                            variant="overline"
+                        >
+                            Guards
+                        </Typography>
+                    </Grid>
+
+                    <Grid
+                        size={{ xs: 12, md: 6 }}
+                        sx={{ alignItems: "center", display: "flex" }}
+                    >
                         <SettingsCheckbox
                             checked={tradingConfig.entrySpareBufferEnabled ?? true}
                             disabled={!averagingEnabled}
@@ -497,52 +516,71 @@ export default function TradingAccountSettings({
                             }
                         />
                     </Grid>
-                </Grid>
+                    <Grid
+                        size={{ xs: 12, md: 6 }}
+                        sx={{ alignItems: "center", display: "flex" }}
+                    >
+                        <SettingsCheckbox
+                            checked={
+                                tradingConfig.averagingRescueProjectionGuardEnabled ??
+                                true
+                            }
+                            disabled={!averagingEnabled}
+                            info="When ON, an averaging attempt must improve the weighted entry and reach the projected rescue-profit target. When OFF, failure of that projection does not block the normal watch-step margin."
+                            label="Averaging Rescue Projection Guard"
+                            onChange={(checked) =>
+                                setTradingConfig((prev) =>
+                                    prev
+                                        ? {
+                                            ...prev,
+                                            averagingRescueProjectionGuardEnabled:
+                                                checked,
+                                        }
+                                        : prev,
+                                )
+                            }
+                        />
+                    </Grid>
 
-                <SettingsCheckbox
-                    checked={
-                        tradingConfig.averagingRescueProjectionGuardEnabled ?? true
-                    }
-                    disabled={!averagingEnabled}
-                    info="When ON, an averaging attempt must improve the weighted entry and reach the projected rescue-profit target. When OFF, failure of that projection does not block the normal watch-step margin."
-                    label="Averaging Rescue Projection Guard"
-                    onChange={(checked) =>
-                        setTradingConfig((prev) =>
-                            prev
-                                ? {
-                                    ...prev,
-                                    averagingRescueProjectionGuardEnabled: checked,
-                                }
-                                : prev,
-                        )
-                    }
-                />
+                    <Grid size={{ xs: 12 }}>
+                        <Typography
+                            color="text.secondary"
+                            sx={{ pt: 1 }}
+                            variant="overline"
+                        >
+                            Adaptive
+                        </Typography>
+                    </Grid>
 
-                <SettingsCheckbox
-                    checked={adaptiveConfig.enabled}
-                    disabled={!averagingEnabled}
-                    info="When ON, SLOW can raise the averaging multiplier above the reserve multiplier when enough spendable balance exists and the configured projected-profit target can be reached."
-                    label="Adaptive Averaging"
-                    onChange={(checked) =>
-                        setTradingConfig((prev) =>
-                            prev
-                                ? {
-                                    ...prev,
-                                    adaptiveAveraging: {
-                                        ...adaptiveAveraging.config.normalize(
-                                            prev.adaptiveAveraging,
-                                            false,
-                                        ),
-                                        enabled: checked,
-                                    },
-                                }
-                                : prev,
-                        )
-                    }
-                />
+                    <Grid
+                        size={{ xs: 12, md: 4 }}
+                        sx={{ alignItems: "center", display: "flex" }}
+                    >
+                        <SettingsCheckbox
+                            checked={adaptiveConfig.enabled}
+                            disabled={!averagingEnabled}
+                            info="When ON, SLOW can raise the averaging multiplier above the reserve multiplier when enough spendable balance exists and the configured projected-profit target can be reached."
+                            label="Adaptive Averaging"
+                            onChange={(checked) =>
+                                setTradingConfig((prev) =>
+                                    prev
+                                        ? {
+                                            ...prev,
+                                            adaptiveAveraging: {
+                                                ...adaptiveAveraging.config.normalize(
+                                                    prev.adaptiveAveraging,
+                                                    false,
+                                                ),
+                                                enabled: checked,
+                                            },
+                                        }
+                                        : prev,
+                                )
+                            }
+                        />
+                    </Grid>
 
-                <Grid container spacing={2}>
-                    <Grid size={{ xs: 12, md: 6 }}>
+                    <Grid size={{ xs: 12, md: 4 }}>
                         <SettingsInfoField
                             disabled={!averagingEnabled || !adaptiveConfig.enabled}
                             fullWidth
@@ -576,7 +614,7 @@ export default function TradingAccountSettings({
                         />
                     </Grid>
 
-                    <Grid size={{ xs: 12, md: 6 }}>
+                    <Grid size={{ xs: 12, md: 4 }}>
                         <SettingsInfoField
                             disabled={!averagingEnabled || !adaptiveConfig.enabled}
                             fullWidth

@@ -50,8 +50,14 @@ async function request(): Promise<void> {
   return inFlight;
 }
 
-/** Re-fetches the snapshot shared by entry cards and the decisions panel. */
-export const entryDiagnosticsStore = { refresh: request } as const;
+/** Re-fetches after any older in-flight snapshot has completed. */
+async function refreshSnapshot(): Promise<void> {
+  if (inFlight) await inFlight;
+  await request();
+}
+
+/** Shared entry snapshot operations for the cards and decisions panel. */
+export const entryDiagnosticsStore = { refresh: refreshSnapshot } as const;
 
 /** Shared entry-diagnostics snapshot with one fetch behind all subscribers. */
 export function useEntryDiagnostics() {
