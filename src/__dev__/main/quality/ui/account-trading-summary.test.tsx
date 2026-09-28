@@ -6,8 +6,8 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
-import SystemAccountSummary from "@/components/LiveDashboard/Reporting/SystemAccountSummary";
-import { getCustomAccountTradingConfig } from "@/components/LiveDashboard/Reporting/account-trading-summary";
+import SystemAccountSummary from "@/components/reports/SystemAccountSummary";
+import { getCustomAccountTradingConfig } from "@/components/reports/account-trading-summary";
 import { runtimeDefaults } from "@/lib/system/runtime";
 
 function makeTradingConfig() {

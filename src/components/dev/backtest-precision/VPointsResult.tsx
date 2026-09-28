@@ -1,7 +1,7 @@
 "use client";
 
-import VPointsFrequency from "@/components/LiveDashboard/Feature/VPointsFrequency";
-import { TradesTableSection } from "@/components/LiveDashboard/Reporting/TradesTableSection";
+import VPointsFrequency from "@/components/charts/VPointsFrequency";
+import { TradesTableSection } from "@/components/reports/TradesTableSection";
 import type { BacktestPrecisionResult } from "@/lib/dev/backtestPrecision/backtest/backtest-precision-types";
 import { Box, Grid, Typography } from "@mui/material";
 

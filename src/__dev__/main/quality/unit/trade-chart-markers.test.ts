@@ -1,4 +1,4 @@
-import { buildTradeMarkersFromHistory } from "@/components/LiveDashboard/Shared/trade-chart-markers";
+import { buildTradeMarkersFromHistory } from "@/lib/system/utils/ui/trade-markers";
 import { describe, expect, it } from "vitest";
 
 describe("trade chart markers", () => {

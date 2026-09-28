@@ -1,7 +1,7 @@
 import {
   pickRangedValueColor,
   type RangedValueColorRange,
-} from "@/components/LiveDashboard/Reporting/RangedValueText";
+} from "@/components/reports/RangedValueText";
 
 describe("ranged value text", () => {
   it("picks colors from numeric ranges with inclusive boundaries", () => {

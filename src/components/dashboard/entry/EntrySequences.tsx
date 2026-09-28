@@ -1,6 +1,6 @@
 "use client";
 
-import { DEFAULT_COLORS } from "@/components/client/constants";
+import { DEFAULT_COLORS } from "@/lib/system/utils/ui/colors";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
 
 import type { RuntimeEntrySequenceCount } from "@/lib/system/trading";

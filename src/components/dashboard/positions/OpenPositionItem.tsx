@@ -1,12 +1,12 @@
 "use client";
 
 import type { ReactElement } from "react";
-import CoinTagSelect from "@/components/dev/Coins/CoinTagSelect";
+import CoinTagSelect from "@/components/coins/CoinTagSelect";
 import ButtonDialog from "@/components/ui/ButtonDialog";
 import CopyToClipboardIconButton from "@/components/ui/CopyToClipboardIconButton";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
-import { EXCHANGE_COLOR_MAP } from "@/components/LiveDashboard/Shared/constants";
-import { NetProfitPercentHistorySparkline } from "@/components/LiveDashboard/Shared/NetProfitPercentHistorySparkline";
+import { EXCHANGE_COLOR_MAP } from "@/components/charts/constants";
+import { NetProfitPercentHistorySparkline } from "@/components/charts/NetProfitPercentHistorySparkline";
 
 
 import moment from "moment-timezone";
@@ -14,7 +14,7 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
 import SpeedIcon from "@mui/icons-material/Speed";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
-import TradeChartBase from "@/components/LiveDashboard/Shared/TradeChartBase";
+import TradeChartBase from "@/components/charts/TradeChartBase";
 
 import {
   Box,
@@ -32,13 +32,13 @@ import {
   estimateMaxEntryFromVolume24h,
   formatVolume24h,
   simplifyId,
-} from "./LatestVolatilityPoints";
+} from "../volatility/LatestVolatilityPoints";
 import OpenPositionLevelSequence from "./OpenPositionLevelSequence";
 import OpenPositionFundingRate from "./OpenPositionFundingRate";
 import openPositionDuration from "./open-position-duration";
 import openPositionPnlContribution from "./open-position-pnl-contribution";
 import { positionData  } from "@/lib/system/trading";
-import DisplayCoinSymbol from "./DisplayCoin";
+import DisplayCoinSymbol from "@/components/coins/DisplayCoin";
 import type { RuntimeHistoryPosition } from "@/lib/system/trading";
 import type { RuntimeEffectiveConfig } from "@/lib/system/runtime";
 import type { VolatilityPoint } from "@/lib/system/types";

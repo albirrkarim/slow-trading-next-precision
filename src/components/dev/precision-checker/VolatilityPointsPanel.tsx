@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 
-import { makeSeries } from "@/components/LiveDashboard/utils";
+import { makeSeries } from "@/lib/system/utils/ui/series";
 import MultiLineTimelined from "@/components/ui/Chart/MultiLineTimelined";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import type { VolatilityPoint } from "@/lib/system/types";

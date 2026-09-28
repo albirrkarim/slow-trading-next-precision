@@ -15,15 +15,15 @@ import {
 } from "@mui/material";
 
 
-import ReadMoreDialogButton from "../Navbar/Settings/Components/ReadMoreDialogButton";
-import ExitThresholdChart from "../Navbar/Settings/Trading/ExitThresholdChart";
+import ReadMoreDialogButton from "@/components/settings/Components/ReadMoreDialogButton";
+import ExitThresholdChart from "@/components/settings/Trading/ExitThresholdChart";
 import AveragingSimulationPreview from "./AveragingSimulationPreview";
 import {
   buildTradingLivePreview,
   type TradingLivePreviewConfig,
   type TradingLivePreviewData,
   type TradingLivePreviewExitStage,
-} from "./trading-live-preview";
+} from "@/lib/system/trading/live-preview";
 import type { RuntimeDashboardState } from "@/lib/system/dashboard";
 
 function formatUsdt(value: number) {

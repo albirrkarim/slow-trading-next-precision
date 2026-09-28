@@ -24,14 +24,14 @@ import axios from "axios";
 import moment from "moment";
 import { useMemo, useState } from "react";
 import { useSnackbar } from "notistack";
-import TradeChartBase from "@/components/LiveDashboard/Shared/TradeChartBase";
+import TradeChartBase from "@/components/charts/TradeChartBase";
 import format from "@/lib/system/utils/format";
-import { NetProfitPercentHistorySparkline } from "@/components/LiveDashboard/Shared/NetProfitPercentHistorySparkline";
+import { NetProfitPercentHistorySparkline } from "@/components/charts/NetProfitPercentHistorySparkline";
 import PositionLevelSequence, {
   buildHistoryPositionLevelSequence,
-} from "@/components/LiveDashboard/Shared/PositionLevelSequence";
-import { EXCHANGE_COLOR_MAP } from "@/components/LiveDashboard/Shared/constants";
-import { buildTradeMarkersFromHistory } from "@/components/LiveDashboard/Shared/trade-chart-markers";
+} from "@/components/charts/PositionLevelSequence";
+import { EXCHANGE_COLOR_MAP } from "@/components/charts/constants";
+import { buildTradeMarkersFromHistory } from "@/lib/system/utils/ui/trade-markers";
 import type { ExchangeType } from "@/lib/exchange";
 
 
@@ -43,7 +43,7 @@ import { formatHoldMs } from "./utils";
 import { positionData } from "@/lib/system/trading";
 import pair from "@/lib/strategies/shared/pair";
 import TradeHistoryNotesField from "./TradeHistoryNotesField";
-import JsonTreeViewer from "@/components/LiveDashboard/Shared/JsonTreeViewer";
+import JsonTreeViewer from "@/components/ui/JsonTreeViewer";
 import type { RuntimeAccountConfig, RuntimeMode } from "@/lib/system/runtime";
 import type { RuntimeDashboardState } from "@/lib/system/dashboard";
 import type { VolatilityPoint } from "@/lib/system/types";

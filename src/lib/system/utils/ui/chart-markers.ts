@@ -2,7 +2,7 @@ import type { UTCTimestamp } from "lightweight-charts";
 import type { VolatilityPoint } from "@/lib/system/types";
 import type { Position } from "@/lib/system/trading";
 import format from "@/lib/system/utils/format";
-import { DEFAULT_COLORS } from "@/components/client/constants";
+import { DEFAULT_COLORS } from "./colors";
 import { green, red } from "@mui/material/colors";
 
 export interface Marker {

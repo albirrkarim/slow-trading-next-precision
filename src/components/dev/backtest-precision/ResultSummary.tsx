@@ -19,7 +19,7 @@ import {
     Tooltip,
 } from "recharts";
 
-import { DEFAULT_COLORS } from "@/components/client/constants";
+import { DEFAULT_COLORS } from "@/lib/system/utils/ui/colors";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import type { BacktestBalanceSnapshot } from "@/lib/dev/backtestPrecision/backtest/backtest-precision-types";
 import type { Position } from "@/lib/system/trading";

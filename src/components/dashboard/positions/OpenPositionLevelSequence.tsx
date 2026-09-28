@@ -8,7 +8,7 @@ import PositionLevelSequence, {
   type PositionLevelSequenceItem,
   type PositionLevelSequenceReserveStatus,
   type PositionLevelSequenceState,
-} from "@/components/LiveDashboard/Shared/PositionLevelSequence";
+} from "@/components/charts/PositionLevelSequence";
 import type { VolatilityPoint } from "@/lib/system/types";
 
 type ReserveStepStatus = PositionLevelSequenceReserveStatus;

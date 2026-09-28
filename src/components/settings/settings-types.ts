@@ -2,9 +2,10 @@
 
 
 import type { Dispatch, SetStateAction } from "react";
+import type { RuntimeDashboardState } from "@/lib/system/dashboard";
 import type { RuntimeSafeHavenSchedule, RuntimeSettingsConfig, RuntimeWithdrawalSchedule, RuntimeWithdrawalWallet } from "@/lib/system/runtime";
 
-export type { DashboardState } from "../navbar-types";
+export type DashboardState = NonNullable<RuntimeDashboardState>;
 
 /** The Settings dialog edits the same grouped shape used by persistence/backtests. */
 export type ConfigDraft = RuntimeSettingsConfig;

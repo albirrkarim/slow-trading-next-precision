@@ -8,10 +8,10 @@ import { describe, expect, it, vi } from "vitest";
 
 import QuickBacktestTradeHistory, {
   filterQuickBacktestTradeHistory,
-} from "@/components/LiveDashboard/Feature/QuickBacktestTradeHistory";
+} from "@/components/dashboard/entry/QuickBacktestTradeHistory";
 import type { RuntimeQuickBacktestResult } from "@/lib/dev/quick-backtest";
 
-vi.mock("@/components/LiveDashboard/Reporting/TradesTableSection", () => ({
+vi.mock("@/components/reports/TradesTableSection", () => ({
   TradesTableSection: ({
     history,
   }: {

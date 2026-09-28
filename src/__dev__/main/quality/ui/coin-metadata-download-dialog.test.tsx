@@ -5,7 +5,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import CoinMetadataDownloadDialog from "@/components/LiveDashboard/Feature/CoinMetadataDownloadDialog";
+import CoinMetadataDownloadDialog from "@/components/coins/CoinMetadataDownloadDialog";
 
 describe("coin metadata download dialog", () => {
   it("allows changing and submitting the online source domain", async () => {

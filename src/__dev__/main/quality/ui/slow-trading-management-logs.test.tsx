@@ -6,7 +6,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { SlowTradingManagementLogs } from "@/components/LiveDashboard/Feature/SlowTradingLogs";
+import { SlowTradingManagementLogs } from "@/components/dashboard/logs/SlowTradingLogs";
 
 const mocks = vi.hoisted(() => ({
   delete: vi.fn(),

@@ -1,7 +1,7 @@
 import type {
   ConfigDraft,
   DashboardState,
-} from "@/components/LiveDashboard/Navbar/navbar-types";
+} from "@/components/settings/settings-types";
 import { VOLATILITY_THRESHOLD } from "@/lib/system/constants";
 import { runtimeAccountConfig, runtimeDefaults } from "@/lib/system/runtime";
 import { blackSwan } from "@/lib/system/trading/black-swan";

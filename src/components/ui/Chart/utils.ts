@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { LeveledMarkers } from "@/components/LiveDashboard/converter";
+import type { LeveledMarkers } from "@/lib/system/utils/ui/chart-markers";
 
 export function formatTimeISO(sec: number) {
     return new Date(sec * 1000).toISOString();

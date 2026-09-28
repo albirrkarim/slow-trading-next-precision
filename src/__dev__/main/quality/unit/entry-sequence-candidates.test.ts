@@ -1,4 +1,4 @@
-import entrySequenceCandidates from "@/components/LiveDashboard/Feature/entry-sequence-candidates";
+import entrySequenceCandidates from "@/components/dashboard/entry/entry-sequence-candidates";
 import { runtimeEntrySequences } from "@/lib/system/trading";
 import type { VolatilityPoint } from "@/lib/system/types";
 import { describe, expect, it } from "vitest";

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import tradingConfigJson from "@/components/LiveDashboard/Navbar/Settings/Trading/trading-config-json";
+import tradingConfigJson from "@/components/settings/Trading/trading-config-json";
 
 describe("trading config JSON", () => {
   // BOTH:LATE_ENTRY_VPOINT_PRICE_DRIFT_PCT — the optional per-account drift

@@ -6,7 +6,7 @@ import { Box, Typography } from "@mui/material";
 
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import MultiLineTimelined from "@/components/ui/Chart/MultiLineTimelined";
-import { makeSeries } from "@/components/LiveDashboard/utils";
+import { makeSeries } from "@/lib/system/utils/ui/series";
 import type { VolatilityPoint } from "@/lib/system/types";
 
 

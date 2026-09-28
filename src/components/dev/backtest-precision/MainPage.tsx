@@ -1,6 +1,6 @@
 "use client";
 
-import type { ConfigDraft } from "@/components/LiveDashboard/Navbar/navbar-types";
+import type { ConfigDraft } from "@/components/settings/settings-types";
 import { runtimeNormalize } from "@/lib/system/runtime";
 import SidebarButton from "@/components/ui/SidebarButton";
 import type {

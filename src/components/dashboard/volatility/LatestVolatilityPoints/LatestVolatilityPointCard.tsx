@@ -1,7 +1,7 @@
 "use client";
 
-import { DEFAULT_COLORS } from "@/components/client/constants";
-import CoinMetadataEditor from "@/components/dev/Coins/CoinMetadataEditor";
+import { DEFAULT_COLORS } from "@/lib/system/utils/ui/colors";
+import CoinMetadataEditor from "@/components/coins/CoinMetadataEditor";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
 
 
@@ -10,9 +10,9 @@ import { Box, IconButton, Tooltip, Typography } from "@mui/material";
 import { green, red } from "@mui/material/colors";
 import moment from "moment-timezone";
 
-import DisplayCoinSymbol from "../DisplayCoin";
-import ManualEntryDialog from "../ManualEntryDialog";
-import { calculateSlowWorkerCapacity } from "../worker-capacity";
+import DisplayCoinSymbol from "@/components/coins/DisplayCoin";
+import ManualEntryDialog from "@/components/dashboard/entry/ManualEntryDialog";
+import { calculateSlowWorkerCapacity } from "@/components/dashboard/entry/worker-capacity";
 import LatestVolatilityPointChartDialog from "./LatestVolatilityPointChartDialog";
 import {
   buildMaxEntryVolumeTooltip,

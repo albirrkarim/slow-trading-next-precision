@@ -1,9 +1,9 @@
 "use client";
 
-import { DEFAULT_COLORS } from "@/components/client/constants";
-import CoinTagSelect from "@/components/dev/Coins/CoinTagSelect";
+import { DEFAULT_COLORS } from "@/lib/system/utils/ui/colors";
+import CoinTagSelect from "@/components/coins/CoinTagSelect";
 import ButtonDialog from "@/components/ui/ButtonDialog";
-import VPointLevelFrequency from "@/components/ui/VPointLevelFrequency";
+import VPointLevelFrequency from "@/components/charts/VPointLevelFrequency";
 
 import type { UnifiedFundingRate } from "@/lib/exchange";
 
@@ -23,9 +23,9 @@ import {
 import { green, orange, red } from "@mui/material/colors";
 import moment from "moment-timezone";
 
-import DisplayCoinSymbol from "../DisplayCoin";
-import ManualEntryDialog from "../ManualEntryDialog";
-import { calculateSlowWorkerCapacity } from "../worker-capacity";
+import DisplayCoinSymbol from "@/components/coins/DisplayCoin";
+import ManualEntryDialog from "@/components/dashboard/entry/ManualEntryDialog";
+import { calculateSlowWorkerCapacity } from "@/components/dashboard/entry/worker-capacity";
 import LatestVolatilityPointChartDialog from "./LatestVolatilityPointChartDialog";
 import type { VolatilityPointLabelFrequency } from "./types";
 import { simplifyId, VPOINT_LEVEL_COLOR_MAP } from "./utils";

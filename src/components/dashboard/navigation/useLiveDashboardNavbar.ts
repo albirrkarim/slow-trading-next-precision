@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 
 import { endpoints } from "@/components/endpoints";
-import { entryDiagnosticsStore } from "../Feature/use-entry-diagnostics";
+import { entryDiagnosticsStore } from "../state/use-entry-diagnostics";
 import { systemLog } from "@/lib/system/logging";
 
 import {
@@ -13,7 +13,7 @@ import {
   computeDayPreview,
   computeOpenPositionSummary,
   makeConfigDraft,
-} from "./Settings/helpers";
+} from "@/components/settings/helpers";
 import type {
   ConfigDraft,
   ConfigDraftSetter,

@@ -16,7 +16,7 @@ import {
 import axios from "axios";
 import { useSnackbar } from "notistack";
 
-import type { LeveledMarkers } from "@/components/LiveDashboard/converter";
+import type { LeveledMarkers } from "@/lib/system/utils/ui/chart-markers";
 import { endpoints } from "@/components/endpoints";
 import MultiLineTimelined from "@/components/ui/Chart/MultiLineTimelined";
 import ButtonDialog from "@/components/ui/ButtonDialog";
@@ -24,14 +24,14 @@ import ButtonDialog from "@/components/ui/ButtonDialog";
 import type { RuntimeQuickBacktestResult } from "@/lib/dev/quick-backtest";
 import { systemLog } from "@/lib/system/logging";
 import { runtimeAccountConfig } from "@/lib/system/runtime";
-import { DEFAULT_COLORS } from "@/components/client/constants";
+import { DEFAULT_COLORS } from "@/lib/system/utils/ui/colors";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import DurationSharePieChart from "@/components/ui/Chart/DurationSharePieChart";
 import DailyPnlCalendarDialog, {
   buildTradePnlBalanceSnapshots,
   toDailyPnlCalendarTrade,
   type DailyPnlCalendarTrade,
-} from "../Shared/DailyPnlCalendarDialog";
+} from "@/components/reports/DailyPnlCalendarDialog";
 import { buildQuickBacktestTradeCountBySymbol } from "./quick-backtest-trade-count";
 import QuickBacktestTradeHistory from "./QuickBacktestTradeHistory";
 import {

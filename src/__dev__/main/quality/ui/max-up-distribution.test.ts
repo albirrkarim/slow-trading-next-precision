@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   computeMaxUpDistribution,
   normalizeMaxUpDistributionInterval,
-} from "@/components/LiveDashboard/Reporting/utils";
-import type { SlowTradingReportRow } from "@/components/LiveDashboard/Reporting/types";
+} from "@/components/reports/utils";
+import type { SlowTradingReportRow } from "@/components/reports/types";
 import { createTestPosition } from "../fixtures/position";
 
 function makeHistory(maxUpValues: Array<number | undefined>) {

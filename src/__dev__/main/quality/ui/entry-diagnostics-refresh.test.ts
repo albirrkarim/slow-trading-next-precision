@@ -1,7 +1,7 @@
 import axios from "axios";
 import { describe, expect, it, vi } from "vitest";
 
-import { entryDiagnosticsStore } from "@/components/LiveDashboard/Feature/use-entry-diagnostics";
+import { entryDiagnosticsStore } from "@/components/dashboard/state/use-entry-diagnostics";
 import { endpoints } from "@/components/endpoints";
 
 vi.mock("axios", () => ({ default: { get: vi.fn() } }));

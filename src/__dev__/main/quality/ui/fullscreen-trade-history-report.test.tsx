@@ -14,7 +14,7 @@ describe("slow-trading history report dialog", () => {
     const source = await fs.readFile(
       path.join(
         process.cwd(),
-        "src/components/LiveDashboard/Navbar/NavbarSections.tsx",
+        "src/components/dashboard/navigation/NavbarSections.tsx",
       ),
       "utf8",
     );

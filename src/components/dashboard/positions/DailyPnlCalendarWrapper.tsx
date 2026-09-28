@@ -5,7 +5,7 @@ import { Box, CircularProgress, Typography } from "@mui/material";
 import DailyPnlCalendarDialog, {
   toDailyPnlCalendarTrade,
   type DailyPnlCalendarBalanceSnapshot,
-} from "@/components/LiveDashboard/Shared/DailyPnlCalendarDialog";
+} from "@/components/reports/DailyPnlCalendarDialog";
 import { endpoints } from "@/components/endpoints";
 import type { RuntimeDashboardAccountSummary } from "@/lib/system/dashboard";
 import type { RuntimeHistoryPosition } from "@/lib/system/trading";

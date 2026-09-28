@@ -5,7 +5,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { ChartsSection } from "@/components/LiveDashboard/Reporting/ChartsSection";
+import { ChartsSection } from "@/components/reports/ChartsSection";
 
 describe("trade-history chart collapse", () => {
   beforeEach(() => window.localStorage.clear());

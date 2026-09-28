@@ -1,4 +1,4 @@
-import { type ConfigDraft } from "@/components/LiveDashboard/Navbar/navbar-types";
+import { type ConfigDraft } from "@/components/settings/settings-types";
 
 export interface BacktestConfig {
   mode: "kline" | "volatility_point";

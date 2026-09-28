@@ -4,7 +4,7 @@ import AccountCircleRoundedIcon from "@mui/icons-material/AccountCircleRounded";
 import { Box, Stack, Typography } from "@mui/material";
 
 
-import HeaderMetrics from "../../ui/HeaderMetrics";
+import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import { getCustomAccountTradingConfig } from "./account-trading-summary";
 import type { RuntimeAccountConfig } from "@/lib/system/runtime";
 

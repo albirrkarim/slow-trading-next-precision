@@ -7,7 +7,7 @@ import userEvent from "@testing-library/user-event";
 import { SnackbarProvider } from "notistack";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { SlowTradingErrorLogs } from "@/components/LiveDashboard/Feature/SlowTradingLogs";
+import { SlowTradingErrorLogs } from "@/components/dashboard/logs/SlowTradingLogs";
 
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),

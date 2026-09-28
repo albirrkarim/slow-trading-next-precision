@@ -1,7 +1,7 @@
 "use client";
 
-import { COLORS_BG, DEFAULT_COLORS } from "@/components/client/constants";
-import type { LeveledMarkers } from "@/components/LiveDashboard/converter";
+import { COLORS_BG, DEFAULT_COLORS } from "@/lib/system/utils/ui/colors";
+import type { LeveledMarkers } from "@/lib/system/utils/ui/chart-markers";
 import { Box, Checkbox, FormControlLabel } from "@mui/material";
 import moment from "moment";
 import React, {

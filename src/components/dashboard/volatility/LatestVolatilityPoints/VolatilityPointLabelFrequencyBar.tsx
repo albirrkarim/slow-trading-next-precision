@@ -2,7 +2,7 @@
 
 import RangedValueText, {
   type RangedValueColorRange,
-} from "@/components/LiveDashboard/Reporting/RangedValueText";
+} from "@/components/reports/RangedValueText";
 import { Box } from "@mui/material";
 import { green, red } from "@mui/material/colors";
 

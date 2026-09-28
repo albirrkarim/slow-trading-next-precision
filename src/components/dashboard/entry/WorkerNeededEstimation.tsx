@@ -3,7 +3,7 @@
 import { Box, Grid, Paper, Tooltip, Typography } from "@mui/material";
 import { type ReactNode, useMemo } from "react";
 
-import type { LeveledMarkers } from "@/components/LiveDashboard/converter";
+import type { LeveledMarkers } from "@/lib/system/utils/ui/chart-markers";
 import MultiLineTimelined from "@/components/ui/Chart/MultiLineTimelined";
 import type { RuntimeSystemCapacityEstimate, RuntimeWorkerNeededEstimate } from "@/lib/system/trading";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";

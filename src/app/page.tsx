@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import LiveDashboard from "@/components/LiveDashboard";
+import LiveDashboard from "@/components/dashboard";
 
 const appName = String(process.env.APP_NAME ?? "SLOW").trim() || "SLOW";
 

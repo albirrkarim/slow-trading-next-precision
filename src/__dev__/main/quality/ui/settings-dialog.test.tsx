@@ -10,12 +10,12 @@ import { describe, expect, it, vi } from "vitest";
 import { useState } from "react";
 
 import { endpoints } from "@/components/endpoints";
-import SettingsDialogBlackSwanTab from "@/components/LiveDashboard/Navbar/Settings/Backswan/SettingsDialogBlackSwanTab";
-import SettingsDialogRuntimeTab from "@/components/LiveDashboard/Navbar/Settings/Runtime/SettingsDialogRuntimeTab";
-import SettingsDialogManagementTab from "@/components/LiveDashboard/Navbar/Settings/Management/SettingsDialogManagementTab";
-import TradingAccountSettings from "@/components/LiveDashboard/Navbar/Settings/Trading/TradingAccountSettings";
-import { makeConfigDraft } from "@/components/LiveDashboard/Navbar/Settings/helpers";
-import { useLiveDashboardNavbar } from "@/components/LiveDashboard/Navbar/useLiveDashboardNavbar";
+import SettingsDialogBlackSwanTab from "@/components/settings/Backswan/SettingsDialogBlackSwanTab";
+import SettingsDialogRuntimeTab from "@/components/settings/Runtime/SettingsDialogRuntimeTab";
+import SettingsDialogManagementTab from "@/components/settings/Management/SettingsDialogManagementTab";
+import TradingAccountSettings from "@/components/settings/Trading/TradingAccountSettings";
+import { makeConfigDraft } from "@/components/settings/helpers";
+import { useLiveDashboardNavbar } from "@/components/dashboard/navigation/useLiveDashboardNavbar";
 import { TradingMode } from "@/lib/exchange";
 import { runtimeDefaults } from "@/lib/system/runtime";
 

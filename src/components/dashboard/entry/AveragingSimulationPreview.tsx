@@ -14,7 +14,7 @@ import {
   YAxis,
 } from "recharts";
 
-import type { TradingLivePreviewAveragingSimulation } from "./trading-live-preview";
+import type { TradingLivePreviewAveragingSimulation } from "@/lib/system/trading/live-preview";
 
 function formatPct(value: number, signed = false): string {
   const prefix = signed && value >= 0 ? "+" : "";

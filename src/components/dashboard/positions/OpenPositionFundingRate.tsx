@@ -5,7 +5,7 @@ import { Box, Tooltip, Typography } from "@mui/material";
 import moment from "moment-timezone";
 
 import type { PositionFundingSnapshot , PositionDirection } from "@/lib/system/trading";
-import { formatFundingRatePct } from "./LatestVolatilityPoints/FundingRateCell";
+import { formatFundingRatePct } from "../volatility/LatestVolatilityPoints/FundingRateCell";
 
 /** Describes whether this open position would pay or receive funding. */
 export function describePositionFundingImpact(

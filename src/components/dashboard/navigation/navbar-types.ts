@@ -2,32 +2,14 @@
 
 import type { RuntimeDashboardState } from "@/lib/system/dashboard";
 
-
-
-export type { ConfigDraftSetter, ConfigDraft } from "./Settings/settings-types";
-
-export type DashboardState = NonNullable<RuntimeDashboardState>;
-
-export interface OpenPositionSummary {
-  totalPnlUSDT: number;
-  avgPnlPercent: number;
-  lockedCapitalUSDT: number;
-}
-
-export interface DayPreviewSummary {
-  dailyUsdtProfit: number;
-  dailyPnlPercentSum: number;
-}
-
-export interface BalanceSummary {
-  available: number;
-  reserved: number;
-  spendable: number;
-  safeHaven: number;
-  startingBalance: number;
-  locked: number;
-  total: number;
-}
+export type {
+  BalanceSummary,
+  ConfigDraft,
+  ConfigDraftSetter,
+  DashboardState,
+  DayPreviewSummary,
+  OpenPositionSummary,
+} from "@/components/settings/settings-types";
 
 export interface LiveDashboardNavbarProps {
   dashboardState: RuntimeDashboardState | null;

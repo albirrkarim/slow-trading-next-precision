@@ -1,7 +1,7 @@
 "use client";
 
-import { DEFAULT_COLORS } from "@/components/client/constants";
-import CoinTagChip from "@/components/dev/Coins/CoinTagChip";
+import { DEFAULT_COLORS } from "@/lib/system/utils/ui/colors";
+import CoinTagChip from "@/components/coins/CoinTagChip";
 import { Box, Typography } from "@mui/material";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 

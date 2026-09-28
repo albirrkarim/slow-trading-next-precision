@@ -18,8 +18,8 @@ import {
   convertPositionIntoEntryExitPair,
   type LeveledMarkers,
   type Marker,
-} from "@/components/LiveDashboard/converter";
-import { DEFAULT_COLORS } from "@/components/client/constants";
+} from "@/lib/system/utils/ui/chart-markers";
+import { DEFAULT_COLORS } from "@/lib/system/utils/ui/colors";
 import { endpoints } from "@/components/endpoints";
 import MultiLineTimelined from "@/components/ui/Chart/MultiLineTimelined";
 import type { CoinTagState } from "@/lib/dev/coins/tag-types";
@@ -29,32 +29,33 @@ import type { UnifiedFundingRate } from "@/lib/exchange";
 import { systemLog } from "@/lib/system/logging";
 
 import { delayExecution, queueExecution } from "../client/utils";
-import type { TagData } from "../dev/Coins/CoinTagManagerDialog";
-import CoinTagManagerDialog from "../dev/Coins/CoinTagManagerDialog";
+import type { TagData } from "../coins/CoinTagManagerDialog";
+import CoinTagManagerDialog from "../coins/CoinTagManagerDialog";
 import HeaderMetrics from "../ui/HeaderMetrics";
 import TypographyTooltip from "../ui/TypographyTooltip";
-import BinanceCooldownStatusSection from "./Reporting/BinanceCooldownStatusSection";
-import BlackSwanStatusSection from "./Reporting/BlackSwanStatusSection";
-import CoinMetadataDownloadDialog from "./Feature/CoinMetadataDownloadDialog";
-import EntryBlockers from "./Feature/EntryBlockers";
-import EntrySequenceMetrics from "./Feature/EntrySequences";
-import LatestVolatilityPoints from "./Feature/LatestVolatilityPoints";
-import OpenPositions from "./Feature/OpenPositions";
-import QuickBacktest from "./Feature/QuickBacktest";
-import SlowTradingQueuesPanel from "./Feature/SlowTradingQueues";
-import VPointsFrequency from "./Feature/VPointsFrequency";
-import WorkerEntrySequenceMetrics from "./Feature/WorkerEntrySequenceMetrics";
-import WorkerNeededEstimation from "./Feature/WorkerNeededEstimation";
-import LiveDashboardNavbar from "./Navbar";
-import PrecisionTestCaseControls from "./Navbar/PrecisionTestCaseControls";
-import DateSelectionDialog from "./Navbar/Settings/Components/DateSelectionDialog";
+import BinanceCooldownStatusSection from "@/components/reports/BinanceCooldownStatusSection";
+import BlackSwanStatusSection from "@/components/reports/BlackSwanStatusSection";
+import CoinMetadataDownloadDialog from "@/components/coins/CoinMetadataDownloadDialog";
+import EntryBlockers from "./entry/EntryBlockers";
+import EntrySequenceMetrics from "./entry/EntrySequences";
+import LatestVolatilityPoints from "./volatility/LatestVolatilityPoints";
+import OpenPositions from "./positions/OpenPositions";
+import QuickBacktest from "./entry/QuickBacktest";
+import SlowTradingQueuesPanel from "./queues/SlowTradingQueues";
+import VPointsFrequency from "@/components/charts/VPointsFrequency";
+import WorkerEntrySequenceMetrics from "./entry/WorkerEntrySequenceMetrics";
+import WorkerNeededEstimation from "./entry/WorkerNeededEstimation";
+import LiveDashboardNavbar from "./navigation";
+import PrecisionTestCaseControls from "./navigation/PrecisionTestCaseControls";
+import DateSelectionDialog from "@/components/settings/Components/DateSelectionDialog";
 import {
   computeDayPreview,
   formatDailyPnlMetaTitle,
-} from "./Navbar/Settings/helpers";
-import SystemAccountSummary from "./Reporting/SystemAccountSummary";
+} from "@/components/settings/helpers";
+import SystemAccountSummary from "@/components/reports/SystemAccountSummary";
 import { DASHBOARD_POLL_INTERVAL_MS } from "./constants";
-import { applyTimeWindowClient, calculateTimeRange, makeSeries } from "./utils";
+import { applyTimeWindowClient, makeSeries } from "@/lib/system/utils/ui/series";
+import { calculateTimeRange } from "@/lib/system/utils/ui/time-range";
 import type { RuntimeBinanceHealthSnapshot } from "@/lib/system/storage";
 import type { RuntimeDashboardState } from "@/lib/system/dashboard";
 import type { VolatilityPoint } from "@/lib/system/types";

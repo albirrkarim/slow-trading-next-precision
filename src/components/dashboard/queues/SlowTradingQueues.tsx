@@ -31,7 +31,7 @@ import {
   SlowTradingManagementLogs,
   SlowTradingSafeHavenLogs,
   SlowTradingWithdrawalLogs,
-} from "./SlowTradingLogs";
+} from "../logs/SlowTradingLogs";
 import {
   SafeHavenQueueCreateDialog,
   WithdrawalQueueCreateDialog,

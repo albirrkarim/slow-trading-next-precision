@@ -18,7 +18,7 @@ import {
 } from "@mui/material";
 import type { RuntimeAccountEntryDiagnostics, RuntimeEntryDiagnostic } from "@/lib/system/trading";
 
-import { useEntryDiagnostics } from "./use-entry-diagnostics";
+import { useEntryDiagnostics } from "../state/use-entry-diagnostics";
 
 export default function EntryBlockers() {
   return (

@@ -4,7 +4,7 @@ import { alpha, Box, Paper, Tooltip, Typography } from "@mui/material";
 import { useMemo } from "react";
 
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
-import VPointPctDistribution from "@/components/ui/VPointPctDistribution";
+import VPointPctDistribution from "@/components/charts/VPointPctDistribution";
 import type { VolatilityPoint } from "@/lib/system/types";
 import { runtimeEntrySequences } from "@/lib/system/trading";
 import format from "@/lib/system/utils/format";

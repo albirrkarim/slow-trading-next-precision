@@ -7,7 +7,7 @@ import userEvent from "@testing-library/user-event";
 import axios from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import PrecisionChecker from "@/components/dev/PrecisionChecker";
+import PrecisionChecker from "@/components/dev/precision-checker";
 import { endpoints } from "@/components/endpoints";
 
 vi.mock("axios");
@@ -24,7 +24,7 @@ vi.mock("@/components/ui/Chart/MultiLineTimelined", () => ({
   ),
 }));
 
-vi.mock("@/components/LiveDashboard/Reporting/TradesTableSection", () => ({
+vi.mock("@/components/reports/TradesTableSection", () => ({
   TradesTableSection: ({
     history,
     mode,

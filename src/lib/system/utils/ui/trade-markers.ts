@@ -1,4 +1,4 @@
-import type { Marker } from "@/components/LiveDashboard/converter";
+import type { Marker } from "./chart-markers";
 
 import { common, orange, purple } from "@mui/material/colors";
 import type { UTCTimestamp } from "lightweight-charts";

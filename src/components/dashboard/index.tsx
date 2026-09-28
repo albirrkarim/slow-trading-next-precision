@@ -3,7 +3,7 @@
 import { Typography } from "@mui/material";
 import dynamic from "next/dynamic";
 
-const LiveDashboardPage = dynamic(() => import("./LiveDashboardPage"), {
+const LiveDashboardPage = dynamic(() => import("./DashboardPage"), {
     ssr: false,
     loading: () => <Typography sx={{ m: 1 }}>Loading dashboard...</Typography>,
 });

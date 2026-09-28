@@ -1,6 +1,6 @@
 "use client";
 
-import { ToggleableLegend } from "@/components/LiveDashboard/Shared/ToggleableLegend";
+import { ToggleableLegend } from "@/components/charts/ToggleableLegend";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import { Box, Grid, Paper, Typography } from "@mui/material";
 import { useMemo, useState } from "react";

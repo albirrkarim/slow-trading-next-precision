@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { IChartApi, ISeriesApi } from "lightweight-charts";
 import { createChart, ColorType, CandlestickSeries, createSeriesMarkers, HistogramSeries, LineSeries, LineStyle } from "lightweight-charts";
-import type { Marker } from "@/components/LiveDashboard/converter";
+import type { Marker } from "@/lib/system/utils/ui/chart-markers";
 import type { Position } from "@/lib/system/trading";
 
 type TrajectoryPoint = {

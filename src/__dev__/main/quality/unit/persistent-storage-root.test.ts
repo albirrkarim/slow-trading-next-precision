@@ -1,5 +1,5 @@
 import path from "path";
-import { FILES } from "@/components/storage";
+import { FILES } from "@/lib/system/storage/paths";
 
 describe("test persistent storage isolation", () => {
   it("never resolves test storage into a development server instance", () => {

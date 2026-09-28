@@ -8,7 +8,7 @@ import {
     Chip,
     Button,
 } from "@mui/material";
-import { COINS_DETAIL } from "../constants";
+import { COINS_DETAIL } from "@/lib/system/app-constants";
 import { CopyText } from "./CopyText";
 
 interface CoinMultiAutocompleteProps {

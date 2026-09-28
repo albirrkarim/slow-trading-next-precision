@@ -5,11 +5,11 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import OpenPositions from "@/components/LiveDashboard/Feature/OpenPositions";
-import openPositionPnlContribution from "@/components/LiveDashboard/Feature/open-position-pnl-contribution";
+import OpenPositions from "@/components/dashboard/positions/OpenPositions";
+import openPositionPnlContribution from "@/components/dashboard/positions/open-position-pnl-contribution";
 import { createTestPosition } from "../fixtures/position";
 
-vi.mock("@/components/LiveDashboard/Feature/OpenPositionItem", () => ({
+vi.mock("@/components/dashboard/positions/OpenPositionItem", () => ({
   default: ({
     pnlContributionShare,
     position,

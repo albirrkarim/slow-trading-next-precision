@@ -1,7 +1,7 @@
 "use client";
 
 import { endpoints } from "@/components/endpoints";
-import { TradesTableSection } from "@/components/LiveDashboard/Reporting/TradesTableSection";
+import { TradesTableSection } from "@/components/reports/TradesTableSection";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import SidebarButton from "@/components/ui/SidebarButton";
 import format from "@/lib/system/utils/format";

@@ -6,7 +6,7 @@ import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock(
-  "@/components/LiveDashboard/Feature/OpenPositionItem",
+  "@/components/dashboard/positions/OpenPositionItem",
   () => ({
     default: (props: { position: { symbol: string } }) => (
       <div data-testid="open-position">{props.position.symbol}</div>
@@ -20,13 +20,13 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock(
-  "@/components/LiveDashboard/Feature/use-entry-diagnostics",
+  "@/components/dashboard/state/use-entry-diagnostics",
   () => ({
     useEntryDiagnostics: mocks.useEntryDiagnostics,
   }),
 );
 
-import OpenPositions from "@/components/LiveDashboard/Feature/OpenPositions";
+import OpenPositions from "@/components/dashboard/positions/OpenPositions";
 import type { Position } from "@/lib/system/trading";
 
 function position(overrides: Partial<Position> = {}): Position {

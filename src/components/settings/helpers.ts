@@ -4,7 +4,7 @@
 import { postAverageRescue , postAverageStopLoss , levelBasedPctDriftStopLoss , reserve } from "@/lib/system/trading";
 import type { Theme } from "@mui/material";
 
-import { computeDailyPnlPercentStats } from "../../Reporting/utils";
+import { computeDailyPnlPercentStats } from "@/components/reports/utils";
 import type {
   BalanceSummary,
   ConfigDraft,

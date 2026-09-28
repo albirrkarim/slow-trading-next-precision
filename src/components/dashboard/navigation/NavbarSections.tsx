@@ -12,25 +12,25 @@ import {
   Typography,
 } from "@mui/material";
 
-import DailyPnlCalendarWrapper from "@/components/LiveDashboard/Feature/DailyPnlCalendarWrapper";
+import DailyPnlCalendarWrapper from "@/components/dashboard/positions/DailyPnlCalendarWrapper";
 import ButtonDialog from "@/components/ui/ButtonDialog";
 import ButtonLogout from "@/components/ui/ButtonLogout";
 import DarkToggle from "@/components/ui/DarkToggle";
 import SidebarButton from "@/components/ui/SidebarButton";
 
-import UtcClock from "../Feature/UtcClock";
-import SlowTradingReporting from "../Reporting";
+import UtcClock from "./UtcClock";
+import SlowTradingReporting from "@/components/reports";
 import {
   computeBalanceSummaryFromBalances,
   getPnlPercentBg,
-} from "./Settings/helpers";
+} from "@/components/settings/helpers";
 import NavbarBalanceSummary from "./NavbarBalanceSummary";
 import NavbarBalanceRefreshButton from "./NavbarBalanceRefreshButton";
 import NavbarInstanceIp from "./NavbarInstanceIp";
 import NavbarStageRuns from "./NavbarStageRuns";
 import NavbarStrategyChip from "./NavbarStrategyChip";
 import NavbarVolatilityThreshold from "./NavbarVolatilityThreshold";
-import SettingsDialog from "./Settings/SettingsDialog";
+import SettingsDialog from "@/components/settings/SettingsDialog";
 import type {
   ConfigDraft,
   DashboardState,

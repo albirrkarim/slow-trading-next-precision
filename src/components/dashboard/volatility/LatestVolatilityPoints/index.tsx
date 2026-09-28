@@ -1,6 +1,6 @@
 "use client";
 
-import CoinTagSelect from "@/components/dev/Coins/CoinTagSelect";
+import CoinTagSelect from "@/components/coins/CoinTagSelect";
 
 import type { UnifiedFundingRate } from "@/lib/exchange";
 import type { RuntimeEntrySequenceCount } from "@/lib/system/trading";
@@ -29,7 +29,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 import LatestVolatilityPointRow from "./LatestVolatilityPointRow";
-import entrySequenceCandidates from "../entry-sequence-candidates";
+import entrySequenceCandidates from "@/components/dashboard/entry/entry-sequence-candidates";
 import CoinTagComposition from "./CoinTagComposition";
 import type {
   LatestVolatilityPointsProps,

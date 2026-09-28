@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 
 import OpenPositionLevelSequence, {
   buildOpenPositionLevelSequence,
-} from "@/components/LiveDashboard/Feature/OpenPositionLevelSequence";
+} from "@/components/dashboard/positions/OpenPositionLevelSequence";
 
 const watchState = {
   executions: [{ allocationPct: 5, level: -3 }],

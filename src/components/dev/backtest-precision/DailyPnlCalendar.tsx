@@ -9,8 +9,8 @@ import ButtonDialog from "@/components/ui/ButtonDialog";
 import DailyPnlCalendarDialog, {
   buildTradePnlBalanceSnapshots,
   toDailyPnlCalendarTrade,
-} from "@/components/LiveDashboard/Shared/DailyPnlCalendarDialog";
-import type { ConfigDraft } from "@/components/LiveDashboard/Navbar/navbar-types";
+} from "@/components/reports/DailyPnlCalendarDialog";
+import type { ConfigDraft } from "@/components/settings/settings-types";
 import type { Position } from "@/lib/system/trading";
 
 export default function BacktestDailyPnlCalendar(props: {

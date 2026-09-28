@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   parseConfigBackup,
   stringifyConfigBackup,
-} from "@/components/LiveDashboard/Navbar/Settings/Backup/SettingsDialogBackupTab";
-import type { ConfigDraft } from "@/components/LiveDashboard/Navbar/navbar-types";
+} from "@/components/settings/Backup/SettingsDialogBackupTab";
+import type { ConfigDraft } from "@/components/settings/settings-types";
 
 const configDraft = {
   management: {

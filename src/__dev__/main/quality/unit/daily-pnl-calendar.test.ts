@@ -6,8 +6,8 @@ import {
   getDailyWinRateColor,
   getTradeSharpeColor,
   toDailyPnlCalendarTrade,
-} from "@/components/LiveDashboard/Shared/DailyPnlCalendarDialog";
-import { selectEnabledAccountCalendarInputs } from "@/components/LiveDashboard/Feature/DailyPnlCalendarWrapper";
+} from "@/components/reports/DailyPnlCalendarDialog";
+import { selectEnabledAccountCalendarInputs } from "@/components/dashboard/positions/DailyPnlCalendarWrapper";
 import { createTestPosition } from "../fixtures/position";
 
 describe("daily pnl calendar", () => {

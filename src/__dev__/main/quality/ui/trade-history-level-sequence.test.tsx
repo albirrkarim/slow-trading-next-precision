@@ -6,11 +6,11 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { SnackbarProvider } from "notistack";
 import { describe, expect, it, vi } from "vitest";
 
-import { TradesTableSection } from "@/components/LiveDashboard/Reporting/TradesTableSection";
+import { TradesTableSection } from "@/components/reports/TradesTableSection";
 import { createTestPosition } from "../fixtures/position";
 
 vi.mock(
-  "@/components/LiveDashboard/Shared/NetProfitPercentHistorySparkline",
+  "@/components/charts/NetProfitPercentHistorySparkline",
   () => ({
     NetProfitPercentHistorySparkline: () => (
       <div data-testid="pnl-history-chart" />

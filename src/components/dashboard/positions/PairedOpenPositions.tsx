@@ -9,7 +9,7 @@ import type { EntryLegs } from "@/lib/strategies/shared/pair";
 import type { RuntimeHistoryPosition } from "@/lib/system/trading";
 
 import PairRow from "./PairRow";
-import { useEntryDiagnostics } from "./use-entry-diagnostics";
+import { useEntryDiagnostics } from "../state/use-entry-diagnostics";
 
 interface PairedOpenPositionsProps {
   /** Participating account slugs (enabled + dashboard filter applied). */

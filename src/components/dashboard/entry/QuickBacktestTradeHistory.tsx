@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 
 import { Box, MenuItem, TextField, Typography } from "@mui/material";
 
-import { TradesTableSection } from "@/components/LiveDashboard/Reporting/TradesTableSection";
+import { TradesTableSection } from "@/components/reports/TradesTableSection";
 import type { ExchangeType } from "@/lib/exchange";
 import type { RuntimeQuickBacktestResult } from "@/lib/dev/quick-backtest";
 import type { RuntimeAccountConfig } from "@/lib/system/runtime";

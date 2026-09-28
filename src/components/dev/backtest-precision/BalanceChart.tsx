@@ -4,8 +4,8 @@ import { useMemo } from "react";
 
 import { Box, Typography } from "@mui/material";
 
-import { DEFAULT_COLORS } from "@/components/client/constants";
-import type { LeveledMarkers } from "@/components/LiveDashboard/converter";
+import { DEFAULT_COLORS } from "@/lib/system/utils/ui/colors";
+import type { LeveledMarkers } from "@/lib/system/utils/ui/chart-markers";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import MultiLineTimelined from "@/components/ui/Chart/MultiLineTimelined";
 import type { BacktestBalanceSnapshot } from "@/lib/dev/backtestPrecision/backtest/backtest-precision-types";

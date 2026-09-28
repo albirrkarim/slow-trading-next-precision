@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { TradeAuditMessage } from "@/components/LiveDashboard/Reporting/TradesTableSection";
+import { TradeAuditMessage } from "@/components/reports/TradesTableSection";
 
 describe("slow trading history messages", () => {
   it("renders persisted entry and close audit text", () => {

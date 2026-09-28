@@ -1,6 +1,6 @@
 "use client";
 
-import TradeChartBase from "@/components/LiveDashboard/Shared/TradeChartBase";
+import TradeChartBase from "@/components/charts/TradeChartBase";
 import ButtonDialog from "@/components/ui/ButtonDialog";
 
 import { TradingMode } from "@/lib/exchange/types";

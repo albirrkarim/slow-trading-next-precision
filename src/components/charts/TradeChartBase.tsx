@@ -5,7 +5,7 @@ import {
   convertVolatilityToMarkers,
   type Marker,
   type MultiLinePair,
-} from "@/components/LiveDashboard/converter";
+} from "@/lib/system/utils/ui/chart-markers";
 import { endpoints } from "@/components/endpoints";
 import MultiLineTimelined from "@/components/ui/Chart/MultiLineTimelined";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";

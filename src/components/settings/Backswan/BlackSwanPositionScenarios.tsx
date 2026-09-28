@@ -11,7 +11,7 @@ import {
 } from "@mui/material";
 import PositionLevelSequence, {
   type PositionLevelSequenceItem,
-} from "@/components/LiveDashboard/Shared/PositionLevelSequence";
+} from "@/components/charts/PositionLevelSequence";
 import type {
   BlackSwanSavingsBacktestResult,
   BlackSwanSavingsPositionResult,

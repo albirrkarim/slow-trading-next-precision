@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import openPositionDuration from "@/components/LiveDashboard/Feature/open-position-duration";
+import openPositionDuration from "@/components/dashboard/positions/open-position-duration";
 
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;

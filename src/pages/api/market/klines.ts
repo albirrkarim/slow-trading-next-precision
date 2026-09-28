@@ -3,8 +3,8 @@ import {
   convertVolatilityToMarkers,
   type Marker,
   type MultiLinePair,
-} from "@/components/LiveDashboard/converter";
-import { buildTradeMarkersFromHistory } from "@/components/LiveDashboard/Shared/trade-chart-markers";
+} from "@/lib/system/utils/ui/chart-markers";
+import { buildTradeMarkersFromHistory } from "@/lib/system/utils/ui/trade-markers";
 import { TradingMode, type ExchangeType } from "@/lib/exchange";
 import { DEFAULT_EXCHANGE } from "@/lib/exchange/constants";
 import type { IntervalKlines } from "@/lib/exchange/types";

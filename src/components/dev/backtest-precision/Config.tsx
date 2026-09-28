@@ -1,13 +1,13 @@
 "use client";
 
-import SettingsDialog from "@/components/LiveDashboard/Navbar/Settings/SettingsDialog";
+import SettingsDialog from "@/components/settings/SettingsDialog";
 import {
     type ConfigDraftSetter,
     type DashboardState,
-} from "@/components/LiveDashboard/Navbar/navbar-types";
-import { makeConfigDraft } from "@/components/LiveDashboard/Navbar/Settings/helpers";
+} from "@/components/settings/settings-types";
+import { makeConfigDraft } from "@/components/settings/helpers";
 import { endpoints } from "@/components/endpoints";
-import { TIME_RANGE } from "@/components/constants";
+import { TIME_RANGE } from "@/lib/system/app-constants";
 import {
     Box,
     Checkbox,

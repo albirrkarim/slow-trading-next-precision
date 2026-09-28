@@ -5,18 +5,18 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import OpenPositionItem from "@/components/LiveDashboard/Feature/OpenPositionItem";
+import OpenPositionItem from "@/components/dashboard/positions/OpenPositionItem";
 import { createTestPosition } from "../fixtures/position";
 
 vi.mock("@/components/ui/HeaderMetrics", () => ({
   default: ({ title }: { title: React.ReactNode }) => <div>{title}</div>,
 }));
 
-vi.mock("@/components/LiveDashboard/Feature/OpenPositionLevelSequence", () => ({
+vi.mock("@/components/dashboard/positions/OpenPositionLevelSequence", () => ({
   default: () => null,
 }));
 
-vi.mock("@/components/dev/Coins/CoinTagChip", () => ({
+vi.mock("@/components/coins/CoinTagChip", () => ({
   default: () => null,
 }));
 

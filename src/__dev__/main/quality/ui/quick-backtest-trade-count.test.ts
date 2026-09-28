@@ -1,4 +1,4 @@
-import { buildQuickBacktestTradeCountBySymbol } from "@/components/LiveDashboard/Feature/quick-backtest-trade-count";
+import { buildQuickBacktestTradeCountBySymbol } from "@/components/dashboard/entry/quick-backtest-trade-count";
 
 describe("Quick Backtest trade count chart", () => {
   it("counts trade history rows by symbol for the pie chart", () => {

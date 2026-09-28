@@ -1,7 +1,7 @@
 "use client";
 
 import { type Kline } from "@/lib/exchange/platform/tokocrypto";
-import { type Marker } from "@/components/LiveDashboard/converter";
+import { type Marker } from "@/lib/system/utils/ui/chart-markers";
 import {
     CandlestickSeries,
     createChart,

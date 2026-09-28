@@ -5,7 +5,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import JsonTreeViewer from "@/components/LiveDashboard/Shared/JsonTreeViewer";
+import JsonTreeViewer from "@/components/ui/JsonTreeViewer";
 
 describe("JSON tree viewer", () => {
   it("expands and collapses nested trade details", async () => {

@@ -5,7 +5,7 @@
 import { render, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import CurrencyChart from "@/components/LiveDashboard/Shared/CurrencyChart";
+import CurrencyChart from "@/components/charts/CurrencyChart";
 import { TradingMode } from "@/lib/exchange";
 import { createTestPosition } from "../fixtures/position";
 

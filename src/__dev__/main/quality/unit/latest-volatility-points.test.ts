@@ -14,7 +14,7 @@ import {
   isVolatilityPointUsedByAccount,
   isLowVolume24h,
   matchesLatestVolatilitySymbolSearch,
-} from "@/components/LiveDashboard/Feature/LatestVolatilityPoints";
+} from "@/components/dashboard/volatility/LatestVolatilityPoints";
 import {
   buildVPointLevelMaxDrawdownTooltip,
   calculateVPointLevelHeatPct,
@@ -23,11 +23,11 @@ import {
   getVPointLevelProgressions,
   summarizeVPointLevelMaxDrawdowns,
   summarizeRangedVPoints,
-} from "@/components/LiveDashboard/Feature/VPointsFrequency";
+} from "@/components/charts/VPointsFrequency";
 import {
   buildOpenPositionFundingTooltip,
   describePositionFundingImpact,
-} from "@/components/LiveDashboard/Feature/OpenPositionFundingRate";
+} from "@/components/dashboard/positions/OpenPositionFundingRate";
 import { describe, expect, it } from "vitest";
 
 describe("latest volatility point volume", () => {

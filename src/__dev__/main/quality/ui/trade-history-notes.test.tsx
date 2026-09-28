@@ -7,7 +7,7 @@ import axios from "axios";
 import { SnackbarProvider } from "notistack";
 import { describe, expect, it, vi } from "vitest";
 
-import TradeHistoryNotesField from "@/components/LiveDashboard/Reporting/TradeHistoryNotesField";
+import TradeHistoryNotesField from "@/components/reports/TradeHistoryNotesField";
 import { endpoints } from "@/components/endpoints";
 import { createTestPosition } from "../fixtures/position";
 

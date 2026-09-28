@@ -20,7 +20,7 @@ import ExchangeAccountManagerDialog from "./ExchangeAccountManagerDialog";
 import SettingsGroup from "../Components/SettingsGroup";
 import SettingsInfoField from "../Components/SettingsInfoField";
 import SafeHavenScheduleSettings from "./SafeHavenScheduleSettings";
-import type { ConfigDraft, ConfigDraftSetter } from "../../navbar-types";
+import type { ConfigDraft, ConfigDraftSetter } from "../settings-types";
 
 const TRADING_MODE_OPTIONS: Array<{ value: TradingMode; label: string }> = [
   { value: "spot" as TradingMode, label: "Spot" },

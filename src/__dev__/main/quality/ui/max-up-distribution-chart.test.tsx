@@ -5,8 +5,8 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import MaxUpDistributionChart from "@/components/LiveDashboard/Reporting/MaxUpDistributionChart";
-import type { SlowTradingReportRow } from "@/components/LiveDashboard/Reporting/types";
+import MaxUpDistributionChart from "@/components/reports/MaxUpDistributionChart";
+import type { SlowTradingReportRow } from "@/components/reports/types";
 import { createTestPosition } from "../fixtures/position";
 
 describe("Max Up distribution chart", () => {
