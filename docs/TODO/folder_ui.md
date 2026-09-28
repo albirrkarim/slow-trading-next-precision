@@ -58,6 +58,38 @@ Move pure calculations and server-consumed models to the appropriate
 Keep `src/components/client/` until its color constants and scheduling helpers
 have clear owners; do not rename it just for symmetry.
 
+## Component modularity
+
+Treat a React component file above roughly 500 lines as a prompt to review its
+responsibilities. Currently 18 component-area TypeScript files exceed that
+size; examples include `DailyPnlCalendarDialog.tsx`, `SlowTradingLogs.tsx`,
+`LiveDashboardPage.tsx`, and `TradesTableSection.tsx`. For each, look for
+independent UI sections that can become small local components, reusable
+state/effects that belong in a focused hook, and pure calculations that belong
+outside React. Keep closely related markup together when splitting would add
+more indirection than clarity. The line count is a review trigger, not a hard
+limit or a reason to create one-file-per-fragment components.
+
+When a component is actually split into multiple related files, give it a
+folder named after the component. Keep its main component, private
+subcomponents, hook, and local types together, for example:
+
+```text
+SlowTradingLogs/
+  index.tsx               # public component
+  LogRow.tsx              # local subcomponent
+  useSlowTradingLogs.ts   # local state and effects
+  types.ts                # types used only by this feature
+```
+
+The `index.tsx` file should expose the main component only; do not turn it
+into a broad barrel for internal files. A component that remains one cohesive
+file does not need its own folder.
+
+When splitting a file, preserve state ownership, effect timing, rendering
+conditions, props, and tests. Separate the component split from relocating
+the feature to its final destination so a behavior change is easier to spot.
+
 ## Migration sequence
 
 1. **Record the baseline and untangle non-visual dependencies.** List current
@@ -93,6 +125,8 @@ into React modules while reorganizing their views.
 
 - Every component has one obvious owner; dashboard and dev screens share
   neutral modules instead of importing each other's screen folders.
+- Files above roughly 500 lines have been reviewed for separable components,
+  hooks, and calculations; any remaining large file has one coherent role.
 - `ui/` and `src/pages/api/` have no imports from dashboard or dev component
   paths. `endpoints/` remains the only source of client API URLs.
 - Searches for old import paths and hardcoded `/api/` literals in components

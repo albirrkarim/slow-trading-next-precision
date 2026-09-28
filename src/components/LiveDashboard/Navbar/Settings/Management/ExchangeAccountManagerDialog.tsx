@@ -21,9 +21,6 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import axios from "axios";
-
-import { endpoints } from "@/components/endpoints";
 import ButtonDialog from "@/components/ui/ButtonDialog";
 import IconButtonTooltip from "@/components/ui/IconButtonTooltip";
 import pair from "@/lib/strategies/shared/pair";
@@ -34,7 +31,6 @@ import type {
 
 import type { ConfigDraft, ConfigDraftSetter } from "../settings-types";
 import SettingsInfoField from "../Components/SettingsInfoField";
-import { systemLog } from "@/lib/system/logging";
 import type { RuntimeAccountConfig } from "@/lib/system/runtime";
 
 function maskCredentialValue(value: string): string {
@@ -82,7 +78,7 @@ function CredentialSettingsField({
 }: {
   info: string;
   label: string;
-  onBlur: () => void;
+  onBlur?: () => void;
   onChange: (value: string) => void;
   revealed: boolean;
   setRevealed: (revealed: boolean) => void;
@@ -167,9 +163,6 @@ export default function ExchangeAccountManagerDialog({
     apiSecret: false,
     passphrase: false,
   });
-  const [saveStatus, setSaveStatus] = useState<
-    "idle" | "saving" | "saved" | "error"
-  >("idle");
 
   const effectiveEditingAccountId = configDraft.accounts.some(
     (account) => account.slug === editingExchangeAccountSlug,
@@ -215,73 +208,18 @@ export default function ExchangeAccountManagerDialog({
     }));
   };
 
-  const persistExchangeAccounts = async (accounts: RuntimeAccountConfig[]) => {
-    setSaveStatus("saving");
-    try {
-      const response = await axios.put<{
-        accounts: RuntimeAccountConfig[];
-      }>(endpoints.system.account.list, { accounts });
-      const savedAccounts = Array.isArray(response.data?.accounts)
-        ? response.data.accounts
-        : accounts;
-      setConfigDraft((prev) =>
-        prev
-          ? {
-            ...prev,
-            accounts: savedAccounts,
-          }
-          : prev,
-      );
-      if (
-        selectedSlug &&
-        !savedAccounts.some((account) => account.slug === selectedSlug)
-      ) {
-        setSelectedAccountSlug?.(savedAccounts[0]?.slug ?? "");
-      }
-      setEditingExchangeAccountSlug((current) =>
-        savedAccounts.some((account) => account.slug === current)
-          ? current
-          : (savedAccounts.at(-1)?.slug ?? savedAccounts[0]?.slug ?? ""),
-      );
-      setSaveStatus("saved");
-    } catch (error) {
-      systemLog.error("Failed to save exchange accounts", error);
-      setSaveStatus("error");
-    }
-  };
-
+  // Account edits stay draft-only: production persists them through the
+  // settings Save button, and the backtest settings draft never touches the
+  // live accounts endpoint or the config-change log.
   const applyAccountDraftUpdate = (
     updater: (draft: ConfigDraft) => ConfigDraft,
-    options: { persist?: boolean } = {},
   ) => {
-    let nextDraft: ConfigDraft | null = null;
-    setConfigDraft((prev) => {
-      if (!prev) {
-        return prev;
-      }
-      nextDraft = updater(prev);
-      return nextDraft;
-    });
-
-    const draftToSave = nextDraft as ConfigDraft | null;
-    if (!options.persist) {
-      setSaveStatus("idle");
-      return;
-    }
-
-    if (draftToSave) {
-      void persistExchangeAccounts(draftToSave.accounts);
-    }
-  };
-
-  const persistAccountDraft = () => {
-    applyAccountDraftUpdate((draft) => draft, { persist: true });
+    setConfigDraft((prev) => (prev ? updater(prev) : prev));
   };
 
   const updateExchangeAccount = (
     accountId: string,
     updater: (account: RuntimeAccountConfig) => RuntimeAccountConfig,
-    options: { persist?: boolean } = {},
   ) => {
     applyAccountDraftUpdate((prev) => {
       let selectedAccount: RuntimeAccountConfig | undefined;
@@ -305,7 +243,7 @@ export default function ExchangeAccountManagerDialog({
           exchangeType: selectedAccount?.type ?? prev.management.exchangeType,
         },
       };
-    }, options);
+    });
   };
 
   const createExchangeAccountSlug = () => {
@@ -346,13 +284,10 @@ export default function ExchangeAccountManagerDialog({
       updatedAt: now,
     };
 
-    applyAccountDraftUpdate(
-      (prev) => ({
-        ...prev,
-        accounts: [...prev.accounts, account],
-      }),
-      { persist: true },
-    );
+    applyAccountDraftUpdate((prev) => ({
+      ...prev,
+      accounts: [...prev.accounts, account],
+    }));
     setEditingExchangeAccountSlug(account.slug);
   };
 
@@ -368,28 +303,25 @@ export default function ExchangeAccountManagerDialog({
         )?.slug
         : selectedSlug;
 
-    applyAccountDraftUpdate(
-      (prev) => {
-        const exchangeAccounts = prev.accounts.filter(
-          (account) => account.slug !== editingExchangeAccount.slug,
-        );
-        const selectedAccount = exchangeAccounts.find(
-          (account) => account.slug === nextSelectedSlug,
-        );
+    applyAccountDraftUpdate((prev) => {
+      const exchangeAccounts = prev.accounts.filter(
+        (account) => account.slug !== editingExchangeAccount.slug,
+      );
+      const selectedAccount = exchangeAccounts.find(
+        (account) => account.slug === nextSelectedSlug,
+      );
 
-        const nextDraft = {
-          ...prev,
-          accounts: exchangeAccounts,
-          management: {
-            ...prev.management,
-            exchangeType:
-              selectedAccount?.type ?? prev.management.exchangeType,
-          },
-        };
-        return nextDraft;
-      },
-      { persist: true },
-    );
+      const nextDraft = {
+        ...prev,
+        accounts: exchangeAccounts,
+        management: {
+          ...prev.management,
+          exchangeType:
+            selectedAccount?.type ?? prev.management.exchangeType,
+        },
+      };
+      return nextDraft;
+    });
     if (nextSelectedSlug && nextSelectedSlug !== selectedSlug) {
       setSelectedAccountSlug?.(nextSelectedSlug);
     }
@@ -443,24 +375,12 @@ export default function ExchangeAccountManagerDialog({
               </Typography>
               <Typography color="text.secondary" variant="caption">
                 Choose a profile here only to edit its name, credentials,
-                position mode, and entry status. Every enabled account runs
-                independently.
+                position mode, and entry status. Edits update the settings
+                draft — on the dashboard they persist when you press Save.
               </Typography>
             </Box>
 
             <Stack direction="row" spacing={1} alignItems="center">
-              {saveStatus !== "idle" && (
-                <Typography
-                  color={saveStatus === "error" ? "error" : "text.secondary"}
-                  variant="caption"
-                >
-                  {saveStatus === "saving"
-                    ? "Saving..."
-                    : saveStatus === "saved"
-                      ? "Saved"
-                      : "Save failed"}
-                </Typography>
-              )}
               <Button
                 size="small"
                 variant="outlined"
@@ -562,7 +482,6 @@ export default function ExchangeAccountManagerDialog({
                         size="small"
                         fullWidth
                         value={editingExchangeAccount.name}
-                        onBlur={persistAccountDraft}
                         onChange={(event) =>
                           updateExchangeAccount(
                             editingExchangeAccount.slug,
@@ -607,7 +526,6 @@ export default function ExchangeAccountManagerDialog({
                                 .value as UnifiedFuturesPositionMode,
                               updatedAt: Date.now(),
                             }),
-                            { persist: true },
                           )
                         }
                         error={pairModeMissingHedge}
@@ -641,7 +559,6 @@ export default function ExchangeAccountManagerDialog({
                                 }),
                               );
                             }}
-                            onBlur={persistAccountDraft}
                           />
                         }
                         label="Enable new entries for this account"
@@ -657,7 +574,6 @@ export default function ExchangeAccountManagerDialog({
                         minRows={2}
                         maxRows={4}
                         value={editingExchangeAccount.description}
-                        onBlur={persistAccountDraft}
                         onChange={(event) =>
                           updateExchangeAccount(
                             editingExchangeAccount.slug,
@@ -682,7 +598,6 @@ export default function ExchangeAccountManagerDialog({
                         setRevealed={(revealed) =>
                           setCredentialRevealed("apiKey", revealed)
                         }
-                        onBlur={persistAccountDraft}
                         onChange={(value) =>
                           updateExchangeAccount(
                             editingExchangeAccount.slug,
@@ -710,7 +625,6 @@ export default function ExchangeAccountManagerDialog({
                         setRevealed={(revealed) =>
                           setCredentialRevealed("apiSecret", revealed)
                         }
-                        onBlur={persistAccountDraft}
                         onChange={(value) =>
                           updateExchangeAccount(
                             editingExchangeAccount.slug,

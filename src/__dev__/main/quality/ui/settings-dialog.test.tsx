@@ -595,7 +595,7 @@ describe("settings dialog save payload", () => {
     expect(screen.getByTestId("entry-legs").textContent).toBe("COUNTER");
   });
 
-  it("writes futures position mode via the Exchange Accounts dialog", async () => {
+  it("keeps futures position mode edits in the draft without an accounts PUT", async () => {
     const user = userEvent.setup();
     const axiosPut = vi.mocked(axios.put);
     axiosPut.mockClear();
@@ -618,17 +618,18 @@ describe("settings dialog save payload", () => {
     await user.click(await screen.findByLabelText("Futures Position Mode"));
     await user.click(screen.getByRole("option", { name: "Hedge" }));
 
-    // The account-level field persists through the accounts PUT.
-    await waitFor(() => expect(axiosPut).toHaveBeenCalled());
-    const payload = axiosPut.mock.calls.find(
-      ([url]) => url === endpoints.system.account.list,
-    )?.[1] as {
-      accounts: { futuresPositionMode?: string; slug: string }[];
-    };
+    // Account edits stay draft-only so the backtest settings draft never
+    // reaches the live accounts endpoint; the Save button persists them.
     expect(
-      payload.accounts.find((account) => account.slug === "1")
+      nextDraft.accounts.find((account) => account.slug === "1")
         ?.futuresPositionMode,
     ).toBe("HEDGE");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(
+      axiosPut.mock.calls.some(
+        ([url]) => url === endpoints.system.account.list,
+      ),
+    ).toBe(false);
     axiosPut.mockClear();
   });
 
