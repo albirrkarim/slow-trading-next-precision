@@ -81,8 +81,42 @@ describe("OpenPositionLevelSequence", () => {
       />,
     );
 
-    expect(screen.getByText("L2 AVG 2x")).toBeTruthy();
-    expect(screen.getByText("L3 AVG 5x")).toBeTruthy();
+    expect(screen.getByText("L-2 AVG 2x")).toBeTruthy();
+    expect(screen.getByText("L-3 AVG 5x")).toBeTruthy();
+  });
+
+  it("keeps upcoming adverse steps below the anchor visible", () => {
+    // BOTH:SIGNED_LEVEL_LADDER — a LONG at L1 with a used L0 step and an
+    // unreserved L-1 step renders `L1 -> L0 AVG 3x -> L-1`; the negative step
+    // must not merge into the positive entry chip.
+    const params = {
+      currentLevel: 0,
+      direction: "LONG" as const,
+      entryLevel: 1,
+      spendableQuoteAsset: 100,
+      watchState: {
+        executions: [{ allocationPct: 3, level: 0 }],
+        steps: [
+          { level: 0, marginUsdt: 17.9, status: "USED" as const },
+          { level: -1, marginUsdt: 71.7, status: "UNRESERVED" as const },
+        ],
+      },
+    };
+
+    const items = buildOpenPositionLevelSequence(params);
+
+    expect(
+      items.map(({ level, state }) => ({ level, state })),
+    ).toEqual([
+      { level: 1, state: "passed" },
+      { level: 0, state: "current" },
+      { level: -1, state: "unreserved" },
+    ]);
+
+    render(<OpenPositionLevelSequence {...params} />);
+    expect(screen.getByText("L0 AVG 3x")).toBeTruthy();
+    expect(screen.getByText("L-1")).toBeTruthy();
+    expect(screen.getAllByText("L1")).toHaveLength(1);
   });
 
   it("colors a reached current level as warning until averaging executes", async () => {
@@ -116,11 +150,11 @@ describe("OpenPositionLevelSequence", () => {
     );
 
     const reachedStep = screen.getByLabelText(
-      "Level 4, Current, Not averaged, Drift +12.50%",
+      "Level -4, Current, Not averaged, Drift +12.50%",
     );
 
     expect(reachedStep.className).toContain("MuiChip-colorWarning");
-    expect(reachedStep.textContent).toBe("L4 drift +12.50%");
+    expect(reachedStep.textContent).toBe("L-4 drift +12.50%");
     fireEvent.mouseOver(reachedStep);
     expect((await screen.findByRole("tooltip")).textContent).toContain(
       "Profit-direction drift +12.50% from the current level vPoint to mark price",
@@ -146,16 +180,16 @@ describe("OpenPositionLevelSequence", () => {
       />,
     );
 
-    const currentStep = screen.getByLabelText("Level 2, Current, Entry");
-    const reservedStep = screen.getByLabelText("Level 3, Reserved");
+    const currentStep = screen.getByLabelText("Level -2, Current, Entry");
+    const reservedStep = screen.getByLabelText("Level -3, Reserved");
     const fullyCoveredStep = screen.getByLabelText(
-      "Level 4, Unreserved, Fully covered",
+      "Level -4, Unreserved, Fully covered",
     );
     const partiallyCoveredStep = screen.getByLabelText(
-      "Level 5, Unreserved, Partially covered",
+      "Level -5, Unreserved, Partially covered",
     );
     const uncoveredStep = screen.getByLabelText(
-      "Level 6, Unreserved, Not covered",
+      "Level -6, Unreserved, Not covered",
     );
 
     expect(currentStep.className).toContain("MuiChip-colorPrimary");

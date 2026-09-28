@@ -733,7 +733,15 @@ averaging execution is recorded, it uses the normal current averaged color.
 Open-position monitoring stores its latest market price as `markPrice`. While
 the level is reached but not averaged, its chip shows the direction-aware
 profit drift from that level's latest vPoint price to `markPrice`, for example
-`L4 drift +1.25%`.
+`L-4 drift +1.25%`.
+
+Open-position level chips keep the signed vPoint level so the upcoming worst
+averaging steps remain visible across the zero anchor. A LONG entered at level
+`1` with a used step at `0` and an unreserved step at `-1` renders
+`L1 -> L0 AVG 3x -> L-1`; the negative step is never merged into the positive
+entry chip, and the current/reached level is matched by the signed level.
+
+TC: `BOTH:SIGNED_LEVEL_LADDER`
 
 For futures positions, the expanded Open Position item shows the persisted
 funding rate immediately after Mark Price. Its tooltip explains the crowded

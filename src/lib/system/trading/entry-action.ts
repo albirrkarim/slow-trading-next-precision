@@ -345,7 +345,7 @@ function buildPlan(
       vPointPrice: signal.p,
     });
     if (drift.blocked) {
-      systemLog.info(drift.reason ?? "Entry blocked by late-entry drift.");
+      systemLog.debug(drift.reason ?? "Entry blocked by late-entry drift.");
       return null;
     }
   }

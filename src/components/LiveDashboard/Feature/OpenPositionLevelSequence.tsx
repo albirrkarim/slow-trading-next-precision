@@ -52,6 +52,15 @@ function levelKey(level: number): number {
   return Math.abs(level);
 }
 
+/** Whether `level` sits deeper than `than` along the adverse ladder. */
+function isDeeperLevel(
+  level: number,
+  than: number,
+  direction: "LONG" | "SHORT",
+): boolean {
+  return direction === "LONG" ? level < than : level > than;
+}
+
 /**
  * Builds the observed level path after the volatility target zone breaks averaging.
  */
@@ -94,26 +103,27 @@ function getTargetHitSequence({
 
   const targetPoint = postEntryPoints[targetPointIndex];
   const reachedLevelKeys = new Set<number>();
+  // BOTH:SIGNED_LEVEL_LADDER — adverse depth is direction-aware; signed levels
+  // keep opposite-side magnitudes distinct (e.g. entry L1 vs step L-1).
   const reachedAdverseLevels = postEntryPoints
     .filter(
       (point) =>
         point.t <= targetPoint.t &&
         point.l === adverseLabel &&
-        levelKey(point.lvl) > levelKey(entryLevel),
+        isDeeperLevel(point.lvl, entryLevel, direction),
     )
     .filter((point) => {
-      const key = levelKey(point.lvl);
-      if (reachedLevelKeys.has(key)) {
+      if (reachedLevelKeys.has(point.lvl)) {
         return false;
       }
 
-      reachedLevelKeys.add(key);
+      reachedLevelKeys.add(point.lvl);
       return true;
     });
   const reserveStepsByLevel = new Map(
     (watchState?.steps ?? [])
       .filter((step) => finiteLevel(step.level) !== null)
-      .map((step) => [levelKey(step.level!), step]),
+      .map((step) => [step.level!, step]),
   );
   const postTargetPoints = postEntryPoints.slice(targetPointIndex + 1);
   const postTargetItems = postTargetPoints.map((point, index) => ({
@@ -136,11 +146,11 @@ function getTargetHitSequence({
       state: "passed",
     },
     ...reachedAdverseLevels.map((point) => {
-      const step = reserveStepsByLevel.get(levelKey(point.lvl));
+      const step = reserveStepsByLevel.get(point.lvl);
       const isAveraged =
         step?.status === "USED" ||
-        averagingExecutionByLevel.has(levelKey(point.lvl));
-      const execution = averagingExecutionByLevel.get(levelKey(point.lvl));
+        averagingExecutionByLevel.has(point.lvl);
+      const execution = averagingExecutionByLevel.get(point.lvl);
 
       return {
         adaptiveMultiplier: execution?.adaptiveMultiplier,
@@ -191,7 +201,7 @@ export function buildOpenPositionLevelSequence({
   for (const execution of watchState?.executions ?? []) {
     const level = finiteLevel(execution.level);
     if (level !== null) {
-      averagingExecutionByLevel.set(levelKey(level), execution);
+      averagingExecutionByLevel.set(level, execution);
     }
   }
   // BOTH:VOLATILITY_TARGET_TP
@@ -227,12 +237,11 @@ export function buildOpenPositionLevelSequence({
       | "unreservedCoverage"
     >,
   ) => {
-    const key = levelKey(level);
-    if (seenLevelKeys.has(key)) {
+    if (seenLevelKeys.has(level)) {
       return;
     }
 
-    seenLevelKeys.add(key);
+    seenLevelKeys.add(level);
     sequence.push({ ...source, level });
   };
 
@@ -255,11 +264,16 @@ export function buildOpenPositionLevelSequence({
 
   if (
     normalizedCurrentLevel !== null &&
-    !seenLevelKeys.has(levelKey(normalizedCurrentLevel))
+    !seenLevelKeys.has(normalizedCurrentLevel)
   ) {
     const currentMagnitude = levelKey(normalizedCurrentLevel);
+    const directionKnown = direction === "LONG" || direction === "SHORT";
     const insertionIndex = sequence.findIndex(
-      (item, index) => index > 0 && levelKey(item.level) > currentMagnitude,
+      (item, index) =>
+        index > 0 &&
+        (directionKnown
+          ? isDeeperLevel(item.level, normalizedCurrentLevel, direction)
+          : levelKey(item.level) > currentMagnitude),
     );
     const currentItem = {
       isEntry: false,
@@ -273,13 +287,12 @@ export function buildOpenPositionLevelSequence({
     }
   }
 
-  const currentLevelKey =
-    normalizedCurrentLevel === null ? null : levelKey(normalizedCurrentLevel);
+  const currentLevelKey = normalizedCurrentLevel;
   const currentVPoint = [...(volatilityPoints ?? [])]
     .filter(
       (point) =>
         currentLevelKey !== null &&
-        levelKey(point.lvl) === currentLevelKey &&
+        point.lvl === currentLevelKey &&
         (typeof entryTime !== "number" || point.t >= entryTime),
     )
     .sort((a, b) => b.t - a.t)[0];
@@ -293,7 +306,7 @@ export function buildOpenPositionLevelSequence({
       : undefined;
   const currentIndex = sequence.findIndex(
     (item) =>
-      currentLevelKey !== null && levelKey(item.level) === currentLevelKey,
+      currentLevelKey !== null && item.level === currentLevelKey,
   );
 
   let remainingSpendableQuoteAsset = normalizedSpendableQuoteAsset ?? 0;
@@ -301,8 +314,8 @@ export function buildOpenPositionLevelSequence({
   return sequence.map((item, index) => {
     const isAveraged =
       item.reserveStatus === "USED" ||
-      averagingExecutionByLevel.has(levelKey(item.level));
-    const execution = averagingExecutionByLevel.get(levelKey(item.level));
+      averagingExecutionByLevel.has(item.level);
+    const execution = averagingExecutionByLevel.get(item.level);
     const validUnreservedMargin =
       item.reserveStatus === "UNRESERVED" &&
       typeof item.marginUsdt === "number" &&

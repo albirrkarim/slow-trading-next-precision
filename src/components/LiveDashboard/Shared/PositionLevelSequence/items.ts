@@ -14,11 +14,6 @@ export const stateLabels: Record<PositionLevelSequenceState, string> = {
   unreserved: "Unreserved",
 };
 
-/** Returns the unsigned level shown on chips (vPoint levels carry a sign). */
-export function levelKey(level: number): number {
-  return Math.abs(level);
-}
-
 /** Checks whether the latest reached level still has no averaging execution. */
 export function isReachedWithoutAveraging(
   item: PositionLevelSequenceItem,
@@ -123,7 +118,7 @@ export function buildTooltip(
   averagingStopped: boolean,
 ): string {
   const details = [
-    `Level ${levelKey(item.level)}`,
+    `Level ${item.level}`,
     stateLabels[item.state],
     item.isEntry ? "Entry" : null,
     item.isAveraged ? "Averaged" : null,

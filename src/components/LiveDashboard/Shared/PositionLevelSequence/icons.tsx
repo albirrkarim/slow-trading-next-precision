@@ -6,7 +6,7 @@ import { Box, Tooltip } from "@mui/material";
 
 import type { PositionLastMonitoringStage } from "@/lib/system/trading";
 
-import { levelKey } from "./items";
+
 
 /** Icon shown beside an averaged level, carrying the stage snapshot at fill time. */
 export function MonitoringStateIcon({
@@ -27,7 +27,7 @@ export function MonitoringStateIcon({
       title={`${stageLabel} was the last monitoring stage when this averaging execution was recorded. ${monitoringState.reason} Last updated: ${new Date(monitoringState.lastUpdated).toLocaleString()}`}
     >
       <Box
-        aria-label={`${stageLabel} monitoring state at averaging level ${levelKey(level)}`}
+        aria-label={`${stageLabel} monitoring state at averaging level ${level}`}
         component="span"
         sx={{
           alignItems: "center",
@@ -61,7 +61,7 @@ export function ExitMonitoringStageIcon({
       title={monitoringState.reason.trim() || "No monitoring reason recorded."}
     >
       <Box
-        aria-label={`${stageLabel} monitoring stage at exit level ${levelKey(level)}`}
+        aria-label={`${stageLabel} monitoring stage at exit level ${level}`}
         component="span"
         role="img"
         sx={{

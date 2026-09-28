@@ -90,7 +90,7 @@ describe("trade-history level sequence", () => {
     ).toBeTruthy();
     // PROD:TRADE_HISTORY_EXIT_MONITORING_STAGE
     const exitStageIcon = screen.getByLabelText(
-      "Standard monitoring stage at exit level 4",
+      "Standard monitoring stage at exit level -4",
     );
     expect(exitStageIcon.getAttribute("tabindex")).toBe("0");
     fireEvent.mouseOver(exitStageIcon);
@@ -133,7 +133,7 @@ describe("trade-history level sequence", () => {
     expect(screen.queryByText(/Reason: Positive PnL threshold/)).toBeNull();
 
     const exitStageIcon = screen.getByLabelText(
-      "Speedup monitoring stage at exit level 4",
+      "Speedup monitoring stage at exit level -4",
     );
     expect(exitStageIcon.closest(".MuiChip-root")).toBeTruthy();
     fireEvent.mouseOver(exitStageIcon);
@@ -231,14 +231,14 @@ describe("trade-history level sequence", () => {
       within(sequence)
         .getAllByText(/^L/)
         .map((chip) => chip.textContent),
-    ).toEqual(["L2", "L3 AVG 5x", "L4 AVG 2x EXIT"]);
+    ).toEqual(["L-2", "L-3 AVG 5x", "L-4 AVG 2x EXIT"]);
     // BOTH:AVERAGING_MONITORING_STATE_SNAPSHOT
     const speedupState = within(sequence).getByLabelText(
-      "Speedup monitoring state at averaging level 3",
+      "Speedup monitoring state at averaging level -3",
     );
     expect(
       within(sequence).getByLabelText(
-        "Standard monitoring state at averaging level 4",
+        "Standard monitoring state at averaging level -4",
       ),
     ).toBeTruthy();
     fireEvent.mouseOver(speedupState);
@@ -307,6 +307,6 @@ describe("trade-history level sequence", () => {
       within(sequence)
         .getAllByText(/^L/)
         .map((chip) => chip.textContent),
-    ).toEqual(["L2", "L3 NOT AVG", "L4 AVG 2x", "L0 EXIT"]);
+    ).toEqual(["L-2", "L-3 NOT AVG", "L-4 AVG 2x", "L0 EXIT"]);
   });
 });

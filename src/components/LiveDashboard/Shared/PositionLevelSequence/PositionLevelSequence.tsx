@@ -11,7 +11,6 @@ import {
   formatDriftPct,
   getChipProps,
   isReachedWithoutAveraging,
-  levelKey,
   stateLabels,
 } from "./items";
 import type { PositionLevelSequenceItem } from "./types";
@@ -65,7 +64,7 @@ export default function PositionLevelSequence({
               : "Standard monitoring stage"
             : null;
           const statusLabel = [
-            `Level ${levelKey(item.level)}`,
+            `Level ${item.level}`,
             stateLabels[item.state],
             item.isEntry ? "Entry" : null,
             item.isExit && item.state !== "exit" ? "Exit" : null,
@@ -97,7 +96,7 @@ export default function PositionLevelSequence({
               ? ` drift ${driftLabel}`
               : "",
           ].join("");
-          const chipLabel = `L${levelKey(item.level)}${chipSuffix}`;
+          const chipLabel = `L${item.level}${chipSuffix}`;
           const chip = (
             <Chip
               {...chipProps}
