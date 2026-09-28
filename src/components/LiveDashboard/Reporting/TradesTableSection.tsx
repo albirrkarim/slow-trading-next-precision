@@ -41,6 +41,7 @@ import RangedValueText, {
 import type { SlowTradingReportRow } from "./types";
 import { formatHoldMs } from "./utils";
 import { positionData } from "@/lib/system/trading";
+import pair from "@/lib/strategies/shared/pair";
 import TradeHistoryNotesField from "./TradeHistoryNotesField";
 import JsonTreeViewer from "@/components/LiveDashboard/Shared/JsonTreeViewer";
 import type { RuntimeAccountConfig, RuntimeMode } from "@/lib/system/runtime";
@@ -653,6 +654,7 @@ export function TradesTableSection({
               const account = accountBySlug.get(row.account);
               const accountName = account?.name.trim() || row.account;
               const tradingNotes = account?.trading?.notes.trim();
+              const legMeta = pair.meta.ofPosition(row);
 
               return (
                 <TableRow key={buildRowKey(row, index)} hover>
@@ -705,6 +707,31 @@ export function TradesTableSection({
                         variant="outlined"
                       />
                     </MetricTooltip>
+
+                    {/* BOTH:TRADE_HISTORY_ROLE_CHIP */}
+                    {legMeta && (
+                      <MetricTooltip
+                        title={`Pair ${legMeta.pairId}${legMeta.reopen ? " — role re-entry" : ""}`}
+                      >
+                        <Chip
+                          aria-label={`Role ${legMeta.role}`}
+                          color={
+                            legMeta.role === "MAIN" ? "primary" : "secondary"
+                          }
+                          label={legMeta.role}
+                          size="small"
+                          sx={{
+                            fontSize: "0.65rem",
+                            height: 20,
+                            mb: 0.25,
+                            ml: 0.5,
+                            "& .MuiChip-label": { px: 0.75 },
+                          }}
+                          tabIndex={0}
+                          variant="outlined"
+                        />
+                      </MetricTooltip>
+                    )}
 
                     {lastMonitoringStage?.stage === "standard" && (
                       <>
