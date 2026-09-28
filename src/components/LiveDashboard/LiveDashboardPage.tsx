@@ -197,6 +197,16 @@ export default function DynamicTradeHistoryPage({
           account.slug === dashboardState.accountFilter),
     )
     .map((account) => account.slug);
+  const accountEntryLegs = useMemo(
+    () =>
+      Object.fromEntries(
+        (dashboardState?.accounts ?? []).map((account) => [
+          account.slug,
+          account.trading.entryLegs ?? "BOTH",
+        ]),
+      ),
+    [dashboardState?.accounts],
+  );
   const selectedAccountSlug =
     storedAccountSlug &&
     dashboardAccounts.some((account) => account.slug === storedAccountSlug)
@@ -918,6 +928,10 @@ export default function DynamicTradeHistoryPage({
 
                 <OpenPositions
                   accounts={participatingAccountSlugs}
+                  captureEntryRanAt={
+                    dashboardState.stats.stageRuns?.["capture-entry"]?.t
+                  }
+                  entryLegs={accountEntryLegs}
                   availableTags={coinMetadata.tags.map((tag) => tag.text)}
                   coinDescriptions={coinMetadata.coinDescriptions}
                   coinTags={coinMetadata.coinTags}
@@ -980,6 +994,10 @@ export default function DynamicTradeHistoryPage({
                 <Grid size={{ xl: 9, lg: 8, md: 12, xs: 12 }}>
                   <OpenPositions
                     accounts={participatingAccountSlugs}
+                    captureEntryRanAt={
+                      dashboardState.stats.stageRuns?.["capture-entry"]?.t
+                    }
+                    entryLegs={accountEntryLegs}
                     availableTags={coinMetadata.tags.map((tag) => tag.text)}
                     coinDescriptions={coinMetadata.coinDescriptions}
                     coinTags={coinMetadata.coinTags}

@@ -12,12 +12,14 @@ interface PairSlotCardProps {
   slot: PairBoardSlot;
   /** Diagnostics explanation used when the slot itself carries no reason. */
   emptyReason?: string;
+  emptyReasonFallback?: string;
   /** Renders an open leg with the shared OpenPositionItem card. */
   renderOpen: (position: RuntimeHistoryPosition) => ReactNode;
 }
 
 export default function PairSlotCard({
   emptyReason,
+  emptyReasonFallback,
   renderOpen,
   role,
   slot,
@@ -85,6 +87,7 @@ export default function PairSlotCard({
         <Typography color="text.secondary" variant="caption">
           {slot.reason ??
             emptyReason ??
+            emptyReasonFallback ??
             "No open pair — waiting for a fresh pair entry signal."}
         </Typography>
       </Stack>

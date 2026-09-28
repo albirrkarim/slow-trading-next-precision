@@ -1,10 +1,11 @@
 "use client";
 
 import { Box, Stack, Typography } from "@mui/material";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import type { ReactNode } from "react";
 
 import pairBoard from "@/lib/strategies/shared/board";
+import type { EntryLegs } from "@/lib/strategies/shared/pair";
 import type { RuntimeHistoryPosition } from "@/lib/system/trading";
 
 import PairRow from "./PairRow";
@@ -13,6 +14,8 @@ import { useEntryDiagnostics } from "./use-entry-diagnostics";
 interface PairedOpenPositionsProps {
   /** Participating account slugs (enabled + dashboard filter applied). */
   accounts: string[];
+  captureEntryRanAt?: number;
+  entryLegs?: Record<string, EntryLegs>;
   positions: RuntimeHistoryPosition[];
   renderOpen: (
     position: RuntimeHistoryPosition,
@@ -25,6 +28,7 @@ interface PairedOpenPositionsProps {
   symbols: string[];
   /** Diagnostics reasons keyed `<account>:<SYMBOL>` filling empty streak slots. */
   emptyReasons?: Record<string, string>;
+  emptyReasonFallback?: string | ((account: string, symbol: string) => string);
 }
 
 export default function PairedOpenPositions(
@@ -39,9 +43,24 @@ export default function PairedOpenPositions(
 
 /** Streak variant: empty rows pick up the shared entry diagnostics reason. */
 function StreakPairedOpenPositions(props: PairedOpenPositionsProps) {
-  const { snapshot } = useEntryDiagnostics();
+  const { captureEntryRanAt } = props;
+  const { error, refresh, snapshot } = useEntryDiagnostics();
+
+  const seenCaptureEntryRanAt = useRef(captureEntryRanAt);
+  useEffect(() => {
+    if (
+      captureEntryRanAt === undefined ||
+      captureEntryRanAt === seenCaptureEntryRanAt.current
+    ) {
+      return;
+    }
+    seenCaptureEntryRanAt.current = captureEntryRanAt;
+    void refresh();
+  }, [captureEntryRanAt, refresh]);
+
   const emptyReasons = useMemo(() => {
     const map: Record<string, string> = {};
+    if (error) return map;
     for (const account of snapshot?.accounts ?? []) {
       for (const diagnostic of account.diagnostics) {
         map[`${account.account.slug}:${diagnostic.symbol}`] =
@@ -49,14 +68,29 @@ function StreakPairedOpenPositions(props: PairedOpenPositionsProps) {
       }
     }
     return map;
-  }, [snapshot]);
+  }, [error, snapshot]);
 
-  return <PairedOpenPositionsBoard {...props} emptyReasons={emptyReasons} />;
+  const emptyReasonFallback = error
+    ? `Entry decisions unavailable: ${error}`
+    : snapshot
+      ? (account: string, symbol: string) =>
+          `No entry diagnostic available for ${account}:${symbol}.`
+      : "Checking entry decisions…";
+
+  return (
+    <PairedOpenPositionsBoard
+      {...props}
+      emptyReasons={emptyReasons}
+      emptyReasonFallback={emptyReasonFallback}
+    />
+  );
 }
 
 function PairedOpenPositionsBoard({
   accounts,
   emptyReasons,
+  emptyReasonFallback,
+  entryLegs,
   positions,
   renderOpen,
   slug,
@@ -67,12 +101,13 @@ function PairedOpenPositionsBoard({
     () =>
       pairBoard.build({
         accounts,
+        entryLegs,
         openPositions: positions,
         slug,
         strategyState,
         symbols,
       }),
-    [accounts, positions, slug, strategyState, symbols],
+    [accounts, entryLegs, positions, slug, strategyState, symbols],
   );
 
   return (
@@ -80,6 +115,7 @@ function PairedOpenPositionsBoard({
       {rows.map((row) => (
         <PairRow
           emptyReason={emptyReasons?.[`${row.account}:${row.symbol}`]}
+          emptyReasonFallback={emptyReasonFallback}
           key={row.key}
           renderOpen={renderOpen}
           row={row}

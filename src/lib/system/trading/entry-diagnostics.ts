@@ -1,6 +1,8 @@
 import type { RuntimeContext } from "@/lib/precision/types";
 import { TradingMode } from "@/lib/exchange/types";
 import type { ExchangeAccountSlug } from "@/lib/exchange/account-context";
+import type { RuntimeAccountConfig } from "@/lib/system/runtime";
+import type { VolatilityPoint } from "@/lib/system/types";
 import type { BlackSwanState } from "./black-swan";
 import type { RuntimeDailyPnlLimitEvaluation } from "./daily-pnl-limit";
 import runtimeDailyPnlLimit from "./daily-pnl-limit";
@@ -319,6 +321,66 @@ function explainRejectedPlan(
   };
 }
 
+function explainSharedGate(
+  context: RuntimeContext,
+  accountSlug: string,
+): Pick<RuntimeEntryDiagnostic, "code" | "reason"> | undefined {
+  const runtime = context.state.config.runtime;
+  if (!runtime.runnerEnabled) {
+    return {
+      code: "RUNNER_ENABLED",
+      reason: "The SLOW runner is disabled.",
+    };
+  }
+  if (!runtime.autoEntryEnabled) {
+    return {
+      code: "AUTO_ENTRY_ENABLED",
+      reason: "Automatic entry is disabled.",
+    };
+  }
+  if (!context.state.balance[accountSlug]) {
+    return {
+      code: "ACCOUNT_BALANCE_UNAVAILABLE",
+      reason:
+        "Blocked because no balance is loaded for this account; the " +
+        "decision engine skips it until balances sync.",
+    };
+  }
+  return undefined;
+}
+
+function explainStreakNoSignal(
+  account: RuntimeAccountConfig,
+  symbol: string,
+  point: VolatilityPoint | undefined,
+  minLevel: number | undefined,
+): Pick<RuntimeEntryDiagnostic, "code" | "reason"> {
+  if (!point) {
+    return {
+      code: "NO_CONFIRMED_VPOINT",
+      reason:
+        `No confirmed volatility point available for ${symbol}; ` +
+        "waiting for a signal.",
+    };
+  }
+  const level = Number(point.lvl);
+  if (!Number.isFinite(level)) {
+    return {
+      code: "INVALID_VPOINT_LEVEL",
+      reason:
+        `The latest ${symbol} volatility point has an invalid level ` +
+        "and cannot provide a qualifying entry signal.",
+    };
+  }
+  return {
+    code: "ENTRY_LEVEL_BELOW_MINIMUM",
+    reason:
+      `Latest ${symbol} volatility level ${Math.abs(level)} is below ` +
+      `the configured minimum entry level ${minLevel} for account ` +
+      `${account.name || account.slug}; waiting for a qualifying signal.`,
+  };
+}
+
 /**
  * Builds the dashboard entry-diagnostics snapshot from the live runtime
  * pipeline: refreshes mark prices, then evaluates every enabled account's
@@ -390,6 +452,10 @@ async function build(
     const maxLevel = tradingEntry.threshold.resolveMax(
       account.trading.maxEntryAbsLevel,
     );
+    const streakBoard = context.strategy?.name === "streak";
+    const sharedGate = streakBoard
+      ? explainSharedGate(context, account.slug)
+      : undefined;
 
     for (const rawSymbol of context.state.config.management.symbols) {
       const symbol = String(rawSymbol).trim().toUpperCase();
@@ -431,12 +497,34 @@ async function build(
         decision,
         symbol,
       });
+      if (
+        explained?.code === "PAIR_OPEN" ||
+        explained?.code === "PAIR_ROLE_EMPTY"
+      ) {
+        diagnostics.push({ ...base, ...explained });
+        continue;
+      }
+
+      if (sharedGate) {
+        diagnostics.push({ ...base, ...sharedGate, status: "blocked" });
+        continue;
+      }
+
       if (explained) {
         diagnostics.push({ ...base, ...explained });
         continue;
       }
 
-      if (!point || !isActionable(point.lvl, minLevel)) continue;
+      if (!point || !isActionable(point.lvl, minLevel)) {
+        if (streakBoard) {
+          diagnostics.push({
+            ...base,
+            ...explainStreakNoSignal(account, symbol, point, minLevel),
+            status: "blocked",
+          });
+        }
+        continue;
+      }
 
       if (maxLevel !== undefined && Math.abs(point.lvl) > maxLevel) {
         diagnostics.push({
@@ -454,10 +542,15 @@ async function build(
           diagnostics.push({
             ...base,
             code: "READY",
-            reason:
-              "Ready: selected by the decision engine and every entry guard " +
-              "passed; final exchange account, precision, and order checks " +
-              "run during execution.",
+            reason: streakBoard
+              ? "Ready in this read-only preview: the decision engine " +
+                "selected this symbol and entry funding checks passed; " +
+                "final guards and exchange order checks can still reject " +
+                "it — this is not the recorded outcome of a previous " +
+                "capture."
+              : "Ready: selected by the decision engine and every entry " +
+                "guard passed; final exchange account, precision, and " +
+                "order checks run during execution.",
             status: "ready",
           });
         } else {

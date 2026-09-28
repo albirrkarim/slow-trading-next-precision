@@ -3,7 +3,7 @@
  */
 
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock(
   "@/components/LiveDashboard/Feature/OpenPositionItem",
@@ -14,15 +14,15 @@ vi.mock(
   }),
 );
 
+const mocks = vi.hoisted(() => ({
+  refresh: vi.fn(async () => undefined),
+  useEntryDiagnostics: vi.fn(),
+}));
+
 vi.mock(
   "@/components/LiveDashboard/Feature/use-entry-diagnostics",
   () => ({
-    useEntryDiagnostics: () => ({
-      error: "",
-      loading: false,
-      refresh: vi.fn(async () => undefined),
-      snapshot: undefined,
-    }),
+    useEntryDiagnostics: mocks.useEntryDiagnostics,
   }),
 );
 
@@ -78,6 +78,26 @@ function baseProps() {
   };
 }
 
+function streakProps(overrides: Record<string, unknown> = {}) {
+  const props = baseProps();
+  (props.config as { strategy?: string }).strategy = "streak";
+  return {
+    ...props,
+    positions: [] as never[],
+    ...overrides,
+  };
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.useEntryDiagnostics.mockReturnValue({
+    error: "",
+    loading: false,
+    refresh: mocks.refresh,
+    snapshot: undefined,
+  });
+});
+
 describe("OpenPositions — paired board", () => {
   it("renders the surviving leg plus the closed-leg snapshot chip", () => {
     const surviving = pairedLeg("COUNTER", { direction: "SHORT" });
@@ -125,5 +145,245 @@ describe("OpenPositions — paired board", () => {
 
     expect(screen.getAllByTestId("open-position")).toHaveLength(2);
     expect(screen.queryByText("Closed")).toBeNull();
+  });
+});
+
+describe("OpenPositions — streak empty-row diagnostics", () => {
+  it("shows the per-account/symbol diagnostics reason on both empty roles", () => {
+    mocks.useEntryDiagnostics.mockReturnValue({
+      error: "",
+      loading: false,
+      refresh: mocks.refresh,
+      snapshot: {
+        accounts: [
+          {
+            account: { name: "Main", slug: "acc" },
+            diagnostics: [
+              {
+                code: "NO_CONFIRMED_VPOINT",
+                reason:
+                  "No confirmed volatility point available for SUI; " +
+                  "waiting for a signal.",
+                status: "blocked",
+                symbol: "SUI",
+              },
+            ],
+          },
+        ],
+        generatedAt: 1,
+        sharedGuards: [],
+      },
+    });
+
+    render(<OpenPositions {...streakProps()} />);
+
+    expect(
+      screen.getAllByText(
+        "No confirmed volatility point available for SUI; waiting for a signal.",
+      ),
+    ).toHaveLength(2);
+    expect(
+      screen.queryByText(/No open pair — waiting for a fresh pair/),
+    ).toBeNull();
+  });
+
+  it("shows a checking placeholder while the snapshot has not arrived", () => {
+    render(<OpenPositions {...streakProps()} />);
+
+    expect(
+      screen.getAllByText("Checking entry decisions…"),
+    ).toHaveLength(2);
+  });
+
+  it("shows the fetch error instead of a stale snapshot's reasons", () => {
+    mocks.useEntryDiagnostics.mockReturnValue({
+      error: "Binance cooldown",
+      loading: false,
+      refresh: mocks.refresh,
+      snapshot: {
+        accounts: [
+          {
+            account: { name: "Main", slug: "acc" },
+            diagnostics: [
+              {
+                code: "STALE",
+                reason: "stale reason",
+                status: "blocked",
+                symbol: "SUI",
+              },
+            ],
+          },
+        ],
+        generatedAt: 1,
+        sharedGuards: [],
+      },
+    });
+
+    render(<OpenPositions {...streakProps()} />);
+
+    expect(
+      screen.getAllByText("Entry decisions unavailable: Binance cooldown"),
+    ).toHaveLength(2);
+    expect(screen.queryByText("stale reason")).toBeNull();
+  });
+
+  it("refreshes diagnostics when a new capture-entry run lands", () => {
+    mocks.useEntryDiagnostics.mockReturnValue({
+      error: "",
+      loading: false,
+      refresh: mocks.refresh,
+      snapshot: { accounts: [], generatedAt: 1, sharedGuards: [] },
+    });
+    const props = streakProps({ captureEntryRanAt: 100 });
+    const { rerender } = render(<OpenPositions {...props} />);
+
+    expect(mocks.refresh).not.toHaveBeenCalled();
+
+    rerender(<OpenPositions {...props} captureEntryRanAt={200} />);
+    expect(mocks.refresh).toHaveBeenCalledTimes(1);
+
+    rerender(<OpenPositions {...props} captureEntryRanAt={200} />);
+    expect(mocks.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows an explicit unavailable reason when the snapshot lacks the row", () => {
+    mocks.useEntryDiagnostics.mockReturnValue({
+      error: "",
+      loading: false,
+      refresh: mocks.refresh,
+      snapshot: { accounts: [], generatedAt: 1, sharedGuards: [] },
+    });
+
+    render(<OpenPositions {...streakProps()} />);
+
+    expect(
+      screen.getAllByText("No entry diagnostic available for acc:SUI."),
+    ).toHaveLength(2);
+    expect(
+      screen.queryByText(/No open pair — waiting for a fresh pair/),
+    ).toBeNull();
+  });
+
+  it("routes each account+symbol reason to its own row without cross-talk", () => {
+    mocks.useEntryDiagnostics.mockReturnValue({
+      error: "",
+      loading: false,
+      refresh: mocks.refresh,
+      snapshot: {
+        accounts: [
+          {
+            account: { name: "First", slug: "acc" },
+            diagnostics: [
+              {
+                code: "ENTRY_LEVEL_BELOW_MINIMUM",
+                reason: "acc SUI level 1 below min 3",
+                status: "blocked",
+                symbol: "SUI",
+              },
+              {
+                code: "NO_CONFIRMED_VPOINT",
+                reason: "acc DOGE has no point",
+                status: "blocked",
+                symbol: "DOGE",
+              },
+            ],
+          },
+          {
+            account: { name: "Second", slug: "two" },
+            diagnostics: [
+              {
+                code: "ENTRY_LEVEL_BELOW_MINIMUM",
+                reason: "two SUI level 0 below min 3",
+                status: "blocked",
+                symbol: "SUI",
+              },
+              {
+                code: "NO_CONFIRMED_VPOINT",
+                reason: "two DOGE has no point",
+                status: "blocked",
+                symbol: "DOGE",
+              },
+            ],
+          },
+        ],
+        generatedAt: 1,
+        sharedGuards: [],
+      },
+    });
+
+    render(
+      <OpenPositions
+        {...streakProps({
+          accounts: ["acc", "two"],
+          config: {
+            entryLegs: "BOTH",
+            strategy: "streak",
+            symbols: ["SUI", "DOGE"],
+          } as never,
+          entryLegs: { acc: "BOTH", two: "MAIN" },
+        })}
+      />,
+    );
+
+    expect(
+      screen.getAllByText("acc SUI level 1 below min 3"),
+    ).toHaveLength(2);
+    expect(screen.getAllByText("acc DOGE has no point")).toHaveLength(2);
+    expect(
+      screen.getAllByText("two SUI level 0 below min 3"),
+    ).toHaveLength(1);
+    expect(screen.getAllByText("two DOGE has no point")).toHaveLength(1);
+    expect(
+      screen.getAllByText("COUNTER disabled (Entry Legs: MAIN)."),
+    ).toHaveLength(2);
+  });
+
+  it("keeps the paired board when only a one-way streak account is selected", () => {
+    mocks.useEntryDiagnostics.mockReturnValue({
+      error: "",
+      loading: false,
+      refresh: mocks.refresh,
+      snapshot: {
+        accounts: [
+          {
+            account: { name: "Second", slug: "two" },
+            diagnostics: [
+              {
+                code: "ENTRY_LEVEL_BELOW_MINIMUM",
+                reason: "two SUI level 0 below min 3",
+                status: "blocked",
+                symbol: "SUI",
+              },
+            ],
+          },
+        ],
+        generatedAt: 1,
+        sharedGuards: [],
+      },
+    });
+
+    render(
+      <OpenPositions
+        {...streakProps({
+          accounts: ["two"],
+          config: {
+            entryLegs: "MAIN",
+            strategy: "streak",
+            symbols: ["SUI"],
+          } as never,
+          entryLegs: { two: "MAIN" },
+        })}
+      />,
+    );
+
+    expect(
+      screen.getAllByText("two SUI level 0 below min 3"),
+    ).toHaveLength(1);
+    expect(
+      screen.getAllByText("COUNTER disabled (Entry Legs: MAIN)."),
+    ).toHaveLength(1);
+    expect(
+      screen.queryByText(/No open pair — waiting for a fresh pair/),
+    ).toBeNull();
   });
 });

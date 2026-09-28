@@ -18,6 +18,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import pair from "@/lib/strategies/shared/pair";
+import type { EntryLegs } from "@/lib/strategies/shared/pair";
 import openPositionPnlContribution from "./open-position-pnl-contribution";
 import OpenPositionItem from "./OpenPositionItem";
 import PairedOpenPositions from "./PairedOpenPositions";
@@ -28,6 +29,8 @@ import type { VolatilityPoint } from "@/lib/system/types";
 interface OpenPositionsProps {
   /** Participating account slugs for the paired view (enabled + filtered). */
   accounts?: string[];
+  captureEntryRanAt?: number;
+  entryLegs?: Record<string, EntryLegs>;
   availableTags: string[];
   coinDescriptions: Record<string, string>;
   coinTags: Record<string, string[]>;
@@ -90,6 +93,8 @@ function sortPositionsByPnl(
 
 export default function OpenPositions({
   accounts,
+  captureEntryRanAt,
+  entryLegs,
   availableTags,
   coinDescriptions,
   coinTags,
@@ -119,9 +124,15 @@ export default function OpenPositions({
     [positions],
   );
   const isWorstFirst = pnlSortOrder === "worst";
-  // Pair strategies render the paired board for an entryLegs-BOTH
-  // account; every other configuration keeps the flat per-position list.
-  const pairSlug = pair.isPairMode(config) ? config.strategy : null;
+  // Streak renders the paired board for every entryLegs selection so a
+  // one-way account still shows its active role; `both` stays paired only
+  // for BOTH accounts — other configs keep the flat per-position list.
+  const pairSlug: "both" | "streak" | null =
+    config.strategy === "streak"
+      ? "streak"
+      : pair.isPairMode(config)
+        ? config.strategy
+        : null;
 
   useEffect(() => {
     const initialTimeoutId = window.setTimeout(() => setNow(Date.now()), 0);
@@ -238,6 +249,8 @@ export default function OpenPositions({
             {pairSlug ? (
               <PairedOpenPositions
                 accounts={accounts ?? []}
+                captureEntryRanAt={captureEntryRanAt}
+                entryLegs={entryLegs}
                 positions={positions}
                 renderOpen={renderPosition}
                 slug={pairSlug}

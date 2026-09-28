@@ -1,7 +1,12 @@
 import type { RuntimeHistoryPosition } from "@/lib/system/trading";
 
 import pair from "./pair";
-import type { PairClosedLeg, PairLegMeta, PairRole } from "./pair";
+import type {
+  EntryLegs,
+  PairClosedLeg,
+  PairLegMeta,
+  PairRole,
+} from "./pair";
 
 /** One slot of a paired-open-positions row. */
 export type PairBoardSlot =
@@ -27,6 +32,7 @@ interface PairBoardParams {
   openPositions: RuntimeHistoryPosition[];
   /** Participating account slugs (accountFilter + enabled already applied). */
   accounts: string[];
+  entryLegs?: Record<string, EntryLegs>;
   /** Management symbols shown on the board. */
   symbols: string[];
 }
@@ -82,12 +88,35 @@ function emptySlot(
           : "Closed.",
     };
   }
+  if (meta.entryLegs !== "BOTH") {
+    return {
+      kind: "empty",
+      reason: `${role} disabled (Entry Legs: ${meta.entryLegs}).`,
+    };
+  }
   return {
     kind: "empty",
     reason:
       slot.roles?.[meta.pairId]?.reason ??
       "Waiting for re-entry at the next confirmed unused vPoint.",
   };
+}
+
+function emptyStreakSlots(
+  entryLegs: EntryLegs,
+): Record<PairRole, PairBoardSlot> {
+  const slots: Record<PairRole, PairBoardSlot> = {
+    COUNTER: { kind: "empty" },
+    MAIN: { kind: "empty" },
+  };
+  if (entryLegs !== "BOTH") {
+    const role: PairRole = entryLegs === "MAIN" ? "COUNTER" : "MAIN";
+    slots[role] = {
+      kind: "empty",
+      reason: `${role} disabled (Entry Legs: ${entryLegs}).`,
+    };
+  }
+  return slots;
 }
 
 /**
@@ -157,6 +186,7 @@ function build(params: PairBoardParams): {
   const emptyRows: PairBoardRow[] = [];
   if (params.slug === "streak") {
     for (const account of params.accounts) {
+      const legs = params.entryLegs?.[account] ?? "BOTH";
       for (const rawSymbol of params.symbols) {
         const symbol = String(rawSymbol).toUpperCase();
         if (!symbol || covered.has(`${account}:${symbol}`)) continue;
@@ -164,10 +194,7 @@ function build(params: PairBoardParams): {
           account,
           key: `${account}:${symbol}`,
           netUsdt: 0,
-          slots: {
-            COUNTER: { kind: "empty" },
-            MAIN: { kind: "empty" },
-          },
+          slots: emptyStreakSlots(legs),
           symbol,
         });
       }

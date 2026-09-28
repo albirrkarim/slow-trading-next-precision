@@ -1216,6 +1216,184 @@ describe("pair diagnostics — view + explain", () => {
   });
 });
 
+describe("entryDiagnostics.build — streak empty-row reasons", () => {
+  function streakContext(state: RuntimeEngineState) {
+    const context = makeContext(state);
+    context.strategy = streak;
+    return context;
+  }
+
+  async function suiDiagnostic(state: RuntimeEngineState) {
+    const snapshot = await entryDiagnostics.build(streakContext(state));
+    return snapshot.accounts[0].diagnostics.find((d) => d.symbol === "SUI");
+  }
+
+  it("emits NO_CONFIRMED_VPOINT when the symbol has no volatility point", async () => {
+    expect(await suiDiagnostic(makeState())).toEqual({
+      code: "NO_CONFIRMED_VPOINT",
+      level: undefined,
+      pointId: undefined,
+      reason:
+        "No confirmed volatility point available for SUI; waiting for a signal.",
+      status: "blocked",
+      symbol: "SUI",
+    });
+  });
+
+  it("emits ENTRY_LEVEL_BELOW_MINIMUM with level, threshold, and account", async () => {
+    const state = makeState({
+      vPointsMap: { SUI: [point({ id: "A", l: "T", lvl: 1, t: 90 })] },
+    });
+    state.config.accounts[0].name = "Main";
+    state.config.accounts[0].trading.minEntryAbsLevel = 3;
+
+    expect(await suiDiagnostic(state)).toEqual({
+      code: "ENTRY_LEVEL_BELOW_MINIMUM",
+      level: 1,
+      pointId: "A",
+      reason:
+        "Latest SUI volatility level 1 is below the configured minimum " +
+        "entry level 3 for account Main; waiting for a qualifying signal.",
+      status: "blocked",
+      symbol: "SUI",
+    });
+  });
+
+  it("emits INVALID_VPOINT_LEVEL for a point with a non-numeric level", async () => {
+    const state = makeState({
+      vPointsMap: {
+        SUI: [point({ id: "A", l: "T", lvl: "x" as never, t: 90 })],
+      },
+    });
+    state.config.accounts[0].trading.minEntryAbsLevel = 3;
+
+    expect(await suiDiagnostic(state)).toMatchObject({
+      code: "INVALID_VPOINT_LEVEL",
+      reason:
+        "The latest SUI volatility point has an invalid level and " +
+        "cannot provide a qualifying entry signal.",
+    });
+  });
+
+  it("keeps omitting no-signal rows for the default and both pipelines", async () => {
+    const state = makeState({
+      vPointsMap: { SUI: [point({ id: "A", l: "T", lvl: 1, t: 90 })] },
+    });
+    state.config.accounts[0].trading.minEntryAbsLevel = 3;
+
+    const plain = await entryDiagnostics.build(makeContext(state));
+    expect(plain.accounts[0].diagnostics).toHaveLength(0);
+
+    const bothContext = makeContext(state);
+    bothContext.strategy = both;
+    const paired = await entryDiagnostics.build(bothContext);
+    expect(paired.accounts[0].diagnostics).toHaveLength(0);
+  });
+
+  it("emits no-signal reasons for one-way streak accounts too", async () => {
+    const noPoint = makeState();
+    noPoint.config.accounts[0].trading.entryLegs = "MAIN";
+    expect((await suiDiagnostic(noPoint))?.code).toBe("NO_CONFIRMED_VPOINT");
+
+    const belowMin = makeState({
+      vPointsMap: { SUI: [point({ id: "A", l: "T", lvl: 1, t: 90 })] },
+    });
+    belowMin.config.accounts[0].trading.entryLegs = "COUNTER";
+    belowMin.config.accounts[0].trading.minEntryAbsLevel = 3;
+    expect((await suiDiagnostic(belowMin))?.code).toBe(
+      "ENTRY_LEVEL_BELOW_MINIMUM",
+    );
+  });
+
+  it("reports the disabled shared gates before the no-signal reason", async () => {
+    const runnerOff = makeState();
+    runnerOff.config.runtime.runnerEnabled = false;
+    expect(await suiDiagnostic(runnerOff)).toMatchObject({
+      code: "RUNNER_ENABLED",
+      reason: "The SLOW runner is disabled.",
+    });
+
+    const autoEntryOff = makeState();
+    autoEntryOff.config.runtime.autoEntryEnabled = false;
+    expect(await suiDiagnostic(autoEntryOff)).toMatchObject({
+      code: "AUTO_ENTRY_ENABLED",
+      reason: "Automatic entry is disabled.",
+    });
+  });
+
+  it("reports a missing account balance before the no-signal reason", async () => {
+    const state = makeState();
+    delete state.balance.acc;
+    expect((await suiDiagnostic(state))?.code).toBe(
+      "ACCOUNT_BALANCE_UNAVAILABLE",
+    );
+  });
+
+  it("does not override the pair open reason with a shared gate", async () => {
+    const state = makeState({
+      openPositions: [
+        pairedLeg("acc:SUI:A", "MAIN"),
+        pairedLeg("acc:SUI:A", "COUNTER", { direction: "SHORT" }),
+      ],
+    });
+    state.config.runtime.runnerEnabled = false;
+    expect((await suiDiagnostic(state))?.code).toBe("PAIR_OPEN");
+  });
+
+  it("reports the disabled shared gate before an unfundable pair", async () => {
+    const off = makeState({
+      vPointsMap: { SUI: [point({ id: "A", l: "T", lvl: 2, t: 90 })] },
+    });
+    off.balance.acc.spendable = 0;
+    off.config.runtime.autoEntryEnabled = false;
+    expect((await suiDiagnostic(off))?.code).toBe("AUTO_ENTRY_ENABLED");
+
+    const on = makeState({
+      vPointsMap: { SUI: [point({ id: "A", l: "T", lvl: 2, t: 90 })] },
+    });
+    on.balance.acc.spendable = 0;
+    expect((await suiDiagnostic(on))?.code).toBe("PAIR_FUNDING_INSUFFICIENT");
+  });
+
+  it("frames streak READY as a read-only preview, not a recorded capture", async () => {
+    const state = makeState({
+      vPointsMap: {
+        SUI: [
+          point({
+            id: "A",
+            investAmount: 10,
+            l: "T",
+            lvl: 2,
+            t: 90,
+          } as never),
+        ],
+      },
+    });
+
+    const streakDiag = await suiDiagnostic(state);
+    expect(streakDiag?.code).toBe("READY");
+    expect(streakDiag?.reason).toContain("read-only preview");
+    expect(streakDiag?.reason).toContain(
+      "not the recorded outcome of a previous capture",
+    );
+
+    const plain = await entryDiagnostics.build(makeContext(state));
+    const plainDiag = plain.accounts[0].diagnostics.find(
+      (d) => d.symbol === "SUI",
+    );
+    expect(plainDiag?.code).toBe("READY");
+    expect(plainDiag?.reason).toContain("every entry guard passed");
+  });
+
+  it("still reports a level above the configured maximum", async () => {
+    const state = makeState({
+      vPointsMap: { SUI: [point({ id: "A", l: "T", lvl: 5, t: 90 })] },
+    });
+    state.config.accounts[0].trading.maxEntryAbsLevel = 3;
+    expect((await suiDiagnostic(state))?.code).toBe("MAX_ENTRY_ABS_LEVEL");
+  });
+});
+
 describe("strategy preflight — hedge position mode", () => {
   it("skips the hedge-mode check in backtest", async () => {
     // mode "backtest" has no exchange position mode to verify.
@@ -1378,5 +1556,80 @@ describe("pairBoard.build — paired board view model", () => {
     });
     expect(unpaired).toEqual([plain]);
     expect(rows[0].slots.COUNTER).toEqual({ kind: "empty", reason: "Closed." });
+  });
+
+  it("marks the non-selected role disabled on empty streak rows", () => {
+    const { rows } = pairBoard.build({
+      accounts: ["both-acc", "counter-acc", "main-acc"],
+      entryLegs: {
+        "counter-acc": "COUNTER",
+        "main-acc": "MAIN",
+      },
+      openPositions: [],
+      slug: "streak",
+      strategyState: { v: "streak" },
+      symbols: ["SUI"],
+    });
+
+    const byAccount = new Map(rows.map((row) => [row.account, row]));
+    expect(byAccount.get("main-acc")?.slots.MAIN).toEqual({ kind: "empty" });
+    expect(byAccount.get("main-acc")?.slots.COUNTER).toEqual({
+      kind: "empty",
+      reason: "COUNTER disabled (Entry Legs: MAIN).",
+    });
+    expect(byAccount.get("counter-acc")?.slots.COUNTER).toEqual({
+      kind: "empty",
+    });
+    expect(byAccount.get("counter-acc")?.slots.MAIN).toEqual({
+      kind: "empty",
+      reason: "MAIN disabled (Entry Legs: COUNTER).",
+    });
+    expect(byAccount.get("both-acc")?.slots).toEqual({
+      COUNTER: { kind: "empty" },
+      MAIN: { kind: "empty" },
+    });
+  });
+
+  it("uses the leg's stamped entryLegs for a half-open one-way streak row", () => {
+    const open = boardPosition("acc:SUI:A", "MAIN");
+    (open.strategy as { logic?: unknown }).logic = {
+      entryLegs: "MAIN",
+      pairId: "acc:SUI:A",
+      role: "MAIN",
+    };
+    const { rows } = pairBoard.build({
+      accounts: ["acc"],
+      entryLegs: { acc: "COUNTER" },
+      openPositions: [open],
+      slug: "streak",
+      strategyState: { v: "streak" },
+      symbols: ["SUI"],
+    });
+
+    expect(rows[0].slots.MAIN.kind).toBe("open");
+    expect(rows[0].slots.COUNTER).toEqual({
+      kind: "empty",
+      reason: "COUNTER disabled (Entry Legs: MAIN).",
+    });
+  });
+
+  it("does not relabel a stamped BOTH pair when the account went one-way", () => {
+    const open = boardPosition("acc:SUI:A", "MAIN");
+    const { rows } = pairBoard.build({
+      accounts: ["acc"],
+      entryLegs: { acc: "MAIN" },
+      openPositions: [open],
+      slug: "streak",
+      strategyState: {
+        roles: { "acc:SUI:A": { reason: "anchor used", role: "COUNTER" } },
+        v: "streak",
+      },
+      symbols: ["SUI"],
+    });
+
+    expect(rows[0].slots.COUNTER).toEqual({
+      kind: "empty",
+      reason: "anchor used",
+    });
   });
 });
