@@ -260,7 +260,11 @@ async function runSingle({
     },
     onAction: async (decision, context) => {
       if (decision.type === "entry") {
-        return entryAction.execute(context, decision);
+        const result = entryAction.executeWithReason(context, decision);
+        if (!result.position && result.blockReason) {
+          decision.blockReason = result.blockReason;
+        }
+        return result.position;
       }
       if (decision.type === "averaging") {
         return tradingAveraging.execute(context, decision);
@@ -272,12 +276,25 @@ async function runSingle({
     },
     // Simulated pair legs discard on a failed later leg — same atomic
     // contract as the live compensating-close rollback.
-    onPairAction: async (decision, context) =>
-      pairAction.execute({
+    onPairAction: async (decision, context) => {
+      const filled = await pairAction.execute({
         context,
         decision,
-        executeLeg: (leg, ctx) => entryAction.execute(ctx, leg),
-      }),
+        executeLeg: (leg, ctx) => {
+          const result = entryAction.executeWithReason(ctx, leg);
+          if (!result.position && result.blockReason) {
+            leg.blockReason = result.blockReason;
+          }
+          return result.position;
+        },
+      });
+      if (!filled) {
+        decision.blockReason = decision.legs.find(
+          (leg) => leg.blockReason,
+        )?.blockReason;
+      }
+      return filled;
+    },
     onExit: async (position) => {
       history.push(position);
       snapshot(state.currentTime);

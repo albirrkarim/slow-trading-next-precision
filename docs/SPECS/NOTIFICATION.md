@@ -8,8 +8,10 @@ TC: `PROD:NOTIF_ENTRY`
   order placement, leverage setup, or fill error. A decision refused by an
   entry gate (funding plan, late-entry drift, minimum price, zero resolved
   margin, or a zero-sized exchange quantity) is a skip, not a failure: it
-  sends no notification and writes no error log. The blocking reason stays
-  visible through the dashboard entry diagnostics.
+  sends no notification and writes no error log. The adapter stamps the gate
+  reason on `decision.blockReason` so the strategy can persist it into
+  `state.strategy` — e.g. a pending re-entry role shows the real reason on
+  its empty slot instead of a generic retry message.
 
 TC: `PROD:NOTIF_ENTRY_FAILED`
 TC: `BOTH:ENTRY_GATE_SKIP_NO_NOTIF`

@@ -170,7 +170,13 @@ export async function precisionBacktest(
     onAction: async (decision, context) => {
       const executed =
         decision.type === "entry"
-          ? await entryAction.execute(context, decision)
+          ? (() => {
+              const result = entryAction.executeWithReason(context, decision);
+              if (!result.position && result.blockReason) {
+                decision.blockReason = result.blockReason;
+              }
+              return result.position;
+            })()
           : decision.type === "averaging"
             ? await tradingAveraging.execute(context, decision)
             : decision.type === "exit"
@@ -186,8 +192,19 @@ export async function precisionBacktest(
       const filled = await pairAction.execute({
         context,
         decision,
-        executeLeg: (leg, ctx) => entryAction.execute(ctx, leg),
+        executeLeg: (leg, ctx) => {
+          const result = entryAction.executeWithReason(ctx, leg);
+          if (!result.position && result.blockReason) {
+            leg.blockReason = result.blockReason;
+          }
+          return result.position;
+        },
       });
+      if (!filled) {
+        decision.blockReason = decision.legs.find(
+          (leg) => leg.blockReason,
+        )?.blockReason;
+      }
       captureBalance();
       return filled;
     },

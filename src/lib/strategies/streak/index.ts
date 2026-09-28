@@ -33,8 +33,11 @@ const onActionResult: OnActionResult = async (
         ? streakState.read(context).roles[meta.pairId]
         : undefined;
       if (record) {
-        record.reason =
-          "Re-entry order failed; retrying on the next pass.";
+        // A gate-refused re-entry carries its reason on the decision — the
+        // empty slot shows the real block until the next pass retries.
+        record.reason = decision.blockReason
+          ? `entry blocked: ${decision.blockReason}`
+          : "Re-entry order failed; retrying on the next pass.";
       }
     }
     return;

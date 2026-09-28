@@ -261,6 +261,15 @@ export interface RuntimeEntryDecision {
   /** Base symbol being entered, e.g. `SUI`. */
   symbol: string;
   /**
+   * Written by the execution adapter when an entry-planning gate refused
+   * this candidate (funding, drift, sizing) — a strategy skip, not an
+   * execution failure, so it carries no notification and no error log.
+   * Carried uninterpreted into `onActionResult` so strategy bookkeeping
+   * can persist the real reason (e.g. `state.strategy` records). Unset
+   * when the candidate filled or a thrown execution error aborted it.
+   */
+  blockReason?: string;
+  /**
    * Free-form strategy-owned payload carried through guard, adapter, and
    * `onActionResult` uninterpreted. On a successful entry the shared commit
    * copies it onto `position.strategy.logic`, so pair identity (pairId,
@@ -299,6 +308,12 @@ export interface RuntimePairEntryDecision {
   manual?: boolean;
   /** Base symbol both legs trade, e.g. `SUI`. */
   symbol: string;
+  /**
+   * Adapter-written gate-skip reason for the pair as a unit — mirrors the
+   * `blockReason` stamped on the refused leg so `onActionResult` can read
+   * it without scanning `legs`.
+   */
+  blockReason?: string;
   /**
    * Ordered leg decisions — every leg is a complete entry decision
    * (direction, entrySignal, per-leg `vPointUsage`, per-leg `strategy`

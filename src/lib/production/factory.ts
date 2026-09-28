@@ -274,6 +274,9 @@ function createActionHandlers(
           actionError === undefined &&
           !position &&
           Boolean(result?.blockReason);
+        // The reason rides the decision into `onActionResult` so the
+        // strategy can persist why the re-entry stayed empty.
+        if (gateSkipped) decision.blockReason = result?.blockReason;
       } else if (decision.type === "averaging") {
         position = await executeSafely(() =>
           tradingAveraging.execute(context, decision),
@@ -298,6 +301,7 @@ function createActionHandlers(
       position = result?.position ?? null;
       gateSkipped =
         actionError === undefined && !position && Boolean(result?.blockReason);
+      if (gateSkipped) decision.blockReason = result?.blockReason;
     } else if (decision.type === "averaging") {
       position = await executeSafely(() =>
         runInAccount(() =>
@@ -416,7 +420,10 @@ function createActionHandlers(
 
       // A gate-refused leg aborts the pair quietly — the skip is not an
       // execution failure, so it must not raise the failed notification.
+      // The reason is stamped on the leg (and mirrored onto the pair
+      // decision below) so `onActionResult` can persist why it stayed empty.
       if (!result.position && result.blockReason) {
+        leg.blockReason = result.blockReason;
         pairGateSkipped = true;
         return null;
       }
@@ -459,6 +466,12 @@ function createActionHandlers(
         error,
       );
       filled = null;
+    }
+
+    if (pairGateSkipped) {
+      decision.blockReason = decision.legs.find(
+        (leg) => leg.blockReason,
+      )?.blockReason;
     }
 
     try {

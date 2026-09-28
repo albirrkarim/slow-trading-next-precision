@@ -1085,6 +1085,23 @@ describe("streak — empty-role block reasons", () => {
       "Re-entry order failed; retrying on the next pass.",
     );
   });
+
+  it("records the adapter-stamped gate reason when a re-entry is skipped", async () => {
+    const { context, state } = streakContext();
+    const decision = reopenDecision();
+    decision.blockReason =
+      "[LATE_ENTRY_VPOINT_PRICE_DRIFT_PCT] Entry skipped because price " +
+      "drifted 1.55% from vPoint 0.9072 to 0.9213; maximum 1.00%";
+
+    await streak.onActionResult?.("failed", decision, null, context);
+
+    const record = (
+      state.strategy as { roles: Record<string, { reason?: string }> }
+    ).roles["acc:SUI:A"];
+    expect(record.reason).toBe(
+      `entry blocked: ${decision.blockReason}`,
+    );
+  });
 });
 
 describe("pair diagnostics — view + explain", () => {
