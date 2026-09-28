@@ -76,7 +76,7 @@ export default async function handler(
       const accounts = await runtimeStorage.catalog.accounts.save(
         body.accounts,
       );
-      await runtime.refreshAccountTrading();
+      await runtime.refreshConfig();
       for (const removed of removedAccounts) {
         await runtimeStorage.catalog.account.deleteState(removed.slug);
       }

@@ -17,13 +17,13 @@ const mocks = vi.hoisted(() => ({
   diffConfig: vi.fn(() => []),
   ensure: vi.fn(),
   notify: vi.fn(async () => undefined),
-  runnerGet: vi.fn(async () => undefined),
+  refreshConfig: vi.fn(async () => undefined),
   update: vi.fn(),
 }));
 
 vi.mock("@/lib/production", () => ({
   default: {
-    runtime: { get: mocks.runnerGet },
+    runtime: { get: () => ({ refreshConfig: mocks.refreshConfig }) },
   },
 }));
 
@@ -105,6 +105,12 @@ describe("storage API management-action notifications", () => {
         source: "dashboard.coin-management",
         symbol: "IOTX",
       }),
+    );
+    // PROD:CONFIG_SAVE_RUNTIME_REFRESH — the persisted catalog is synced
+    // into the running engine's state.config before the response.
+    expect(mocks.refreshConfig).toHaveBeenCalledOnce();
+    expect(mocks.update.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.refreshConfig.mock.invocationCallOrder[0],
     );
     expect(status).toHaveBeenCalledWith(200);
   });

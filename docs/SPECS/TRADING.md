@@ -607,8 +607,20 @@ Saving account trading settings updates the running production/sandbox engine
 state before entry decisions and dashboard diagnostics use the new bounds.
 The saved value `0` stays an active bound without restarting the runtime.
 
+Dashboard settings saves sync the whole live `state.config` into the running
+engine, serialized with trading stages: the entire `config.runtime` control
+slice (runner and auto-entry/auto-exit gates, stage intervals, notification
+routing, auto-remove thresholds), `config.management` per-pass fields
+(`symbols`, black-swan, safe-haven targets), and each account's `trading`,
+`enabled`, and display fields. Construction-bound fields keep their boot-time
+value and apply only on restart — the resolved strategy module
+(`management.strategy`), `tradingMode`/`exchangeType`, exchange credentials,
+and account membership. When the engine is stopped and a save enables
+`runnerEnabled`, the runtime restarts so the stage loop actually begins.
+
 TC: `BOTH:LOW_LEVEL_NO_ACTION_AVERAGING`
 TC: `PROD:ACCOUNT_TRADING_SAVE_RUNTIME_REFRESH`
+TC: `PROD:CONFIG_SAVE_RUNTIME_REFRESH`
 
 ### B.3.9 Block entry while a counter vPoint might already be formed
 

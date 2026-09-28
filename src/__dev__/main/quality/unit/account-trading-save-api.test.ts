@@ -7,13 +7,13 @@ const mocks = vi.hoisted(() => ({
   deleteState: vi.fn(async () => undefined),
   diffConfig: vi.fn(() => []),
   ensure: vi.fn(),
-  refreshAccountTrading: vi.fn(async () => undefined),
+  refreshConfig: vi.fn(async () => undefined),
   save: vi.fn(),
 }));
 
 vi.mock("@/lib/production", () => ({
   default: {
-    runtime: { get: () => ({ refreshAccountTrading: mocks.refreshAccountTrading }) },
+    runtime: { get: () => ({ refreshConfig: mocks.refreshConfig }) },
   },
 }));
 
@@ -58,9 +58,9 @@ describe("account trading save API", () => {
     await handler(req, res);
 
     expect(mocks.save).toHaveBeenCalledWith(req.body.accounts);
-    expect(mocks.refreshAccountTrading).toHaveBeenCalledOnce();
+    expect(mocks.refreshConfig).toHaveBeenCalledOnce();
     expect(mocks.save.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.refreshAccountTrading.mock.invocationCallOrder[0],
+      mocks.refreshConfig.mock.invocationCallOrder[0],
     );
     expect(status).toHaveBeenCalledWith(200);
   });

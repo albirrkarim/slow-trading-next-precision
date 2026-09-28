@@ -264,6 +264,66 @@ class ProductionRuntime {
     });
   }
 
+  /**
+   * Applies a saved dashboard config to the active engine state. Every
+   * per-pass reader sees the new values on the next stage: all of
+   * `config.runtime`, `config.management` (symbols, thresholds, black-swan),
+   * and per-account `trading`/`enabled`/display fields. Construction-bound
+   * fields — `management.strategy` (module resolved at `createEngine`),
+   * `tradingMode`/`exchangeType` (exchange clients, kline stream market),
+   * credentials, and account membership — keep the boot-time value and only
+   * apply on restart, so the saved slug never mismatches the running module.
+   */
+  async refreshConfig(): Promise<void> {
+    // Nothing to sync until a state exists — a fresh `createState` reads the
+    // catalog anyway, whether it is mid-boot or a cold first start.
+    if (!this.runPromise && !this.state) return;
+
+    const apply = async (state: RuntimeEngineState) => {
+      const saved = (await runtimeStorage.catalog.load()).config;
+      state.config.runtime = structuredClone(saved.runtime);
+      state.config.management = {
+        ...structuredClone(saved.management),
+        exchangeType: state.config.management.exchangeType,
+        strategy: state.config.management.strategy,
+        tradingMode: state.config.management.tradingMode,
+      };
+      const savedBySlug = new Map(
+        saved.accounts.map((account) => [account.slug, account]),
+      );
+      for (const account of state.config.accounts) {
+        const savedAccount = savedBySlug.get(account.slug);
+        if (!savedAccount) continue;
+        account.enabled = savedAccount.enabled;
+        account.trading = structuredClone(savedAccount.trading);
+        account.name = savedAccount.name;
+        account.description = savedAccount.description;
+      }
+    };
+
+    // PROD:CONFIG_SAVE_RUNTIME_REFRESH — serialize the swap with trading
+    // stages while live; a dead engine's retained state is safe to mutate
+    // directly because no stage is running against it.
+    if (this.runPromise) {
+      await this.runManual((context) => apply(context.state));
+    } else if (this.state) {
+      await apply(this.state);
+    }
+
+    // The stage loop only exists inside a live run — an engine that booted
+    // with the runner off never entered it, so enabling the runner needs a
+    // fresh start() (which also reloads everything else from the catalog).
+    if (
+      !this.runPromise &&
+      this.factory &&
+      this.state?.config.runtime.runnerEnabled
+    ) {
+      void this.start(this.factory).catch((error) =>
+        systemLog.error("[Precision Runtime] config-save restart failed", error),
+      );
+    }
+  }
+
   /** Applies saved account trading settings to the active engine state. */
   async refreshAccountTrading(): Promise<void> {
     // PROD:ACCOUNT_TRADING_SAVE_RUNTIME_REFRESH — serialize the update with

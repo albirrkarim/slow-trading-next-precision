@@ -31,6 +31,7 @@ export default async function handler(
 
     if (req.method === "PUT") {
       const body = (req.body ?? {}) as RuntimeCatalogUpdateInput;
+      const runtime = production.runtime.get();
       const previousCatalog = await runtimeStorage.catalog.ensure();
       const nextCatalog = await runtimeStorage.catalog.update({
         config: body.config,
@@ -98,6 +99,12 @@ export default async function handler(
             });
         }
       }
+
+      // PROD:CONFIG_SAVE_RUNTIME_REFRESH — the live engine keeps its own
+      // `state.config`; sync the saved catalog into it so the next stage
+      // reads new gates, symbols, and account bounds instead of the boot
+      // snapshot.
+      await runtime.refreshConfig();
 
       res.status(200).json(await loadDashboardState());
       return;
