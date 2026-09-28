@@ -8,6 +8,8 @@ interface LateEntryVPointDriftParams {
   currentPrice: number;
   direction: "LONG" | "SHORT";
   enabled?: boolean;
+  /** Per-account cap override in percent; unset keeps the volatility-derived limit. */
+  limitPct?: number;
   vPointPrice: number;
 }
 
@@ -46,7 +48,7 @@ function calculateProfitDriftPct({
   return (priceChange / vPointPrice) * 100;
 }
 
-/** Evaluates the production late-entry guard against its volatility-based limit. */
+/** Evaluates the late-entry guard against the configured or volatility-based limit. */
 function evaluate(
   params: LateEntryVPointDriftParams,
   volatilityThreshold = VOLATILITY_THRESHOLD,
@@ -55,8 +57,13 @@ function evaluate(
     return { blocked: false, reason: undefined };
   }
 
+  const limitPct = params.limitPct;
   const maxProfitDriftPct =
-    resolveMaxProfitDriftPct(volatilityThreshold);
+    typeof limitPct === "number" &&
+    Number.isFinite(limitPct) &&
+    limitPct >= 0
+      ? limitPct
+      : resolveMaxProfitDriftPct(volatilityThreshold);
   const profitDriftPct = calculateProfitDriftPct(params);
   const blocked =
     profitDriftPct !== undefined && profitDriftPct > maxProfitDriftPct;

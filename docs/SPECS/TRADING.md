@@ -580,10 +580,16 @@ current price from `state.markPriceMap`, the latest closed kline at the
 runtime clock. Entries forced through the manual API are exempt because the
 request is explicit.
 
-The maximum profitable drift depends on `VOLATILITY_THRESHOLD`:
+The maximum profitable drift defaults from `VOLATILITY_THRESHOLD`:
 
 - When `VOLATILITY_THRESHOLD < 5`, block drift greater than `0.5%`.
 - When `VOLATILITY_THRESHOLD >= 5`, block drift greater than `1%`.
+
+Each account can override that automatic cap with
+`trading.lateEntryVPointPriceDriftPct`. When set to a finite number `>= 0`,
+that percent becomes the account's cap in live, sandbox, backtest, and the
+entry diagnostics; `0` blocks any profitable drift. Unset keeps the
+volatility-derived limit.
 
 The boundary itself remains allowed. Adverse drift does not trigger this guard.
 

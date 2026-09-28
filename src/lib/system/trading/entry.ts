@@ -272,6 +272,7 @@ async function findDecisions(
         currentPrice: context.state.markPriceMap[symbol]?.price,
         direction: entrySignal.l === "B" ? "LONG" : "SHORT",
         enabled: account.trading.lateEntryVPointPriceDriftEnabled,
+        limitPct: account.trading.lateEntryVPointPriceDriftPct,
         vPointPrice: entrySignal.p,
       });
       if (drift.blocked) continue;

@@ -67,7 +67,7 @@ export default function TradingAccountSettings({
                             checked={
                                 tradingConfig.lateEntryVPointPriceDriftEnabled !== false
                             }
-                            info="Automatic entries: block when the latest closed 1-minute price has moved more than the limit in the trade's profitable direction from the signal vPoint (above it for LONG, below for SHORT). The limit is 0.5% when the volatility threshold is below 5%; otherwise it is 1%. For a vPoint price of 100 and a 1% limit, LONG above 101 or SHORT below 99 is blocked; exactly 101 or 99 is allowed. Checked when selecting a signal and again before execution. Adverse moves and manual entries are exempt. Applies only to this account in live, sandbox, and backtest."
+                            info="Automatic entries: block when the latest closed 1-minute price has moved more than the limit in the trade's profitable direction from the signal vPoint (above it for LONG, below for SHORT). The limit is 0.5% when the volatility threshold is below 5%; otherwise it is 1%. The Drift Limit % field below overrides that automatic limit for this account. For a vPoint price of 100 and a 1% limit, LONG above 101 or SHORT below 99 is blocked; exactly 101 or 99 is allowed. Checked when selecting a signal and again before execution. Adverse moves and manual entries are exempt. Applies only to this account in live, sandbox, and backtest."
                             infoTooltipMaxWidth={440}
                             label="Late Entry vPoint Price Drift Guard"
                             onChange={(checked) =>
@@ -80,6 +80,39 @@ export default function TradingAccountSettings({
                                         : prev,
                                 )
                             }
+                        />
+                    </Grid>
+
+                    <Grid size={{ xs: 12, md: 6 }}>
+                        <SettingsInfoField
+                            label="Drift Limit %"
+                            type="number"
+                            size="small"
+                            fullWidth
+                            value={tradingConfig.lateEntryVPointPriceDriftPct ?? ""}
+                            onChange={(event) =>
+                                setTradingConfig((prev) =>
+                                    prev
+                                        ? {
+                                            ...prev,
+                                            lateEntryVPointPriceDriftPct:
+                                                event.target.value === ""
+                                                    ? undefined
+                                                    : Math.max(
+                                                        0,
+                                                        Number(event.target.value),
+                                                    ),
+                                        }
+                                        : prev,
+                                )
+                            }
+                            slotProps={{
+                                htmlInput: {
+                                    min: 0,
+                                    step: "0.1",
+                                },
+                            }}
+                            info="Optional override of the late-entry price drift cap in percent. Empty keeps the automatic limit (0.5% when the volatility threshold is below 5%, otherwise 1%); 0 blocks any profitable drift. Applies to automatic entries only and is checked when a signal is selected and again before execution."
                         />
                     </Grid>
 

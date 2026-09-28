@@ -17,6 +17,7 @@ import type {
 import tradingAveraging from "@/lib/system/trading/averaging";
 import tradingEntry from "@/lib/system/trading/entry";
 import entryAction from "@/lib/system/trading/entry-action";
+import lateEntryVPointDrift from "@/lib/system/trading/late-entry-vpoint-drift";
 import tradingExit from "@/lib/system/trading/exit";
 import systemPositions from "@/lib/precision/utils/positions";
 import systemVpoints from "@/lib/system/utils/vpoints";
@@ -424,6 +425,75 @@ describe("multi strategy late-entry vPoint drift guard", () => {
     // Exactly +1.0% equals the cap; the boundary stays allowed.
     expect(
       await strategy.decisions.findEntries(driftedContext(101)),
+    ).toHaveLength(1);
+  });
+
+  it("honors a finite non-negative limitPct override in the evaluator", () => {
+    // BOTH:LATE_ENTRY_VPOINT_PRICE_DRIFT_PCT — a configured
+    // trading.lateEntryVPointPriceDriftPct replaces the volatility-derived
+    // cap for every caller of the shared evaluator.
+    const params = {
+      currentPrice: 100.5,
+      direction: "LONG" as const,
+      vPointPrice: 100,
+    };
+
+    // +0.5% drift is allowed by both automatic caps (0.5% below threshold
+    // 5, 1% at or above it), but a configured 0.2% cap blocks it either way.
+    expect(lateEntryVPointDrift.evaluate(params, 3).blocked).toBe(false);
+    expect(lateEntryVPointDrift.evaluate(params, 10).blocked).toBe(false);
+    expect(
+      lateEntryVPointDrift.evaluate({ ...params, limitPct: 0.2 }, 3).blocked,
+    ).toBe(true);
+    expect(
+      lateEntryVPointDrift.evaluate({ ...params, limitPct: 0.2 }, 10).blocked,
+    ).toBe(true);
+
+    // A drift exactly equal to the configured cap stays allowed.
+    expect(
+      lateEntryVPointDrift.evaluate({ ...params, limitPct: 0.5 }, 10).blocked,
+    ).toBe(false);
+
+    // undefined, negative, or non-finite values keep the automatic cap.
+    for (const limitPct of [undefined, -1, Number.NaN]) {
+      expect(
+        lateEntryVPointDrift.evaluate({ ...params, limitPct }, 10).blocked,
+      ).toBe(false);
+    }
+
+    // A configured 0 blocks any profitable drift; exactly zero stays allowed.
+    expect(
+      lateEntryVPointDrift.evaluate(
+        { ...params, currentPrice: 100.01, limitPct: 0 },
+        10,
+      ).blocked,
+    ).toBe(true);
+    expect(
+      lateEntryVPointDrift.evaluate(
+        { ...params, currentPrice: 100, limitPct: 0 },
+        10,
+      ).blocked,
+    ).toBe(false);
+  });
+
+  it("applies the per-account drift cap override at decision and execution", async () => {
+    // BOTH:LATE_ENTRY_VPOINT_PRICE_DRIFT_PCT — trading.lateEntryVPointPriceDriftPct
+    // 0.2 replaces the auto-derived cap for this account: +0.3% drift passes
+    // the automatic limits (0.5%/1%) but is blocked by the configured cap.
+    const configured = { lateEntryVPointPriceDriftPct: 0.2 };
+    expect(
+      await strategy.decisions.findEntries(driftedContext(100.3, configured)),
+    ).toHaveLength(0);
+    expect(
+      strategy.actions.executeEntry(
+        driftedContext(100.3, configured),
+        entryDecision(),
+      ),
+    ).toBeNull();
+
+    // The same drift still passes for an account that leaves the cap unset.
+    expect(
+      await strategy.decisions.findEntries(driftedContext(100.3)),
     ).toHaveLength(1);
   });
 

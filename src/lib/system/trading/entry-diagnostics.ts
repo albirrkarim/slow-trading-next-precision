@@ -161,6 +161,7 @@ function explainMissingDecision(
     currentPrice: context.state.markPriceMap[symbol]?.price,
     direction: lastPoint?.l === "B" ? "LONG" : "SHORT",
     enabled: account?.trading.lateEntryVPointPriceDriftEnabled,
+    limitPct: account?.trading.lateEntryVPointPriceDriftPct,
     vPointPrice: Number(lastPoint?.p),
   });
   if (drift.blocked) {
@@ -241,11 +242,14 @@ function explainRejectedPlan(
   // BOTH:LATE_ENTRY_VPOINT_PRICE_DRIFT_PCT — mirrors the plan-time gate;
   // manual entries skip it exactly like the shared executor does.
   if (!decision.manual) {
+    const accountTrading = context.helper.getAccountConfig(
+      decision.accountSlug,
+    );
     const drift = lateEntryVPointDrift.evaluate({
       currentPrice: mark.price,
       direction: decision.direction,
-      enabled: context.helper.getAccountConfig(decision.accountSlug)
-        .lateEntryVPointPriceDriftEnabled,
+      enabled: accountTrading.lateEntryVPointPriceDriftEnabled,
+      limitPct: accountTrading.lateEntryVPointPriceDriftPct,
       vPointPrice: decision.entrySignal.p,
     });
     if (drift.blocked) {

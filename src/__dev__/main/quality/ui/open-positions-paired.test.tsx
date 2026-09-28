@@ -386,4 +386,28 @@ describe("OpenPositions — streak empty-row diagnostics", () => {
       screen.queryByText(/No open pair — waiting for a fresh pair/),
     ).toBeNull();
   });
+
+  it("renders an empty streak row's net as a muted $0.00", () => {
+    render(<OpenPositions {...streakProps()} />);
+
+    expect(screen.getByText("$0.00")).toBeTruthy();
+    expect(screen.queryByText("+$0.00")).toBeNull();
+  });
+
+  it("keeps the signed USDT net for a streak row with an open leg", () => {
+    render(
+      <OpenPositions
+        {...streakProps()}
+        positions={[
+          pairedLeg("MAIN", {
+            pnl: { netPct: -1, netUsdt: -0.92 },
+          }) as never,
+        ]}
+        strategyState={{ v: "streak" }}
+      />,
+    );
+
+    expect(screen.getByText("-$0.92")).toBeTruthy();
+    expect(screen.queryByText("$0.00")).toBeNull();
+  });
 });

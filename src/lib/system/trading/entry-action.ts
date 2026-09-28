@@ -341,6 +341,7 @@ function buildPlan(
       currentPrice: mark.price,
       direction: decision.direction,
       enabled: config.lateEntryVPointPriceDriftEnabled,
+      limitPct: config.lateEntryVPointPriceDriftPct,
       vPointPrice: signal.p,
     });
     if (drift.blocked) {

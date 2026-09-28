@@ -23,6 +23,9 @@ export default function PairRow({
   row,
 }: PairRowProps) {
   const net = Number(row.netUsdt) || 0;
+  const hasLeg = Object.values(row.slots).some(
+    (slot) => slot.kind !== "empty",
+  );
   const fallback =
     typeof emptyReasonFallback === "function"
       ? emptyReasonFallback(row.account, row.symbol)
@@ -55,12 +58,19 @@ export default function PairRow({
             {row.account}
           </Typography>
           <Typography
-            color={net >= 0 ? "success.main" : "error.main"}
+            color={
+              hasLeg
+                ? net >= 0
+                  ? "success.main"
+                  : "error.main"
+                : "text.secondary"
+            }
             fontWeight={700}
             variant="body2"
           >
-            {net >= 0 ? "+" : ""}
-            {net.toFixed(2)} USDT
+            {hasLeg
+              ? `${net >= 0 ? "+" : "-"}$${Math.abs(net).toFixed(2)}`
+              : "$0.00"}
           </Typography>
         </Box>
       </Grid>

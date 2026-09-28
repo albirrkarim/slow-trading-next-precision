@@ -159,6 +159,9 @@ function EntryBoundsHarness() {
       <span data-testid="entry-bounds">
         {String(tradingConfig.minEntryAbsLevel)}|{String(tradingConfig.maxEntryAbsLevel)}
       </span>
+      <span data-testid="drift-limit">
+        {String(tradingConfig.lateEntryVPointPriceDriftPct)}
+      </span>
     </>
   );
 }
@@ -754,6 +757,28 @@ describe("account entry-level settings", () => {
     expect(screen.getByTestId("entry-bounds").textContent).toBe("undefined|0");
     fireEvent.change(maximum, { target: { value: "" } });
     expect(screen.getByTestId("entry-bounds").textContent).toBe("undefined|undefined");
+  });
+
+  it("edits the late-entry drift limit as an optional decimal percent", () => {
+    // BOTH:LATE_ENTRY_VPOINT_PRICE_DRIFT_PCT
+    render(<EntryBoundsHarness />);
+    const input = screen.getByLabelText("Drift Limit %") as HTMLInputElement;
+
+    expect(input.type).toBe("number");
+    expect(input.min).toBe("0");
+    expect(input.step).toBe("0.1");
+    expect(screen.getByTestId("drift-limit").textContent).toBe("undefined");
+
+    fireEvent.change(input, { target: { value: "0.2" } });
+    expect(screen.getByTestId("drift-limit").textContent).toBe("0.2");
+
+    // 0 is an active cap that blocks any profitable drift, not "unset".
+    fireEvent.change(input, { target: { value: "0" } });
+    expect(screen.getByTestId("drift-limit").textContent).toBe("0");
+
+    // Clearing the field restores the automatic volatility-derived limit.
+    fireEvent.change(input, { target: { value: "" } });
+    expect(screen.getByTestId("drift-limit").textContent).toBe("undefined");
   });
 
 });

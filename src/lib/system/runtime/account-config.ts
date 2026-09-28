@@ -19,6 +19,7 @@ export const ACCOUNT_TRADING_CONFIG_KEYS = [
   "entrySpareBufferEnabled",
   "exactLeverage",
   "lateEntryVPointPriceDriftEnabled",
+  "lateEntryVPointPriceDriftPct",
   "maxEntryBased24HourVolPct",
   "maxEntryAbsLevel",
   "maxEntryMargin",

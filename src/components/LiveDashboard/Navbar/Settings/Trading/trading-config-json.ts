@@ -17,6 +17,7 @@ const NUMBER_KEYS = [
   "dcaDipPercent",
   "dcaMultiplier",
   "exitOnVPointAbsLevel",
+  "lateEntryVPointPriceDriftPct",
   "maxEntryBased24HourVolPct",
   "maxEntryAbsLevel",
   "maxEntryMargin",

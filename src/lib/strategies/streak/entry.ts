@@ -88,12 +88,13 @@ async function find(
       continue;
     }
 
+    const accountTrading = context.helper.getAccountConfig(record.accountSlug);
     const drift = lateEntryVPointDrift.evaluate({
       currentPrice:
         context.state.markPriceMap[record.symbol.toUpperCase()]?.price,
       direction,
-      enabled: context.helper.getAccountConfig(record.accountSlug)
-        .lateEntryVPointPriceDriftEnabled,
+      enabled: accountTrading.lateEntryVPointPriceDriftEnabled,
+      limitPct: accountTrading.lateEntryVPointPriceDriftPct,
       vPointPrice: anchor.p,
     });
     if (drift.blocked) {

@@ -661,7 +661,7 @@ normalization. Shared
 pre-execution checks take precedence for a
 disabled runner or auto-entry setting, an existing open position, Spot SHORT
 restriction, live symbol auto-removal at its configured absolute level,
-late-entry profitable price drift above the production 1% limit, an unavailable
+late-entry profitable price drift above the configured or auto-derived limit, an unavailable
 current entry candle, a probability-sized entry margin below the trading
 minimum, insufficient averaging reserve, or an insufficient bailout buffer.
 The late-entry row uses the same current 1-minute candle, calculation, and

@@ -181,6 +181,11 @@ export interface RuntimeAccountTradingConfig {
   onlyTPFromDate?: string;
   /** Entries in live, sandbox, and backtest enforce the vPoint price-drift guard. */
   lateEntryVPointPriceDriftEnabled?: boolean;
+  /**
+   * Per-account override for the drift cap in percent; unset keeps the
+   * auto-derived limit (0.5% below volatility threshold 5, else 1%).
+   */
+  lateEntryVPointPriceDriftPct?: number;
   /** User-authored reminder describing this account's trading strategy. */
   notes: string;
 }
