@@ -13,6 +13,7 @@ import {
   Grid,
   Stack,
   Switch,
+  Tooltip,
   Typography,
 } from "@mui/material";
 
@@ -194,55 +195,72 @@ export default function SettingsDialogRuntimeTab({
                     border: 1,
                     borderColor: "divider",
                     borderRadius: 1.5,
-                    p: 2,
+                    px: 1.5,
+                    py: 1,
                   }}
                 >
-                  <Stack spacing={2}>
-                    <Box>
-                      <Typography fontWeight={700} variant="subtitle2">
-                        {account.name}
-                      </Typography>
-                      <Typography color="text.secondary" variant="caption">
+                  <Stack
+                    alignItems="center"
+                    direction="row"
+                    flexWrap="wrap"
+                    spacing={1.5}
+                    useFlexGap
+                  >
+                    <Typography
+                      fontWeight={700}
+                      noWrap
+                      sx={{ flexGrow: 1, minWidth: 0 }}
+                      variant="body2"
+                    >
+                      {account.name}
+                      <Typography
+                        color="text.secondary"
+                        component="span"
+                        sx={{ ml: 0.75 }}
+                        variant="caption"
+                      >
                         {account.slug}
                       </Typography>
-                    </Box>
+                    </Typography>
 
-                      <SettingsInfoField
-                        label={`${account.name} Sandbox Initial Balance (USDT)`}
-                        type="number"
-                        size="small"
-                        fullWidth
-                        value={account.sandbox.initialBalanceUSDT}
-                        onChange={(event) =>
-                          setConfigDraft((prev) =>
-                            prev
-                              ? {
-                                  ...prev,
-                                  accounts: prev.accounts.map((candidate) =>
-                                    candidate.slug === account.slug
-                                      ? {
-                                          ...candidate,
-                                          sandbox: {
-                                            ...candidate.sandbox,
-                                            initialBalanceUSDT:
-                                              parseFloat(event.target.value),
-                                          },
-                                        }
-                                      : candidate,
-                                  ),
-                                }
-                              : prev,
-                          )
-                        }
-                        info="Used when this account's sandbox state is initialized or reset."
-                      />
+                    <SettingsInfoField
+                      label="Initial Balance (USDT)"
+                      type="number"
+                      size="small"
+                      value={account.sandbox.initialBalanceUSDT}
+                      onChange={(event) =>
+                        setConfigDraft((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                accounts: prev.accounts.map((candidate) =>
+                                  candidate.slug === account.slug
+                                    ? {
+                                        ...candidate,
+                                        sandbox: {
+                                          ...candidate.sandbox,
+                                          initialBalanceUSDT:
+                                            parseFloat(event.target.value),
+                                        },
+                                      }
+                                    : candidate,
+                                ),
+                              }
+                            : prev,
+                        )
+                      }
+                      info="Used when this account's sandbox state is initialized or reset."
+                      sx={{ width: 160 }}
+                    />
 
-                      {resetSandbox && (
-                        <Box>
+                    {resetSandbox && (
+                      <Tooltip title="Rebuilds only this account's sandbox positions and balance. Its live state and every other account are not touched.">
+                        <span>
                           <Button
                             color="warning"
-                            variant="outlined"
+                            size="small"
                             startIcon={<RestartAltIcon />}
+                            variant="outlined"
                             onClick={() => {
                               void resetSandbox(account.slug);
                             }}
@@ -251,22 +269,11 @@ export default function SettingsDialogRuntimeTab({
                               !configDraft.runtime.sandboxEnabled
                             }
                           >
-                            {resetting
-                              ? "Resetting..."
-                              : `Reset ${account.name} Sandbox`}
+                            {resetting ? "Resetting..." : "Reset"}
                           </Button>
-
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                            sx={{ display: "block", mt: 1 }}
-                          >
-                            Rebuilds only this account&apos;s sandbox positions
-                            and balance. Its live state and every other account
-                            are not touched.
-                          </Typography>
-                        </Box>
-                      )}
+                        </span>
+                      </Tooltip>
+                    )}
                   </Stack>
                 </Box>
               );
