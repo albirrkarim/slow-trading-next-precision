@@ -45,7 +45,11 @@ export {
   buildConfiguredCoinTagComposition,
   buildConfiguredCoinTagCompositionGroups,
 } from "./CoinTagComposition";
-export { isVolatilityPointUsedByAccount, simplifyId } from "./utils";
+export {
+  buildVolatilityPointJson,
+  isVolatilityPointUsedByAccount,
+  simplifyId,
+} from "./utils";
 export { formatMarketCapUpdatedAt } from "./LatestVolatilityPointRow";
 export {
   describeFundingRatePayer,

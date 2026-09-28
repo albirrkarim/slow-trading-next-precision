@@ -10,13 +10,7 @@ import klineUtils from "@/lib/system/utils/klines";
 import vpoints from "@/lib/system/utils/vpoints";
 import { systemLog } from "@/lib/system/logging";
 import fs from "fs-extra";
-import md5 from "md5";
 import type { NextApiRequest, NextApiResponse } from "next";
-import path from "path";
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-const MINUTE_MS = 60 * 1000;
-const DASHBOARD_VOLATILITY_CACHE_MS = 10 * MINUTE_MS;
 
 export default async function handler(
   req: NextApiRequest,
@@ -60,62 +54,6 @@ function pickTimeParam(value: unknown): number | undefined {
   if (value === undefined || value === null || value === "") return undefined;
   const parsed = Number(Array.isArray(value) ? value[0] : value);
   return Number.isFinite(parsed) ? parsed : undefined;
-}
-
-function pickStringParam(value: unknown): string | undefined {
-  if (typeof value === "string" && value.trim().length > 0) {
-    return value.trim();
-  }
-
-  if (Array.isArray(value)) {
-    const first = value.find(
-      (item) => typeof item === "string" && item.trim().length > 0,
-    );
-    return typeof first === "string" ? first.trim() : undefined;
-  }
-
-  return undefined;
-}
-
-function bucketTime(value: number | undefined, bucketMs: number) {
-  return value === undefined ? undefined : Math.floor(value / bucketMs);
-}
-
-/** Returns the ten-minute bucket used to refresh dashboard volatility data. */
-export function getDashboardVolatilityCacheBucket(nowMs: number) {
-  return Math.floor(nowMs / DASHBOARD_VOLATILITY_CACHE_MS);
-}
-
-/**
- * Builds a stable cache window for dashboard volatility responses.
- *
- * Named dashboard ranges use a daily bucket because their timestamps are
- * generated from Date.now(). Custom ranges keep minute-level precision because
- * they come from datetime-local inputs.
- */
-export function buildDashboardVolatilityCacheWindow({
-  endTimeMs,
-  range,
-  startTimeMs,
-}: {
-  endTimeMs?: number;
-  range?: string;
-  startTimeMs?: number;
-}) {
-  const normalizedRange = String(range ?? "").trim();
-
-  if (normalizedRange && normalizedRange !== "custom") {
-    return {
-      endDay: bucketTime(endTimeMs, DAY_MS),
-      range: normalizedRange,
-    };
-  }
-
-  return {
-    endMinute: bucketTime(endTimeMs, MINUTE_MS),
-    range: normalizedRange || "custom",
-    startMinute: bucketTime(startTimeMs, MINUTE_MS),
-  };
 }
 
 /** Keeps only entry-signal markers visible in the selected dashboard window. */
@@ -168,33 +106,6 @@ async function keepTheVolatilityUpdated(
 
   const startTimeMs = pickTimeParam(params.startTime);
   const endTimeMs = pickTimeParam(params.endTime);
-  const range = pickStringParam(params.range);
-
-  const cachePath = `${storageFiles.prod.cache.getCachePrefix("volatility")}${md5(
-    JSON.stringify({
-      cacheBucket: getDashboardVolatilityCacheBucket(Date.now()),
-      config: catalog.config,
-      exchangeType,
-      range: buildDashboardVolatilityCacheWindow({
-        endTimeMs,
-        range,
-        startTimeMs,
-      }),
-      symbols,
-    }),
-  )}.json`;
-
-  await fs.ensureDir(path.dirname(cachePath));
-
-  if (
-    (await fs.exists(cachePath)) &&
-    forceUpdate == false &&
-    removeUsed == false
-  ) {
-    const output = await fs.readJson(cachePath);
-    res.json(output);
-    return;
-  }
 
   try {
     // Clearing persisted markers alone is not enough: the running engine owns
@@ -261,7 +172,10 @@ async function keepTheVolatilityUpdated(
           points: detected,
         });
 
-        volatilityMap[symbol] = detected;
+        volatilityMap[symbol] = await runtimeStorage.vpoints.read({
+          exchangeType: exchangeType as ExchangeType,
+          symbol,
+        });
       }
 
       // C. Optionally remove used volatility points
@@ -293,8 +207,6 @@ async function keepTheVolatilityUpdated(
       data: responseVolatilityMap,
       series: [],
     };
-
-    await fs.writeJson(cachePath, output);
 
     res.json(output);
   } catch (err) {
