@@ -107,6 +107,15 @@ describe("pair leg helpers", () => {
     expect(
       pair.isPairMode({ strategy: "streak", entryLegs: "COUNTER" }),
     ).toBe(false);
+    expect(
+      pair.isPairMode({ strategy: "custom_swe_2_profit_rail_v1" }),
+    ).toBe(true);
+    expect(
+      pair.isPairMode({
+        strategy: "custom_swe_2_profit_rail_v1",
+        entryLegs: "MAIN",
+      }),
+    ).toBe(false);
   });
 
   it("counts two funded legs only in pair mode", () => {
@@ -120,6 +129,9 @@ describe("pair leg helpers", () => {
     expect(
       pair.legsPerWorker({ entryLegs: "COUNTER", strategy: "streak" }),
     ).toBe(1);
+    expect(
+      pair.legsPerWorker({ strategy: "custom_swe_2_profit_rail_v1" }),
+    ).toBe(2);
   });
 });
 

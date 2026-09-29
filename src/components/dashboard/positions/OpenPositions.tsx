@@ -124,15 +124,14 @@ export default function OpenPositions({
     [positions],
   );
   const isWorstFirst = pnlSortOrder === "worst";
-  // Streak renders the paired board for every entryLegs selection so a
-  // one-way account still shows its active role; `both` stays paired only
-  // for BOTH accounts — other configs keep the flat per-position list.
-  const pairSlug: "both" | "streak" | null =
-    config.strategy === "streak"
-      ? "streak"
-      : pair.isPairMode(config)
-        ? config.strategy
-        : null;
+  // Re-entry strategies render the paired board for every entryLegs
+  // selection so a one-way account still shows its active role; `both`
+  // stays paired only for BOTH accounts — other configs keep the flat
+  // per-position list.
+  const pairSlug: string | null =
+    pair.isReentrySlug(config.strategy) || pair.isPairMode(config)
+      ? (config.strategy ?? null)
+      : null;
 
   useEffect(() => {
     const initialTimeoutId = window.setTimeout(() => setNow(Date.now()), 0);

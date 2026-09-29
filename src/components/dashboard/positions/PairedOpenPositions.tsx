@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef } from "react";
 import type { ReactNode } from "react";
 
 import pairBoard from "@/lib/strategies/shared/board";
+import pair from "@/lib/strategies/shared/pair";
 import type { EntryLegs } from "@/lib/strategies/shared/pair";
 import type { RuntimeHistoryPosition } from "@/lib/system/trading";
 
@@ -21,7 +22,7 @@ interface PairedOpenPositionsProps {
     position: RuntimeHistoryPosition,
     index?: number,
   ) => ReactNode;
-  slug: "both" | "streak";
+  slug: string;
   /** Persisted `state.strategy` slot from the dashboard snapshot. */
   strategyState?: unknown;
   /** Management symbols shown on the board. */
@@ -34,7 +35,7 @@ interface PairedOpenPositionsProps {
 export default function PairedOpenPositions(
   props: PairedOpenPositionsProps,
 ) {
-  return props.slug === "streak" ? (
+  return pair.isReentrySlug(props.slug) ? (
     <StreakPairedOpenPositions {...props} />
   ) : (
     <PairedOpenPositionsBoard {...props} />

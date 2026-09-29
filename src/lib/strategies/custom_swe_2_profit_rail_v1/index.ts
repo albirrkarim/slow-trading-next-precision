@@ -6,17 +6,18 @@ import pair from "../shared/pair";
 import pairDiagnostics from "../shared/diagnostics";
 import pairEntry from "../shared/entry";
 import sharedPreflight from "../shared/preflight";
-import streakEntry from "./entry";
-import streakExit from "./exit";
-import streakGuard from "./guard";
-import streakState from "./state";
+import profitRailEntry from "./entry";
+import profitRailExit from "./exit";
+import profitRailGuard from "./guard";
+import profitRailState from "./state";
 
 /**
- * STREAK:ROLE_REOPEN bookkeeping — when a pair leg closes while its
- * sibling stays open, the empty role is recorded so the entry producer
- * re-opens it (opposite the survivor) at the newest unused vPoint. When a
- * re-entry fills, the role record clears. When the pair dies entirely the
- * record drops — the fresh-pair path re-enters the symbol normally.
+ * Empty-role bookkeeping (same contract as streak): when a pair leg closes
+ * while its sibling stays open, the empty role is recorded so the entry
+ * producer re-opens it (opposite the survivor) at the newest unused
+ * in-band vPoint. When a re-entry fills, the role record clears. When the
+ * pair dies entirely the record drops — the fresh-pair path re-enters the
+ * symbol normally.
  */
 const onActionResult: OnActionResult = async (
   result,
@@ -30,7 +31,7 @@ const onActionResult: OnActionResult = async (
     if (decision.type === "entry") {
       const meta = pair.meta.ofDecision(decision);
       const record = meta?.reopen
-        ? streakState.read(context).roles[meta.pairId]
+        ? profitRailState.read(context).roles[meta.pairId]
         : undefined;
       if (record) {
         // A gate-refused re-entry carries its reason on the decision — the
@@ -44,7 +45,7 @@ const onActionResult: OnActionResult = async (
   }
   if (!position) return;
 
-  const state = streakState.read(context);
+  const state = profitRailState.read(context);
   const positions = Array.isArray(position) ? position : [position];
 
   if (decision.type === "exit") {
@@ -77,15 +78,15 @@ const onActionResult: OnActionResult = async (
   }
 };
 
-const streak: StrategyAPI = {
-  name: "streak",
+const profitRail: StrategyAPI = {
+  name: "custom_swe_2_profit_rail_v1",
   decisions: {
-    entry: { find: streakEntry.find, shape: pairEntry.fromSignal },
+    entry: { find: profitRailEntry.find, shape: pairEntry.fromSignal },
     averaging: {
-      // STREAK rail averaging — a pair leg consumes any adverse-side
-      // vPoint as its next step (level-0 BOTTOMs included for a LONG);
-      // the direction-based target owns the favorable exits. Positions
-      // without pair meta keep the default |lvl| > 1 gate.
+      // Pair legs consume any adverse-side vPoint as the next step
+      // (level-0 BOTTOMs included for a LONG); the profit-gated rail owns
+      // the favorable exits. Positions without pair meta keep the default
+      // |lvl| > 1 gate.
       find: (context, position) =>
         tradingAveraging.findDecision(context, position, {
           levelGate: pair.meta.ofPosition(position)
@@ -93,24 +94,25 @@ const streak: StrategyAPI = {
             : undefined,
         }),
     },
-    exit: { find: streakExit.find },
+    exit: { find: profitRailExit.find },
   },
   diagnostics: {
     explain: (params) =>
       pairDiagnostics.explain(params, (ctx, pairId) => {
-        const record = streakState.peek(ctx).roles?.[pairId];
+        const record = profitRailState.peek(ctx).roles?.[pairId];
         return record
           ? `${record.role} re-entry pending: ${
-              record.reason ?? "waiting for the next confirmed unused vPoint"
+              record.reason ??
+              "waiting for the next confirmed unused in-band vPoint"
             }`
           : undefined;
       }),
     view: pairDiagnostics.view,
   },
-  guard: { allows: streakGuard.allows },
+  guard: { allows: profitRailGuard.allows },
   onActionResult,
   preflight: sharedPreflight.hedgePositionMode,
   traits: { pairReentry: true },
 };
 
-export default streak;
+export default profitRail;

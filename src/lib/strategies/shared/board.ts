@@ -25,8 +25,12 @@ export interface PairBoardRow {
 }
 
 interface PairBoardParams {
-  /** Active pair strategy — selects how a missing role slot is explained. */
-  slug: "both" | "streak";
+  /**
+   * Active pair strategy slug — selects how a missing role slot is
+   * explained AND matches the persisted `state.strategy` version (`v`),
+   * so foreign slots never leak into the board.
+   */
+  slug: string;
   /** Raw `state.strategy` payload; only the matching-version slot is read. */
   strategyState: unknown;
   openPositions: RuntimeHistoryPosition[];
@@ -51,7 +55,7 @@ const ROLES: PairRole[] = ["MAIN", "COUNTER"];
  * tolerated as an empty record.
  */
 function readSlot(
-  slug: PairBoardParams["slug"],
+  slug: string,
   strategyState: unknown,
 ): PairBoardSlotState {
   if (
@@ -122,8 +126,8 @@ function emptyStreakSlots(
 /**
  * Builds the paired-open-positions view model: one row per open pair
  * (missing roles stay visible), every position without pair meta in
- * `unpaired`, and — for `streak` — one empty row per configured
- * account × symbol that has no pair.
+ * `unpaired`, and — for re-entry strategies (`streak`, profit-rail) — one
+ * empty row per configured account × symbol that has no pair.
  */
 function build(params: PairBoardParams): {
   rows: PairBoardRow[];
@@ -181,10 +185,10 @@ function build(params: PairBoardParams): {
   }
   rows.sort((left, right) => left.openedT - right.openedT);
 
-  // STREAK spec C.1: the open-position list always shows every configured
+  // STREAK spec C.1: re-entry strategies always show every configured
   // coin; a coin with no pair renders both roles empty.
   const emptyRows: PairBoardRow[] = [];
-  if (params.slug === "streak") {
+  if (pair.isReentrySlug(params.slug)) {
     for (const account of params.accounts) {
       const legs = params.entryLegs?.[account] ?? "BOTH";
       for (const rawSymbol of params.symbols) {

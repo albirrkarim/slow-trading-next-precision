@@ -176,19 +176,46 @@ function workerKey(position: Position): string {
     : `pos:${position.account}:${position.symbol}:${position.opened.t}`;
 }
 
+/** Strategy slugs whose entry producers stamp MAIN/COUNTER pair meta. */
+const PAIR_SLUGS: ReadonlySet<string> = new Set([
+  "both",
+  "custom_swe_2_profit_rail_v1",
+  "streak",
+]);
+
 /**
- * Pair mode is per-account: `both`/`streak` selected and the account's
+ * Pair strategies that keep a pending empty-role re-entry after a leg
+ * closes — they render the paired board for every `entryLegs` selection
+ * and get streak-style empty slots/diagnostics.
+ */
+const REENTRY_SLUGS: ReadonlySet<string> = new Set([
+  "custom_swe_2_profit_rail_v1",
+  "streak",
+]);
+
+/** Whether a strategy slug produces pair legs. */
+function isPairSlug(slug?: string): boolean {
+  return PAIR_SLUGS.has(slug ?? "");
+}
+
+/** Whether a pair strategy slug keeps pending empty-role re-entries. */
+function isReentrySlug(slug?: string): boolean {
+  return REENTRY_SLUGS.has(slug ?? "");
+}
+
+/**
+ * Pair mode is per-account: a pair strategy selected and the account's
  * `entryLegs` is `"BOTH"` (the default) — `MAIN`/`COUNTER` is the
  * account's one-way selection, trading only that role leg. The type
- * predicate narrows `config.strategy` to the pair slug for callers that
+ * predicate narrows `config.strategy` to a defined slug for callers that
  * render the paired view.
  */
 function isPairMode(config: {
   strategy?: string;
   entryLegs?: string;
-}): config is { strategy: "both" | "streak" } {
+}): config is { strategy: string } {
   return (
-    (config.strategy === "both" || config.strategy === "streak") &&
+    isPairSlug(config.strategy) &&
     (config.entryLegs ?? "BOTH") === "BOTH"
   );
 }
@@ -235,6 +262,8 @@ const pair = {
   direction: roleDirection,
   findSibling,
   isPairMode,
+  isPairSlug,
+  isReentrySlug,
   legsPerWorker,
   meta: {
     ofDecision,

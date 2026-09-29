@@ -456,7 +456,7 @@ async function build(
     const maxLevel = tradingEntry.threshold.resolveMax(
       account.trading.maxEntryAbsLevel,
     );
-    const streakBoard = context.strategy?.name === "streak";
+    const streakBoard = context.strategy?.traits?.pairReentry === true;
     const sharedGate = streakBoard
       ? explainSharedGate(context, account.slug)
       : undefined;

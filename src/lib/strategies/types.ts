@@ -53,7 +53,10 @@ import type {
  * `management.strategy`. Absent config means the built-in default pipeline —
  * "default" is not itself a strategy module.
  */
-export type StrategySlug = "both" | "streak";
+export type StrategySlug =
+  | "both"
+  | "streak"
+  | "custom_swe_2_profit_rail_v1";
 
 /**
  * Candidate producers — one per decision family, mirroring the
@@ -155,6 +158,16 @@ export interface StrategyGuard {
 export interface StrategyAPI {
   /** Module slug — must match the `src/lib/strategies/<slug>` folder. */
   name: StrategySlug;
+
+  /**
+   * Optional capability flags consumed by shared code that only sees the
+   * resolved module (not the config): `pairReentry` marks a pair strategy
+   * that keeps pending empty-role re-entries — the entry diagnostics then
+   * explain its shared gates the same way `streak` does.
+   */
+  traits?: {
+    pairReentry?: boolean;
+  };
 
   /**
    * Candidate producers replacing `defaultDecision` per family. This is
