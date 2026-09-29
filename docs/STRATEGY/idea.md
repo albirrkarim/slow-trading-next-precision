@@ -32,11 +32,10 @@ the recovery. The core mechanic is **averaging distributed across accounts**.
 ## C. Optimization target
 
 **Judge: the "Daily Income" leaderboard profile** — the standing
-competition score every entry is ranked by. It weights `sharpeRatio`,
-`tradesPerDay`, `winRate`, and `monthlyGain.min` (the worst month) — it pays
-consistent daily cash flow and punishes dead months and spiky fragile
-gains, not raw max gain. `backtest_profile_list` shows the exact weights;
-`backtest_leaderboard_list profile="Daily Income"` shows the ranked board.
+competition score every entry is ranked by. Do not assume its weights —
+they change as the profile is tuned. Call `backtest_profile_list` for the
+current metric/weight pairs and the exact scoring method, and
+`backtest_leaderboard_list profile="Daily Income"` for the ranked board.
 Save an entry only if it moves that score forward.
 
 **Minimum initial balance — effective, not just small.** Sum of enabled
