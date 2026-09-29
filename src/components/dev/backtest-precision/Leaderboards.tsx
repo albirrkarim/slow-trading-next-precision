@@ -409,6 +409,18 @@ function tableColspan(groups: HeaderGroup[]): number {
 /** Columns where lower is better (gradient inverted). */
 const INVERT_FIELDS = LOWER_IS_BETTER;
 
+/** localStorage key remembering the last selected leaderboard profile. */
+const PROFILE_STORAGE_KEY =
+    "slow-trading:backtest-precision:leaderboard-profile:v1";
+
+function readStoredProfileName(): string {
+    try {
+        return localStorage.getItem(PROFILE_STORAGE_KEY) ?? "";
+    } catch {
+        return "";
+    }
+}
+
 export function formatCell(fieldId: string, value: unknown): string {
     if (typeof value !== "number" || Number.isNaN(value)) return "-";
     if (DURATION_FIELDS.has(fieldId)) return msToHuman(value);
@@ -460,7 +472,9 @@ function LeaderboardsContent({
 }: LeaderboardsContentProps) {
     const [entries, setEntries] = useState<BacktestLeaderboardEntry[]>([]);
     const [profiles, setProfiles] = useState<LeaderboardProfile[]>([]);
-    const [activeProfileName, setActiveProfileName] = useState("");
+    const [activeProfileName, setActiveProfileName] = useState(
+        readStoredProfileName,
+    );
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [orderBy, setOrderBy] = useState("leaderboard.gainPct");
@@ -479,7 +493,19 @@ function LeaderboardsContent({
                 ),
             ]);
             setEntries(entriesResp.data.entries ?? []);
-            setProfiles(profilesResp.data.profiles ?? []);
+            const loadedProfiles = profilesResp.data.profiles ?? [];
+            setProfiles(loadedProfiles);
+            // A remembered profile sorts by its score once it exists.
+            const remembered = readStoredProfileName();
+            if (
+                remembered &&
+                loadedProfiles.some(
+                    (candidate) => candidate.name === remembered,
+                )
+            ) {
+                setOrderBy("profileScore");
+                setOrder("desc");
+            }
         } catch (e) {
             setError(
                 axios.isAxiosError(e)
@@ -646,6 +672,11 @@ function LeaderboardsContent({
                         onChange={(event) => {
                             const name = event.target.value;
                             setActiveProfileName(name);
+                            try {
+                                localStorage.setItem(PROFILE_STORAGE_KEY, name);
+                            } catch {
+                                /* ignore */
+                            }
                             setOrder(name ? "desc" : "desc");
                             setOrderBy(name ? "profileScore" : "leaderboard.gainPct");
                         }}

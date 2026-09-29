@@ -202,6 +202,7 @@ function ProfilesManagerContent({
                     display: "flex",
                     flexWrap: "wrap",
                     gap: 1,
+                    my:2,
                 }}
             >
                 {profiles.map((profile) => (
@@ -244,7 +245,7 @@ function ProfilesManagerContent({
                 </Button>
             </Box>
 
-            <Divider />
+            <Divider sx={{my:2}} />
 
             <Box
                 sx={{
