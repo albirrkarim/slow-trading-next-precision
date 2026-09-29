@@ -75,6 +75,41 @@ export function formatTime(t?: number) {
     return new Date(t).toLocaleString();
 }
 
+/** Enabled accounts of a saved config — the balances the run was sized on. */
+function enabledAccountsOf(entry: Pick<BacktestLeaderboardEntry, "backtestConfig">) {
+    const settings = (entry.backtestConfig as BacktestConfig | undefined)?.settings;
+    return (settings?.accounts ?? []).filter((account) => account.enabled);
+}
+
+/** Sum of enabled accounts' initial balances — the minimum equity the config ran on. */
+function minEquityOf(entry: Pick<BacktestLeaderboardEntry, "backtestConfig">) {
+    const accounts = enabledAccountsOf(entry);
+    if (!accounts.length) return undefined;
+    return accounts.reduce(
+        (sum, account) => sum + (Number(account.sandbox?.initialBalanceUSDT) || 0),
+        0,
+    );
+}
+
+/** Min-equity cell: "[name $x] + [name $y] = $total" over enabled accounts. */
+export function formatMinEquity(
+    entry: Pick<BacktestLeaderboardEntry, "backtestConfig">,
+): string {
+    const accounts = enabledAccountsOf(entry);
+    if (!accounts.length) return "-";
+    const parts = accounts.map(
+        (account) =>
+            `[${account.name || account.slug}]$${Math.round(Number(account.sandbox?.initialBalanceUSDT) || 0)}`,
+    );
+    return `${parts.join(" + ")} = $${Math.round(minEquityOf(entry) ?? 0)}`;
+}
+
+/** Virtual leaf columns resolved per entry instead of via getNestedMetric. */
+const LEAF_VALUES = new Map<
+    string,
+    (entry: BacktestLeaderboardEntry) => unknown
+>([["minEquity", minEquityOf]]);
+
 /** nested getter for sortable leaf ids like "leaderboard.monthlyGain.avg". */
 export function getNestedMetric(obj: unknown, path: string) {
     return path
@@ -165,6 +200,11 @@ export const HEADER_GROUPS: HeaderGroup[] = [
         id: "backtestConfig.settings.management.strategy",
         label: "Strategy",
         tooltip: "The management.strategy selection active for this run (Both, Streak, or a custom slug).\nSaved entries without a settings block ran the built-in default pipeline.\nSource: backtestConfig.settings.management.strategy on the saved entry.",
+    },
+    {
+        id: "minEquity",
+        label: "Min Equity",
+        tooltip: "Minimum equity the saved config was sized to run — the sum of every enabled account's starting balance.\nShown as [name $x] + [name $y] = $total.\nSorting compares the $total.\nSource: backtestConfig.settings.accounts[].enabled + sandbox.initialBalanceUSDT.",
     },
     {
         id: "leaderboard.gainPct",
@@ -377,6 +417,7 @@ const TABLE_COLSPAN =
 
 /** Columns where lower is better (gradient inverted). */
 const INVERT_FIELDS = new Set([
+    "minEquity",
     ...FRACTION_FIELDS,
     ...DURATION_FIELDS,
     ...USD_FIELDS,
@@ -487,7 +528,7 @@ function LeaderboardsContent({
         const ranges = new Map<string, { min: number; max: number }>();
         for (const id of leafIds) {
             const values = entries
-                .map((entry) => getNestedMetric(entry, id))
+                .map((entry) => LEAF_VALUES.get(id)?.(entry) ?? getNestedMetric(entry, id))
                 .filter((v): v is number => typeof v === "number" && !Number.isNaN(v));
             ranges.set(id, {
                 min: values.length ? Math.min(...values) : 0,
@@ -500,8 +541,8 @@ function LeaderboardsContent({
     const sortedEntries = useMemo(() => {
         const rows = [...entries];
         rows.sort((a, b) => {
-            const aVal = getNestedMetric(a, orderBy);
-            const bVal = getNestedMetric(b, orderBy);
+            const aVal = LEAF_VALUES.get(orderBy)?.(a) ?? getNestedMetric(a, orderBy);
+            const bVal = LEAF_VALUES.get(orderBy)?.(b) ?? getNestedMetric(b, orderBy);
             if (aVal == null && bVal == null) return 0;
             if (aVal == null) return -1;
             if (bVal == null) return 1;
@@ -523,7 +564,7 @@ function LeaderboardsContent({
     };
 
     const renderCell = (entry: BacktestLeaderboardEntry, fieldId: string) => {
-        const value = getNestedMetric(entry, fieldId);
+        const value = LEAF_VALUES.get(fieldId)?.(entry) ?? getNestedMetric(entry, fieldId);
         const range = columnRanges.get(fieldId);
         const numeric = typeof value === "number" ? value : undefined;
         const background = range
@@ -531,8 +572,10 @@ function LeaderboardsContent({
             : "inherit";
         return (
             <TableCell key={fieldId} sx={{ backgroundColor: background }}>
-                {fieldId === "label"
-                    ? entry.label ??
+                {fieldId === "minEquity"
+                    ? formatMinEquity(entry)
+                    : fieldId === "label"
+                      ? entry.label ??
                       ((entry.backtestConfig as BacktestConfig)?.name ||
                           (entry.backtestConfig as BacktestConfig)?.range ||
                           entry.id)

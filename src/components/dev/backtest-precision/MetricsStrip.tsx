@@ -18,6 +18,7 @@ import {
     HeaderTooltip,
     TEXT_FIELDS,
     formatCell,
+    formatMinEquity,
     getNestedMetric,
 } from "./Leaderboards";
 import type { BacktestConfig } from "./types";
@@ -117,12 +118,14 @@ export default function MetricsStrip({
                             const value = getNestedMetric(entry, leaf.id);
                             return (
                                 <TableCell key={leaf.id}>
-                                    {leaf.id === "label"
-                                        ? backtestConfig.name ||
-                                          backtestConfig.range ||
-                                          "current"
-                                        : TEXT_FIELDS.get(leaf.id)?.(value) ??
-                                          formatCell(leaf.id, value)}
+                                    {leaf.id === "minEquity"
+                                        ? formatMinEquity(entry)
+                                        : leaf.id === "label"
+                                          ? backtestConfig.name ||
+                                            backtestConfig.range ||
+                                            "current"
+                                          : TEXT_FIELDS.get(leaf.id)?.(value) ??
+                                            formatCell(leaf.id, value)}
                                 </TableCell>
                             );
                         })}
