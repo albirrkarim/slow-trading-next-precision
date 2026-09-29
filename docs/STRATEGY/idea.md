@@ -88,8 +88,9 @@ cases to `src/__dev__/main/quality/unit/strategies.test.ts` — a hardcoded
 agent slug there makes one agent's experiment load-bearing in everyone's
 suite (if the folder is later removed, `strategies.resolve` tests break).
 `strategies.test.ts` currently carries `custom_gpt6_astra_ladder_cover_v1` —
-that is the pattern to NOT repeat. If your strategy needs tests, give it its
-own file under `src/__dev__/main/quality/unit/`.
+that is the pattern to NOT repeat. If your strategy needs tests, put them in
+their own file under `src/__dev__/main/quality/strategies/` (one file per
+strategy, named after the slug — create the folder if it does not exist).
 
 **Registration — a new folder alone is NOT loadable.** The resolver is a
 static map (`strategies/index.ts`), not a filesystem scan. Two edits make a

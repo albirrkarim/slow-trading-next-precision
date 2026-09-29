@@ -56,7 +56,7 @@ import type {
 export type StrategySlug =
   | "both"
   | "streak"
-  | "custom_swe_2_profit_rail_v1";
+  | "custom_gpt6_astra_bounded_cover_v1";
 
 /**
  * Candidate producers — one per decision family, mirroring the

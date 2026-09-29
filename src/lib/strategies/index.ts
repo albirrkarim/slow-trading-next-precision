@@ -12,8 +12,8 @@ const loaders: Record<
   () => Promise<{ default: StrategyAPI }>
 > = {
   both: () => import("./both"),
-  custom_swe_2_profit_rail_v1: () =>
-    import("./custom_swe_2_profit_rail_v1"),
+  custom_gpt6_astra_bounded_cover_v1: () =>
+    import("./custom_gpt6_astra_bounded_cover_v1"),
   streak: () => import("./streak"),
 };
 
