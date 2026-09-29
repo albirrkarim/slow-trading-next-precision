@@ -82,7 +82,10 @@ the primary tunable, not a footnote.
    Check coverage: a late-listed symbol clips the whole run's range.
 2. `backtest_precision_run` — returns `{cacheKey}` immediately; poll
    `backtest_run_status` until `done` (watch `dataset` — the *effective*
-   window after symbol intersection).
+   window after symbol intersection). **One run at a time**: identical params
+   join the in-flight run; a different run while one is active returns
+   `status: "busy"` with the occupying `cacheKey` — poll it and retry rather
+   than racing parallel simulations.
 3. `backtest_result_metrics` — preview leaderboard metrics without saving.
 4. `backtest_result_read` — `field=positions`, `sort=pnl.netUsdt`,
    `order=asc` → biggest losers first. `field=vpoints name=MON` for a

@@ -106,6 +106,20 @@ async function run(args: Record<string, unknown>) {
     }
   }
 
+  // One heavy run at a time — a second agent is told to wait and poll rather
+  // than racing a parallel simulation. Identical params skip this and join
+  // the in-flight run via start()'s alreadyRunning dedupe.
+  const running = backtestRunner.activeRun();
+  if (running && running.cacheKey !== cacheKey) {
+    return {
+      cacheKey,
+      cachePath,
+      note: "Another backtest is in flight — poll backtest_run_status on that cacheKey and retry once it finishes.",
+      running,
+      status: "busy",
+    };
+  }
+
   const handle = backtestRunner.start(effective);
   // The failure lands in .failed/<key>.json — the tool already returned, so
   // the rejection must not propagate as an unhandled rejection.

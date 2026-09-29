@@ -260,7 +260,7 @@ const toolDefinitions: RuntimeMcpToolDefinition[] = [
   },
   {
     name: "backtest_precision_run",
-    description: `${WRITE_TOOL_NOTICE} LOCALHOST DEV INSTANCE ONLY. Start a precision backtest asynchronously and return its cacheKey immediately — poll backtest_run_status until done. Identical params reuse the shared result cache. Shares CPU with the live engine; prefer running while paused or on the dev instance.`,
+    description: `${WRITE_TOOL_NOTICE} LOCALHOST DEV INSTANCE ONLY. Start a precision backtest asynchronously and return its cacheKey immediately — poll backtest_run_status until done. Identical params join the in-flight run or reuse the result cache; a different run while one is in flight returns status "busy" — wait for it and retry rather than racing parallel simulations. Shares CPU with the live engine; prefer running while paused or on the dev instance.`,
     permission: "backtest.run",
     devOnly: true,
     inputSchema: jsonSchema(

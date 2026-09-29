@@ -21,7 +21,16 @@ export interface BacktestRunHandle {
  * process, so identical concurrent requests join the same run instead of
  * racing two identical simulations.
  */
-const activeRuns = new Map<string, Promise<BacktestChunkedResult>>();
+const activeRuns = new Map<
+  string,
+  { result: Promise<BacktestChunkedResult>; startedAt: number }
+>();
+
+/** The run currently holding the backtest slot, when one is in flight. */
+function activeRun() {
+  const first = activeRuns.entries().next().value;
+  return first ? { cacheKey: first[0], startedAt: first[1].startedAt } : undefined;
+}
 
 async function execute(
   cacheKey: string,
@@ -72,14 +81,14 @@ function start(params: BacktestPrecisionParams): BacktestRunHandle {
 
   const existing = activeRuns.get(cacheKey);
   if (existing) {
-    return { alreadyRunning: true, cacheKey, cachePath, result: existing };
+    return { alreadyRunning: true, cacheKey, cachePath, result: existing.result };
   }
 
   const result = execute(cacheKey, params);
-  activeRuns.set(cacheKey, result);
+  activeRuns.set(cacheKey, { result, startedAt: Date.now() });
   return { alreadyRunning: false, cacheKey, cachePath, result };
 }
 
-const backtestRunner = { start } as const;
+const backtestRunner = { activeRun, start } as const;
 
 export default backtestRunner;
