@@ -449,6 +449,32 @@ argument returns the recent volatility-point array for that symbol.
 
 TC: `PROD:MCP_ENGINE_STATE`
 
+**MCP backtest contract**
+
+The `backtest_*` tools expose the precision-backtest loop to agents. The
+tools stay listed in `tools/list` on every instance so they remain
+discoverable, but every definition carries `devOnly` and `tools/call`
+returns a warning payload instead of dispatching when the composition root
+reports dev tooling disabled (`isDevBacktestEnabled()` — the same gate that
+404s `/dev/*` pages and `/api/dev/*` routes). Token permissions
+(`backtest.read`, `backtest.run`, `backtest.leaderboard.write`) are checked
+before the gate, so the warning only reaches tokens that hold the
+permission.
+
+`backtest_precision_run` is asynchronous: it returns `{cacheKey, status}`
+immediately and the run progresses through a staging directory — identical
+in-flight params join the same run instead of duplicating. `backtest_run_status`
+resolves `done` from meta.json, `failed` from `.failed/<key>.json`,
+`running` from a live staging dir, and `interrupted` when the staging dir's
+mtime is stale. The finished `meta.json` also records the effective
+`dataset` window so symbol-availability clipping is explicit. Runs share
+CPU with the live engine — the tool surface is intended for the local dev
+instance.
+
+TC: `BTEST:MCP_DEV_GATE`
+
+TC: `BTEST:MCP_RUN_STATUS`
+
 ### A.4 Use same Volatility Point array data
 
 All views of volatility points on this dashboard productin must using the same source of truth volatility points.

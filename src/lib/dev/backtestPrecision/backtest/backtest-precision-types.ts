@@ -83,6 +83,13 @@ export interface BacktestRunCounts {
 export interface BacktestChunkedResult {
   exchangeType: ExchangeType;
   counts: BacktestRunCounts;
+  /**
+   * Effective dataset window actually simulated — after intersecting every
+   * requested symbol's data availability (a later-listed symbol clips the
+   * whole run). Persisted into meta.json so readers can distinguish the
+   * requested `params.range` from the usable coverage.
+   */
+  dataset?: { endTime: number; startTime: number };
   summary: BacktestRunSummary;
   /** Written part counts per artifact field, persisted into meta.json. */
   parts: BacktestArtifactManifest;

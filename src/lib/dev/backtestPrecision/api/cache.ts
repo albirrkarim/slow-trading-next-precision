@@ -33,6 +33,8 @@ const LEGACY_FIELDS = [
 
 interface BacktestResultCacheMeta {
   createdAt: number;
+  /** Effective simulated window after symbol-availability intersection. */
+  dataset?: { endTime: number; startTime: number };
   exchangeType?: ExchangeType;
   counts?: BacktestRunCounts;
   summary?: BacktestRunSummary;
@@ -168,6 +170,8 @@ async function readMetaFile(dir: string): Promise<BacktestResultCacheMeta | null
  */
 async function readMeta(cacheKey: string): Promise<{
   counts: BacktestRunCounts;
+  createdAt?: number;
+  dataset?: { endTime: number; startTime: number };
   exchangeType: ExchangeType;
   summary: BacktestRunSummary;
 } | null> {
@@ -176,9 +180,83 @@ async function readMeta(cacheKey: string): Promise<{
   if (!meta.exchangeType || !meta.counts || !meta.summary) return null;
   return {
     counts: meta.counts,
+    createdAt: meta.createdAt,
+    dataset: meta.dataset,
     exchangeType: meta.exchangeType,
     summary: meta.summary,
   };
+}
+
+/** Masked request params recorded at finalize — drives run listings. */
+async function readParams(
+  cacheKey: string,
+): Promise<Record<string, unknown> | null> {
+  const meta = await readMetaFile(cacheDir(cacheKey));
+  return meta?.params ?? null;
+}
+
+/**
+ * Locates a live staging directory for one cache key — present only while a
+ * run is mid-flight. Returns the newest match plus its mtime so callers can
+ * flag a stale (interrupted) staging dir whose writer already died.
+ */
+async function stagingInfo(
+  cacheKey: string,
+): Promise<{ dir: string; modifiedAt: number } | null> {
+  const stagingRoot = path.join(RESULTS_DIR, ".staging");
+  if (!(await fs.pathExists(stagingRoot))) return null;
+  const matches = (await fs.readdir(stagingRoot)).filter((name) =>
+    name.startsWith(`${cacheKey}-`),
+  );
+  let newest: { dir: string; modifiedAt: number } | null = null;
+  for (const name of matches) {
+    const dir = path.join(stagingRoot, name);
+    const modifiedAt = (await fs.stat(dir)).mtimeMs;
+    if (!newest || modifiedAt > newest.modifiedAt) {
+      newest = { dir, modifiedAt };
+    }
+  }
+  return newest;
+}
+
+/** Lists finished cache entries (meta.json only), newest first. */
+async function listMetas(): Promise<
+  Array<{ cacheKey: string } & NonNullable<Awaited<ReturnType<typeof readMeta>>> & {
+      params?: Record<string, unknown>;
+    }>
+> {
+  if (!(await fs.pathExists(RESULTS_DIR))) return [];
+  const entries: Array<{
+    cacheKey: string;
+    createdAt?: number;
+    counts: BacktestRunCounts;
+    dataset?: { endTime: number; startTime: number };
+    exchangeType: ExchangeType;
+    params?: Record<string, unknown>;
+    summary: BacktestRunSummary;
+  }> = [];
+  for (const name of await fs.readdir(RESULTS_DIR)) {
+    if (!/^[0-9a-f]{64}$/.test(name)) continue;
+    const meta = await readMetaFile(path.join(RESULTS_DIR, name));
+    if (
+      meta?.v !== CHUNKED_LAYOUT ||
+      !meta.exchangeType ||
+      !meta.counts ||
+      !meta.summary
+    ) {
+      continue;
+    }
+    entries.push({
+      cacheKey: name,
+      counts: meta.counts,
+      createdAt: meta.createdAt,
+      dataset: meta.dataset,
+      exchangeType: meta.exchangeType,
+      params: meta.params,
+      summary: meta.summary,
+    });
+  }
+  return entries.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
 }
 
 /**
@@ -243,6 +321,7 @@ async function finalize(
   const meta: BacktestResultCacheMeta = {
     counts: result.counts,
     createdAt: Date.now(),
+    dataset: result.dataset,
     exchangeType: result.exchangeType,
     params: sanitize.maskSecrets(requestParams) as Record<string, unknown>,
     parts: result.parts,
@@ -303,13 +382,16 @@ const backtestResultCache = {
   dirFor,
   finalize,
   key,
+  listMetas,
   markFailed,
   read,
   readFailed,
   readField,
   readMeta,
+  readParams,
   publish,
   stagingDirFor,
+  stagingInfo,
 } as const;
 
 export default backtestResultCache;

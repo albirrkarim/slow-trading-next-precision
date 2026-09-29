@@ -5,6 +5,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import coinTags from "@/lib/dev/coins/tags";
 import { coinMetadataSync } from "@/lib/dev/coins/tag-sync";
 import type { CoinTagState } from "@/lib/dev/coins/tag-types";
+import backtestMcp from "@/lib/dev/backtestPrecision/mcp";
+import { isDevBacktestEnabled } from "@/lib/dev/enabled";
 import { runtimeMcp } from "@/lib/system/mcp";
 import type { RuntimeMcpAuthenticatedToken } from "@/lib/system/mcp";
 import { systemLog } from "@/lib/system/logging";
@@ -146,6 +148,11 @@ runtimeMcp.tools.registerHandler(
   },
 );
 
+// Backtest tool handlers register unconditionally — the definitions carry
+// devOnly, so tools/call answers with a warning on instances where dev
+// backtesting is disabled instead of dispatching.
+backtestMcp.register();
+
 async function handleMcpRequest(
   request: JsonRpcRequest,
   auth: RuntimeMcpAuthenticatedToken,
@@ -194,6 +201,7 @@ async function handleMcpRequest(
         : {};
     const payload = await runtimeMcp.tools.call({
       auth,
+      devToolsEnabled: isDevBacktestEnabled(),
       name,
       arguments: args,
     });

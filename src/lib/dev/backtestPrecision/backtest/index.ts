@@ -286,6 +286,7 @@ export async function precisionBacktest(
     const parts = await spool.finalize();
     return {
       counts: stats.counts(),
+      dataset: { endTime, startTime: datasetStartTime },
       exchangeType: params.config.management.exchangeType,
       parts,
       summary: stats.summary(),

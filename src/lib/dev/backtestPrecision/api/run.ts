@@ -1,9 +1,8 @@
 import systemConfig from "@/lib/system/config";
 import systemTime from "@/lib/system/time";
-import fs from "fs-extra";
 import type { NextApiRequest, NextApiResponse } from "next";
 import backtestResultCache from "./cache";
-import backtestWorker from "./worker-client";
+import backtestRunner from "./runner";
 import type {
   BacktestPrecisionParams,
   BacktestPrecisionResponse,
@@ -104,45 +103,16 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
     return;
   }
 
-  const stagingDir = backtestResultCache.stagingDirFor(cacheKey);
-  // A fresh attempt supersedes any previous failure record for this key.
-  await backtestResultCache.clearFailed(cacheKey);
-  const runParams = {
+  const run = backtestRunner.start({
     ...params,
-    artifacts: { dir: stagingDir },
     range,
     endTime,
     startTime,
     upToDateKlines,
     upToDateDecisionBacktest,
     verbose,
-  };
-  let result;
-  try {
-    result =
-      process.env.NODE_ENV === "development"
-        ? await backtestWorker.run(runParams)
-        : await precisionBacktest(runParams);
-    await backtestResultCache.finalize(
-      cacheKey,
-      result,
-      {
-        ...params,
-        endTime,
-        range,
-        startTime,
-        upToDateDecisionBacktest,
-        upToDateKlines,
-        verbose,
-      },
-      stagingDir,
-    );
-    await backtestResultCache.publish(cacheKey, stagingDir);
-  } catch (error) {
-    await backtestResultCache.markFailed(cacheKey, error);
-    await fs.remove(stagingDir);
-    throw error;
-  }
+  });
+  const result = await run.result;
 
   const body: BacktestPrecisionResponse = {
     counts: result.counts,

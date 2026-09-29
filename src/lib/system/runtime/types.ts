@@ -90,7 +90,10 @@ export type RuntimeMcpPermission =
   | "balance.read"
   | "trade_history.read"
   | "monitoring.read"
-  | "engine_state.read";
+  | "engine_state.read"
+  | "backtest.read"
+  | "backtest.run"
+  | "backtest.leaderboard.write";
 
 /** Persisted MCP token record. Secrets are stored only as hashes plus encrypted reveal data. */
 export interface RuntimeMcpTokenRecord {

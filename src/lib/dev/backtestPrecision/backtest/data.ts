@@ -120,7 +120,7 @@ function resolveRequestRange(props: FetchKlinesParams): {
 }
 
 /** Creates a disk-backed dataset that caches the current day and day boundary. */
-function createDatasetReader(symbols: string[]): Pick<
+export function createDatasetReader(symbols: string[]): Pick<
   PrecisionDataset,
   "getKlines"
 > {
@@ -220,6 +220,67 @@ function resolveInitialStateDataStart(
     }
   }
   return start;
+}
+
+/**
+ * First/last *existing* day file for one symbol — including empty pre-listing
+ * placeholders. Unlike {@link datasetCoverage} this answers "which days can
+ * be read without a missing-file throw", used to clamp inspection windows.
+ */
+export async function datasetSymbolFileBounds(
+  symbol: string,
+): Promise<{ firstDay: string; lastDay: string } | null> {
+  const symbolDir = path.resolve(DATASET_FOLDER, symbol);
+  if (!(await fs.pathExists(symbolDir))) return null;
+  const days = (await fs.readdir(symbolDir))
+    .filter((name) => name.endsWith(".json"))
+    .sort();
+  if (days.length === 0) return null;
+  return { firstDay: days[0].slice(0, -5), lastDay: days.at(-1)!.slice(0, -5) };
+}
+
+/**
+ * Read-only per-symbol dataset coverage: first/last non-empty day file.
+ * Pre-listing days download as empty `[]` files, so a plain file listing
+ * overstates coverage — a file counts only when it holds content. Used by
+ * tooling that must not trigger downloads.
+ */
+export async function datasetCoverage(): Promise<
+  Record<string, { firstDay: string; lastDay: string }>
+> {
+  const root = path.resolve(DATASET_FOLDER);
+  if (!(await fs.pathExists(root))) return {};
+
+  const coverage: Record<string, { firstDay: string; lastDay: string }> = {};
+  for (const item of await fs.readdir(root, { withFileTypes: true })) {
+    if (!item.isDirectory()) continue;
+    const symbolDir = path.join(root, item.name);
+    const days = (await fs.readdir(symbolDir))
+      .filter((name) => name.endsWith(".json"))
+      .sort();
+    if (days.length === 0) continue;
+
+    // `writeJson` emits `[]` (2 bytes) for empty days — a file with content
+    // is always larger, so size alone identifies non-empty days.
+    const nonEmpty = async (file: string) =>
+      (await fs.stat(path.join(symbolDir, file))).size > 4;
+    let firstDay: string | undefined;
+    let lastDay: string | undefined;
+    for (const file of days) {
+      if (await nonEmpty(file)) {
+        firstDay = file.slice(0, -5);
+        break;
+      }
+    }
+    for (let i = days.length - 1; i >= 0; i--) {
+      if (await nonEmpty(days[i])) {
+        lastDay = days[i].slice(0, -5);
+        break;
+      }
+    }
+    if (firstDay && lastDay) coverage[item.name] = { firstDay, lastDay };
+  }
+  return coverage;
 }
 
 /** Downloads only daily 1m files and returns their disk-backed adapter. */

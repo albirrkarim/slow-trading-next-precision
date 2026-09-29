@@ -14,6 +14,9 @@ export const RUNTIME_MCP_PERMISSIONS: RuntimeMcpPermission[] = [
   "trade_history.read",
   "monitoring.read",
   "engine_state.read",
+  "backtest.read",
+  "backtest.run",
+  "backtest.leaderboard.write",
 ];
 
 export interface RuntimeMcpToolDefinition {
@@ -22,6 +25,12 @@ export interface RuntimeMcpToolDefinition {
   permission: RuntimeMcpPermission;
   inputSchema: Record<string, unknown>;
   readOnlyHint?: boolean;
+  /**
+   * Dev-instance-only tool: stays listed for discovery, but tools/call
+   * returns a warning payload instead of dispatching when the composition
+   * root reports dev tooling disabled.
+   */
+  devOnly?: boolean;
 }
 
 export interface RuntimeMcpAuthenticatedToken {

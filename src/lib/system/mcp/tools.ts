@@ -249,6 +249,180 @@ const toolDefinitions: RuntimeMcpToolDefinition[] = [
       },
     }),
   },
+  {
+    name: "backtest_config_template",
+    description:
+      "LOCALHOST DEV INSTANCE ONLY. Read the dashboard's current backtest input as a BacktestTestCase plus per-symbol dataset coverage (first/last available day). Clone and mutate it for backtest_precision_run; coverage bounds show the effective range each symbol can actually backtest.",
+    permission: "backtest.read",
+    devOnly: true,
+    readOnlyHint: true,
+    inputSchema: jsonSchema({}),
+  },
+  {
+    name: "backtest_precision_run",
+    description: `${WRITE_TOOL_NOTICE} LOCALHOST DEV INSTANCE ONLY. Start a precision backtest asynchronously and return its cacheKey immediately — poll backtest_run_status until done. Identical params reuse the shared result cache. Shares CPU with the live engine; prefer running while paused or on the dev instance.`,
+    permission: "backtest.run",
+    devOnly: true,
+    inputSchema: jsonSchema(
+      {
+        config: {
+          type: "object",
+          description:
+            "Runtime config (BacktestTestCase.config) — start from backtest_config_template output.",
+        },
+        range: {
+          type: "string",
+          description:
+            "Named range such as 1month/6month/1year/2year, or custom with explicit startTime/endTime.",
+        },
+        startTime: {
+          type: "number",
+          description: "Custom-range start in epoch ms. Requires endTime.",
+        },
+        endTime: {
+          type: "number",
+          description: "Custom-range end in epoch ms. Requires startTime.",
+        },
+        upToDateKlines: {
+          type: "boolean",
+          description:
+            "Refresh the candle dataset before running. Defaults to false.",
+        },
+        upToDateDecisionBacktest: {
+          type: "boolean",
+          description: "Bypass the saved result cache. Defaults to false.",
+        },
+      },
+      ["config", "range"],
+    ),
+  },
+  {
+    name: "backtest_run_status",
+    description:
+      "LOCALHOST DEV INSTANCE ONLY. Report a backtest run's state: running | done | failed | interrupted, plus the summary and effective dataset start/end (a symbol with a later listing date clips the whole run). Pass the cacheKey from backtest_precision_run.",
+    permission: "backtest.read",
+    devOnly: true,
+    readOnlyHint: true,
+    inputSchema: jsonSchema(
+      {
+        cacheKey: {
+          type: "string",
+          description: "64-char cache key returned by backtest_precision_run.",
+        },
+      },
+      ["cacheKey"],
+    ),
+  },
+  {
+    name: "backtest_result_read",
+    description:
+      "LOCALHOST DEV INSTANCE ONLY. Read one artifact field from a finished run — field=positions|vpoints|snapshots — with optional server-side sort (e.g. sort=pnl.netUsdt order=asc for biggest losses) and offset/limit paging. vpoints/snapshots take name=<symbol|account slug> to scope.",
+    permission: "backtest.read",
+    devOnly: true,
+    readOnlyHint: true,
+    inputSchema: jsonSchema(
+      {
+        cacheKey: { type: "string", description: "64-char cache key." },
+        field: {
+          type: "string",
+          enum: ["positions", "vpoints", "snapshots"],
+        },
+        name: {
+          type: "string",
+          description:
+            "Scope field=vpoints to a symbol or field=snapshots to an account slug.",
+        },
+        sort: {
+          type: "string",
+          description:
+            "Dot-path field to sort positions by, e.g. pnl.netUsdt.",
+        },
+        order: { type: "string", enum: ["asc", "desc"] },
+        offset: { type: "number" },
+        limit: { type: "number", description: "Defaults to 100, max 1000." },
+      },
+      ["cacheKey", "field"],
+    ),
+  },
+  {
+    name: "backtest_runs_list",
+    description:
+      "LOCALHOST DEV INSTANCE ONLY. List cached precision backtest runs newest-first — cacheKey, params (range, symbols), counts, summary. Use to compare trial configs without re-running.",
+    permission: "backtest.read",
+    devOnly: true,
+    readOnlyHint: true,
+    inputSchema: jsonSchema({
+      limit: { type: "number", description: "Defaults to 20, max 100." },
+    }),
+  },
+  {
+    name: "backtest_trade_inspect",
+    description:
+      "LOCALHOST DEV INSTANCE ONLY. Inspect one trade like the chart dialog: position detail, sibling pair leg, volatility points in window, level lines, and a 1m kline window cropped to opened-/+padDays (default 7, 0=trade span only, max 30). Pass a tradeId from backtest_result_read positions.",
+    permission: "backtest.read",
+    devOnly: true,
+    readOnlyHint: true,
+    inputSchema: jsonSchema(
+      {
+        cacheKey: { type: "string", description: "64-char cache key." },
+        tradeId: { type: "string", description: "Position/trade id." },
+        padDays: {
+          type: "number",
+          description:
+            "Context days around opened→closed. Defaults to 7, max 30.",
+        },
+      },
+      ["cacheKey", "tradeId"],
+    ),
+  },
+  {
+    name: "backtest_result_metrics",
+    description:
+      "LOCALHOST DEV INSTANCE ONLY. Compute the leaderboard metric set (gain, Sharpe, drawdowns, bear-market resilience, win rate) for a cached run without saving anything — preview before backtest_leaderboard_save.",
+    permission: "backtest.read",
+    devOnly: true,
+    readOnlyHint: true,
+    inputSchema: jsonSchema(
+      {
+        cacheKey: { type: "string", description: "64-char cache key." },
+      },
+      ["cacheKey"],
+    ),
+  },
+  {
+    name: "backtest_leaderboard_save",
+    description: `${WRITE_TOOL_NOTICE} LOCALHOST DEV INSTANCE ONLY. Save a finished run to the leaderboards — recomputes metrics server-side from the cached artifacts. Saving the same config+run overwrites the existing entry.`,
+    permission: "backtest.leaderboard.write",
+    devOnly: true,
+    inputSchema: jsonSchema(
+      {
+        cacheKey: { type: "string", description: "64-char cache key." },
+        label: { type: "string", description: "Optional display label." },
+      },
+      ["cacheKey"],
+    ),
+  },
+  {
+    name: "backtest_leaderboard_list",
+    description:
+      "LOCALHOST DEV INSTANCE ONLY. List saved leaderboard entries newest-first with their metric sets and source cacheKeys.",
+    permission: "backtest.read",
+    devOnly: true,
+    readOnlyHint: true,
+    inputSchema: jsonSchema({}),
+  },
+  {
+    name: "backtest_leaderboard_delete",
+    description: `${WRITE_TOOL_NOTICE} LOCALHOST DEV INSTANCE ONLY. Delete one leaderboard entry by its 12-char id.`,
+    permission: "backtest.leaderboard.write",
+    devOnly: true,
+    inputSchema: jsonSchema(
+      {
+        id: { type: "string", description: "12-char leaderboard entry id." },
+      },
+      ["id"],
+    ),
+  },
 ];
 
 /** Handlers registered by the composition root for non-system tool backends. */
@@ -288,6 +462,8 @@ async function call(params: {
   auth: RuntimeMcpAuthenticatedToken;
   name: string;
   arguments: Record<string, unknown>;
+  /** Composition-root gate value for devOnly tools (isDevBacktestEnabled). */
+  devToolsEnabled?: boolean;
 }) {
   const args = params.arguments ?? {};
   const definition = toolDefinitions.find((tool) => tool.name === params.name);
@@ -296,6 +472,15 @@ async function call(params: {
   }
 
   runtimeMcpTokens.assertPermission(params.auth, definition.permission);
+
+  // BTEST:MCP_DEV_GATE — dev-only tools stay listed for discovery but warn
+  // instead of running on instances where dev tooling is disabled.
+  if (definition.devOnly && params.devToolsEnabled !== true) {
+    return {
+      warning:
+        "Backtest tools are only available on the local dev instance — connect to the localhost MCP endpoint.",
+    };
+  }
 
   const external = externalHandlers.get(params.name);
   if (external) {

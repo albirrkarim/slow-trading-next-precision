@@ -58,10 +58,7 @@ On the existing token system: `backtest.read`, `backtest.run`, `backtest.leaderb
 
 ## A.4 Access guard — localhost instance only
 
-- Backtest tools stay **visible in `tools/list` on every instance** — the agent should be able to discover them — but `tools/call` is gated server-side by `isDevBacktestEnabled()` (`src/lib/dev/enabled.ts`), the same env gate that 404s `/dev/*` pages and `/api/dev/*` routes: `NODE_ENV !== "production" || ENABLE_DEV_BACKTEST === "1"`.
-- On a gated (production/remote) instance the call returns a **warning payload, not an error**: `{warning: "Backtest tools are only available on the local dev instance — connect to the localhost MCP endpoint."}` so the agent knows to switch instances instead of retrying.
-- Mechanism: optional gate on `RuntimeMcpToolDefinition` — e.g. `devOnly?: boolean` or `gate?: () => string | null`; `tools.call` consults it before dispatching and returns the warning as a normal tool result. The tool description also notes the localhost requirement so agents see it at `tools/list` time.
-- Token permissions still apply on top — a gated warning only fires for a token that actually holds the permission.
+Implemented: definitions carry `devOnly: true` and stay in `tools/list` on every instance; `tools.call` takes `devToolsEnabled` from the `mcp.ts` composition root (`isDevBacktestEnabled()` — the same env gate that 404s `/dev/*` and `/api/dev/*`) and returns a warning payload instead of dispatching. Permissions are asserted before the gate. `BTEST:MCP_DEV_GATE`.
 
 ## A.5 Elastic / non-overfit usage contract
 
