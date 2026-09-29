@@ -22,7 +22,6 @@ import {
     Tooltip,
     Typography,
 } from "@mui/material";
-import { grey } from "@mui/material/colors";
 import axios from "axios";
 import type { ReactElement } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -734,7 +733,14 @@ function LeaderboardsContent({
                                 },
                             }}
                         >
-                            <TableHead sx={{ backgroundColor: grey[300] }}>
+                            <TableHead
+                                sx={{
+                                    backgroundColor: (theme) =>
+                                        theme.palette.mode === "dark"
+                                            ? theme.palette.grey[800]
+                                            : theme.palette.grey[300],
+                                }}
+                            >
                                 <TableRow>
                                     {headerGroups.map((group) =>
                                         group.children ? (
