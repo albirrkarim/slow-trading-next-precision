@@ -38,19 +38,30 @@ current metric/weight pairs and the exact scoring method, and
 `backtest_leaderboard_list profile="Daily Income"` for the ranked board.
 Save an entry only if it moves that score forward.
 
-**Minimum initial balance — effective, not just small.** Sum of enabled
-accounts' initial balances
-(`settings.accounts[].sandbox.initialBalanceUSDT` where `enabled`). Lower
-is better, but only down to the point where the balance stays *effective*:
-every intended entry and averaging step actually executes. Below that floor
-the engine refuses steps — `Insufficient spendable balance …` lands on
-`position.strategy.averaging.steps[].attemptMessage` and in notifications —
-so trades/day and win rate sag and `emptyBalance` dry spells grow: the
-strategy stops capturing the opportunity it was sized for. Too high is
-wasted idle capital diluting the score; too low is a strategy that cannot
-execute its own plan. The target is the smallest balance with **zero
-refused steps** *and* survivable drawdowns — cheap-but-fragile does not
-count, and cheap-but-starved counts even less.
+**Balance sizes the opportunity set — enumerate it before shrinking it.**
+The job of initial balance is to capture every entry opportunity the
+configured coins present. So first count the opportunities: every vPoint
+matching each account's entry bounds on every symbol, with as many
+concurrent open positions as the wave stream produces, each funded at
+`maxEntryMargin` plus its full averaging/reserve ladder. Then size each
+account so that *all* of those execute — `margin × open positions` plus
+reserved steps must fit inside the balance. `minEquity ≈ $6 × legs` is
+the legal floor, not the target; an account that can only afford half the
+signals its bounds admit is not efficient, it is blind. Only after the
+plan fully executes do you shrink toward the floor — cutting below it
+trades real trades/day and win rate for a prettier Min Equity number.
+
+Refusals are observable, not hypothetical: `Insufficient spendable
+balance …` lands on `position.strategy.averaging.steps[].attemptMessage`
+and in notifications, and unfunded entries show up as `emptyBalance` dry
+spells. Too high is idle capital diluting the score; too low is a
+strategy that cannot execute its own plan. The target is the smallest
+balance with **zero refused steps** *and* survivable drawdowns —
+cheap-but-fragile does not count, and cheap-but-starved counts even less.
+Total initial balance is the sum over `enabled` accounts
+(`settings.accounts[].sandbox.initialBalanceUSDT`); adding an account
+adds capital *and* adds capture (markers are account-scoped), so compare
+min equity only between configs that admit the same opportunity set.
 
 Balance split between accounts is a design choice: harvester small, cover
 account sized for the deep tail.
