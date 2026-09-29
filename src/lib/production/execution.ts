@@ -17,7 +17,9 @@ import type {
   RuntimeExitDecision,
 } from "@/lib/precision/types";
 import { systemLog } from "@/lib/system/logging";
-import tradingAveraging from "@/lib/system/trading/averaging";
+import tradingAveraging, {
+  type AveragingExecutionResult,
+} from "@/lib/system/trading/averaging";
 import entryAction, {
   type EntryExecutionResult,
 } from "@/lib/system/trading/entry-action";
@@ -250,10 +252,13 @@ async function averaging(params: {
   context: RuntimeContext;
   decision: RuntimeAveragingDecision;
   exchange: IExchange;
-}): Promise<Position | null> {
+}): Promise<AveragingExecutionResult> {
   const { context, decision, exchange } = params;
-  const plan = tradingAveraging.plan(context, decision);
-  if (!plan) return null;
+  const attempt = tradingAveraging.planAttempt(context, decision);
+  if (!attempt.plan) {
+    return { blockReason: attempt.blockReason, position: null };
+  }
+  const plan = attempt.plan;
 
   const tradingSymbol = toTradingSymbol(decision.symbol);
   const tradingMode = toExchangeTradingMode(plan.config.tradingMode);
@@ -261,7 +266,14 @@ async function averaging(params: {
     plan.preferredQuantity,
     tradingSymbol,
   );
-  if (quantity === 0) return null;
+  if (quantity === 0) {
+    return {
+      blockReason:
+        `Exchange adjusted ${tradingSymbol} averaging quantity to 0 ` +
+        `from ${plan.preferredQuantity}; step skipped.`,
+      position: null,
+    };
+  }
 
   const orderParams: UnifiedOrderParams = {
     tradeType: "ENTRY",
@@ -293,11 +305,13 @@ async function averaging(params: {
     symbol: tradingSymbol,
   });
 
-  return tradingAveraging.applyFill(plan, {
-    price: fill.price,
-    quantity: fill.quantity,
-    t: context.state.currentTime,
-  });
+  return {
+    position: await tradingAveraging.applyFill(plan, {
+      price: fill.price,
+      quantity: fill.quantity,
+      t: context.state.currentTime,
+    }),
+  };
 }
 
 /**

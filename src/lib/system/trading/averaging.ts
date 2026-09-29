@@ -262,26 +262,69 @@ export interface AveragingFill {
   t: number;
 }
 
+/** A planned averaging attempt — when `plan` is null, `blockReason` names the guard that refused it. */
+export interface AveragingPlanAttempt {
+  blockReason?: string;
+  plan: AveragingPlan | null;
+}
+
+/** The averaging fill result — simulated or live — plus the refusal reason when no position is produced. */
+export interface AveragingExecutionResult {
+  blockReason?: string;
+  position: Position | null;
+}
+
+const RESCUE_REFUSAL_REASONS: Record<string, string> = {
+  DOES_NOT_IMPROVE_ENTRY: "the fill price does not improve the average entry",
+  INSUFFICIENT_BALANCE: "the balance cannot cover the required step margin",
+  INVALID_INPUT: "the averaging plan inputs are invalid",
+  PROJECTED_PROFIT_BELOW_TARGET:
+    "projected profit is below the adaptive target",
+};
+
 /**
  * Resolves the averaging spend for an approved decision without mutating the
- * position. The returned plan carries a cloned position the fill is applied to.
+ * position. A refused plan returns `blockReason` instead of a silent null so
+ * callers can surface why an approved averaging produced no order — the
+ * reason is also stamped on the position's next step (`attemptMessage`) so
+ * the refusal survives on the persisted position record.
  */
-function buildPlan(
+function planAttempt(
   context: RuntimeContext,
   decision: RuntimeAveragingDecision,
-): AveragingPlan | null {
+): AveragingPlanAttempt {
   const symbol = decision.symbol.toUpperCase();
+  // Resolve the intended step on the decision's own position (not the clone)
+  // so a refusal can be written back where the engine persists it.
+  const nextStep = reserve.averaging.getNextWatchStep({
+    averaging: decision.position.strategy.averaging,
+    includeUnreserved: true,
+  });
+  const fail = (blockReason: string): AveragingPlanAttempt => {
+    if (nextStep) {
+      nextStep.attemptMessage = blockReason;
+      nextStep.attemptedAt = context.state.currentTime;
+    }
+    return { blockReason, plan: null };
+  };
+  if (!nextStep) {
+    return fail(
+      `No remaining averaging step for ${symbol}; every reserved step ` +
+        "is already used.",
+    );
+  }
+
   const mark = getMark(context, symbol);
-  if (!mark) return null;
+  if (!mark) {
+    return fail(`No valid mark price for ${symbol}; averaging skipped.`);
+  }
 
   const position = structuredClone(decision.position);
   const config = getEffectiveConfig(context, decision.accountSlug);
-  const { balance } = getSpendableBalance(context, decision.accountSlug);
-  const nextStep = reserve.averaging.getNextWatchStep({
-    averaging: position.strategy.averaging,
-    includeUnreserved: true,
-  });
-  if (!nextStep) return null;
+  const { balance, spendable } = getSpendableBalance(
+    context,
+    decision.accountSlug,
+  );
 
   const rescueProjection = reserve.averaging.resolveRescueProjection({
     position,
@@ -295,10 +338,24 @@ function buildPlan(
       config.averagingRescueProjectionGuardEnabled !== false,
     triggerVolatilityPct: decision.recommendation.pct,
   });
-  if (!rescueProjection.canExecute) return null;
+  if (!rescueProjection.canExecute) {
+    const detail =
+      RESCUE_REFUSAL_REASONS[rescueProjection.reason] ??
+      rescueProjection.reason;
+    return fail(
+      `Averaging guard refused ${symbol}: ${detail} ` +
+        `(level ${nextStep.level} step, $${rescueProjection.marginUsdt.toFixed(2)} margin).`,
+    );
+  }
 
   const marginUsdt = rescueProjection.marginUsdt;
-  if (marginUsdt < reserve.constants.minimalUsdtToTrade) return null;
+  const minimalUsdt = reserve.constants.minimalUsdtToTrade;
+  if (marginUsdt < minimalUsdt) {
+    return fail(
+      `Averaging margin $${marginUsdt.toFixed(2)} for ${symbol} is below ` +
+        `the $${minimalUsdt.toFixed(2)} minimum order size.`,
+    );
+  }
 
   const spendStep: PositionReserveStep = {
     ...nextStep,
@@ -311,10 +368,14 @@ function buildPlan(
       step: spendStep,
       quoteAsset: balance.available,
       reservedQuoteAsset: balance.reserved,
-      minimalUsdt: reserve.constants.minimalUsdtToTrade,
+      minimalUsdt,
     })
   ) {
-    return null;
+    return fail(
+      `Insufficient spendable balance for the ${symbol} averaging step: ` +
+        `needs $${marginUsdt.toFixed(2)}, spendable ` +
+        `$${spendable.toFixed(2)}.`,
+    );
   }
 
   const leverage = Math.max(1, position.exposure.leverage || 1);
@@ -322,31 +383,41 @@ function buildPlan(
     config.tradingMode === TradingMode.SPOT ? marginUsdt : marginUsdt * leverage;
   const preferredQuantity = notionalUsdt / mark.price;
   if (!Number.isFinite(preferredQuantity) || preferredQuantity <= 0) {
-    return null;
+    return fail(
+      `Computed a non-positive averaging quantity for ${symbol} at ` +
+        `$${mark.price}.`,
+    );
   }
 
   const feeRate = getFeeRate(context, config, "buy");
   const feeUsdt = notionalUsdt * feeRate;
   const nextQuantity = position.exposure.quantity + preferredQuantity;
-  if (
-    !Number.isFinite(nextQuantity) ||
-    nextQuantity <= 0 ||
-    marginUsdt + feeUsdt > balance.available
-  ) {
-    return null;
+  if (!Number.isFinite(nextQuantity) || nextQuantity <= 0) {
+    return fail(
+      `Computed an invalid resulting quantity for ${symbol} averaging.`,
+    );
+  }
+  if (marginUsdt + feeUsdt > balance.available) {
+    return fail(
+      `Averaging cost $${(marginUsdt + feeUsdt).toFixed(2)} (margin + fee) ` +
+        `exceeds the $${balance.available.toFixed(2)} available balance ` +
+        `for ${symbol}.`,
+    );
   }
 
   return {
-    adaptiveEnabled: config.adaptiveAveraging?.enabled === true,
-    config,
-    feeRate,
-    leverage,
-    markPrice: mark.price,
-    nextStep,
-    position,
-    preferredQuantity,
-    rescueProjection,
-    spendStep,
+    plan: {
+      adaptiveEnabled: config.adaptiveAveraging?.enabled === true,
+      config,
+      feeRate,
+      leverage,
+      markPrice: mark.price,
+      nextStep,
+      position,
+      preferredQuantity,
+      rescueProjection,
+      spendStep,
+    },
   };
 }
 
@@ -419,26 +490,57 @@ function applyFill(
   return position;
 }
 
+/**
+ * Executes a simulated averaging fill like `execute`, also reporting which
+ * guard refused the step when no position is produced.
+ */
+function executeWithReason(
+  context: RuntimeContext,
+  decision: RuntimeAveragingDecision,
+): AveragingExecutionResult {
+  const attempt = planAttempt(context, decision);
+  if (!attempt.plan) {
+    return { blockReason: attempt.blockReason, position: null };
+  }
+
+  const position = applyFill(attempt.plan, {
+    price: attempt.plan.markPrice,
+    quantity: attempt.plan.preferredQuantity,
+    t: context.state.currentTime,
+  });
+
+  return {
+    blockReason: position
+      ? undefined
+      : `Executed averaging fill for ${decision.symbol.toUpperCase()} ` +
+        "produced an invalid position.",
+    position,
+  };
+}
+
 /** Executes a simulated averaging fill on a cloned position. */
 function execute(
   context: RuntimeContext,
   decision: RuntimeAveragingDecision,
 ): Position | null {
-  const averagingPlan = buildPlan(context, decision);
-  if (!averagingPlan) return null;
+  return executeWithReason(context, decision).position;
+}
 
-  return applyFill(averagingPlan, {
-    price: averagingPlan.markPrice,
-    quantity: averagingPlan.preferredQuantity,
-    t: context.state.currentTime,
-  });
+/** Resolves the averaging plan; null when a guard refuses the step. */
+function buildPlan(
+  context: RuntimeContext,
+  decision: RuntimeAveragingDecision,
+): AveragingPlan | null {
+  return planAttempt(context, decision).plan;
 }
 
 const averaging = {
   applyFill,
   execute,
+  executeWithReason,
   findDecision,
   plan: buildPlan,
+  planAttempt,
 } as const;
 
 export default averaging;

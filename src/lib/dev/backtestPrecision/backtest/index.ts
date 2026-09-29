@@ -220,7 +220,16 @@ export async function precisionBacktest(
               return result.position;
             })()
           : decision.type === "averaging"
-            ? await tradingAveraging.execute(context, decision)
+            ? (() => {
+                const result = tradingAveraging.executeWithReason(
+                  context,
+                  decision,
+                );
+                if (!result.position && result.blockReason) {
+                  decision.blockReason = result.blockReason;
+                }
+                return result.position;
+              })()
             : decision.type === "exit"
               ? await tradingExit.execute(context, decision)
               : null;

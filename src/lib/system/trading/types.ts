@@ -74,6 +74,14 @@ export interface PositionReserveStep {
   usedPrice?: number;
   /** Release time once the step is `RELEASED`. */
   releasedAt?: number;
+  /**
+   * Reason the last execution attempt was refused (balance, guard, mark
+   * price), written by the execution adapter so a failed step explains
+   * itself on the position record instead of only in notifications.
+   */
+  attemptMessage?: string;
+  /** Time of the last refused execution attempt. */
+  attemptedAt?: number;
 }
 
 /**

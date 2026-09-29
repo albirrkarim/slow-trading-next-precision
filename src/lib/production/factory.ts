@@ -278,9 +278,15 @@ function createActionHandlers(
         // strategy can persist why the re-entry stayed empty.
         if (gateSkipped) decision.blockReason = result?.blockReason;
       } else if (decision.type === "averaging") {
-        position = await executeSafely(() =>
-          tradingAveraging.execute(context, decision),
+        const result = await executeSafely(() =>
+          tradingAveraging.executeWithReason(context, decision),
         );
+        position = result?.position ?? null;
+        // A refused plan is a guard veto, not a crash — the reason rides the
+        // decision into onActionResult and the failure notification.
+        if (!position && result?.blockReason) {
+          decision.blockReason = result.blockReason;
+        }
       } else {
         position = await executeSafely(() =>
           tradingExit.execute(context, decision),
@@ -303,7 +309,7 @@ function createActionHandlers(
         actionError === undefined && !position && Boolean(result?.blockReason);
       if (gateSkipped) decision.blockReason = result?.blockReason;
     } else if (decision.type === "averaging") {
-      position = await executeSafely(() =>
+      const result = await executeSafely(() =>
         runInAccount(() =>
           execution.averaging({
             context,
@@ -312,6 +318,10 @@ function createActionHandlers(
           }),
         ),
       );
+      position = result?.position ?? null;
+      if (!position && result?.blockReason) {
+        decision.blockReason = result.blockReason;
+      }
     } else {
       position = await executeSafely(() =>
         runInAccount(() =>
@@ -341,7 +351,10 @@ function createActionHandlers(
           decision,
           error:
             actionError ??
-            new Error(`${decision.type} execution produced no position`),
+            new Error(
+              decision.blockReason ??
+                `${decision.type} execution produced no position`,
+            ),
           mode: accountRuntime.mode,
         });
       }

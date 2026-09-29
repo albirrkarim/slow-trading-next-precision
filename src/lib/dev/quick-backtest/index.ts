@@ -267,7 +267,14 @@ async function runSingle({
         return result.position;
       }
       if (decision.type === "averaging") {
-        return tradingAveraging.execute(context, decision);
+        const result = tradingAveraging.executeWithReason(
+          context,
+          decision,
+        );
+        if (!result.position && result.blockReason) {
+          decision.blockReason = result.blockReason;
+        }
+        return result.position;
       }
       if (decision.type === "exit") {
         return tradingExit.execute(context, decision);

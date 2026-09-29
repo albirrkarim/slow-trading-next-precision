@@ -345,6 +345,13 @@ export interface RuntimeAveragingDecision {
   /** Base symbol of the open position. */
   symbol: string;
   /**
+   * Written by the execution adapter when the averaging plan was refused
+   * (rescue-projection guard, minimum order size, insufficient balance) —
+   * carried uninterpreted into `onActionResult` and the failure
+   * notification so the refusal stays explainable.
+   */
+  blockReason?: string;
+  /**
    * Free-form strategy-owned payload carried through guard, adapter, and
    * `onActionResult` uninterpreted; correlations only — the averaged
    * position already exists.
@@ -370,6 +377,12 @@ export interface RuntimeExitDecision {
   message: string;
   /** Open position being closed. */
   position: Position;
+  /**
+   * Written by the execution adapter when an exit was refused before the
+   * order stage — carried uninterpreted into `onActionResult` and the
+   * failure notification.
+   */
+  blockReason?: string;
   /** Base symbol of the open position. */
   symbol: string;
   /** Free-form strategy-owned payload carried into guard and
