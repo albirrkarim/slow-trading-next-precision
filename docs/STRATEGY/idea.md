@@ -69,6 +69,13 @@ An agent may author its own strategy as `custom_<agent_slug>_<name>_v1` (e.g.
 equal the folder name. Read `src/lib/strategies/types.ts` + an existing module
 (streak is the most complete) for the contract before writing one.
 
+**Human strategies are read-only.** Never edit `default`, `both`, `streak` —
+they are the baselines every saved leaderboard entry was measured against, so
+modifying one silently re-scores the whole board and destroys attribution.
+If your idea requires changing how one of them behaves, fork it into a
+`custom_*` folder and modify the copy — the board keeps a stable reference
+and your variant competes under your own slug.
+
 **README required.** Every `custom_*` folder ships a `README.md` matching
 `both/` and `streak/` style: what the strategy does in plain terms, the
 handoff level rule it encodes (entry side + cover side), which config knobs
