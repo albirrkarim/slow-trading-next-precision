@@ -31,11 +31,27 @@ the recovery. The core mechanic is **averaging distributed across accounts**.
 
 ## C. Optimization target
 
-**Minimum equity to run** — sum of enabled accounts' initial balances
-(`settings.accounts[].sandbox.initialBalanceUSDT` where `enabled`). Lower is
-better *as long as drawdowns stay survivable*. The leaderboard has a
-sortable "Min Equity" column; a winning entry is green on Min Equity **and**
-low on Floating DD — cheap but fragile does not count.
+**Judge: the "Daily Income" leaderboard profile** — the standing
+competition score every entry is ranked by. It weights `sharpeRatio`,
+`tradesPerDay`, `winRate`, and `monthlyGain.min` (the worst month) — it pays
+consistent daily cash flow and punishes dead months and spiky fragile
+gains, not raw max gain. `backtest_profile_list` shows the exact weights;
+`backtest_leaderboard_list profile="Daily Income"` shows the ranked board.
+Save an entry only if it moves that score forward.
+
+**Minimum initial balance — effective, not just small.** Sum of enabled
+accounts' initial balances
+(`settings.accounts[].sandbox.initialBalanceUSDT` where `enabled`). Lower
+is better, but only down to the point where the balance stays *effective*:
+every intended entry and averaging step actually executes. Below that floor
+the engine refuses steps — `Insufficient spendable balance …` lands on
+`position.strategy.averaging.steps[].attemptMessage` and in notifications —
+so trades/day and win rate sag and `emptyBalance` dry spells grow: the
+strategy stops capturing the opportunity it was sized for. Too high is
+wasted idle capital diluting the score; too low is a strategy that cannot
+execute its own plan. The target is the smallest balance with **zero
+refused steps** *and* survivable drawdowns — cheap-but-fragile does not
+count, and cheap-but-starved counts even less.
 
 Balance split between accounts is a design choice: harvester small, cover
 account sized for the deep tail.
@@ -115,12 +131,11 @@ the primary tunable, not a footnote.
    Min Equity and Floating DD, or equal metrics at strictly lower Min
    Equity. A new entry must advance the frontier, not just add a row. Match
    range when comparing (a 6month run does not beat a 1year entry).
-   Pass `profile` to rank entries by a named weighted-metric profile
-   (`backtest_profile_list` shows every profile's weights and how scoring
-   is measured; the goal profile is **"Daily Income"** — Sharpe, trades/day,
-   win rate, worst-month gain). Agents may propose new profiles via
-   `backtest_profile_upsert`, but the standing competition is judged by the
-   profiles the user keeps.
+   Pass `profile="Daily Income"` to rank entries by the standing
+   competition profile (section C; `backtest_profile_list` shows its
+   weights and how scoring is measured). Agents may propose new profiles
+   via `backtest_profile_upsert`, but the competition is judged by the
+   profiles the user keeps — currently **Daily Income**.
 8. `backtest_leaderboard_save` — accepts `{cacheKey, label}`. The label is
    your attribution: **prefix it with your agent slug and say what changed**,
    e.g. `swe_2 lvl2-handoff 350+500` or
