@@ -8,7 +8,6 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Typography from "@mui/material/Typography";
-import { grey } from "@mui/material/colors";
 import { useEffect } from "react";
 
 import type {
@@ -20,6 +19,8 @@ import { readLeaf } from "@/lib/dev/backtestPrecision/leaderboards/leaves";
 import {
     HEADER_GROUPS,
     HeaderTooltip,
+    TABLE_GRID_SX,
+    TABLE_HEAD_SX,
     TEXT_FIELDS,
     formatCell,
     formatMinEquity,
@@ -64,21 +65,8 @@ export default function MetricsStrip({
                     {error}
                 </Typography>
             )}
-            <Table
-                size="small"
-                sx={{
-                    borderCollapse: "collapse",
-                    "& td, & th": {
-                        borderBottom: "1px solid rgba(0,0,0,0.15)",
-                        borderRight: "1px solid rgba(0,0,0,0.15)",
-                        m: 0,
-                        p: 0.5,
-                        textAlign: "center",
-                        whiteSpace: "nowrap",
-                    },
-                }}
-            >
-                <TableHead sx={{ backgroundColor: grey[300] }}>
+            <Table size="small" sx={TABLE_GRID_SX}>
+                <TableHead sx={TABLE_HEAD_SX}>
                     <TableRow>
                         {GROUPS.map((group) =>
                             group.children ? (

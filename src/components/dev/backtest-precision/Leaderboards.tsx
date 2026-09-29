@@ -22,6 +22,7 @@ import {
     Tooltip,
     Typography,
 } from "@mui/material";
+import type { Theme } from "@mui/material/styles";
 import axios from "axios";
 import type { ReactElement } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -127,6 +128,34 @@ const headerTooltipSlotProps = {
             p: 1.1,
             whiteSpace: "pre-line",
         },
+    },
+} as const;
+
+/** Theme-aware table header background shared by the leaderboard tables. */
+export const TABLE_HEAD_SX = {
+    backgroundColor: (theme: Theme) =>
+        theme.palette.mode === "dark"
+            ? theme.palette.grey[800]
+            : theme.palette.grey[300],
+} as const;
+
+/** Compact bordered-cell table layout shared by the leaderboard tables. */
+export const TABLE_GRID_SX = {
+    borderCollapse: "collapse",
+    "& td, & th": {
+        borderBottom: (theme: Theme) => `1px solid ${theme.palette.divider}`,
+        borderRight: (theme: Theme) => `1px solid ${theme.palette.divider}`,
+        m: 0,
+        p: 0.5,
+        textAlign: "center",
+        whiteSpace: "nowrap",
+    },
+    // Cell-level tint keeps the per-column gradient readable under hover.
+    "& tbody tr:hover td": {
+        boxShadow: (theme: Theme) =>
+            theme.palette.mode === "dark"
+                ? "inset 0 0 0 999px rgba(255,255,255,0.08)"
+                : "inset 0 0 0 999px rgba(0,0,0,0.05)",
     },
 } as const;
 
@@ -719,28 +748,9 @@ function LeaderboardsContent({
                 </Box>
             ) : (
                 <TableContainer>
-                        <Table
-                            size="small"
-                            sx={{
-                                borderCollapse: "collapse",
-                                "& td, & th": {
-                                    borderBottom: "1px solid rgba(0,0,0,0.15)",
-                                    borderRight: "1px solid rgba(0,0,0,0.15)",
-                                    m: 0,
-                                    p: 0.5,
-                                    textAlign: "center",
-                                    whiteSpace: "nowrap",
-                                },
-                            }}
+                        <Table size="small" sx={TABLE_GRID_SX}
                         >
-                            <TableHead
-                                sx={{
-                                    backgroundColor: (theme) =>
-                                        theme.palette.mode === "dark"
-                                            ? theme.palette.grey[800]
-                                            : theme.palette.grey[300],
-                                }}
-                            >
+                            <TableHead sx={TABLE_HEAD_SX}>
                                 <TableRow>
                                     {headerGroups.map((group) =>
                                         group.children ? (
@@ -803,7 +813,7 @@ function LeaderboardsContent({
                             </TableHead>
                             <TableBody>
                                 {sortedEntries.map((entry) => (
-                                    <TableRow key={entry.id}>
+                                    <TableRow hover key={entry.id}>
                                         {headerGroups.flatMap((group) =>
                                             (group.children ?? [{ id: group.id }]).map((leaf) =>
                                                 renderCell(entry, leaf.id),
