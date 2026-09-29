@@ -45,7 +45,14 @@ export default function PositionLevelSequence({
         }}
       >
         {items.map((item, index) => {
-          const chipProps = getChipProps(item, targetWasHit);
+          const attemptFailed =
+            Boolean(item.attemptMessage) && !item.isAveraged;
+          const baseChipProps = getChipProps(item, targetWasHit);
+          // A refused averaging attempt upgrades the chip to warning so the
+          // refusal is visible without hovering.
+          const chipProps = attemptFailed
+            ? { ...baseChipProps, color: "warning" as const }
+            : baseChipProps;
           const reachedWithoutAveraging = isReachedWithoutAveraging(
             item,
             targetWasHit,
@@ -70,6 +77,7 @@ export default function PositionLevelSequence({
             item.isExit && item.state !== "exit" ? "Exit" : null,
             item.isAveraged ? "Averaged" : null,
             reachedWithoutAveraging ? "Not averaged" : null,
+            attemptFailed ? "Averaging attempt refused" : null,
             exitStageLabel,
             reachedWithoutAveraging && driftLabel
               ? `Drift ${driftLabel}`
@@ -102,17 +110,30 @@ export default function PositionLevelSequence({
               {...chipProps}
               aria-label={statusLabel}
               label={
-                exitMonitoringState ? (
+                exitMonitoringState || attemptFailed ? (
                   <Box
                     component="span"
                     sx={{ alignItems: "center", display: "inline-flex" }}
                   >
                     {chipLabel}
-                    {/* BOTH:TRADE_HISTORY_EXIT_MONITORING_STAGE */}
-                    <ExitMonitoringStageIcon
-                      level={item.level}
-                      monitoringState={exitMonitoringState}
-                    />
+                    {attemptFailed && (
+                      <>
+                        <WarningAmberRoundedIcon
+                          aria-label="Averaging attempt refused"
+                          sx={{ fontSize: 11, ml: 0.375 }}
+                        />
+                        <Box component="span" sx={{ ml: 0.25 }}>
+                          AVG
+                        </Box>
+                      </>
+                    )}
+                    {exitMonitoringState && (
+                      // BOTH:TRADE_HISTORY_EXIT_MONITORING_STAGE
+                      <ExitMonitoringStageIcon
+                        level={item.level}
+                        monitoringState={exitMonitoringState}
+                      />
+                    )}
                   </Box>
                 ) : (
                   chipLabel

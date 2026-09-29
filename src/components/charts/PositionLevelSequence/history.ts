@@ -46,6 +46,11 @@ export function buildHistoryPositionLevelSequence(
         .filter((execution) => Number.isFinite(execution.level))
         .map((execution) => [execution.level, execution]),
     );
+    const stepByLevel = new Map(
+      (position.strategy.averaging.steps ?? [])
+        .filter((step) => Number.isFinite(step.level))
+        .map((step) => [step.level, step]),
+    );
     const items: PositionLevelSequenceItem[] = [
       {
         coveredMarginUsdt: 0,
@@ -58,6 +63,7 @@ export function buildHistoryPositionLevelSequence(
 
     for (const point of intermediatePoints) {
       const execution = executionByLevel.get(point.lvl);
+      const step = stepByLevel.get(point.lvl);
       const isAveraged = execution !== undefined;
       const isAdverseLevel =
         position.direction === "LONG" ? point.lvl < 0 : point.lvl > 0;
@@ -65,14 +71,16 @@ export function buildHistoryPositionLevelSequence(
 
       items.push({
         adaptiveMultiplier: execution?.adaptiveMultiplier,
+        attemptMessage: isAveraged ? undefined : step?.attemptMessage,
+        attemptedAt: isAveraged ? undefined : step?.attemptedAt,
         averagingMultiplier: execution?.allocationPct,
         coveredMarginUsdt: 0,
         isAveraged,
         isEntry: false,
         level: point.lvl,
-        marginUsdt: execution?.marginUsdt,
+        marginUsdt: execution?.marginUsdt ?? step?.marginUsdt,
         monitoringState: execution?.monitoringState,
-        reserveStatus: isAveraged ? "USED" : undefined,
+        reserveStatus: isAveraged ? "USED" : step?.status,
         state:
           !isAveraged && isAdverseLevel && isDeeperThanEntry
             ? "skipped"

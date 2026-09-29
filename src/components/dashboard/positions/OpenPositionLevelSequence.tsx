@@ -14,6 +14,8 @@ import type { VolatilityPoint } from "@/lib/system/types";
 type ReserveStepStatus = PositionLevelSequenceReserveStatus;
 
 interface ReserveStep {
+  attemptMessage?: string;
+  attemptedAt?: number;
   level?: number;
   marginUsdt?: number;
   status?: ReserveStepStatus;
@@ -154,6 +156,8 @@ function getTargetHitSequence({
 
       return {
         adaptiveMultiplier: execution?.adaptiveMultiplier,
+        attemptMessage: step?.attemptMessage,
+        attemptedAt: step?.attemptedAt,
         averagingMultiplier: execution?.allocationPct,
         coveredMarginUsdt: 0,
         isAveraged,
@@ -256,6 +260,8 @@ export function buildOpenPositionLevelSequence({
     }
 
     addLevel(level, {
+      attemptMessage: step.attemptMessage,
+      attemptedAt: step.attemptedAt,
       isEntry: false,
       marginUsdt: step.marginUsdt,
       reserveStatus: step.status,

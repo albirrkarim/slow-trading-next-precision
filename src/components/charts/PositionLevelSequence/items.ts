@@ -2,6 +2,7 @@ import type {
   PositionLevelSequenceItem,
   PositionLevelSequenceState,
 } from "./types";
+import format from "@/lib/system/utils/format";
 
 /** Human-readable label for each sequence chip state. */
 export const stateLabels: Record<PositionLevelSequenceState, string> = {
@@ -138,6 +139,12 @@ export function buildTooltip(
       : null,
     item.state === "skipped" ? "Level was reached without averaging" : null,
     item.state === "target" ? "Remaining averaging steps stopped" : null,
+    item.attemptMessage && !item.isAveraged
+      ? `Averaging attempt refused: ${item.attemptMessage}`
+      : null,
+    item.attemptMessage && !item.isAveraged && item.attemptedAt
+      ? `Attempted at ${format.timeForLog(item.attemptedAt)}`
+      : null,
     item.reserveStatus === "RESERVED" ? "Reserved watch step" : null,
     item.reserveStatus === "UNRESERVED" ? "Unreserved watch step" : null,
     formatCoverage(item),

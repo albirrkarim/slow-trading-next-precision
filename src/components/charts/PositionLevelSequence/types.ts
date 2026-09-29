@@ -44,6 +44,13 @@ export interface PositionLevelSequenceItem {
    */
   adaptiveMultiplier?: number;
   /**
+   * Reason the last averaging attempt at this level was refused (balance,
+   * guard, mark price) — persisted on `steps[n].attemptMessage`.
+   */
+  attemptMessage?: string;
+  /** Time of the last refused averaging attempt at this level. */
+  attemptedAt?: number;
+  /**
    * Actual allocation multiplier used by the averaging fill at this level
    * (`execution.allocationPct`, or the simulated multiplier for scenarios).
    */

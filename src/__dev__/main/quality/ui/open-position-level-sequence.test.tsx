@@ -208,6 +208,74 @@ describe("OpenPositionLevelSequence", () => {
     );
   });
 
+  it("flags a refused averaging attempt with a warning icon and tooltip reason", async () => {
+    render(
+      <OpenPositionLevelSequence
+        currentLevel={-3}
+        direction="LONG"
+        entryLevel={-3}
+        spendableQuoteAsset={100}
+        watchState={{
+          steps: [
+            {
+              level: -4,
+              marginUsdt: 50,
+              status: "RESERVED" as const,
+              attemptMessage:
+                "Insufficient spendable balance for the SUI averaging " +
+                "step: needs $50.00, spendable $10.00.",
+              attemptedAt: Date.UTC(2026, 8, 27, 14, 30),
+            },
+          ],
+        }}
+      />,
+    );
+
+    const step = screen.getByLabelText(
+      "Level -4, Reserved, Averaging attempt refused",
+    );
+    expect(step.className).toContain("MuiChip-colorWarning");
+    expect(step.textContent).toBe("L-4AVG");
+
+    fireEvent.mouseOver(step);
+    const tooltip = await screen.findByRole("tooltip");
+    expect(tooltip.textContent).toContain(
+      "Averaging attempt refused: Insufficient spendable balance",
+    );
+    expect(tooltip.textContent).toContain(
+      "Attempted at 27 Sep 2026 14:30 UTC",
+    );
+  });
+
+  it("keeps a later averaged step clean even when an attempt was refused before", () => {
+    render(
+      <OpenPositionLevelSequence
+        currentLevel={-4}
+        direction="LONG"
+        entryLevel={-3}
+        spendableQuoteAsset={100}
+        watchState={{
+          executions: [{ allocationPct: 1, level: -4 }],
+          steps: [
+            {
+              level: -4,
+              marginUsdt: 50,
+              status: "USED" as const,
+              attemptMessage: "Refused earlier",
+              attemptedAt: Date.UTC(2026, 8, 27, 14, 30),
+            },
+          ],
+        }}
+      />,
+    );
+
+    // A step that eventually averaged shows the normal AVG chip — the stale
+    // refusal no longer flags it.
+    const step = screen.getByLabelText("Level -4, Current, Averaged");
+    expect(step.textContent).toBe("L-4 AVG 1x");
+    expect(step.className).not.toContain("MuiChip-colorWarning");
+  });
+
   it("shows the broken averaging path through the latest vPoint", () => {
     const targetHitWatchState = {
       steps: [
