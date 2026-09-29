@@ -132,6 +132,49 @@ function describeError(error: unknown): string {
 }
 
 /**
+ * Strips numeric literals from an error so the same refusal reason dedupes
+ * across amount drift (a spendable of $40.22 vs $40.90 is the same failure),
+ * while a different reason still produces a different key.
+ */
+function normalizeErrorForDedupe(error: unknown): string {
+  return describeError(error).replace(/\$?\d+(?:\.\d+)?%?/g, "#");
+}
+
+/**
+ * Builds the dedupe identity for one failed trade action. The key is stable
+ * across monitoring passes — same position/signal, level, and reason produce
+ * one notification; a new position, a new level, or a changed reason re-arms.
+ */
+function buildFailedDedupeKey(params: {
+  decision: RuntimeDecision;
+  error: unknown;
+  mode: RuntimeMode;
+}): string {
+  const { decision, error, mode } = params;
+  const base = [
+    "slow-trade-failed",
+    decision.type,
+    mode,
+    decision.accountSlug,
+    normalizeSymbol(decision.symbol),
+    normalizeErrorForDedupe(error),
+  ];
+
+  if (decision.type === "averaging") {
+    base.push(
+      String(decision.position?.opened?.t ?? ""),
+      String(decision.recommendation?.lvl ?? ""),
+    );
+  } else if (decision.type === "exit") {
+    base.push(String(decision.position?.opened?.t ?? ""));
+  } else if (decision.type === "entry") {
+    base.push(String(decision.entrySignal?.id ?? ""));
+  }
+
+  return base.join(":");
+}
+
+/**
  * Reports one executed trade action (entry, averaging, or exit) through the
  * configured notification channels. No-op when the environment's `onNotif`
  * gate disables notification delivery.
@@ -199,14 +242,11 @@ async function failed(params: {
   const sandbox = mode === "sandbox";
   await systemNotif.central({
     dashboard: "SLOW",
-    dedupeKey: [
-      "slow-trade-failed",
-      decision.type,
+    dedupeKey: buildFailedDedupeKey({
+      decision,
+      error: params.error,
       mode,
-      decision.accountSlug,
-      normalizeSymbol(decision.symbol),
-      params.context.state.currentTime,
-    ].join(":"),
+    }),
     key: FAILED_KEYS[decision.type],
     message: JSON.stringify(
       {

@@ -31,6 +31,12 @@ export function buildHistoryPositionLevelSequence(
   const executions = [...(position.strategy.averaging.executions ?? [])].sort(
     (left, right) => left.t - right.t,
   );
+  const steps = position.strategy.averaging.steps ?? [];
+  const stepByLevel = new Map(
+    steps
+      .filter((step) => Number.isFinite(step.level))
+      .map((step) => [step.level, step]),
+  );
 
   if (position.vPoints !== undefined && Number.isFinite(entryLevel)) {
     // BOTH:POSITION_VPOINT_PATH
@@ -45,11 +51,6 @@ export function buildHistoryPositionLevelSequence(
       executions
         .filter((execution) => Number.isFinite(execution.level))
         .map((execution) => [execution.level, execution]),
-    );
-    const stepByLevel = new Map(
-      (position.strategy.averaging.steps ?? [])
-        .filter((step) => Number.isFinite(step.level))
-        .map((step) => [step.level, step]),
     );
     const items: PositionLevelSequenceItem[] = [
       {
@@ -88,23 +89,56 @@ export function buildHistoryPositionLevelSequence(
       });
     }
 
+    for (const step of steps) {
+      if (
+        step.attemptMessage !== undefined &&
+        !items.some((item) => item.level === step.level)
+      ) {
+        items.push({
+          attemptMessage: step.attemptMessage,
+          attemptedAt: step.attemptedAt,
+          coveredMarginUsdt: 0,
+          isAveraged: false,
+          isEntry: false,
+          level: step.level,
+          reserveStatus: step.status,
+          state: "skipped",
+        });
+      }
+    }
+
     const exitLevel = Number(position.closed?.vPoint?.lvl);
     if (Number.isFinite(exitLevel)) {
       const execution = executionByLevel.get(exitLevel);
-      items.push({
-        adaptiveMultiplier: execution?.adaptiveMultiplier,
-        averagingMultiplier: execution?.allocationPct,
-        coveredMarginUsdt: 0,
-        exitMonitoringState: position.lastMonitoringStage,
-        isAveraged: execution !== undefined,
-        isEntry: false,
-        isExit: true,
-        level: exitLevel,
-        marginUsdt: execution?.marginUsdt,
-        monitoringState: execution?.monitoringState,
-        reserveStatus: execution ? "USED" : undefined,
-        state: isTargetExitReason(position) ? "target" : "exit",
-      });
+      const step = stepByLevel.get(exitLevel);
+      const matchingItem = items.find(
+        (item) =>
+          !item.isEntry && !item.isExit && item.level === exitLevel,
+      );
+      if (matchingItem) {
+        matchingItem.exitMonitoringState = position.lastMonitoringStage;
+        matchingItem.isExit = true;
+        matchingItem.state = isTargetExitReason(position)
+          ? "target"
+          : "exit";
+      } else {
+        items.push({
+          adaptiveMultiplier: execution?.adaptiveMultiplier,
+          attemptMessage: step?.attemptMessage,
+          attemptedAt: step?.attemptedAt,
+          averagingMultiplier: execution?.allocationPct,
+          coveredMarginUsdt: 0,
+          exitMonitoringState: position.lastMonitoringStage,
+          isAveraged: execution !== undefined,
+          isEntry: false,
+          isExit: true,
+          level: exitLevel,
+          marginUsdt: execution?.marginUsdt,
+          monitoringState: execution?.monitoringState,
+          reserveStatus: execution ? "USED" : step?.status,
+          state: isTargetExitReason(position) ? "target" : "exit",
+        });
+      }
     }
 
     return items;
@@ -140,24 +174,65 @@ export function buildHistoryPositionLevelSequence(
     });
   }
 
+  for (const step of steps) {
+    if (
+      step.attemptMessage !== undefined &&
+      !items.some((item) => item.level === step.level)
+    ) {
+      items.push({
+        attemptMessage: step.attemptMessage,
+        attemptedAt: step.attemptedAt,
+        coveredMarginUsdt: 0,
+        isAveraged: false,
+        isEntry: false,
+        level: step.level,
+        reserveStatus: step.status,
+        state: "skipped",
+      });
+    }
+  }
+
   const exitLevel = Number(position.closed?.vPoint?.lvl);
   if (Number.isFinite(exitLevel)) {
     const matchingItem = items.find(
-      (item) => item.isAveraged && item.level === exitLevel,
+      (item) =>
+        !item.isEntry && !item.isExit && item.level === exitLevel,
     );
     if (matchingItem) {
       matchingItem.exitMonitoringState = position.lastMonitoringStage;
       matchingItem.isExit = true;
       matchingItem.state = isTargetExitReason(position) ? "target" : "exit";
     } else {
+      const step = stepByLevel.get(exitLevel);
       items.push({
+        attemptMessage: step?.attemptMessage,
+        attemptedAt: step?.attemptedAt,
         coveredMarginUsdt: 0,
         exitMonitoringState: position.lastMonitoringStage,
         isAveraged: false,
         isEntry: false,
         isExit: true,
         level: exitLevel,
+        reserveStatus: step?.status,
         state: isTargetExitReason(position) ? "target" : "exit",
+      });
+    }
+  }
+
+  for (const step of steps) {
+    if (
+      step.attemptMessage &&
+      !items.some((item) => item.level === step.level)
+    ) {
+      items.push({
+        attemptMessage: step.attemptMessage,
+        attemptedAt: step.attemptedAt,
+        coveredMarginUsdt: 0,
+        isAveraged: false,
+        isEntry: false,
+        level: step.level,
+        reserveStatus: step.status,
+        state: "skipped",
       });
     }
   }

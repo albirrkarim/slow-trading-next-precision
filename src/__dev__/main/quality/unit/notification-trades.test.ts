@@ -231,6 +231,78 @@ describe("tradeNotif", () => {
     );
   });
 
+  it("dedupes an unchanged failure reason across monitoring passes", async () => {
+    const central = vi
+      .spyOn(systemNotif, "central")
+      .mockResolvedValue(true);
+    const averagingDecision = {
+      accountSlug: "acc-1",
+      message: "Averaging SHORT for AAVE at level 2",
+      position: createPosition(),
+      recommendation: { lvl: 2 },
+      symbol: "AAVE_USDT",
+      type: "averaging",
+    } as never;
+
+    await tradeNotif.failed({
+      context: createContext(),
+      decision: averagingDecision,
+      error: new Error(
+        "Insufficient spendable balance for the AAVE averaging step: " +
+          "needs $107.57, spendable $40.22.",
+      ),
+      mode: "sandbox",
+    });
+
+    // Next pass — a later timestamp and slightly different amounts still
+    // resolve to the same dedupe identity.
+    const laterContext = createContext();
+    laterContext.state.currentTime = NOW + 60_000;
+    await tradeNotif.failed({
+      context: laterContext,
+      decision: averagingDecision,
+      error: new Error(
+        "Insufficient spendable balance for the AAVE averaging step: " +
+          "needs $110.00, spendable $38.10.",
+      ),
+      mode: "sandbox",
+    });
+
+    const keys = central.mock.calls.map((call) => call[0].dedupeKey);
+    expect(keys).toHaveLength(2);
+    expect(keys[1]).toBe(keys[0]);
+  });
+
+  it("re-arms the failure dedupe when the reason changes", async () => {
+    const central = vi
+      .spyOn(systemNotif, "central")
+      .mockResolvedValue(true);
+    const averagingDecision = {
+      accountSlug: "acc-1",
+      message: "Averaging SHORT for AAVE at level 2",
+      position: createPosition(),
+      recommendation: { lvl: 2 },
+      symbol: "AAVE_USDT",
+      type: "averaging",
+    } as never;
+
+    await tradeNotif.failed({
+      context: createContext(),
+      decision: averagingDecision,
+      error: new Error("Insufficient spendable balance for the step."),
+      mode: "sandbox",
+    });
+    await tradeNotif.failed({
+      context: createContext(),
+      decision: averagingDecision,
+      error: new Error("No valid mark price for AAVE; averaging skipped."),
+      mode: "sandbox",
+    });
+
+    const keys = central.mock.calls.map((call) => call[0].dedupeKey);
+    expect(keys[1]).not.toBe(keys[0]);
+  });
+
   it("sends nothing when the adapter onNotif gate is disabled", async () => {
     const central = vi
       .spyOn(systemNotif, "central")
