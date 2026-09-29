@@ -105,6 +105,8 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
   }
 
   const stagingDir = backtestResultCache.stagingDirFor(cacheKey);
+  // A fresh attempt supersedes any previous failure record for this key.
+  await backtestResultCache.clearFailed(cacheKey);
   const runParams = {
     ...params,
     artifacts: { dir: stagingDir },
@@ -137,6 +139,7 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
     );
     await backtestResultCache.publish(cacheKey, stagingDir);
   } catch (error) {
+    await backtestResultCache.markFailed(cacheKey, error);
     await fs.remove(stagingDir);
     throw error;
   }

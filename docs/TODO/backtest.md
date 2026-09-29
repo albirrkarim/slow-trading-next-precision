@@ -47,7 +47,7 @@ The backtest loop is already API-shaped; the MCP layer only exposes it:
 |---|---|---|---|
 | `backtest_config_template` | read | input menu | Returns the dashboard's current `BacktestTestCase` (catalog-derived) + per-symbol data coverage (first/last non-empty day). Agent clones + mutates. Coverage reporting prevents silent range clipping — MON data starts 2025-10-10, so a `2year` run including MON effectively starts there (`Math.max` intersection in `backtest/data.ts`). |
 | `backtest_precision_run` | write | run backtest | `{config, range \| startTime+endTime, upToDateKlines?}` → `{cacheKey, status}`. **Async** — a multi-year run takes minutes; MCP timeouts would cut a sync call. Cache dedupe makes identical params return the finished result for free. |
-| `backtest_run_status` | read | poll | `{cacheKey}` → `running \| done \| failed` + `summary`. Detect: `stagingDirFor(key)` exists = running, `dirFor(key)/meta.json` = done. Must report **effective dataset start/end** so symbol clipping is explicit. |
+| `backtest_run_status` | read | poll | `{cacheKey}` → `running \| done \| failed \| interrupted` + `summary`. Detect order: `dirFor(key)/meta.json` = done → `.failed/<key>.json` = failed (records `{t, error}`, written by `run.ts` on catch before staging cleanup) → staging dir matching `<key>-*` = running, or **interrupted** when its mtime is stale (process died before the marker write). Must report **effective dataset start/end** so symbol clipping is explicit. |
 | `backtest_result_read` | read | metrics + biggest losses | `{cacheKey, field, sort, order, offset, limit}` — detail endpoint already paginates; add server-side `sort=pnlUsdt&order=asc` so "worst trades" is one call. |
 | `backtest_runs_list` | read | "is it better?" | Lists recent cache metas (range, symbols, summary) — compare trials without re-running. |
 | `backtest_result_metrics` | read | evaluate before saving | `{cacheKey}` → `BacktestLeaderboardMetrics`. **Missing today**: `meta.json` only stores the coarse `summary`; the full metric set is derived on demand — currently the leaderboard POST fuses compute+save into one step, so there's no preview without committing. This tool runs `metrics.compute(backtestResultCache.read(cacheKey))` and returns metrics without saving. |
@@ -66,6 +66,8 @@ The tools are neutral; the anti-overfitting discipline is in how the agent uses 
 
 ## Caveats
 
+- Failure detection is implemented: `run.ts` writes `.failed/<cacheKey>.json` (`{t, error}`) on catch and clears it when a fresh attempt starts; a successful publish leaves none. Still open for `run_status`: a killed *process* can't write the marker — detect it as a staging dir with stale mtime (interrupted, not running).
 - Runs share CPU with the production engine — run on the dev instance or while paused; note it in the tool description.
 - Backtest tools only exist when `devBacktest.isEnabled()` — same gate as the page.
+- `config_template`'s coverage scan needs a non-downloading per-symbol first/last-day reader over the dataset dir (bounds today are computed inside `prepareSymbolDays` while downloading).
 - Cut order: `config_template` + `run`/`status` + `result_read` first (closed loop), leaderboards after.

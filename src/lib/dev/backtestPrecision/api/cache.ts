@@ -84,6 +84,59 @@ function stagingDirFor(cacheKey: string): string {
   return path.join(RESULTS_DIR, ".staging", `${cacheKey}-${randomUUID()}`);
 }
 
+interface BacktestFailedRecord {
+  /** Failure message from the rejected run. */
+  error: string;
+  t: number;
+}
+
+/**
+ * `.failed/<cacheKey>.json` — one record per failed run, alongside `.staging`.
+ * Without it a crashed run is indistinguishable from never-started: meta.json
+ * is only written on success and the staging dir is removed on error.
+ */
+function failedPathFor(cacheKey: string): string {
+  return path.join(RESULTS_DIR, ".failed", `${cacheKey}.json`);
+}
+
+/**
+ * Records a failed run. Best-effort — bookkeeping must never mask the
+ * original run error, so write failures are swallowed.
+ */
+async function markFailed(cacheKey: string, error: unknown): Promise<void> {
+  try {
+    const record: BacktestFailedRecord = {
+      error: error instanceof Error ? error.message : String(error),
+      t: Date.now(),
+    };
+    await fs.outputJson(failedPathFor(cacheKey), record);
+  } catch {
+    // ignore — the run error is rethrown by the caller
+  }
+}
+
+/** Reads the failure record for one cache key; null when none exists. */
+async function readFailed(
+  cacheKey: string,
+): Promise<BacktestFailedRecord | null> {
+  try {
+    const record = (await fs.readJson(
+      failedPathFor(cacheKey),
+    )) as BacktestFailedRecord;
+    if (typeof record?.error !== "string" || typeof record?.t !== "number") {
+      return null;
+    }
+    return record;
+  } catch {
+    return null;
+  }
+}
+
+/** Drops the failure record — called when a fresh attempt starts. */
+async function clearFailed(cacheKey: string): Promise<void> {
+  await fs.remove(failedPathFor(cacheKey));
+}
+
 /** Replaces a finished cache entry without exposing partially written parts. */
 async function publish(cacheKey: string, stagingDir: string): Promise<void> {
   await fs.move(stagingDir, cacheDir(cacheKey), { overwrite: true });
@@ -246,10 +299,13 @@ const backtestResultCache = {
   get dir() {
     return RESULTS_DIR;
   },
+  clearFailed,
   dirFor,
   finalize,
   key,
+  markFailed,
   read,
+  readFailed,
   readField,
   readMeta,
   publish,
