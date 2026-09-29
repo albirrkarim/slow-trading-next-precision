@@ -323,7 +323,7 @@ async function finalize(
     createdAt: Date.now(),
     dataset: result.dataset,
     exchangeType: result.exchangeType,
-    params: sanitize.maskSecrets(requestParams) as Record<string, unknown>,
+    params: sanitize.stripSecrets(requestParams) as Record<string, unknown>,
     parts: result.parts,
     summary: result.summary,
     v: CHUNKED_LAYOUT,

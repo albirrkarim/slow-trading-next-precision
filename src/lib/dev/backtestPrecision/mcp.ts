@@ -55,7 +55,7 @@ function getPath(value: unknown, path: string): unknown {
 async function configTemplate() {
   const catalog = await runtimeStorage.catalog.ensure();
   return {
-    config: sanitize.maskSecrets(catalog.config),
+    config: sanitize.stripSecrets(catalog.config),
     coverage: await datasetCoverage(),
     note:
       "A run covers only the intersection of all configured symbols' coverage — a later-listed symbol clips the effective range (see run status dataset).",
@@ -369,7 +369,15 @@ async function leaderboardSave(args: Record<string, unknown>) {
 }
 
 async function leaderboardList() {
-  return { entries: await backtestLeaderboards.store.list() };
+  const entries = await backtestLeaderboards.store.list();
+  // Entries saved before credential stripping may still carry account keys —
+  // strip at the agent boundary.
+  return {
+    entries: entries.map((entry) => ({
+      ...entry,
+      backtestConfig: sanitize.stripSecrets(entry.backtestConfig),
+    })),
+  };
 }
 
 async function leaderboardDelete(args: Record<string, unknown>) {

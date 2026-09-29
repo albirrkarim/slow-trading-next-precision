@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import path from "path";
 import systemConfig from "@/lib/system/config";
+import sanitize from "@/lib/system/storage/sanitize";
 import backtestResultCache from "./cache";
 import backtestLeaderboards from "../leaderboards";
 import type { BacktestPrecisionResult } from "../backtest/backtest-precision-types";
@@ -68,7 +69,9 @@ export default async function backtestLeaderboardsHandler(
     }
 
     const entry = await backtestLeaderboards.store.save({
-      backtestConfig: body.backtestConfig,
+      // Credentials are stripped, not masked — a pasted-back config must not
+      // carry placeholders that would overwrite live account keys.
+      backtestConfig: sanitize.stripSecrets(body.backtestConfig),
       cacheKey,
       label: typeof body.label === "string" ? body.label : undefined,
       leaderboard: backtestLeaderboards.metrics.compute(result),
