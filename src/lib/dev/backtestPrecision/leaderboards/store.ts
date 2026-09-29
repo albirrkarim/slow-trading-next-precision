@@ -8,11 +8,37 @@ import type {
 } from "./types";
 
 // Local-only dev records — `storage/` is gitignored, same as the result cache.
-// Layout: storage/leaderboards/<hash>.json, one file per saved run.
+// Layout: storage/leaderboards/results/<hash>.json, one file per saved run;
+// profiles.json sits beside the results/ directory.
 const DEFAULT_DIR = path.resolve("storage/leaderboards");
 
 function dir(): string {
   return process.env.BACKTEST_LEADERBOARDS_DIR?.trim() || DEFAULT_DIR;
+}
+
+function resultsDir(): string {
+  return path.join(dir(), "results");
+}
+
+/**
+ * Moves pre-subdirectory entry files from the leaderboards root into results/.
+ * profiles.json stays in the root — it is a different record type.
+ */
+async function migrateLegacyEntries(): Promise<void> {
+  const directory = dir();
+  if (!(await fs.pathExists(directory))) return;
+  const names = (await fs.readdir(directory)).filter(
+    (name) => name.endsWith(".json") && name !== "profiles.json",
+  );
+  if (names.length === 0) return;
+  await fs.ensureDir(resultsDir());
+  for (const name of names) {
+    await fs.move(
+      path.join(directory, name),
+      path.join(resultsDir(), name),
+      { overwrite: true },
+    );
+  }
 }
 
 /** Serializes with sorted object keys so hashing ignores input field order. */
@@ -64,7 +90,8 @@ function isEntry(value: unknown): value is BacktestLeaderboardEntry {
 
 /** Lists saved entries, newest first; unreadable files are skipped. */
 async function list(): Promise<BacktestLeaderboardEntry[]> {
-  const directory = dir();
+  await migrateLegacyEntries();
+  const directory = resultsDir();
   if (!(await fs.pathExists(directory))) return [];
 
   const names = (await fs.readdir(directory)).filter((name) =>
@@ -101,13 +128,16 @@ async function save(input: {
     label: input.label,
     leaderboard: input.leaderboard,
   };
-  await jsonFile.write.atomic(path.join(dir(), `${id}.json`), entry);
+  await jsonFile.write.atomic(
+    path.join(resultsDir(), `${id}.json`),
+    entry,
+  );
   return entry;
 }
 
 /** Deletes one entry by id; false when it does not exist. */
 async function remove(id: string): Promise<boolean> {
-  const filePath = path.join(dir(), `${id}.json`);
+  const filePath = path.join(resultsDir(), `${id}.json`);
   if (!(await fs.pathExists(filePath))) return false;
   await fs.remove(filePath);
   return true;
@@ -117,6 +147,7 @@ const leaderboardsStore = {
   dir,
   list,
   remove,
+  resultsDir,
   save,
 } as const;
 

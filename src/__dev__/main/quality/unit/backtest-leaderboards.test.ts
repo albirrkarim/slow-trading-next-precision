@@ -167,7 +167,7 @@ describe("backtest leaderboards store", () => {
         });
 
         expect(entry.id).toMatch(/^[0-9a-f]{12}$/);
-        const filePath = path.join(TEST_DIR, `${entry.id}.json`);
+        const filePath = path.join(TEST_DIR, "results", `${entry.id}.json`);
         expect(await fs.pathExists(filePath)).toBe(true);
 
         const entries = await leaderboardsStore.list();

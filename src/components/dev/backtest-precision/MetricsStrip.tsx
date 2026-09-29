@@ -11,7 +11,11 @@ import Typography from "@mui/material/Typography";
 import { grey } from "@mui/material/colors";
 import { useEffect } from "react";
 
-import type { BacktestLeaderboardMetrics } from "@/lib/dev/backtestPrecision/leaderboards";
+import type {
+    BacktestLeaderboardEntry,
+    BacktestLeaderboardMetrics,
+} from "@/lib/dev/backtestPrecision/leaderboards";
+import { readLeaf } from "@/lib/dev/backtestPrecision/leaderboards/leaves";
 
 import {
     HEADER_GROUPS,
@@ -19,7 +23,6 @@ import {
     TEXT_FIELDS,
     formatCell,
     formatMinEquity,
-    getNestedMetric,
 } from "./Leaderboards";
 import type { BacktestConfig } from "./types";
 import type { LazyArtifact } from "./use-backtest-artifacts";
@@ -42,7 +45,12 @@ export default function MetricsStrip({
         void ensure();
     }, [ensure]);
 
-    const entry = { backtestConfig, id: "current", leaderboard: data };
+    const entry = {
+        backtestConfig,
+        id: "current",
+        leaderboard: data,
+        t: 0,
+    } as unknown as BacktestLeaderboardEntry;
 
     return (
         <TableContainer
@@ -115,7 +123,7 @@ export default function MetricsStrip({
                         {GROUPS.flatMap((group) =>
                             group.children ?? [group],
                         ).map((leaf) => {
-                            const value = getNestedMetric(entry, leaf.id);
+                            const value = readLeaf(entry, leaf.id);
                             return (
                                 <TableCell key={leaf.id}>
                                     {leaf.id === "minEquity"

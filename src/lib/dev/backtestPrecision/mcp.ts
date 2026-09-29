@@ -368,16 +368,87 @@ async function leaderboardSave(args: Record<string, unknown>) {
   return { entry };
 }
 
-async function leaderboardList() {
+async function leaderboardList(args: Record<string, unknown>) {
   const entries = await backtestLeaderboards.store.list();
   // Entries saved before credential stripping may still carry account keys —
   // strip at the agent boundary.
+  const sanitized = entries.map((entry) => ({
+    ...entry,
+    backtestConfig: sanitize.stripSecrets(entry.backtestConfig),
+  }));
+
+  const profileName =
+    typeof args.profile === "string" ? args.profile.trim() : "";
+  if (!profileName) {
+    return { entries: sanitized };
+  }
+
+  const profiles = await backtestLeaderboards.profiles.list();
+  const profile = profiles.find(
+    (candidate) => candidate.name.toLowerCase() === profileName.toLowerCase(),
+  );
+  if (!profile) {
+    return {
+      available: profiles.map((candidate) => candidate.name),
+      error: `Unknown profile "${profileName}".`,
+    };
+  }
+
+  const scores = backtestLeaderboards.leaves.scoreEntries(
+    entries,
+    profile.weights,
+  );
   return {
-    entries: entries.map((entry) => ({
-      ...entry,
-      backtestConfig: sanitize.stripSecrets(entry.backtestConfig),
-    })),
+    entries: sanitized
+      .map((entry) => ({
+        ...entry,
+        score: scores.get(entry.id)?.score ?? 0,
+        scoreParts: scores.get(entry.id)?.parts ?? {},
+      }))
+      .sort((left, right) => right.score - left.score),
+    profile: backtestLeaderboards.leaves.describeProfile(profile),
   };
+}
+
+async function profileList() {
+  const profiles = await backtestLeaderboards.profiles.list();
+  return {
+    metrics: backtestLeaderboards.leaves.PROFILE_METRICS,
+    profiles: profiles.map((profile) =>
+      backtestLeaderboards.leaves.describeProfile(profile),
+    ),
+    scoring: backtestLeaderboards.leaves.SCORING_METHOD,
+  };
+}
+
+async function profileUpsert(args: Record<string, unknown>) {
+  const weights = isRecord(args.weights) ? args.weights : {};
+  const result = await backtestLeaderboards.profiles.save({
+    name: args.name,
+    weights,
+  });
+  if (!result.profile) {
+    return {
+      availableMetrics: backtestLeaderboards.leaves.PROFILE_METRICS.map(
+        (metric) => metric.id,
+      ),
+      error: result.error,
+    };
+  }
+  return {
+    profile: backtestLeaderboards.leaves.describeProfile(result.profile),
+  };
+}
+
+async function profileDelete(args: Record<string, unknown>) {
+  const name = String(args.name ?? "").trim();
+  if (!name) {
+    throw new Error('"name" is required.');
+  }
+  if (!(await backtestLeaderboards.profiles.remove(name))) {
+    return { error: "Profile not found." };
+  }
+  return { ok: true };
 }
 
 async function leaderboardDelete(args: Record<string, unknown>) {
@@ -408,9 +479,18 @@ function register() {
   tools.registerHandler("backtest_leaderboard_save", ({ args }) =>
     leaderboardSave(args),
   );
-  tools.registerHandler("backtest_leaderboard_list", () => leaderboardList());
+  tools.registerHandler("backtest_leaderboard_list", ({ args }) =>
+    leaderboardList(args),
+  );
   tools.registerHandler("backtest_leaderboard_delete", ({ args }) =>
     leaderboardDelete(args),
+  );
+  tools.registerHandler("backtest_profile_list", () => profileList());
+  tools.registerHandler("backtest_profile_upsert", ({ args }) =>
+    profileUpsert(args),
+  );
+  tools.registerHandler("backtest_profile_delete", ({ args }) =>
+    profileDelete(args),
   );
 }
 

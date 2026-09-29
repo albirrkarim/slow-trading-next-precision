@@ -433,6 +433,10 @@ export function computeLeaderboardMetrics(input: {
       : 0;
 
   const monthly = monthlyGain(positions, timeline);
+  const spanDays = Math.max(
+    1,
+    timeline.length >= 2 ? (timeline.at(-1)!.t - timeline[0].t) / MS_PER_DAY : 1,
+  );
 
   return {
     avgMonthlyProfitPct:
@@ -450,6 +454,7 @@ export function computeLeaderboardMetrics(input: {
     monthlyGain: monthly.gains,
     positionsClosed: closed.length,
     sharpeRatio: sharpeRatio(timeline),
+    tradesPerDay: Number((closed.length / spanDays).toFixed(3)),
     winRate: closed.length > 0 ? (wins / closed.length) * 100 : 0,
   };
 }

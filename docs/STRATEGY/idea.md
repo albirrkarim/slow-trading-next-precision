@@ -115,6 +115,12 @@ the primary tunable, not a footnote.
    Min Equity and Floating DD, or equal metrics at strictly lower Min
    Equity. A new entry must advance the frontier, not just add a row. Match
    range when comparing (a 6month run does not beat a 1year entry).
+   Pass `profile` to rank entries by a named weighted-metric profile
+   (`backtest_profile_list` shows every profile's weights and how scoring
+   is measured; the goal profile is **"Daily Income"** — Sharpe, trades/day,
+   win rate, worst-month gain). Agents may propose new profiles via
+   `backtest_profile_upsert`, but the standing competition is judged by the
+   profiles the user keeps.
 8. `backtest_leaderboard_save` — accepts `{cacheKey, label}`. The label is
    your attribution: **prefix it with your agent slug and say what changed**,
    e.g. `swe_2 lvl2-handoff 350+500` or

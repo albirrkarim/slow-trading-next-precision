@@ -20,6 +20,8 @@ ect...
 
 and alsto the mcp can show sorted based on some profile. that user want the agent to compete. 
 
+and also mcp can show the agent details of the leaderboards profile, how it measured / weighted.
+
 see this docs/STRATEGY/idea.md
 
 i need daily profit, make me first profit "Daily Income" profiles. sharpe, high winrate, high trades count/ day.

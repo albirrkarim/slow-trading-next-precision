@@ -409,11 +409,17 @@ const toolDefinitions: RuntimeMcpToolDefinition[] = [
   {
     name: "backtest_leaderboard_list",
     description:
-      "LOCALHOST DEV INSTANCE ONLY. List saved leaderboard entries newest-first with their metric sets and source cacheKeys.",
+      "LOCALHOST DEV INSTANCE ONLY. List saved leaderboard entries newest-first with their metric sets and source cacheKeys. Pass `profile` to score and sort entries by a named weighted-metric profile (see backtest_profile_list for how scoring is measured).",
     permission: "backtest.read",
     devOnly: true,
     readOnlyHint: true,
-    inputSchema: jsonSchema({}),
+    inputSchema: jsonSchema({
+      profile: {
+        type: "string",
+        description:
+          "Optional leaderboard profile name — entries come back sorted by score (best first) with score + scoreParts fields.",
+      },
+    }),
   },
   {
     name: "backtest_leaderboard_delete",
@@ -425,6 +431,47 @@ const toolDefinitions: RuntimeMcpToolDefinition[] = [
         id: { type: "string", description: "12-char leaderboard entry id." },
       },
       ["id"],
+    ),
+  },
+  {
+    name: "backtest_profile_list",
+    description:
+      "LOCALHOST DEV INSTANCE ONLY. List leaderboard profiles — named weighted-metric views used to score and sort entries — with each profile's weights, the exact scoring method, and every metric leaf id available for weighting.",
+    permission: "backtest.read",
+    devOnly: true,
+    readOnlyHint: true,
+    inputSchema: jsonSchema({}),
+  },
+  {
+    name: "backtest_profile_upsert",
+    description: `${WRITE_TOOL_NOTICE} LOCALHOST DEV INSTANCE ONLY. Create or update a leaderboard profile by name. weights maps metric leaf ids (from backtest_profile_list) to signed importance — positive rewards the metric, negative penalizes it; each is min-max normalized across entries after direction correction.`,
+    permission: "backtest.leaderboard.write",
+    devOnly: true,
+    inputSchema: jsonSchema(
+      {
+        name: {
+          type: "string",
+          description: "Profile name — case-insensitive upsert key (1-64 chars).",
+        },
+        weights: {
+          description:
+            'Metric weights, e.g. { "leaderboard.sharpeRatio": 0.3, "leaderboard.tradesPerDay": 0.4, "minEquity": -0.1 }.',
+          type: "object",
+        },
+      },
+      ["name", "weights"],
+    ),
+  },
+  {
+    name: "backtest_profile_delete",
+    description: `${WRITE_TOOL_NOTICE} LOCALHOST DEV INSTANCE ONLY. Delete a leaderboard profile by name.`,
+    permission: "backtest.leaderboard.write",
+    devOnly: true,
+    inputSchema: jsonSchema(
+      {
+        name: { type: "string", description: "Profile name to delete." },
+      },
+      ["name"],
     ),
   },
 ];

@@ -43,11 +43,28 @@ export interface BacktestLeaderboardMetrics {
   positionsClosed: number;
   /** Monthly-return Sharpe ratio (mean / stddev, no annualization). */
   sharpeRatio: number;
+  /** Closed positions per day over the run's timeline span. */
+  tradesPerDay?: number;
   /** Winning closed positions / total closed positions * 100. */
   winRate: number;
 }
 
-/** One saved leaderboard record persisted at storage/leaderboards/<id>.json. */
+/**
+ * A named weighted-metric view of the leaderboards. `weights` maps leaf ids
+ * (the column ids such as "leaderboard.sharpeRatio", "minEquity",
+ * "leaderboard.tradesPerDay") to a signed importance — positive rewards the
+ * metric, negative penalizes it. Scoring normalizes every metric min-max
+ * across the listed entries after direction correction, so weights are pure
+ * relative importance.
+ */
+export interface LeaderboardProfile {
+  name: string;
+  /** Creation/update timestamp in ms. */
+  t: number;
+  weights: Record<string, number>;
+}
+
+/** One saved leaderboard record persisted at storage/leaderboards/results/<id>.json. */
 export interface BacktestLeaderboardEntry {
   /** Short content hash — re-saving the same config+range overwrites. */
   id: string;

@@ -10,6 +10,8 @@ import {
     Button,
     CircularProgress,
     IconButton,
+    MenuItem,
+    Select,
     Table,
     TableBody,
     TableCell,
@@ -27,7 +29,18 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import ButtonDialog from "@/components/ui/ButtonDialog";
 import { strategyChipLabel } from "@/components/dashboard/navigation/NavbarStrategyChip";
 import { endpoints } from "../../endpoints";
-import type { BacktestLeaderboardEntry } from "@/lib/dev/backtestPrecision/leaderboards";
+import type {
+    BacktestLeaderboardEntry,
+    LeaderboardProfile,
+} from "@/lib/dev/backtestPrecision/leaderboards";
+import {
+    LOWER_IS_BETTER,
+    enabledAccountsOf,
+    minEquityOf,
+    readLeaf,
+    scoreEntries,
+} from "@/lib/dev/backtestPrecision/leaderboards/leaves";
+import LeaderboardProfilesManager from "./LeaderboardProfilesManager";
 import type { BacktestConfig } from "./types";
 
 type Order = "asc" | "desc";
@@ -75,22 +88,6 @@ export function formatTime(t?: number) {
     return new Date(t).toLocaleString();
 }
 
-/** Enabled accounts of a saved config — the balances the run was sized on. */
-function enabledAccountsOf(entry: Pick<BacktestLeaderboardEntry, "backtestConfig">) {
-    const settings = (entry.backtestConfig as BacktestConfig | undefined)?.settings;
-    return (settings?.accounts ?? []).filter((account) => account.enabled);
-}
-
-/** Sum of enabled accounts' initial balances — the minimum equity the config ran on. */
-function minEquityOf(entry: Pick<BacktestLeaderboardEntry, "backtestConfig">) {
-    const accounts = enabledAccountsOf(entry);
-    if (!accounts.length) return undefined;
-    return accounts.reduce(
-        (sum, account) => sum + (Number(account.sandbox?.initialBalanceUSDT) || 0),
-        0,
-    );
-}
-
 /** Min-equity cell: "[name $x] + [name $y] = $total" over enabled accounts. */
 export function formatMinEquity(
     entry: Pick<BacktestLeaderboardEntry, "backtestConfig">,
@@ -102,25 +99,6 @@ export function formatMinEquity(
             `[${account.name || account.slug}]$${Math.round(Number(account.sandbox?.initialBalanceUSDT) || 0)}`,
     );
     return `${parts.join(" + ")} = $${Math.round(minEquityOf(entry) ?? 0)}`;
-}
-
-/** Virtual leaf columns resolved per entry instead of via getNestedMetric. */
-const LEAF_VALUES = new Map<
-    string,
-    (entry: BacktestLeaderboardEntry) => unknown
->([["minEquity", minEquityOf]]);
-
-/** nested getter for sortable leaf ids like "leaderboard.monthlyGain.avg". */
-export function getNestedMetric(obj: unknown, path: string) {
-    return path
-        .split(".")
-        .reduce<unknown>(
-            (acc, key) =>
-                acc && typeof acc === "object"
-                    ? (acc as Record<string, unknown>)[key]
-                    : undefined,
-            obj,
-        );
 }
 
 /** Red-green translucent gradient for cell shading relative to a column range. */
@@ -223,6 +201,12 @@ export const HEADER_GROUPS: HeaderGroup[] = [
         label: "Trades",
         align: "right",
         tooltip: "Number of closed positions over the backtest range, summed across all accounts.\nMore trades means more samples — but also more fees, so read it together with Gain and Monthly Gain.\nSource: backtest result → positions[] with a closed event.",
+    },
+    {
+        id: "leaderboard.tradesPerDay",
+        label: "Trades/Day",
+        align: "right",
+        tooltip: "Closed positions per day over the run's range — realized income cadence.\nStored on the saved metric set; entries saved before this column existed fall back to trades ÷ range days from the config.\nHigher = more frequent income. Read it beside Win Rate and Sharpe.\nSource: leaderboard.tradesPerDay → positionsClosed ÷ (timeline span).",
     },
     {
         id: "leaderboard.sharpeRatio",
@@ -390,7 +374,11 @@ const DURATION_FIELDS = new Set([
     "leaderboard.emptyBalance.max",
 ]);
 
-const PLAIN_FIELDS = new Set(["leaderboard.positionsClosed", "leaderboard.sharpeRatio"]);
+const PLAIN_FIELDS = new Set([
+    "leaderboard.positionsClosed",
+    "leaderboard.sharpeRatio",
+    "leaderboard.tradesPerDay",
+]);
 
 /** Text leaf columns: field id -> cell formatter. Sorting uses the raw leaf. */
 export const TEXT_FIELDS = new Map<string, (value: unknown) => string>([
@@ -409,19 +397,17 @@ export const TEXT_FIELDS = new Map<string, (value: unknown) => string>([
 ]);
 
 /** Total leaf columns plus the trailing Actions column. */
-const TABLE_COLSPAN =
-    HEADER_GROUPS.reduce(
-        (sum, group) => sum + (group.children?.length ?? 1),
-        0,
-    ) + 1;
+function tableColspan(groups: HeaderGroup[]): number {
+    return (
+        groups.reduce(
+            (sum, group) => sum + (group.children?.length ?? 1),
+            0,
+        ) + 1
+    );
+}
 
 /** Columns where lower is better (gradient inverted). */
-const INVERT_FIELDS = new Set([
-    "minEquity",
-    ...FRACTION_FIELDS,
-    ...DURATION_FIELDS,
-    ...USD_FIELDS,
-]);
+const INVERT_FIELDS = LOWER_IS_BETTER;
 
 export function formatCell(fieldId: string, value: unknown): string {
     if (typeof value !== "number" || Number.isNaN(value)) return "-";
@@ -473,6 +459,8 @@ function LeaderboardsContent({
     onRunConfig,
 }: LeaderboardsContentProps) {
     const [entries, setEntries] = useState<BacktestLeaderboardEntry[]>([]);
+    const [profiles, setProfiles] = useState<LeaderboardProfile[]>([]);
+    const [activeProfileName, setActiveProfileName] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [orderBy, setOrderBy] = useState("leaderboard.gainPct");
@@ -482,10 +470,16 @@ function LeaderboardsContent({
         setLoading(true);
         setError(null);
         try {
-            const resp = await axios.get<{ entries: BacktestLeaderboardEntry[] }>(
-                endpoints.dev.backtestPrecisionLeaderboards,
-            );
-            setEntries(resp.data.entries ?? []);
+            const [entriesResp, profilesResp] = await Promise.all([
+                axios.get<{ entries: BacktestLeaderboardEntry[] }>(
+                    endpoints.dev.backtestPrecisionLeaderboards,
+                ),
+                axios.get<{ profiles: LeaderboardProfile[] }>(
+                    endpoints.dev.backtestPrecisionLeaderboardProfiles,
+                ),
+            ]);
+            setEntries(entriesResp.data.entries ?? []);
+            setProfiles(profilesResp.data.profiles ?? []);
         } catch (e) {
             setError(
                 axios.isAxiosError(e)
@@ -520,15 +514,51 @@ function LeaderboardsContent({
         );
     };
 
+    const profile = profiles.find(
+        (candidate) => candidate.name === activeProfileName,
+    );
+
+    /** Per-entry composite scores for the selected profile (0-100). */
+    const scores = useMemo(
+        () => (profile ? scoreEntries(entries, profile.weights) : null),
+        [entries, profile],
+    );
+
+    /** The Score column appears at the front only while a profile is active. */
+    const headerGroups = useMemo<HeaderGroup[]>(
+        () =>
+            profile
+                ? [
+                      {
+                          align: "right" as const,
+                          id: "profileScore",
+                          label: "Score",
+                          tooltip: `Weighted composite for the "${profile.name}" profile.\nEach metric is min-max normalized across the listed entries after direction correction (lower-is-better flips), then weighted: Σ w·n / Σ|w| × 100.\nList-relative — the score shifts when entries are added or removed.\nWeights: ${Object.entries(profile.weights).map(([id, w]) => `${id.replace("leaderboard.", "")} ${w}`).join(" · ")}`,
+                      },
+                      ...HEADER_GROUPS,
+                  ]
+                : HEADER_GROUPS,
+        [profile],
+    );
+
+    /** Leaf reader with the profile score pseudo-column overlaid. */
+    const leafValue = useCallback(
+        (entry: BacktestLeaderboardEntry, fieldId: string): unknown =>
+            fieldId === "profileScore"
+                ? scores?.get(entry.id)?.score
+                : readLeaf(entry, fieldId),
+        [scores],
+    );
+
     /** Numeric range per leaf column so gradient shading is relative across rows. */
     const columnRanges = useMemo(() => {
-        const leafIds = HEADER_GROUPS.flatMap(
+        const leafIds = headerGroups.flatMap(
             (group) => group.children?.map((child) => child.id) ?? [group.id],
         );
         const ranges = new Map<string, { min: number; max: number }>();
         for (const id of leafIds) {
             const values = entries
-                .map((entry) => LEAF_VALUES.get(id)?.(entry) ?? getNestedMetric(entry, id))
+                .map((entry) => leafValue(entry, id))
                 .filter((v): v is number => typeof v === "number" && !Number.isNaN(v));
             ranges.set(id, {
                 min: values.length ? Math.min(...values) : 0,
@@ -536,13 +566,13 @@ function LeaderboardsContent({
             });
         }
         return ranges;
-    }, [entries]);
+    }, [entries, headerGroups, leafValue]);
 
     const sortedEntries = useMemo(() => {
         const rows = [...entries];
         rows.sort((a, b) => {
-            const aVal = LEAF_VALUES.get(orderBy)?.(a) ?? getNestedMetric(a, orderBy);
-            const bVal = LEAF_VALUES.get(orderBy)?.(b) ?? getNestedMetric(b, orderBy);
+            const aVal = leafValue(a, orderBy);
+            const bVal = leafValue(b, orderBy);
             if (aVal == null && bVal == null) return 0;
             if (aVal == null) return -1;
             if (bVal == null) return 1;
@@ -555,7 +585,7 @@ function LeaderboardsContent({
             return order === "asc" ? cmp : -cmp;
         });
         return rows;
-    }, [entries, order, orderBy]);
+    }, [entries, leafValue, order, orderBy]);
 
     const handleSort = (id: string) => {
         const isAsc = orderBy === id && order === "asc";
@@ -564,7 +594,7 @@ function LeaderboardsContent({
     };
 
     const renderCell = (entry: BacktestLeaderboardEntry, fieldId: string) => {
-        const value = LEAF_VALUES.get(fieldId)?.(entry) ?? getNestedMetric(entry, fieldId);
+        const value = leafValue(entry, fieldId);
         const range = columnRanges.get(fieldId);
         const numeric = typeof value === "number" ? value : undefined;
         const background = range
@@ -572,7 +602,9 @@ function LeaderboardsContent({
             : "inherit";
         return (
             <TableCell key={fieldId} sx={{ backgroundColor: background }}>
-                {fieldId === "minEquity"
+                {fieldId === "profileScore"
+                    ? formatNumber(numeric)
+                    : fieldId === "minEquity"
                     ? formatMinEquity(entry)
                     : fieldId === "label"
                       ? entry.label ??
@@ -603,10 +635,45 @@ function LeaderboardsContent({
                     px: 1,
                 }}
             >
-                <Typography color="text.secondary" variant="caption">
-                    Stored in storage/leaderboards/[hash].json · Copy config pastes into
-                    Settings → Backup → Restore Config.
-                </Typography>
+                <Box sx={{ alignItems: "center", display: "flex", gap: 1 }}>
+                    <Typography color="text.secondary" variant="caption">
+                        Stored in storage/leaderboards/results/[hash].json · Copy config
+                        pastes into Settings → Backup → Restore Config.
+                    </Typography>
+                    <Select
+                        aria-label="Leaderboard profile"
+                        displayEmpty
+                        onChange={(event) => {
+                            const name = event.target.value;
+                            setActiveProfileName(name);
+                            setOrder(name ? "desc" : "desc");
+                            setOrderBy(name ? "profileScore" : "leaderboard.gainPct");
+                        }}
+                        size="small"
+                        sx={{ fontSize: "0.75rem", minWidth: 130 }}
+                        value={
+                            profiles.some(
+                                (candidate) => candidate.name === activeProfileName,
+                            )
+                                ? activeProfileName
+                                : ""
+                        }
+                    >
+                        <MenuItem value="">
+                            <em>No profile</em>
+                        </MenuItem>
+                        {profiles.map((candidate) => (
+                            <MenuItem key={candidate.name} value={candidate.name}>
+                                {candidate.name}
+                            </MenuItem>
+                        ))}
+                    </Select>
+                    <LeaderboardProfilesManager
+                        entries={entries}
+                        onChanged={() => void load()}
+                        profiles={profiles}
+                    />
+                </Box>
                 <Button disabled={loading} onClick={() => void load()} size="small">
                     {loading ? "Refreshing..." : "Refresh"}
                 </Button>
@@ -638,7 +705,7 @@ function LeaderboardsContent({
                         >
                             <TableHead sx={{ backgroundColor: grey[300] }}>
                                 <TableRow>
-                                    {HEADER_GROUPS.map((group) =>
+                                    {headerGroups.map((group) =>
                                         group.children ? (
                                             <TableCell
                                                 align="center"
@@ -678,7 +745,7 @@ function LeaderboardsContent({
                                     </TableCell>
                                 </TableRow>
                                 <TableRow>
-                                    {HEADER_GROUPS.flatMap((group) =>
+                                    {headerGroups.flatMap((group) =>
                                         (group.children ?? []).map((child) => (
                                             <TableCell align="center" key={child.id}>
                                                 <HeaderTooltip title={child.tooltip}>
@@ -700,7 +767,7 @@ function LeaderboardsContent({
                             <TableBody>
                                 {sortedEntries.map((entry) => (
                                     <TableRow key={entry.id}>
-                                        {HEADER_GROUPS.flatMap((group) =>
+                                        {headerGroups.flatMap((group) =>
                                             (group.children ?? [{ id: group.id }]).map((leaf) =>
                                                 renderCell(entry, leaf.id),
                                             ),
@@ -763,7 +830,7 @@ function LeaderboardsContent({
                                 ))}
                                 {sortedEntries.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={TABLE_COLSPAN}>
+                                        <TableCell colSpan={tableColspan(headerGroups)}>
                                             <Typography
                                                 color="text.secondary"
                                                 sx={{ py: 3 }}
