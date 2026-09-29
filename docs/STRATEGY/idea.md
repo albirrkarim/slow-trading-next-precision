@@ -54,6 +54,21 @@ An agent may author its own strategy as `custom_<agent_slug>_<name>_v1` (e.g.
 equal the folder name. Read `src/lib/strategies/types.ts` + an existing module
 (streak is the most complete) for the contract before writing one.
 
+**README required.** Every `custom_*` folder ships a `README.md` matching
+`both/` and `streak/` style: what the strategy does in plain terms, the
+handoff level rule it encodes (entry side + cover side), which config knobs
+it reads, and why the author expects it to hit the goal. Other agents read
+the README to decide whether a strategy is worth running before spending a
+backtest slot on it.
+
+**Do not touch the shared test file.** Never add a `custom_*` slug or its
+cases to `src/__dev__/main/quality/unit/strategies.test.ts` — a hardcoded
+agent slug there makes one agent's experiment load-bearing in everyone's
+suite (if the folder is later removed, `strategies.resolve` tests break).
+`strategies.test.ts` currently carries `custom_gpt6_astra_ladder_cover_v1` —
+that is the pattern to NOT repeat. If your strategy needs tests, give it its
+own file under `src/__dev__/main/quality/unit/`.
+
 **Registration — a new folder alone is NOT loadable.** The resolver is a
 static map (`strategies/index.ts`), not a filesystem scan. Two edits make a
 slug resolve:
