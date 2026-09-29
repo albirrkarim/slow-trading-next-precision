@@ -168,17 +168,13 @@ export default function PositionLevelSequence({
                   monitoringState={item.monitoringState}
                 />
               )}
-              {exitMonitoringState ? (
-                chip
-              ) : (
-                <Tooltip
-                  arrow
-                  placement="top"
-                  title={buildTooltip(item, targetWasHit)}
-                >
-                  {chip}
-                </Tooltip>
-              )}
+              <Tooltip
+                arrow
+                placement="top"
+                title={buildTooltip(item, targetWasHit)}
+              >
+                {chip}
+              </Tooltip>
             </Box>
           );
         })}

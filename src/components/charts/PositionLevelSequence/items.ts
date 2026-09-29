@@ -145,6 +145,13 @@ export function buildTooltip(
     item.attemptMessage && !item.isAveraged && item.attemptedAt
       ? `Attempted at ${format.timeForLog(item.attemptedAt)}`
       : null,
+    item.exitMonitoringState
+      ? `Exit stage: ${
+          item.exitMonitoringState.stage === "speedup"
+            ? "Speedup"
+            : "Standard"
+        } — ${item.exitMonitoringState.reason.trim() || "No monitoring reason recorded."}`
+      : null,
     item.reserveStatus === "RESERVED" ? "Reserved watch step" : null,
     item.reserveStatus === "UNRESERVED" ? "Unreserved watch step" : null,
     formatCoverage(item),

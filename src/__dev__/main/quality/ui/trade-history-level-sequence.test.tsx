@@ -92,9 +92,9 @@ describe("trade-history level sequence", () => {
     const exitStageIcon = screen.getByLabelText(
       "Standard monitoring stage at exit level -4",
     );
-    expect(exitStageIcon.getAttribute("tabindex")).toBe("0");
+    expect(exitStageIcon.closest(".MuiChip-root")).toBeTruthy();
     fireEvent.mouseOver(exitStageIcon);
-    expect((await screen.findByRole("tooltip")).textContent).toBe(
+    expect((await screen.findByRole("tooltip")).textContent).toContain(
       position.lastMonitoringStage.reason,
     );
   });
@@ -137,7 +137,7 @@ describe("trade-history level sequence", () => {
     );
     expect(exitStageIcon.closest(".MuiChip-root")).toBeTruthy();
     fireEvent.mouseOver(exitStageIcon);
-    expect((await screen.findByRole("tooltip")).textContent).toBe(
+    expect((await screen.findByRole("tooltip")).textContent).toContain(
       position.lastMonitoringStage.reason,
     );
   });

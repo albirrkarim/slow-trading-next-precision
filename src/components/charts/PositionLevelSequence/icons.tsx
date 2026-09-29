@@ -42,7 +42,7 @@ export function MonitoringStateIcon({
   );
 }
 
-/** Icon embedded inside the exit chip, carrying the stage at close. */
+/** Icon embedded inside the exit chip, marking the stage at close. */
 export function ExitMonitoringStageIcon({
   level,
   monitoringState,
@@ -55,26 +55,18 @@ export function ExitMonitoringStageIcon({
   const Icon = isSpeedup ? SpeedRoundedIcon : ScheduleRoundedIcon;
 
   return (
-    <Tooltip
-      arrow
-      placement="top"
-      title={monitoringState.reason.trim() || "No monitoring reason recorded."}
+    <Box
+      aria-label={`${stageLabel} monitoring stage at exit level ${level}`}
+      component="span"
+      role="img"
+      sx={{
+        alignItems: "center",
+        color: isSpeedup ? "warning.light" : "inherit",
+        display: "inline-flex",
+        ml: 0.375,
+      }}
     >
-      <Box
-        aria-label={`${stageLabel} monitoring stage at exit level ${level}`}
-        component="span"
-        role="img"
-        sx={{
-          alignItems: "center",
-          color: isSpeedup ? "warning.light" : "inherit",
-          cursor: "help",
-          display: "inline-flex",
-          ml: 0.375,
-        }}
-        tabIndex={0}
-      >
-        <Icon aria-hidden sx={{ fontSize: 12 }} />
-      </Box>
-    </Tooltip>
+      <Icon aria-hidden sx={{ fontSize: 12 }} />
+    </Box>
   );
 }
