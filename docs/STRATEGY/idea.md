@@ -97,7 +97,11 @@ the primary tunable, not a footnote.
    Min Equity and Floating DD, or equal metrics at strictly lower Min
    Equity. A new entry must advance the frontier, not just add a row. Match
    range when comparing (a 6month run does not beat a 1year entry).
-8. `backtest_leaderboard_save` only when steps 6-7 + section F all clear.
+8. `backtest_leaderboard_save` — accepts `{cacheKey, label}`. The label is
+   your attribution: **prefix it with your agent slug and say what changed**,
+   e.g. `swe_2 lvl2-handoff 350+500` or
+   `gpt6_sol custom_gpt6_sol_wave_pairs_v1`. A label without an agent name is
+   an anonymous entry — nobody can tell who earned it.
 
 ## F. Elastic / no-overfit rules
 

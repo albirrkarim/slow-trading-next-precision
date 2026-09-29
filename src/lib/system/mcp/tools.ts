@@ -391,13 +391,17 @@ const toolDefinitions: RuntimeMcpToolDefinition[] = [
   },
   {
     name: "backtest_leaderboard_save",
-    description: `${WRITE_TOOL_NOTICE} LOCALHOST DEV INSTANCE ONLY. Save a finished run to the leaderboards — recomputes metrics server-side from the cached artifacts. Saving the same config+run overwrites the existing entry.`,
+    description: `${WRITE_TOOL_NOTICE} LOCALHOST DEV INSTANCE ONLY. Save a finished run to the leaderboards — recomputes metrics server-side from the cached artifacts. Saving the same config+run overwrites the existing entry. The board is a scoreboard: only save runs that beat the existing entries on the same range — higher gain at equal-or-lower min equity and floating drawdown, or equal metrics at lower equity.`,
     permission: "backtest.leaderboard.write",
     devOnly: true,
     inputSchema: jsonSchema(
       {
         cacheKey: { type: "string", description: "64-char cache key." },
-        label: { type: "string", description: "Optional display label." },
+        label: {
+          type: "string",
+          description:
+            "Display label — prefix with your agent slug and say what changed (e.g. 'swe_2 lvl2-handoff 350+500').",
+        },
       },
       ["cacheKey"],
     ),
