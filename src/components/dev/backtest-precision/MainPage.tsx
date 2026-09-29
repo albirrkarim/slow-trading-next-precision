@@ -334,6 +334,40 @@ export default function DynamicTradeAnalytics() {
                 </Box>
             </Box>
 
+            <Box
+                sx={{
+                    alignItems: "center",
+                    borderBottom: 1,
+                    borderColor: "divider",
+                    display: "flex",
+                    gap: 0.5,
+                    px: 1,
+                    py: 0.25,
+                }}
+            >
+                <Typography
+                    component="span"
+                    sx={{  fontWeight: 700 }}
+                >
+                    MCP:
+                </Typography>
+                <Typography
+                    component="span"
+                    sx={{
+                        color: "text.secondary",
+                        flex: 1,
+                        
+                        minWidth: 0,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                    }}
+                >
+                    AI agents can run and inspect this backtest loop via MCP
+                    tools — design: docs/TODO/backtest.md
+                </Typography>
+            </Box>
+
             {data?.cachePath && (
                 <Box
                     sx={{
