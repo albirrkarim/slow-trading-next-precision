@@ -254,7 +254,10 @@ export async function datasetCoverage(): Promise<
   const coverage: Record<string, { firstDay: string; lastDay: string }> = {};
   for (const item of await fs.readdir(root, { withFileTypes: true })) {
     if (!item.isDirectory()) continue;
-    const symbolDir = path.join(root, item.name);
+    const symbolDir = path.join(
+      /* turbopackIgnore: true */ root,
+      item.name,
+    );
     const days = (await fs.readdir(symbolDir))
       .filter((name) => name.endsWith(".json"))
       .sort();
@@ -263,7 +266,8 @@ export async function datasetCoverage(): Promise<
     // `writeJson` emits `[]` (2 bytes) for empty days — a file with content
     // is always larger, so size alone identifies non-empty days.
     const nonEmpty = async (file: string) =>
-      (await fs.stat(path.join(symbolDir, file))).size > 4;
+      (await fs.stat(path.join(/* turbopackIgnore: true */ symbolDir, file)))
+        .size > 4;
     let firstDay: string | undefined;
     let lastDay: string | undefined;
     for (const file of days) {

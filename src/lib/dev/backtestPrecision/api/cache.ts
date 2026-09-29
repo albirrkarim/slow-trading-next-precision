@@ -73,7 +73,7 @@ function stableStringify(value: unknown): string {
 }
 
 function cacheDir(cacheKey: string): string {
-  return path.join(RESULTS_DIR, cacheKey);
+  return path.join(/* turbopackIgnore: true */ RESULTS_DIR, cacheKey);
 }
 
 /** Absolute path of the directory holding one cache entry's artifacts. */
@@ -237,7 +237,9 @@ async function listMetas(): Promise<
   }> = [];
   for (const name of await fs.readdir(RESULTS_DIR)) {
     if (!/^[0-9a-f]{64}$/.test(name)) continue;
-    const meta = await readMetaFile(path.join(RESULTS_DIR, name));
+    const meta = await readMetaFile(
+      path.join(/* turbopackIgnore: true */ RESULTS_DIR, name),
+    );
     if (
       meta?.v !== CHUNKED_LAYOUT ||
       !meta.exchangeType ||
@@ -294,7 +296,9 @@ async function read(
       exchangeType: meta.exchangeType,
     } as Record<keyof BacktestPrecisionResult, unknown>;
     for (const field of LEGACY_FIELDS) {
-      result[field] = await fs.readJson(path.join(dir, `${field}.json`));
+      result[field] = await fs.readJson(
+        path.join(/* turbopackIgnore: true */ dir, `${field}.json`),
+      );
     }
     if (!Array.isArray(result.positions)) return null;
     return result as unknown as BacktestPrecisionResult;
@@ -357,7 +361,7 @@ async function readField(
     }
 
     const legacyFile = (legacyField: keyof BacktestPrecisionResult) =>
-      path.join(dir, `${legacyField}.json`);
+      path.join(/* turbopackIgnore: true */ dir, `${legacyField}.json`);
     if (field === "positions") {
       const file = legacyFile("positions");
       return (await fs.pathExists(file)) ? fs.readJson(file) : null;

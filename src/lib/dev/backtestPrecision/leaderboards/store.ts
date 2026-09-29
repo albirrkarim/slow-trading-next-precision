@@ -34,8 +34,8 @@ async function migrateLegacyEntries(): Promise<void> {
   await fs.ensureDir(resultsDir());
   for (const name of names) {
     await fs.move(
-      path.join(directory, name),
-      path.join(resultsDir(), name),
+      path.join(/* turbopackIgnore: true */ directory, name),
+      path.join(/* turbopackIgnore: true */ resultsDir(), name),
       { overwrite: true },
     );
   }

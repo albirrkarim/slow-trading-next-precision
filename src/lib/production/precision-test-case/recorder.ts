@@ -362,7 +362,10 @@ async function end(state: RuntimeEngineState): Promise<PrecisionTestCaseResult> 
 
   const startTime = recordingState.startTime;
   const endTime = Math.max(startTime, finiteTime(state.currentTime));
-  const pendingPath = path.join(recordingDirectory(), recordingState.fileName);
+  const pendingPath = path.join(
+    /* turbopackIgnore: true */ recordingDirectory(),
+    recordingState.fileName,
+  );
   if (!(await fs.pathExists(pendingPath))) {
     throw new Error(
       `Recording test case file is missing: ${recordingState.fileName}`,
