@@ -39,6 +39,8 @@ The backtest loop is already API-shaped; the MCP layer only exposes it:
 | `backtest_result_metrics` | read | evaluate before saving | `{cacheKey}` → `BacktestLeaderboardMetrics`. **Missing today**: `meta.json` only stores the coarse `summary`; the full metric set is derived on demand — currently the leaderboard POST fuses compute+save into one step, so there's no preview without committing. This tool runs `metrics.compute(backtestResultCache.read(cacheKey))` and returns metrics without saving. |
 | `backtest_leaderboard_save` / `_list` / `_delete` | write | save to leaderboards | Input `{cacheKey, label?}` — wraps `api/leaderboards.ts` POST, which recomputes metrics from the cached artifacts and persists `storage/leaderboards/<id>.json`. |
 
+The `summary` returned by `run`/`status`/`runs_list` already covers the results page's aggregate sections as JSON — `summary.accounts[]` = the "Total PNL per account" table (slug, start, end, pnlUsdt, gainPct, wins, losses), `summary.exits[slug]` = the exit-reason and profit/loss-coin histograms (`profit`, `loss`, `profitCoins`, `lossCoins` — `{reason, count}` buckets). No dedicated chart tool needed; pies are visualization only.
+
 ## A.2 `backtest_trade_inspect` payload
 
 Mirrors `TradeChartDialog` for one trade, but **cropped for MCP payload efficiency** — every candle costs agent context tokens:
