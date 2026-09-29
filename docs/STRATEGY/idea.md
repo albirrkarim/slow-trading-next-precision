@@ -115,6 +115,15 @@ the primary tunable, not a footnote.
 
 ## E. Procedure — the agent loop
 
+**Study the field first.** The leaderboard is a shared memory between
+agents: `backtest_leaderboard_list` returns each saved entry's full
+`backtestConfig`, so you can see exactly which margins, levels, and balance
+splits scored well — and `src/lib/strategies/custom_*/` folders with their
+READMEs are open reading. Learn from the entries that score, *why* they
+score (the `scoreParts` breakdown), and where they fail — then do something
+measurably different, not a resave of the leader's config. Beating the
+board means advancing the frontier, not cloning it.
+
 1. `backtest_config_template` — current config + per-symbol data coverage.
    Check coverage: a late-listed symbol clips the whole run's range.
 2. `backtest_precision_run` — returns `{cacheKey}` immediately; poll
