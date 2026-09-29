@@ -4,12 +4,13 @@ import axios from "axios";
 import { useCallback, useRef, useState } from "react";
 
 import type { BacktestBalanceSnapshot } from "@/lib/dev/backtestPrecision/backtest/backtest-precision-types";
+import type { BacktestLeaderboardMetrics } from "@/lib/dev/backtestPrecision/leaderboards";
 import type { Position } from "@/lib/system/trading";
 import type { VolatilityPoint } from "@/lib/system/types";
 
 import { endpoints } from "../../endpoints";
 
-type ArtifactField = "positions" | "vpoints" | "snapshots";
+type ArtifactField = "positions" | "vpoints" | "snapshots" | "metrics";
 
 export interface LazyArtifact<T> {
   data?: T;
@@ -27,7 +28,9 @@ const responseKey = (field: ArtifactField) =>
     ? "positions"
     : field === "vpoints"
       ? "vPointsMap"
-      : "balanceSnapshots";
+      : field === "metrics"
+        ? "metrics"
+        : "balanceSnapshots";
 
 interface ArtifactEntry<T> {
   key: string;
@@ -104,6 +107,7 @@ function useLazyArtifact<T>(
  */
 export function useBacktestArtifacts(cacheKey?: string) {
   return {
+    metrics: useLazyArtifact<BacktestLeaderboardMetrics>(cacheKey, "metrics"),
     positions: useLazyArtifact<Position[]>(cacheKey, "positions"),
     vpoints: useLazyArtifact<Record<string, VolatilityPoint[]>>(
       cacheKey,

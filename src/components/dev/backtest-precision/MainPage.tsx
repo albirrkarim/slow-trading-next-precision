@@ -28,6 +28,7 @@ import PrecisionBTestConfig, { DEFAULT_BACKTEST_CONFIG } from "./Config";
 import BacktestBalanceChart from "./BalanceChart";
 import BacktestDailyPnlCalendar from "./DailyPnlCalendar";
 import Leaderboards from "./Leaderboards";
+import MetricsStrip from "./MetricsStrip";
 import type { BacktestConfig } from "./types";
 import { useBacktestArtifacts } from "./use-backtest-artifacts";
 import VPointsResult from "./VPointsResult";
@@ -407,6 +408,13 @@ export default function DynamicTradeAnalytics() {
                         copiedTooltip="Copied"
                     />
                 </Box>
+            )}
+
+            {data?.cacheKey && (
+                <MetricsStrip
+                    artifact={artifacts.metrics}
+                    backtestConfig={backtestConfig}
+                />
             )}
 
             {error && <Alert severity="error" sx={{ m: 2 }}>{error}</Alert>}

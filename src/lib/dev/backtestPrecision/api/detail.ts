@@ -2,10 +2,11 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import systemConfig from "@/lib/system/config";
 
+import backtestLeaderboards from "../leaderboards";
 import backtestResultCache from "./cache";
 
 const KEY_PATTERN = /^[0-9a-f]{64}$/;
-const FIELDS = new Set(["positions", "vpoints", "snapshots"]);
+const FIELDS = new Set(["positions", "vpoints", "snapshots", "metrics"]);
 
 const pickQuery = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
@@ -49,7 +50,17 @@ export default async function backtestDetailHandler(
   if (!field || !FIELDS.has(field)) {
     res
       .status(400)
-      .json({ error: '"field" must be positions|vpoints|snapshots.' });
+      .json({ error: '"field" must be positions|vpoints|snapshots|metrics.' });
+    return;
+  }
+
+  if (field === "metrics") {
+    const result = await backtestResultCache.read(key);
+    if (!result) {
+      res.status(404).json({ error: "Artifact not found for this cache key." });
+      return;
+    }
+    res.json({ metrics: backtestLeaderboards.metrics.compute(result) });
     return;
   }
 

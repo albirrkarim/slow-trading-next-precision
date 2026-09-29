@@ -70,13 +70,13 @@ function formatUsdt(value: number | undefined) {
     return value < 0 ? `-$${Math.abs(value).toFixed(2)}` : `$${value.toFixed(2)}`;
 }
 
-function formatTime(t?: number) {
+export function formatTime(t?: number) {
     if (!t) return "-";
     return new Date(t).toLocaleString();
 }
 
 /** nested getter for sortable leaf ids like "leaderboard.monthlyGain.avg". */
-function getNested(obj: unknown, path: string) {
+export function getNestedMetric(obj: unknown, path: string) {
     return path
         .split(".")
         .reduce<unknown>(
@@ -118,7 +118,7 @@ const headerTooltipSlotProps = {
     },
 } as const;
 
-function HeaderTooltip({
+export function HeaderTooltip({
     children,
     title,
 }: {
@@ -137,7 +137,7 @@ function HeaderTooltip({
     );
 }
 
-interface HeaderGroup {
+export interface HeaderGroup {
     id: string;
     label: string;
     align?: "left" | "right" | "center";
@@ -145,7 +145,7 @@ interface HeaderGroup {
     tooltip?: string;
 }
 
-const HEADER_GROUPS: HeaderGroup[] = [
+export const HEADER_GROUPS: HeaderGroup[] = [
     {
         id: "label",
         label: "Label",
@@ -353,7 +353,7 @@ const DURATION_FIELDS = new Set([
 const PLAIN_FIELDS = new Set(["leaderboard.positionsClosed", "leaderboard.sharpeRatio"]);
 
 /** Text leaf columns: field id -> cell formatter. Sorting uses the raw leaf. */
-const TEXT_FIELDS = new Map<string, (value: unknown) => string>([
+export const TEXT_FIELDS = new Map<string, (value: unknown) => string>([
     [
         "backtestConfig.range",
         (value) =>
@@ -382,7 +382,7 @@ const INVERT_FIELDS = new Set([
     ...USD_FIELDS,
 ]);
 
-function formatCell(fieldId: string, value: unknown): string {
+export function formatCell(fieldId: string, value: unknown): string {
     if (typeof value !== "number" || Number.isNaN(value)) return "-";
     if (DURATION_FIELDS.has(fieldId)) return msToHuman(value);
     if (FRACTION_FIELDS.has(fieldId)) return formatPct(value, true);
@@ -487,7 +487,7 @@ function LeaderboardsContent({
         const ranges = new Map<string, { min: number; max: number }>();
         for (const id of leafIds) {
             const values = entries
-                .map((entry) => getNested(entry, id))
+                .map((entry) => getNestedMetric(entry, id))
                 .filter((v): v is number => typeof v === "number" && !Number.isNaN(v));
             ranges.set(id, {
                 min: values.length ? Math.min(...values) : 0,
@@ -500,8 +500,8 @@ function LeaderboardsContent({
     const sortedEntries = useMemo(() => {
         const rows = [...entries];
         rows.sort((a, b) => {
-            const aVal = getNested(a, orderBy);
-            const bVal = getNested(b, orderBy);
+            const aVal = getNestedMetric(a, orderBy);
+            const bVal = getNestedMetric(b, orderBy);
             if (aVal == null && bVal == null) return 0;
             if (aVal == null) return -1;
             if (bVal == null) return 1;
@@ -523,7 +523,7 @@ function LeaderboardsContent({
     };
 
     const renderCell = (entry: BacktestLeaderboardEntry, fieldId: string) => {
-        const value = getNested(entry, fieldId);
+        const value = getNestedMetric(entry, fieldId);
         const range = columnRanges.get(fieldId);
         const numeric = typeof value === "number" ? value : undefined;
         const background = range
