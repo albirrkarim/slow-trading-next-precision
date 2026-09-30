@@ -1,9 +1,7 @@
 "use client";
 
-import type { ReactElement } from "react";
 import ButtonDialog from "@/components/ui/ButtonDialog";
 import { endpoints } from "@/components/endpoints";
-import ShowChartIcon from "@mui/icons-material/ShowChart";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import {
   Box,
@@ -17,372 +15,47 @@ import {
   TablePagination,
   TableRow,
   TableSortLabel,
-  Tooltip,
   Typography,
 } from "@mui/material";
 import axios from "axios";
-import moment from "moment";
 import { useMemo, useState } from "react";
 import { useSnackbar } from "notistack";
-import TradeChartBase from "@/components/charts/TradeChartBase";
 import format from "@/lib/system/utils/format";
 import { NetProfitPercentHistorySparkline } from "@/components/charts/NetProfitPercentHistorySparkline";
 import PositionLevelSequence, {
   buildHistoryPositionLevelSequence,
 } from "@/components/charts/PositionLevelSequence";
 import { EXCHANGE_COLOR_MAP } from "@/components/charts/constants";
-import { buildTradeMarkersFromHistory } from "@/lib/system/utils/ui/trade-markers";
 import type { ExchangeType } from "@/lib/exchange";
 
-
-import RangedValueText, {
-  type RangedValueColorRange,
-} from "./RangedValueText";
-import type { SlowTradingReportRow } from "./types";
-import { formatHoldMs } from "./utils";
+import RangedValueText from "../RangedValueText";
+import type { SlowTradingReportRow } from "../types";
+import { formatHoldMs } from "../utils";
 import { positionData } from "@/lib/system/trading";
 import pair from "@/lib/strategies/shared/pair";
-import TradeHistoryNotesField from "./TradeHistoryNotesField";
+import TradeHistoryNotesField from "../TradeHistoryNotesField";
 import JsonTreeViewer from "@/components/ui/JsonTreeViewer";
-import type { RuntimeAccountConfig, RuntimeMode } from "@/lib/system/runtime";
+import type { RuntimeMode } from "@/lib/system/runtime";
 import type { RuntimeDashboardState } from "@/lib/system/dashboard";
 import type { VolatilityPoint } from "@/lib/system/types";
 
-type SortKey =
-  | "symbol"
-  | "entryTime"
-  | "entryMarginUSDT"
-  | "exitTime"
-  | "holdMs"
-  | "maxDrawdownPercent"
-  | "maxRunUpPercent"
-  | "maxDrawdownUsdt"
-  | "maxRunUpUsdt"
-  | "netProfitUSDT";
+import type { SortKey, TradeHistoryAccount } from "./types";
+import {
+  formatPercent,
+  formatTradeTime,
+  formatUsdt,
+  getEntryMarginUsdt,
+} from "./format";
+import {
+  DRAWDOWN_COLOR_RANGES,
+  HOLD_DURATION_COLOR_RANGES,
+  PROFIT_LOSS_COLOR_RANGES,
+  RUN_UP_COLOR_RANGES,
+} from "./colors";
+import { FeatureCell, MetricTooltip, TradeAuditMessage } from "./cells";
+import TradeChartDialog from "./TradeChartDialog";
 
-type TradeHistoryAccount = Pick<RuntimeAccountConfig, "name" | "slug"> & {
-  trading?: Pick<RuntimeAccountConfig["trading"], "notes">;
-};
-
-const metricTooltipSlotProps = {
-  tooltip: {
-    sx: {
-      maxWidth: 420,
-      p: 1.1,
-      fontSize: "0.8rem",
-      lineHeight: 1.45,
-    },
-  },
-};
-
-const TRADE_TIME_FORMAT = "DD MMM YYYY HH:mm";
-const TRADE_TIME_SAME_MONTH_FORMAT = "DD MMM HH:mm";
-const DAY_MS = 24 * 60 * 60 * 1000;
-const TRADE_CHART_CONTEXT_MS = 30 * DAY_MS;
-const HOLD_DURATION_COLOR_RANGES: RangedValueColorRange[] = [
-  {
-    color: "success.main",
-    max: DAY_MS,
-  },
-  {
-    color: "warning.main",
-    max: DAY_MS * 2,
-    maxInclusive: true,
-    min: DAY_MS,
-  },
-  {
-    color: "error.main",
-    min: DAY_MS * 2,
-    minInclusive: false,
-  },
-];
-const RUN_UP_COLOR_RANGES: RangedValueColorRange[] = [
-  {
-    color: "error.main",
-    max: 1,
-  },
-  {
-    color: "warning.main",
-    max: 5,
-    min: 1,
-  },
-  {
-    color: "success.main",
-    min: 5,
-    minInclusive: false,
-  },
-];
-const DRAWDOWN_COLOR_RANGES: RangedValueColorRange[] = [
-  {
-    color: "error.main",
-    max: -5,
-    maxInclusive: true,
-  },
-  {
-    color: "warning.main",
-    max: -2,
-    min: -5,
-    minInclusive: false,
-  },
-  {
-    color: "success.main",
-    min: -2,
-  },
-];
-const PROFIT_LOSS_COLOR_RANGES: RangedValueColorRange[] = [
-  {
-    color: "error.main",
-    max: 0,
-  },
-  {
-    color: "warning.main",
-    max: 0,
-    maxInclusive: true,
-    min: 0,
-  },
-  {
-    color: "success.main",
-    min: 0,
-    minInclusive: false,
-  },
-];
-
-function MetricTooltip({
-  children,
-  title,
-}: {
-  children: ReactElement;
-  title: string;
-}) {
-  return (
-    <Tooltip
-      arrow
-      placement="top"
-      slotProps={metricTooltipSlotProps}
-      title={title}
-    >
-      {children}
-    </Tooltip>
-  );
-}
-
-export function TradeAuditMessage({ message }: { message?: string }) {
-  const normalizedMessage = message?.trim();
-
-  if (!normalizedMessage) {
-    return null;
-  }
-
-  return (
-    <Typography
-      component="p"
-      variant="caption"
-      color="text.secondary"
-      sx={{
-        m: 0,
-        mt: 0.5,
-        overflowWrap: "anywhere",
-        whiteSpace: "pre-wrap",
-      }}
-    >
-      {normalizedMessage}
-    </Typography>
-  );
-}
-
-
-
-function formatTradeTime({
-  compareTimeMs,
-  timeMs,
-}: {
-  compareTimeMs?: number;
-  timeMs?: number;
-}) {
-  if (!timeMs) {
-    return "—";
-  }
-
-  const tradeMoment = moment(timeMs);
-
-  if (compareTimeMs && tradeMoment.isSame(moment(compareTimeMs), "month")) {
-    return tradeMoment.format(TRADE_TIME_SAME_MONTH_FORMAT);
-  }
-
-  return tradeMoment.format(TRADE_TIME_FORMAT);
-}
-
-function formatPercent(value: number | null | undefined) {
-  return typeof value === "number" && Number.isFinite(value)
-    ? `${value > 0 ? "+" : ""}${value.toFixed(2)}%`
-    : "—";
-}
-
-function formatUsdt(value: number | null | undefined) {
-  return typeof value === "number" && Number.isFinite(value)
-    ? `$${value >= 0 ? "+" : ""}${value.toFixed(2)}`
-    : "—";
-}
-
-
-/** Gets the entry margin for display, with legacy fallbacks for old rows. */
-function getEntryMarginUsdt(row: SlowTradingReportRow) {
-  if (typeof row.exposure.marginUsdt === "number" && Number.isFinite(row.exposure.marginUsdt)) {
-    return row.exposure.marginUsdt;
-  }
-
-  if (
-    typeof row.exposure.notionalUsdt === "number" &&
-    Number.isFinite(row.exposure.notionalUsdt) &&
-    typeof row.exposure.leverage === "number" &&
-    Number.isFinite(row.exposure.leverage) &&
-    row.exposure.leverage > 0
-  ) {
-    return row.exposure.notionalUsdt / row.exposure.leverage;
-  }
-
-  return typeof row.exposure.notionalUsdt === "number" && Number.isFinite(row.exposure.notionalUsdt)
-    ? row.exposure.notionalUsdt
-    : 0;
-}
-
-function buildTradeChartPosition(row: SlowTradingReportRow) {
-  return row;
-}
-
-function TradeChartDialog({
-  exchangeType,
-  getVolatilityPoints,
-  history,
-  row,
-}: {
-  exchangeType: ExchangeType;
-  getVolatilityPoints?: (symbol: string) => VolatilityPoint[] | undefined;
-  history: SlowTradingReportRow[];
-  row: SlowTradingReportRow;
-}) {
-  const tradeEndMs = row.closed?.t ?? row.opened.t;
-  const legMeta = pair.meta.ofPosition(row);
-  const legPrefix = legMeta ? `${legMeta.role} leg ` : "";
-
-  return (
-    <ButtonDialog
-      title="Chart"
-      titleLong={`${row.symbol} — Trade Chart`}
-      maxWidth="xl"
-      customButton={(handleOpen) => (
-        <IconButton
-          size="small"
-          onClick={handleOpen}
-          title="View trade chart"
-          color="primary"
-        >
-          <ShowChartIcon fontSize="small" />
-        </IconButton>
-      )}
-    >
-      {() => (
-        <Box sx={{ p: 1, backgroundColor: "background.default" }}>
-          <TradeChartBase
-            activePosition={buildTradeChartPosition(row)}
-            defaultInterval="1m"
-            symbol={row.symbol}
-            exchange={exchangeType}
-            marketType={
-              (row.tradingMode?.toUpperCase() as any) ??
-              (exchangeType === "tokocrypto" ? "SPOT" : "FUTURES")
-            }
-            markers={buildTradeMarkersFromHistory(history, row.symbol, (trade) =>
-              pair.meta.ofPosition(trade as SlowTradingReportRow)?.role,
-            )}
-            startTimeMs={row.opened.t - TRADE_CHART_CONTEXT_MS}
-            endTimeMs={tradeEndMs + TRADE_CHART_CONTEXT_MS}
-            volatilitySource="storage"
-            customVolatilityPoints={getVolatilityPoints?.(row.symbol)}
-            header={
-              <>
-                <Typography variant="body2">
-                  <strong>Account:</strong> {row.account}
-                </Typography>
-                <Typography variant="body2">
-                  <strong>{legPrefix}Entry:</strong> {row.exposure.averageEntryPrice?.toFixed(6)} @{" "}
-                  {row.opened.t
-                    ? format.timeForLog(row.opened.t)
-                    : "—"}
-                </Typography>
-                <Typography variant="body2">
-                  <strong>{legPrefix}Exit:</strong> {row.closed?.price?.toFixed(6)} @{" "}
-                  {row.closed?.t ? format.timeForLog(row.closed.t) : "—"}
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color:
-                      (row.pnl.netPct ?? 0) >= 0
-                        ? "success.main"
-                        : "error.main",
-                    fontWeight: "bold",
-                  }}
-                >
-                  PnL: {(row.pnl.netPct ?? 0) >= 0 ? "+" : ""}
-                  {(row.pnl.netPct ?? 0).toFixed(2)}% ($
-                  {(row.pnl.netUsdt ?? 0).toFixed(2)})
-                </Typography>
-                <Box sx={{ flexBasis: "100%" }}>
-                  {/* BOTH:REUSABLE_LEVEL_SEQUENCE */}
-                  <PositionLevelSequence
-                    items={buildHistoryPositionLevelSequence(row)}
-                    showTargetAlert={false}
-                  />
-                </Box>
-              </>
-            }
-          />
-        </Box>
-      )}
-    </ButtonDialog>
-  );
-}
-
-function FeatureCell({ row }: { row: SlowTradingReportRow }) {
-  const entryFeature = row.strategy.entry.feature;
-  // const decisionMessage =
-  //   typeof entryFeature?.decision?.message === "string"
-  //     ? entryFeature.decision.message
-  //     : typeof row.message === "string"
-  //       ? row.message
-  //       : null;
-  const hasPayload = entryFeature != null;
-
-  return (
-    <Box>
-      {hasPayload ? (
-        <ButtonDialog
-          size="small"
-          title="Feature"
-          titleLong={`Feature: ${row.symbol}`}
-          maxWidth="md"
-        >
-          {() => (
-            <Box sx={{ p: 2 }}>
-              <Box
-                component="pre"
-                sx={{
-                  m: 0,
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-word",
-                  fontSize: "0.75rem",
-                }}
-              >
-                {JSON.stringify(entryFeature, null, 2)}
-              </Box>
-            </Box>
-          )}
-        </ButtonDialog>
-      ) : null}
-    </Box>
-  );
-}
+export { TradeAuditMessage };
 
 export function TradesTableSection({
   accounts = [],
