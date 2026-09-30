@@ -184,8 +184,6 @@ export default function DynamicTradeHistoryPage({
   const [storedAccountSlug, setStoredAccountSlug] = useState<string | null>(
     null,
   );
-  // Tag the chart-reported range with the mode it belongs to — a mode switch
-  // swaps the persisted Black Swan history, so a stale range is ignored.
   const [volatilityVisibleRange, setVolatilityVisibleRange] = useState<
     { mode: string | undefined; range: BlackSwanTimelineVisibleRange } | undefined
   >(undefined);

@@ -499,8 +499,6 @@ describe("backtestBlackSwan.riskSentinel", () => {
     const crisis = await backtestBlackSwan.riskSentinel.create()(context);
     expect(crisis?.summary).toMatch(/CRISIS/);
 
-    // A fresh hook has no closure state — RECOVERY proves the previous
-    // CRISIS was read back from `context.state.blackSwanStatus`.
     state.currentTime += MINUTE_MS;
     const recreated = await backtestBlackSwan.riskSentinel.create()(context);
     expect(recreated?.summary).toMatch(/RECOVERY/);
@@ -519,7 +517,6 @@ describe("backtestBlackSwan.riskSentinel", () => {
     const seen: BlackSwanState[] = [];
     const hook = backtestBlackSwan.riskSentinel.create({
       onState: (next) => {
-        // The callback fires after the full state is written.
         expect(state.blackSwanStatus).toBe(next);
         seen.push(next);
       },
@@ -862,7 +859,7 @@ describe("precisionBacktest risk-sentinel wiring", () => {
       endTime,
       initialState: {
         balance: {},
-        blackSwanProtective: false, // stale — the full state is authoritative
+        blackSwanProtective: false,
         blackSwanStatus: captured,
         openPositions: [],
         vPointsMap: {},
@@ -875,11 +872,9 @@ describe("precisionBacktest risk-sentinel wiring", () => {
     } as never);
 
     const { state } = mocks.engines.at(-1)!;
-    // Derived from the full status, not the stale boolean.
     expect(state.blackSwanProtective).toBe(true);
     expect(state.blackSwanStatus).toEqual(captured);
     expect(state.blackSwanStatus).not.toBe(captured);
-    // Checker replays never record a timeline.
     expect(
       (result as { blackSwanTimeline?: unknown }).blackSwanTimeline,
     ).toBeUndefined();
@@ -958,7 +953,6 @@ describe("precisionBacktest risk-sentinel wiring", () => {
       ],
       startTime,
     });
-    // The repeated healthy tick collapsed into the existing NORMAL segment.
     expect(mocks.central).not.toHaveBeenCalled();
   });
 
@@ -974,7 +968,6 @@ describe("precisionBacktest risk-sentinel wiring", () => {
     } as unknown as RuntimeContext;
     const startTime = DATASET_START + VPOINT_WARMUP_MS;
 
-    // Before any evaluation the timeline carries its bounds only.
     expect(result.blackSwanTimeline?.segments).toEqual([]);
 
     adapter.market.getKlines = vi.fn(async ({ endTime }: any) =>

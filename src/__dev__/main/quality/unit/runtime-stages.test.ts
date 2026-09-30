@@ -594,7 +594,6 @@ describe("productionStages.riskSentinel", () => {
     expect(persisted?.status).toBe("CRISIS");
     expect(context.state.blackSwanStatus).toEqual(persisted);
     expect(context.state.blackSwanProtective).toBe(true);
-    // The live slice update never touched the sandbox slice.
     expect(mocks.statusByMode.sandbox).toBeUndefined();
   });
 
@@ -602,7 +601,7 @@ describe("productionStages.riskSentinel", () => {
     mocks.statusByMode.live = {
       blackSwan: {
         reason: "HEALTHY",
-        since: NOW - 3_600_000, // persisted since must not backdate history
+        since: NOW - 3_600_000,
         status: "NORMAL",
         t: NOW - 3_600_000,
       },
@@ -617,7 +616,6 @@ describe("productionStages.riskSentinel", () => {
       segments: [{ enabled: true, status: "CRISIS", t: NOW }],
       startTime: NOW,
     });
-    // Unrelated persisted status fields survive the sentinel update.
     expect(mocks.statusByMode.live?.dailyPnlLimitState).toEqual({
       d: "2026-09-03",
       usdt: -10,
@@ -628,7 +626,6 @@ describe("productionStages.riskSentinel", () => {
     const context = contextWith();
     await productionStages.riskSentinel(context);
 
-    // Second tick returns stale BTC candles — CRISIS holds (DATA_STALE).
     context.state.currentTime += MINUTE_MS;
     (context.adapter.market.getKlines as any).mockResolvedValue([]);
     await productionStages.riskSentinel(context);
@@ -644,7 +641,6 @@ describe("productionStages.riskSentinel", () => {
     const context = contextWith();
     await productionStages.riskSentinel(context);
 
-    // Healthy candles on the next tick: CRISIS -> RECOVERY.
     context.state.currentTime += MINUTE_MS;
     (context.adapter.market.getKlines as any).mockImplementation(
       async ({ symbol }: any) =>
@@ -767,11 +763,9 @@ describe("productionStages.riskSentinel", () => {
     );
     await productionStages.riskSentinel(context);
 
-    // acknowledgedAt covers recoverySince + cooldown elapsed → NORMAL.
     expect(mocks.statusByMode.live?.blackSwan?.status).toBe("NORMAL");
     expect(context.state.blackSwanProtective).toBe(false);
 
-    // Without the acknowledgement the same inputs stay in RECOVERY.
     vi.clearAllMocks();
     mocks.statusByMode = {
       live: { blackSwan: { ...recovering, acknowledgedAt: undefined } },

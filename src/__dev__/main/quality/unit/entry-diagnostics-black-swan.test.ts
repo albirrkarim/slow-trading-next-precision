@@ -76,7 +76,6 @@ describe("entry diagnostics Black Swan state", () => {
       "Blocked because Black Swan protection is active.",
     );
 
-    // The explicit option wins over the engine state.
     const overridden = await entryDiagnostics.build(
       makeContext({
         blackSwanProtective: true,

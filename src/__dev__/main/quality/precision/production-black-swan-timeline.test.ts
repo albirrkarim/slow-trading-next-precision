@@ -111,7 +111,6 @@ describe("production risk-sentinel persisted timeline", () => {
     expect(await runtimeStorage.status.load("sandbox")).toEqual({});
     expect(systemNotif.central).not.toHaveBeenCalled();
 
-    // A sandbox evaluation appends only to its own slice.
     const sandbox = contextWith("sandbox", NOW + MINUTE_MS);
     await productionStages.riskSentinel(sandbox.context);
     const sandboxStatus = await runtimeStorage.status.load("sandbox");
@@ -126,7 +125,6 @@ describe("production risk-sentinel persisted timeline", () => {
     const { adapter, context, state } = contextWith("live", NOW);
     await productionStages.riskSentinel(context);
 
-    // Same status on the next tick only advances the recorded end.
     adapter.market.getKlines = vi.fn(async () => crashCandles(NOW + MINUTE_MS));
     state.currentTime = NOW + MINUTE_MS;
     await productionStages.riskSentinel(context);
@@ -135,7 +133,6 @@ describe("production risk-sentinel persisted timeline", () => {
     expect(status.blackSwanTimeline?.segments).toHaveLength(1);
     expect(status.blackSwanTimeline?.endTime).toBe(NOW + MINUTE_MS);
 
-    // Reloaded persisted history: a status change appends, old rows stay.
     adapter.market.getKlines = vi.fn(async ({ symbol }: { symbol: string }) =>
       symbol === "BTC_USDT"
         ? crashCandles(NOW + 2 * MINUTE_MS).map(

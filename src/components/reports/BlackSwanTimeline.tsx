@@ -120,10 +120,10 @@ export default function BlackSwanTimeline({
     const { start: a, end: b } = domain;
     const fullStart = finite(datasetStartTimeMs)
       ? datasetStartTimeMs
-      : timeline.startTime;
+      : Math.min(domain.start, timeline.startTime);
     const fullEnd = finite(datasetEndTimeMs)
       ? datasetEndTimeMs
-      : timeline.endTime;
+      : Math.max(domain.end, timeline.endTime);
 
     const raw: Array<Pick<Band, "kind" | "start" | "end">> = [];
     const hasWarmup = finite(warmupEndTimeMs) && warmupEndTimeMs > fullStart;
@@ -222,6 +222,9 @@ export default function BlackSwanTimeline({
 
   return (
     <Box sx={{ minWidth: 0, width: "100%" }}>
+      <Typography color="text.secondary" variant="caption">
+        Black Swan protection
+      </Typography>
       <Box
         aria-label="Black Swan status history"
         role="group"

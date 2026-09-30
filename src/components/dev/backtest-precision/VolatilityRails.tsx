@@ -40,8 +40,6 @@ export default function VolatilityRails({
     };
   }, [volatilityMap]);
 
-  // Tag the chart-reported range with the dataset bounds it belongs to —
-  // a stale range from a previous run is ignored without an effect reset.
   const [visibleRange, setVisibleRange] = useState<
     { key: string; range: BlackSwanTimelineVisibleRange } | undefined
   >(undefined);

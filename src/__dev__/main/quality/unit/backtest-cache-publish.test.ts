@@ -88,7 +88,6 @@ describe("backtest cache publication", () => {
     await backtestResultCache.finalize(key, result, { range: "6month" }, stagingDir);
     await backtestResultCache.publish(key, stagingDir);
 
-    // meta.json stays compact — single line (fs-extra appends one trailing \n).
     const metaRaw = await fs.readFile(
       path.join(finalDir, "meta.json"),
       "utf-8",
@@ -124,7 +123,6 @@ describe("backtest cache publication", () => {
     await backtestResultCache.finalize(key, result, { range: "6month" }, stagingDir);
     await backtestResultCache.publish(key, stagingDir);
 
-    // Simulate a pre-v7 entry by dropping the field entirely.
     const metaPath = path.join(finalDir, "meta.json");
     const meta = await fs.readJson(metaPath);
     delete meta.blackSwanTimeline;

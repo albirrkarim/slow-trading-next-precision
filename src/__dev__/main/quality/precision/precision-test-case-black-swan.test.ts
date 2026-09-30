@@ -72,7 +72,6 @@ describe("precision test case recorder Black Swan state", () => {
     expect(written.initialState.blackSwanStatus).not.toBe(status);
     expect(written.initialState.blackSwanProtective).toBe(true);
 
-    // Mutating runtime state afterwards cannot corrupt the snapshot.
     (state.blackSwanStatus as { status: string }).status = "NORMAL";
     const reloaded = await fs.readJSON(pendingFile(started.fileName!));
     expect(reloaded.initialState.blackSwanStatus.status).toBe("CRISIS");
