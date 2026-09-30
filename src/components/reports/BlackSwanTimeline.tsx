@@ -20,6 +20,7 @@ import {
 import moment from "moment";
 import { useState } from "react";
 
+import openPositionDuration from "@/components/dashboard/positions/open-position-duration";
 import type {
   BlackSwanReason,
   BlackSwanStatus,
@@ -70,6 +71,13 @@ function finite(value: unknown): value is number {
 
 function formatUtc(t: number): string {
   return `${moment.utc(t).format("DD MMM YYYY HH:mm")} UTC`;
+}
+
+/** Formats a band's length; sub-minute spans read as "< 1 minute". */
+function formatDuration(start: number, end: number): string {
+  return end - start < 60_000
+    ? "< 1 minute"
+    : openPositionDuration.format(start, end);
 }
 
 /** Tooltip text — always the full recorded interval, never clipped bounds. */
@@ -361,13 +369,14 @@ export default function BlackSwanTimeline({
               <TableRow>
                 <TableCell>Status</TableCell>
                 <TableCell>Reason</TableCell>
+                <TableCell>Duration</TableCell>
                 <TableCell>From</TableCell>
                 <TableCell>To</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {allBands.map((band, index) => (
-                <TableRow key={index}>
+                <TableRow hover key={index}>
                   <TableCell>
                     <Box
                       sx={{
@@ -397,6 +406,11 @@ export default function BlackSwanTimeline({
                       variant="body2"
                     >
                       {band.reason ?? "—"}
+                    </Typography>
+                  </TableCell>
+                  <TableCell sx={{ whiteSpace: "nowrap" }}>
+                    <Typography variant="body2">
+                      {formatDuration(band.start, band.end)}
                     </Typography>
                   </TableCell>
                   <TableCell sx={{ whiteSpace: "nowrap" }}>
