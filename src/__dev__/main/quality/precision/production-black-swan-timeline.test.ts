@@ -105,7 +105,14 @@ describe("production risk-sentinel persisted timeline", () => {
     expect(live.blackSwanTimeline).toEqual({
       enabled: true,
       endTime: NOW,
-      segments: [{ enabled: true, status: "CRISIS", t: NOW }],
+      segments: [
+        {
+          enabled: true,
+          reason: "BTC_HARD_TRIGGER",
+          status: "CRISIS",
+          t: NOW,
+        },
+      ],
       startTime: NOW,
     });
     expect(await runtimeStorage.status.load("sandbox")).toEqual({});
@@ -115,7 +122,12 @@ describe("production risk-sentinel persisted timeline", () => {
     await productionStages.riskSentinel(sandbox.context);
     const sandboxStatus = await runtimeStorage.status.load("sandbox");
     expect(sandboxStatus.blackSwanTimeline?.segments).toEqual([
-      { enabled: true, status: "CRISIS", t: NOW + MINUTE_MS },
+      {
+        enabled: true,
+        reason: "BTC_HARD_TRIGGER",
+        status: "CRISIS",
+        t: NOW + MINUTE_MS,
+      },
     ]);
     const liveAfter = await runtimeStorage.status.load("live");
     expect(liveAfter.blackSwanTimeline?.endTime).toBe(NOW);
@@ -154,8 +166,13 @@ describe("production risk-sentinel persisted timeline", () => {
 
     status = await runtimeStorage.status.load("live");
     expect(status.blackSwanTimeline?.segments).toEqual([
-      { enabled: true, status: "CRISIS", t: NOW },
-      { enabled: true, status: "RECOVERY", t: NOW + 2 * MINUTE_MS },
+      { enabled: true, reason: "BTC_HARD_TRIGGER", status: "CRISIS", t: NOW },
+      {
+        enabled: true,
+        reason: "COOLDOWN",
+        status: "RECOVERY",
+        t: NOW + 2 * MINUTE_MS,
+      },
     ]);
     expect(status.blackSwanTimeline?.endTime).toBe(NOW + 2 * MINUTE_MS);
     expect(systemNotif.central).not.toHaveBeenCalled();

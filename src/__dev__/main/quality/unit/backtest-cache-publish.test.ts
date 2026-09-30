@@ -9,15 +9,15 @@ import type { BacktestChunkedResult } from "@/lib/dev/backtestPrecision/backtest
 import type { Position } from "@/lib/system/trading";
 
 describe("backtest cache publication", () => {
-  it("keys the identity on the v7 simulation version, not v6", () => {
+  it("keys the identity on the v8 simulation version, not v7", () => {
     const identity = { config: {}, range: "6month" };
     const hash = (version: number) =>
       createHash("sha256")
         .update(`{"config":{},"range":"6month","v":${version}}`)
         .digest("hex");
 
-    expect(backtestResultCache.key(identity)).toBe(hash(7));
-    expect(backtestResultCache.key(identity)).not.toBe(hash(6));
+    expect(backtestResultCache.key(identity)).toBe(hash(8));
+    expect(backtestResultCache.key(identity)).not.toBe(hash(7));
   });
 
   const key = backtestResultCache.key({
@@ -68,8 +68,8 @@ describe("backtest cache publication", () => {
       enabled: true,
       endTime: 2_000,
       segments: [
-        { status: "NORMAL", t: 1_000 },
-        { status: "CRISIS", t: 1_500 },
+        { reason: "HEALTHY", status: "NORMAL", t: 1_000 },
+        { reason: "BTC_HARD_TRIGGER", status: "CRISIS", t: 1_500 },
       ],
       startTime: 1_000,
     } as const;

@@ -945,11 +945,19 @@ describe("precisionBacktest risk-sentinel wiring", () => {
       enabled: true,
       endTime: startTime + 10 * MINUTE_MS,
       segments: [
-        { status: "NORMAL", t: startTime },
-        { status: "WATCH", t: startTime + MINUTE_MS },
-        { status: "CRISIS", t: startTime + 2 * MINUTE_MS },
-        { status: "RECOVERY", t: startTime + 3 * MINUTE_MS },
-        { status: "NORMAL", t: startTime + 4 * MINUTE_MS },
+        { reason: "HEALTHY", status: "NORMAL", t: startTime },
+        { reason: "BTC_WARNING", status: "WATCH", t: startTime + MINUTE_MS },
+        {
+          reason: "BTC_HARD_TRIGGER",
+          status: "CRISIS",
+          t: startTime + 2 * MINUTE_MS,
+        },
+        {
+          reason: "COOLDOWN",
+          status: "RECOVERY",
+          t: startTime + 3 * MINUTE_MS,
+        },
+        { reason: "HEALTHY", status: "NORMAL", t: startTime + 4 * MINUTE_MS },
       ],
       startTime,
     });
@@ -977,7 +985,11 @@ describe("precisionBacktest risk-sentinel wiring", () => {
     await adapter.onRiskSentinel!(context);
 
     expect(result.blackSwanTimeline?.segments).toEqual([
-      { status: "WATCH", t: startTime + 2 * MINUTE_MS },
+      {
+        reason: "BTC_WARNING",
+        status: "WATCH",
+        t: startTime + 2 * MINUTE_MS,
+      },
     ]);
   });
 

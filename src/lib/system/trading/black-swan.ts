@@ -60,6 +60,8 @@ export interface BlackSwanEvidence {
 export interface BlackSwanTransition {
   t: number;
   status: BlackSwanStatus;
+  /** Detector reason active for this interval (BTC_WARNING, COOLDOWN…). */
+  reason?: BlackSwanReason;
   /**
    * Detector-enabled setting sampled with this status — defaults true;
    * `false` marks a detector-disabled band (still NORMAL/DISABLED output).

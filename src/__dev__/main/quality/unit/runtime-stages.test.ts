@@ -613,7 +613,14 @@ describe("productionStages.riskSentinel", () => {
     expect(timeline).toEqual({
       enabled: true,
       endTime: NOW,
-      segments: [{ enabled: true, status: "CRISIS", t: NOW }],
+      segments: [
+        {
+          enabled: true,
+          reason: "BTC_HARD_TRIGGER",
+          status: "CRISIS",
+          t: NOW,
+        },
+      ],
       startTime: NOW,
     });
     expect(mocks.statusByMode.live?.dailyPnlLimitState).toEqual({
@@ -632,7 +639,7 @@ describe("productionStages.riskSentinel", () => {
 
     const timeline = mocks.statusByMode.live?.blackSwanTimeline;
     expect(timeline?.segments).toEqual([
-      { enabled: true, status: "CRISIS", t: NOW },
+      { enabled: true, reason: "BTC_HARD_TRIGGER", status: "CRISIS", t: NOW },
     ]);
     expect(timeline?.endTime).toBe(NOW + MINUTE_MS);
   });
@@ -660,8 +667,13 @@ describe("productionStages.riskSentinel", () => {
 
     const timeline = mocks.statusByMode.live?.blackSwanTimeline;
     expect(timeline?.segments).toEqual([
-      { enabled: true, status: "CRISIS", t: NOW },
-      { enabled: true, status: "RECOVERY", t: NOW + MINUTE_MS },
+      { enabled: true, reason: "BTC_HARD_TRIGGER", status: "CRISIS", t: NOW },
+      {
+        enabled: true,
+        reason: "COOLDOWN",
+        status: "RECOVERY",
+        t: NOW + MINUTE_MS,
+      },
     ]);
     expect(timeline?.endTime).toBe(NOW + MINUTE_MS);
   });
@@ -685,7 +697,7 @@ describe("productionStages.riskSentinel", () => {
     const timeline = mocks.statusByMode.live?.blackSwanTimeline;
     expect(timeline?.segments).toEqual([
       { enabled: true, status: "NORMAL", t: NOW - MINUTE_MS },
-      { enabled: false, status: "NORMAL", t: NOW },
+      { enabled: false, reason: "DISABLED", status: "NORMAL", t: NOW },
     ]);
     expect(timeline?.enabled).toBe(false);
     expect(timeline?.endTime).toBe(NOW);
@@ -705,7 +717,7 @@ describe("productionStages.riskSentinel", () => {
 
     const timeline = mocks.statusByMode.live?.blackSwanTimeline;
     expect(timeline?.segments).toEqual([
-      { enabled: true, status: "CRISIS", t: NOW },
+      { enabled: true, reason: "BTC_HARD_TRIGGER", status: "CRISIS", t: NOW },
     ]);
     expect(timeline?.endTime).toBe(NOW);
   });

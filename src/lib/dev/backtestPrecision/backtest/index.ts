@@ -298,7 +298,11 @@ export async function precisionBacktest(
       onState: (next) => {
         const last = blackSwanSegments[blackSwanSegments.length - 1];
         if (last?.status !== next.status) {
-          blackSwanSegments.push({ status: next.status, t: next.t });
+          blackSwanSegments.push({
+            reason: next.reason,
+            status: next.status,
+            t: next.t,
+          });
         }
       },
     });

@@ -313,7 +313,7 @@ async function runRiskSentinel(
     };
     const last = timeline.segments[timeline.segments.length - 1];
     if (!last || next.t >= timeline.endTime) {
-      const transition = { t: next.t, status: next.status, enabled: config.enabled };
+      const transition = { t: next.t, status: next.status, reason: next.reason, enabled: config.enabled };
       if (!last || last.status !== next.status || (last.enabled ?? true) !== config.enabled) {
         if (last?.t === next.t) timeline.segments[timeline.segments.length - 1] = transition;
         else timeline.segments.push(transition);

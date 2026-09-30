@@ -1,9 +1,27 @@
 "use client";
 
-import { Box, Tooltip, Typography, useTheme } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
+import {
+  Box,
+  Button,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  Tooltip,
+  Typography,
+  useTheme,
+} from "@mui/material";
 import moment from "moment";
+import { useState } from "react";
 
 import type {
+  BlackSwanReason,
   BlackSwanStatus,
   BlackSwanTimeline,
 } from "@/lib/system/trading/black-swan";
@@ -17,6 +35,7 @@ type BandKind = BlackSwanStatus | "DISABLED" | "NOT_RECORDED" | "WARMUP";
 
 interface Band {
   kind: BandKind;
+  reason?: BlackSwanReason;
   /** Logical (unclipped) interval start — tooltips report it verbatim. */
   start: number;
   /** Logical (unclipped) interval end — tooltips report it verbatim. */
@@ -54,15 +73,18 @@ function formatUtc(t: number): string {
 }
 
 /** Tooltip text — always the full recorded interval, never clipped bounds. */
-function bandLabel(band: Pick<Band, "kind" | "start" | "end">): string {
+function bandLabel(
+  band: Pick<Band, "kind" | "start" | "end" | "reason">,
+): string {
   const interval = `${formatUtc(band.start)} to ${formatUtc(band.end)}`;
+  const reason = band.reason ? ` (${band.reason})` : "";
   switch (band.kind) {
     case "WARMUP":
       return `Warm-up: detector not evaluated from ${interval}`;
     case "NOT_RECORDED":
       return `Not recorded from ${interval}`;
     default:
-      return `${band.kind} from ${interval}`;
+      return `${band.kind}${reason} from ${interval}`;
   }
 }
 
@@ -88,6 +110,7 @@ export default function BlackSwanTimeline({
   warmupEndTimeMs?: number;
 }) {
   const theme = useTheme();
+  const [listOpen, setListOpen] = useState(false);
 
   const colors: Record<BandKind, string> = {
     CRISIS: theme.palette.error.main,
@@ -115,9 +138,8 @@ export default function BlackSwanTimeline({
     return null;
   })();
 
-  const bands = ((): Band[] => {
+  const allBands = ((): Array<Pick<Band, "kind" | "start" | "end" | "reason">> => {
     if (!timeline || !domain) return [];
-    const { start: a, end: b } = domain;
     const fullStart = finite(datasetStartTimeMs)
       ? datasetStartTimeMs
       : Math.min(domain.start, timeline.startTime);
@@ -125,7 +147,7 @@ export default function BlackSwanTimeline({
       ? datasetEndTimeMs
       : Math.max(domain.end, timeline.endTime);
 
-    const raw: Array<Pick<Band, "kind" | "start" | "end">> = [];
+    const raw: Array<Pick<Band, "kind" | "start" | "end" | "reason">> = [];
     const hasWarmup = finite(warmupEndTimeMs) && warmupEndTimeMs > fullStart;
     if (hasWarmup) {
       raw.push({
@@ -143,6 +165,7 @@ export default function BlackSwanTimeline({
       raw.push({
         end: timeline.segments[index + 1]?.t ?? timeline.endTime,
         kind: segment.enabled === false ? "DISABLED" : segment.status,
+        reason: segment.reason,
         start: segment.t,
       });
     }
@@ -154,17 +177,27 @@ export default function BlackSwanTimeline({
       });
     }
 
-    const merged: Array<Pick<Band, "kind" | "start" | "end">> = [];
+    const merged: Array<Pick<Band, "kind" | "start" | "end" | "reason">> = [];
     for (const band of raw) {
       const previous = merged[merged.length - 1];
-      if (previous && previous.kind === band.kind && previous.end >= band.start) {
+      if (
+        previous &&
+        previous.kind === band.kind &&
+        previous.reason === band.reason &&
+        previous.end >= band.start
+      ) {
         previous.end = Math.max(previous.end, band.end);
       } else {
         merged.push({ ...band });
       }
     }
+    return merged;
+  })();
 
-    return merged
+  const bands = ((): Band[] => {
+    if (!timeline || !domain) return [];
+    const { start: a, end: b } = domain;
+    return allBands
       .map((band) => {
         const clippedStart = Math.max(band.start, a);
         const clippedEnd = Math.min(band.end, b);
@@ -179,6 +212,7 @@ export default function BlackSwanTimeline({
         end: band.end,
         kind: band.kind,
         leftPct: (100 * (band.clippedStart - a)) / (b - a),
+        reason: band.reason,
         start: band.start,
         widthPct: (100 * (band.clippedEnd - band.clippedStart)) / (b - a),
       }));
@@ -222,9 +256,20 @@ export default function BlackSwanTimeline({
 
   return (
     <Box sx={{ minWidth: 0, width: "100%" }}>
-      <Typography color="text.secondary" variant="caption">
-        Black Swan protection
-      </Typography>
+      <Box
+        sx={{
+          alignItems: "center",
+          display: "flex",
+          justifyContent: "space-between",
+        }}
+      >
+        <Typography color="text.secondary" variant="caption">
+          Black Swan protection
+        </Typography>
+        <Button onClick={() => setListOpen(true)} size="small" variant="text">
+          Show as list
+        </Button>
+      </Box>
       <Box
         aria-label="Black Swan status history"
         role="group"
@@ -294,6 +339,80 @@ export default function BlackSwanTimeline({
           ))}
         </Box>
       )}
+      <Dialog
+        fullWidth
+        maxWidth="md"
+        onClose={() => setListOpen(false)}
+        open={listOpen}
+      >
+        <DialogTitle sx={{ alignItems: "center", display: "flex" }}>
+          Black Swan protection history
+          <IconButton
+            aria-label="Close"
+            onClick={() => setListOpen(false)}
+            sx={{ ml: "auto" }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: 0 }}>
+          <Table size="small" stickyHeader>
+            <TableHead>
+              <TableRow>
+                <TableCell>Status</TableCell>
+                <TableCell>Reason</TableCell>
+                <TableCell>From</TableCell>
+                <TableCell>To</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {allBands.map((band, index) => (
+                <TableRow key={index}>
+                  <TableCell>
+                    <Box
+                      sx={{
+                        alignItems: "center",
+                        display: "flex",
+                        gap: 0.75,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          bgcolor: colors[band.kind],
+                          borderRadius: 0.5,
+                          flexShrink: 0,
+                          height: 10,
+                          width: 10,
+                        }}
+                      />
+                      <Typography variant="body2">
+                        {LEGEND_LABELS[band.kind]}
+                      </Typography>
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    <Typography
+                      color={band.reason ? "text.primary" : "text.secondary"}
+                      variant="body2"
+                    >
+                      {band.reason ?? "—"}
+                    </Typography>
+                  </TableCell>
+                  <TableCell sx={{ whiteSpace: "nowrap" }}>
+                    <Typography variant="body2">
+                      {formatUtc(band.start)}
+                    </Typography>
+                  </TableCell>
+                  <TableCell sx={{ whiteSpace: "nowrap" }}>
+                    <Typography variant="body2">{formatUtc(band.end)}</Typography>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 }
