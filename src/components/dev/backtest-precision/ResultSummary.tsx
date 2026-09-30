@@ -7,6 +7,7 @@ import {
     Table,
     TableBody,
     TableCell,
+    TableContainer,
     TableHead,
     TableRow,
     Typography,
@@ -214,7 +215,14 @@ export default function BacktestResultSummary(props: {
                 }
             >
                 {(expanded) => expanded && (
-                    <Table size="small" sx={{ maxWidth: 720 }}>
+                    <TableContainer sx={{ maxWidth: 720, overflowX: "auto" }}>
+                        <Table
+                            size="small"
+                            sx={{
+                                minWidth: 420,
+                                "& .MuiTableCell-root": { px: 1 },
+                            }}
+                        >
                         <TableHead>
                             <TableRow>
                                 <TableCell>Account</TableCell>
@@ -370,7 +378,8 @@ export default function BacktestResultSummary(props: {
                                 </TableRow>
                             )}
                         </TableBody>
-                    </Table>
+                        </Table>
+                    </TableContainer>
                 )}
             </HeaderMetrics>
 
