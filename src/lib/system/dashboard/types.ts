@@ -10,6 +10,7 @@ import type {
   RuntimeStageRunStatsMap,
 } from "../runtime/stages";
 import type { RuntimeBinanceHealthSnapshot } from "../storage/logs";
+import type { BlackSwanTimeline } from "../trading/black-swan";
 import type { RuntimeHistoryPosition } from "../trading/types";
 
 /** Balance summary rendered by the dashboard for one account/mode. */
@@ -63,6 +64,12 @@ export interface RuntimeDashboardState {
   runtime: RuntimeDashboardRuntimeConfig;
   /** Current persisted portfolio-wide protection status and evidence. */
   blackSwan: RuntimeBlackSwanState;
+  /**
+   * Recorded Black Swan status history for the active mode — transitions at
+   * actual sentinel evaluation times; absent until the first post-upgrade
+   * evaluation persists one.
+   */
+  blackSwanTimeline?: BlackSwanTimeline;
   /** Current and historical Binance REST cooldown health. */
   binanceHealth?: RuntimeBinanceHealthSnapshot;
   /** Balance summary for the active mode. */

@@ -1,4 +1,8 @@
 import type { BalanceSummary, Position } from "@/lib/system/trading";
+import type {
+  BlackSwanTimeline,
+  BlackSwanTransition,
+} from "@/lib/system/trading/black-swan";
 import type { ExchangeType, VolatilityPoint } from "@/lib/system/types";
 
 /**
@@ -13,7 +17,15 @@ export interface BacktestBalanceSnapshot extends BalanceSummary {
   t: number;
 }
 
+export type BacktestBlackSwanTransition = BlackSwanTransition;
+export type BacktestBlackSwanTimeline = BlackSwanTimeline;
+
 export interface BacktestPrecisionResult {
+  /**
+   * Recorded Black Swan status transitions at detector evaluation times.
+   * Absent on precision-checker replays and legacy cache entries.
+   */
+  blackSwanTimeline?: BacktestBlackSwanTimeline;
   exchangeType: ExchangeType;
   vPointsMap: Record<string, VolatilityPoint[]>;
   positions: Position[];
@@ -88,6 +100,11 @@ export interface BacktestRunCounts {
  * served lazily through the backtest detail endpoint instead of the POST body.
  */
 export interface BacktestChunkedResult {
+  /**
+   * Recorded Black Swan status transitions, persisted into meta.json so a
+   * cache hit carries them without reading artifact parts.
+   */
+  blackSwanTimeline?: BacktestBlackSwanTimeline;
   exchangeType: ExchangeType;
   counts: BacktestRunCounts;
   /**

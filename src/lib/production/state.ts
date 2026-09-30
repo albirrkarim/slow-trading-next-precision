@@ -6,6 +6,7 @@ function create(options: ProductionStateOptions): RuntimeEngineState {
   return {
     balance: options.balance,
     blackSwanProtective: options.blackSwanProtective,
+    blackSwanStatus: options.blackSwanStatus,
     config: options.config,
     currentTime: options.currentTime ?? Date.now(),
     dailyPnlDay: options.dailyPnlDay,

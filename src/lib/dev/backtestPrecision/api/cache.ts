@@ -5,6 +5,7 @@ import sanitize from "@/lib/system/storage/sanitize";
 import type { ExchangeType, VolatilityPoint } from "@/lib/system/types";
 import type {
   BacktestBalanceSnapshot,
+  BacktestBlackSwanTimeline,
   BacktestChunkedResult,
   BacktestPrecisionResult,
   BacktestRunCounts,
@@ -16,13 +17,13 @@ import backtestArtifacts from "../backtest/artifacts";
  * Cache key version — bumped whenever simulated results must recompute
  * rather than reuse: v5 adds black-swan protection to normal backtests;
  * v6 calibrates its defaults and stamps the distinct BLACK_SWAN_EXIT close
- * reason.
+ * reason; v7 records the Black Swan status timeline into meta.json.
  * CHUNKED_LAYOUT is the on-disk format: v4 streams artifacts into
  * fixed-size part files (positions/, vpoints/<symbol>/, snapshots/<slug>/)
  * plus meta.json; v3 used monolithic field files. `read`/`readField` still
  * understand v3+ for saved cachePaths.
  */
-const CACHE_VERSION = 6;
+const CACHE_VERSION = 7;
 const CHUNKED_LAYOUT = 4;
 
 // Local-only cache — `storage/persistent` syncs between instances, so
@@ -36,6 +37,8 @@ const LEGACY_FIELDS = [
 ] as const satisfies readonly (keyof BacktestPrecisionResult)[];
 
 interface BacktestResultCacheMeta {
+  /** Recorded Black Swan status transitions; absent on older entries. */
+  blackSwanTimeline?: BacktestBlackSwanTimeline;
   createdAt: number;
   /** Effective simulated window after symbol-availability intersection. */
   dataset?: { endTime: number; startTime: number };
@@ -173,6 +176,7 @@ async function readMetaFile(dir: string): Promise<BacktestResultCacheMeta | null
  * older layout versions, which recompute instead.
  */
 async function readMeta(cacheKey: string): Promise<{
+  blackSwanTimeline?: BacktestBlackSwanTimeline;
   counts: BacktestRunCounts;
   createdAt?: number;
   dataset?: { endTime: number; startTime: number };
@@ -183,6 +187,7 @@ async function readMeta(cacheKey: string): Promise<{
   if (meta?.v !== CHUNKED_LAYOUT) return null;
   if (!meta.exchangeType || !meta.counts || !meta.summary) return null;
   return {
+    blackSwanTimeline: meta.blackSwanTimeline,
     counts: meta.counts,
     createdAt: meta.createdAt,
     dataset: meta.dataset,
@@ -231,6 +236,7 @@ async function listMetas(): Promise<
 > {
   if (!(await fs.pathExists(RESULTS_DIR))) return [];
   const entries: Array<{
+    blackSwanTimeline?: BacktestBlackSwanTimeline;
     cacheKey: string;
     createdAt?: number;
     counts: BacktestRunCounts;
@@ -253,6 +259,7 @@ async function listMetas(): Promise<
       continue;
     }
     entries.push({
+      blackSwanTimeline: meta.blackSwanTimeline,
       cacheKey: name,
       counts: meta.counts,
       createdAt: meta.createdAt,
@@ -289,6 +296,7 @@ async function read(
       return {
         balanceSnapshots:
           balanceSnapshots as Record<string, BacktestBalanceSnapshot[]>,
+        blackSwanTimeline: meta.blackSwanTimeline,
         exchangeType: meta?.exchangeType ?? "binance",
         positions,
         vPointsMap: vPointsMap as Record<string, VolatilityPoint[]>,
@@ -327,6 +335,7 @@ async function finalize(
   // precision-checker replays never reach this writer anyway.
   const { initialState: _initialState, ...requestParams } = params;
   const meta: BacktestResultCacheMeta = {
+    blackSwanTimeline: result.blackSwanTimeline,
     counts: result.counts,
     createdAt: Date.now(),
     dataset: result.dataset,
@@ -336,9 +345,7 @@ async function finalize(
     summary: result.summary,
     v: CHUNKED_LAYOUT,
   };
-  await fs.outputJson(path.join(dir, "meta.json"), meta, {
-    spaces: 2,
-  });
+  await fs.outputJson(path.join(dir, "meta.json"), meta);
 }
 
 /**

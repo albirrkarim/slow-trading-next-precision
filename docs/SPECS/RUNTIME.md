@@ -162,8 +162,9 @@ Swan protection is enabled: it evaluates the shared detector over
 historical BTC and breadth candles with in-memory state, recovers
 automatically after cooldown, and routes forced exits through the shared
 monitoring pipeline without notifications. The precision checker keeps
-only the captured starting protective flag, and backtests still omit the
-management stage.
+only the captured starting protective flag/status — replays start from the
+recorded state rather than re-evaluating detection — and backtests still
+omit the management stage.
 
 TC: `BOTH:SPEEDUP_STAGE`
 

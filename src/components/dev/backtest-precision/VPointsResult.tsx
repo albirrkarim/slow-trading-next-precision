@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import VPointsFrequency from "@/components/charts/VPointsFrequency";
 import {
   VPOINT_WARMUP_MS,
+  type BacktestBlackSwanTimeline,
   type BacktestRunCounts,
   type BacktestRunSummary,
 } from "@/lib/dev/backtestPrecision/backtest/backtest-precision-types";
@@ -23,7 +24,9 @@ type Artifacts = ReturnType<typeof useBacktestArtifacts>;
 export default function VPointsResult({
   accounts,
   artifacts,
+  blackSwanTimeline,
   counts,
+  datasetEndTimeMs,
   datasetStartTimeMs,
   exchangeType,
   settings,
@@ -31,7 +34,11 @@ export default function VPointsResult({
 }: {
   accounts?: Array<{ name?: string; slug: string }>;
   artifacts: Artifacts;
+  /** Recorded Black Swan status history for this run; absent on old results. */
+  blackSwanTimeline?: BacktestBlackSwanTimeline;
   counts: BacktestRunCounts;
+  /** Effective dataset end of this run. */
+  datasetEndTimeMs?: number;
   /** Effective dataset start — trading begins once the vPoint warm-up ends. */
   datasetStartTimeMs?: number;
   exchangeType: ExchangeType;
@@ -52,6 +59,9 @@ export default function VPointsResult({
   return (
     <Box sx={{ p: 0.5 }}>
       <VolatilityRails
+        blackSwanTimeline={blackSwanTimeline}
+        datasetEndTimeMs={datasetEndTimeMs}
+        datasetStartTimeMs={datasetStartTimeMs}
         tradingStartTimeMs={
           datasetStartTimeMs !== undefined
             ? datasetStartTimeMs + VPOINT_WARMUP_MS

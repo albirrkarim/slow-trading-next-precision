@@ -741,17 +741,21 @@ function createProductionFactory(): ProductionRuntimeFactory {
       .load(mode === "sandbox" ? "sandbox" : "live")
       .catch(() => undefined);
 
+    const currentTime = Date.now();
+    const persistedBlackSwan = blackSwan.state.normalize(
+      persistedStatus.blackSwan,
+      currentTime,
+    );
     const runtimeState = state.create({
       balance,
-      blackSwanProtective: blackSwan.state.isProtective(
-        persistedStatus.blackSwan,
-      ),
+      blackSwanProtective: blackSwan.state.isProtective(persistedBlackSwan),
+      blackSwanStatus: persistedBlackSwan,
       config: {
         accounts: catalog.config.accounts,
         management: catalog.config.management,
         runtime: buildRuntimeConfig(catalog.config.runtime),
       },
-      currentTime: Date.now(),
+      currentTime,
       dailyPnlDay: persistedStatus.dailyPnlLimitState?.d,
       dailyPnlUsdt: persistedStatus.dailyPnlLimitState?.usdt,
       mode,

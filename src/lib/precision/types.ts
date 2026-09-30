@@ -15,6 +15,7 @@ import type {
   RuntimeStage,
   RuntimeStageRunStats,
 } from "@/lib/system/runtime";
+import type { BlackSwanState } from "@/lib/system/trading/black-swan";
 
 /** Candle intervals the shared market preparation supports. */
 export type RuntimeMarketInterval = "1m" | "5m";
@@ -224,12 +225,22 @@ export interface RuntimeEngineStateGuard {
 
   /**
    * Black Swan protective flag read by the shared guard to veto entries
-   * and averaging. Production's risk-sentinel stage persists and refreshes
-   * it each cycle; normal backtests refresh it silently from historical
-   * candles on every sentinel tick; the precision checker retains the
-   * captured starting flag.
+   * and averaging — kept as the derived compatibility view; when
+   * `blackSwanStatus` is present the guard prefers the full state.
+   * Production's risk-sentinel stage persists and refreshes both each
+   * cycle; normal backtests refresh them silently from historical candles
+   * on every sentinel tick; the precision checker retains the captured
+   * starting flag/status.
    */
   blackSwanProtective?: boolean;
+
+  /**
+   * Latest full Black Swan detector output (status, reason, evidence,
+   * cooldown bookkeeping). Canonical when present — the guard and entry
+   * diagnostics read it directly and `blackSwanProtective` stays a derived
+   * view for older snapshots and writers that only track the flag.
+   */
+  blackSwanStatus?: BlackSwanState;
 
   /**
    * BTEST:STOP_AUTO_ENTRY_BEFORE_END — optional Unix-ms bound the shared

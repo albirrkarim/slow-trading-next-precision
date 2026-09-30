@@ -277,6 +277,7 @@ async function runRiskSentinel(
   });
   // Refresh the shared guard's state input so same-cycle decisions see the
   // protective flag without waiting for the persisted re-read.
+  context.state.blackSwanStatus = next;
   context.state.blackSwanProtective = blackSwan.state.isProtective(next);
 
   // Emergency exits: flag the positions selected by the configured crisis
@@ -304,6 +305,23 @@ async function runRiskSentinel(
   }
 
   await runtimeStorage.status.update(mode, (current) => {
+    const timeline = current.blackSwanTimeline ?? {
+      enabled: config.enabled,
+      startTime: next.t,
+      endTime: next.t,
+      segments: [],
+    };
+    const last = timeline.segments[timeline.segments.length - 1];
+    if (!last || next.t >= timeline.endTime) {
+      const transition = { t: next.t, status: next.status, enabled: config.enabled };
+      if (!last || last.status !== next.status || (last.enabled ?? true) !== config.enabled) {
+        if (last?.t === next.t) timeline.segments[timeline.segments.length - 1] = transition;
+        else timeline.segments.push(transition);
+      }
+      timeline.enabled = config.enabled;
+      timeline.endTime = next.t;
+      current.blackSwanTimeline = timeline;
+    }
     current.blackSwan = next;
   });
 

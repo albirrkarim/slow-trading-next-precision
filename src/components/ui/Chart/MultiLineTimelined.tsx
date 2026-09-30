@@ -40,6 +40,15 @@ export interface VolatilityMultiLineProps {
   /** Initial brush selection bounds as absolute times; snapped to nearest points. */
   brushStartTimeMs?: number;
   brushEndTimeMs?: number;
+  /**
+   * Reports the visible time domain: the initial full domain (or the
+   * brushStart/End-snapped range) once data is loaded, then every brush
+   * selection change as the covered point times.
+   */
+  onVisibleTimeRangeChange?: (range: {
+    startTime: number;
+    endTime: number;
+  }) => void;
 }
 
 function MultiLineTimelined({
@@ -52,6 +61,7 @@ function MultiLineTimelined({
   referenceLines,
   brushStartTimeMs,
   brushEndTimeMs,
+  onVisibleTimeRangeChange,
 }: VolatilityMultiLineProps) {
   const { data, textMaps } = useMemo(() => buildMergedData(series), [series]);
 
@@ -68,6 +78,31 @@ function MultiLineTimelined({
     }
     return undefined;
   }, [data, brushEndTimeMs]);
+
+  /** Resolves a brush index pair to the covered point-time range. */
+  const reportVisibleRange = useCallback(
+    (startIndex: number | undefined, endIndex: number | undefined) => {
+      if (!onVisibleTimeRangeChange || data.length === 0) return;
+      const startTime = Number(
+        data[Math.min(Math.max(startIndex ?? 0, 0), data.length - 1)]?.timeMs,
+      );
+      const endTime = Number(
+        data[Math.min(Math.max(endIndex ?? data.length - 1, 0), data.length - 1)]
+          ?.timeMs,
+      );
+      if (!Number.isFinite(startTime) || !Number.isFinite(endTime)) return;
+      onVisibleTimeRangeChange({
+        endTime: Math.max(startTime, endTime),
+        startTime: Math.min(startTime, endTime),
+      });
+    },
+    [data, onVisibleTimeRangeChange],
+  );
+
+  /** Emit the initial domain — brush-snapped when bounds were supplied. */
+  useEffect(() => {
+    reportVisibleRange(brushStartIndex, brushEndIndex);
+  }, [brushStartIndex, brushEndIndex, reportVisibleRange]);
   const xAxisDateFormat = useMemo(() => {
     const times = data
       .map((item) => Number(item.timeMs))
@@ -366,6 +401,16 @@ function MultiLineTimelined({
             tickFormatter={formatXAxisTick}
             startIndex={brushStartIndex}
             endIndex={brushEndIndex}
+            onChange={(range) =>
+              reportVisibleRange(
+                typeof range?.startIndex === "number"
+                  ? range.startIndex
+                  : undefined,
+                typeof range?.endIndex === "number"
+                  ? range.endIndex
+                  : undefined,
+              )
+            }
           />
         </LineChart>
       </ResponsiveContainer>

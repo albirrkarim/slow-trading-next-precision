@@ -320,6 +320,10 @@ async function start(
     initialState: {
       balance: clone(state.balance),
       blackSwanProtective: state.blackSwanProtective,
+      blackSwanStatus:
+        state.blackSwanStatus === undefined
+          ? undefined
+          : clone(state.blackSwanStatus),
       dailyPnlDay: state.dailyPnlDay,
       dailyPnlUsdt: state.dailyPnlUsdt,
       openPositions: clone(state.openPositions),
@@ -383,6 +387,10 @@ async function end(state: RuntimeEngineState): Promise<PrecisionTestCaseResult> 
     endState: {
       balance: clone(state.balance),
       blackSwanProtective: state.blackSwanProtective,
+      blackSwanStatus:
+        state.blackSwanStatus === undefined
+          ? undefined
+          : clone(state.blackSwanStatus),
       dailyPnlDay: state.dailyPnlDay,
       dailyPnlUsdt: state.dailyPnlUsdt,
       openPositions: clone(state.openPositions),

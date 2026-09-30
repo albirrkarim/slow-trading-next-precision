@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import {
@@ -35,6 +35,9 @@ import HeaderMetrics from "../ui/HeaderMetrics";
 import TypographyTooltip from "../ui/TypographyTooltip";
 import BinanceCooldownStatusSection from "@/components/reports/BinanceCooldownStatusSection";
 import BlackSwanStatusSection from "@/components/reports/BlackSwanStatusSection";
+import BlackSwanTimeline, {
+  type BlackSwanTimelineVisibleRange,
+} from "@/components/reports/BlackSwanTimeline";
 import CoinMetadataDownloadDialog from "@/components/coins/CoinMetadataDownloadDialog";
 import EntryBlockers from "./entry/EntryBlockers";
 import EntrySequenceMetrics from "./entry/EntrySequences";
@@ -181,6 +184,21 @@ export default function DynamicTradeHistoryPage({
   const [storedAccountSlug, setStoredAccountSlug] = useState<string | null>(
     null,
   );
+  // Tag the chart-reported range with the mode it belongs to — a mode switch
+  // swaps the persisted Black Swan history, so a stale range is ignored.
+  const [volatilityVisibleRange, setVolatilityVisibleRange] = useState<
+    { mode: string | undefined; range: BlackSwanTimelineVisibleRange } | undefined
+  >(undefined);
+  const activeMode = dashboardState?.activeMode;
+  const onVolatilityVisibleRange = useCallback(
+    (range: BlackSwanTimelineVisibleRange) =>
+      setVolatilityVisibleRange({ mode: activeMode, range }),
+    [activeMode],
+  );
+  const volatilityRange =
+    volatilityVisibleRange && volatilityVisibleRange.mode === activeMode
+      ? volatilityVisibleRange.range
+      : undefined;
 
   useEffect(() => {
     const stored = window.localStorage.getItem("slow-selected-account");
@@ -867,12 +885,24 @@ export default function DynamicTradeHistoryPage({
               {resettingVPointUsed ? "Resetting..." : "Reset used vPoints"}
             </Button>
             {data ? (
-              <MultiLineTimelined series={data.series} names={data.names} />
+              <MultiLineTimelined
+                names={data.names}
+                onVisibleTimeRangeChange={onVolatilityVisibleRange}
+                series={data.series}
+              />
             ) : (
               <Typography color="text.secondary" variant="body2">
                 Volatility points are loading...
               </Typography>
             )}
+            <BlackSwanTimeline
+              datasetEndTimeMs={config.endTime}
+              datasetStartTimeMs={config.startTime}
+              key={dashboardState?.activeMode}
+              timeline={dashboardState?.blackSwanTimeline}
+              unavailableMessage="Recording Black Swan history; waiting for the next evaluation."
+              visibleRange={volatilityRange}
+            />
           </Box>
         )
       }

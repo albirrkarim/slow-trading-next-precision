@@ -451,7 +451,9 @@ export default function DynamicTradeAnalytics() {
                 <VPointsResult
                     accounts={backtestConfig.settings?.accounts}
                     artifacts={artifacts}
+                    blackSwanTimeline={data.blackSwanTimeline}
                     counts={data.counts}
+                    datasetEndTimeMs={data.dataset?.endTime}
                     datasetStartTimeMs={data.dataset?.startTime}
                     exchangeType={data.exchangeType}
                     settings={backtestConfig.settings}

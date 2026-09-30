@@ -9,15 +9,15 @@ import type { BacktestChunkedResult } from "@/lib/dev/backtestPrecision/backtest
 import type { Position } from "@/lib/system/trading";
 
 describe("backtest cache publication", () => {
-  it("keys the identity on the v6 simulation version, not v5", () => {
+  it("keys the identity on the v7 simulation version, not v6", () => {
     const identity = { config: {}, range: "6month" };
     const hash = (version: number) =>
       createHash("sha256")
         .update(`{"config":{},"range":"6month","v":${version}}`)
         .digest("hex");
 
-    expect(backtestResultCache.key(identity)).toBe(hash(6));
-    expect(backtestResultCache.key(identity)).not.toBe(hash(5));
+    expect(backtestResultCache.key(identity)).toBe(hash(7));
+    expect(backtestResultCache.key(identity)).not.toBe(hash(6));
   });
 
   const key = backtestResultCache.key({
@@ -61,5 +61,76 @@ describe("backtest cache publication", () => {
       { notes: "finished" },
     ]);
     expect(await fs.pathExists(path.join(staleDir, "part-000009.json"))).toBe(false);
+  });
+
+  it("round-trips the Black Swan timeline through meta and full reads", async () => {
+    const timeline = {
+      enabled: true,
+      endTime: 2_000,
+      segments: [
+        { status: "NORMAL", t: 1_000 },
+        { status: "CRISIS", t: 1_500 },
+      ],
+      startTime: 1_000,
+    } as const;
+    const stagingDir = backtestResultCache.stagingDirFor(key);
+    stagingDirs.push(stagingDir);
+    const spool = backtestArtifacts.spool.create(stagingDir);
+    await spool.pushPosition({ notes: "with timeline" } as Position);
+    const parts = await spool.finalize();
+    const result: BacktestChunkedResult = {
+      blackSwanTimeline: timeline as never,
+      counts: { closedPositions: 1, positions: 1, snapshots: 0, vPoints: 0 },
+      exchangeType: "binance",
+      parts,
+      summary: { accounts: [], exits: {} },
+    };
+    await backtestResultCache.finalize(key, result, { range: "6month" }, stagingDir);
+    await backtestResultCache.publish(key, stagingDir);
+
+    // meta.json stays compact — single line (fs-extra appends one trailing \n).
+    const metaRaw = await fs.readFile(
+      path.join(finalDir, "meta.json"),
+      "utf-8",
+    );
+    expect(metaRaw.trimEnd()).not.toContain("\n");
+    expect(JSON.parse(metaRaw).blackSwanTimeline).toEqual(timeline);
+
+    expect((await backtestResultCache.readMeta(key))?.blackSwanTimeline).toEqual(
+      timeline,
+    );
+    expect((await backtestResultCache.read(key))?.blackSwanTimeline).toEqual(
+      timeline,
+    );
+    expect(
+      (await backtestResultCache.listMetas()).find(
+        (entry) => entry.cacheKey === key,
+      )?.blackSwanTimeline,
+    ).toEqual(timeline);
+  });
+
+  it("reads legacy meta entries without a timeline as undefined", async () => {
+    const stagingDir = backtestResultCache.stagingDirFor(key);
+    stagingDirs.push(stagingDir);
+    const spool = backtestArtifacts.spool.create(stagingDir);
+    await spool.pushPosition({ notes: "legacy" } as Position);
+    const parts = await spool.finalize();
+    const result: BacktestChunkedResult = {
+      counts: { closedPositions: 1, positions: 1, snapshots: 0, vPoints: 0 },
+      exchangeType: "binance",
+      parts,
+      summary: { accounts: [], exits: {} },
+    };
+    await backtestResultCache.finalize(key, result, { range: "6month" }, stagingDir);
+    await backtestResultCache.publish(key, stagingDir);
+
+    // Simulate a pre-v7 entry by dropping the field entirely.
+    const metaPath = path.join(finalDir, "meta.json");
+    const meta = await fs.readJson(metaPath);
+    delete meta.blackSwanTimeline;
+    await fs.writeJson(metaPath, meta);
+
+    expect((await backtestResultCache.readMeta(key))?.blackSwanTimeline).toBeUndefined();
+    expect((await backtestResultCache.read(key))?.blackSwanTimeline).toBeUndefined();
   });
 });

@@ -3,7 +3,7 @@ import { TradingMode } from "@/lib/exchange/types";
 import type { ExchangeAccountSlug } from "@/lib/exchange/account-context";
 import type { RuntimeAccountConfig } from "@/lib/system/runtime";
 import type { VolatilityPoint } from "@/lib/system/types";
-import type { BlackSwanState } from "./black-swan";
+import blackSwan, { type BlackSwanState } from "./black-swan";
 import type { RuntimeDailyPnlLimitEvaluation } from "./daily-pnl-limit";
 import runtimeDailyPnlLimit from "./daily-pnl-limit";
 import entryAction from "./entry-action";
@@ -442,9 +442,10 @@ async function build(
   );
 
   const accounts: RuntimeAccountEntryDiagnostics[] = [];
-  const protectedByBlackSwan = Boolean(
-    options?.blackSwan && options.blackSwan.status !== "NORMAL",
-  );
+  const blackSwanState = options?.blackSwan ?? context.state.blackSwanStatus;
+  const protectedByBlackSwan = blackSwanState
+    ? blackSwan.state.isProtective(blackSwanState)
+    : Boolean(context.state.blackSwanProtective);
 
   for (const account of context.state.config.accounts) {
     if (!account.enabled) continue;
@@ -476,7 +477,9 @@ async function build(
         diagnostics.push({
           ...base,
           code: "BLACK_SWAN_PROTECTION",
-          reason: `Blocked because Black Swan ${options?.blackSwan?.status} protection is active.`,
+          reason: blackSwanState
+            ? `Blocked because Black Swan ${blackSwanState.status} protection is active (${blackSwanState.reason}).`
+            : "Blocked because Black Swan protection is active.",
           status: "blocked",
         });
         continue;

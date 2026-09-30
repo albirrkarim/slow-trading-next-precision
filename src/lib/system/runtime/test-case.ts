@@ -1,4 +1,5 @@
 import type { BalanceSummary, Position } from "../trading";
+import type { BlackSwanState } from "../trading/black-swan";
 import type { VolatilityPoint } from "../types/market";
 import type { RuntimeConfig } from "./types";
 
@@ -24,6 +25,12 @@ export interface PrecisionRuntimeSnapshot {
   dailyPnlDay?: string;
   /** Black Swan protective flag captured so replays veto like production. */
   blackSwanProtective?: boolean;
+  /**
+   * Full captured Black Swan detector output — richer starting status for
+   * replays (status, reason, cooldown bookkeeping); the flag above stays
+   * the compatibility fallback for older captures.
+   */
+  blackSwanStatus?: BlackSwanState;
 }
 
 /**

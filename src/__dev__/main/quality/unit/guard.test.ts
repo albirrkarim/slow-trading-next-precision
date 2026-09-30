@@ -118,6 +118,37 @@ describe("guard.allows — shared environment approval gate", () => {
     expect(guard.allows(exit(), context)).toBe(true);
   });
 
+  it("vetoes every protective blackSwanStatus even without the boolean", () => {
+    for (const status of ["WATCH", "CRISIS", "RECOVERY"] as const) {
+      const state = makeState({
+        blackSwanStatus: {
+          reason: "BTC_WARNING",
+          since: NOW - 60_000,
+          status,
+          t: NOW - 60_000,
+        } as never,
+      });
+      const context = contextFor(state);
+      expect(guard.allows(entry(), context)).toBe(false);
+      expect(guard.allows(entry({ manual: true }), context)).toBe(false);
+      expect(guard.allows(averaging(), context)).toBe(false);
+      expect(guard.allows(exit(), context)).toBe(true);
+    }
+  });
+
+  it("a NORMAL blackSwanStatus overrides a stale protective boolean", () => {
+    const state = makeState({
+      blackSwanProtective: true,
+      blackSwanStatus: {
+        reason: "HEALTHY",
+        since: NOW - 60_000,
+        status: "NORMAL",
+        t: NOW - 60_000,
+      } as never,
+    });
+    expect(guard.allows(entry(), contextFor(state))).toBe(true);
+  });
+
   it("vetoes entries for disabled accounts and unconfigured symbols", () => {
     const state = makeState();
     expect(

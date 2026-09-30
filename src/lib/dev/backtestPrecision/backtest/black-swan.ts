@@ -82,14 +82,21 @@ async function getBreadthCandles(
   return output;
 }
 
-function create(): NonNullable<RuntimeEngineAdapter["onRiskSentinel"]> {
-  let previous = blackSwan.state.create();
-
+/**
+ * Detector state lives on the engine state (`context.state.blackSwanStatus`)
+ * rather than a hook closure, so a recreated hook resumes the same cooldown
+ * and status. `options.onState` is invoked after each evaluation is written
+ * — recording only; it never influences detection or trading.
+ */
+function create(options?: {
+  onState?: (next: BlackSwanState) => void;
+}): NonNullable<RuntimeEngineAdapter["onRiskSentinel"]> {
   return async (context): Promise<RuntimeStageRunPatch> => {
     const now = context.state.currentTime;
     const config = blackSwan.config.normalize(
       context.state.config.management.blackSwan,
     );
+    const previous = context.state.blackSwanStatus ?? blackSwan.state.create();
 
     let btcCandles: Kline[] = [];
     if (config.enabled) {
@@ -120,8 +127,9 @@ function create(): NonNullable<RuntimeEngineAdapter["onRiskSentinel"]> {
       mode: "sandbox",
       previous,
     });
-    previous = next;
+    context.state.blackSwanStatus = next;
     context.state.blackSwanProtective = blackSwan.state.isProtective(next);
+    options?.onState?.(next);
 
     const emergencyExits: string[] = [];
     if (next.status === "CRISIS" && config.exitPolicy !== "FREEZE_ONLY") {

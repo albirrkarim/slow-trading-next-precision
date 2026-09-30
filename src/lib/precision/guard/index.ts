@@ -1,4 +1,5 @@
 import type { RuntimeAccountConfig } from "@/lib/system/runtime";
+import blackSwan from "@/lib/system/trading/black-swan";
 import type { RuntimeContext, RuntimeDecision } from "../types";
 import averaging from "./averaging";
 import entry from "./entry";
@@ -37,7 +38,10 @@ function common(
 
   // Black Swan protection blocks entries and averaging — including forced
   // ones — while the flag is set on the runtime state.
-  if (state.blackSwanProtective) return null;
+  const blackSwanProtective = state.blackSwanStatus
+    ? blackSwan.state.isProtective(state.blackSwanStatus)
+    : state.blackSwanProtective;
+  if (blackSwanProtective) return null;
 
   return account;
 }

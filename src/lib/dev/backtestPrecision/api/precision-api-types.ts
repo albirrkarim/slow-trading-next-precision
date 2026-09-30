@@ -3,6 +3,7 @@ import type {
   PrecisionRuntimeSnapshot,
 } from "@/lib/system/runtime";
 import type {
+  BacktestBlackSwanTimeline,
   BacktestRunCounts,
   BacktestRunSummary,
 } from "../backtest/backtest-precision-types";
@@ -38,6 +39,11 @@ export interface BacktestPrecisionResponse {
   exchangeType: ExchangeType;
   counts: BacktestRunCounts;
   summary: BacktestRunSummary;
+  /**
+   * Recorded Black Swan status transitions at detector evaluation times.
+   * Absent on precision-checker replays and legacy cache entries.
+   */
+  blackSwanTimeline?: BacktestBlackSwanTimeline;
   /** True when the body was served from the saved result cache. */
   cached?: boolean;
   /**

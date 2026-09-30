@@ -18,6 +18,8 @@ import backtestBlackSwan from "./black-swan";
 import {
   VPOINT_WARMUP_MS,
   type BacktestArtifactTarget,
+  type BacktestBlackSwanTimeline,
+  type BacktestBlackSwanTransition,
   type BacktestChunkedResult,
   type BacktestPrecisionResult,
 } from "./backtest-precision-types";
@@ -146,7 +148,14 @@ export async function precisionBacktest(
     markPriceMap: {},
     vPointsMap,
     strategy: structuredClone(initialState?.strategy),
-    blackSwanProtective: initialState?.blackSwanProtective,
+    blackSwanProtective: initialState?.blackSwanStatus
+      ? blackSwan.state.isProtective(initialState.blackSwanStatus)
+      : initialState?.blackSwanProtective,
+    blackSwanStatus: isPrecisionChecker
+      ? initialState?.blackSwanStatus === undefined
+        ? undefined
+        : structuredClone(initialState.blackSwanStatus)
+      : undefined,
     dailyPnlDay: initialState?.dailyPnlDay,
     dailyPnlUsdt: initialState?.dailyPnlUsdt,
   };
@@ -280,11 +289,19 @@ export async function precisionBacktest(
     onNotif: () => true,
   };
 
-  if (
-    !isPrecisionChecker &&
-    blackSwan.config.normalize(params.config.management.blackSwan).enabled
-  ) {
-    adapter.onRiskSentinel = backtestBlackSwan.riskSentinel.create();
+  const blackSwanConfig = blackSwan.config.normalize(
+    params.config.management.blackSwan,
+  );
+  const blackSwanSegments: BacktestBlackSwanTransition[] = [];
+  if (!isPrecisionChecker && blackSwanConfig.enabled) {
+    adapter.onRiskSentinel = backtestBlackSwan.riskSentinel.create({
+      onState: (next) => {
+        const last = blackSwanSegments[blackSwanSegments.length - 1];
+        if (last?.status !== next.status) {
+          blackSwanSegments.push({ status: next.status, t: next.t });
+        }
+      },
+    });
   }
 
   // The configured strategy module plugs producers/guard/bookkeeping into
@@ -296,6 +313,16 @@ export async function precisionBacktest(
   await engine.start();
   await captureBalance();
 
+  const blackSwanTimeline: BacktestBlackSwanTimeline | undefined =
+    isPrecisionChecker
+      ? undefined
+      : {
+          enabled: blackSwanConfig.enabled,
+          endTime,
+          segments: blackSwanSegments,
+          startTime: currentTime,
+        };
+
   if (spool) {
     for (const position of state.openPositions) {
       stats.onOpen();
@@ -303,6 +330,7 @@ export async function precisionBacktest(
     }
     const parts = await spool.finalize();
     return {
+      blackSwanTimeline,
       counts: stats.counts(),
       dataset: { endTime, startTime: datasetStartTime },
       exchangeType: params.config.management.exchangeType,
@@ -327,6 +355,7 @@ export async function precisionBacktest(
   );
 
   return {
+    blackSwanTimeline,
     exchangeType: params.config.management.exchangeType,
     vPointsMap: resultVPointsMap,
     positions: [...history, ...state.openPositions],

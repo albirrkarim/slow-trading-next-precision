@@ -56,6 +56,31 @@ export interface BlackSwanEvidence {
   };
 }
 
+/** One detector status change recorded at an actual evaluation time. */
+export interface BlackSwanTransition {
+  t: number;
+  status: BlackSwanStatus;
+  /**
+   * Detector-enabled setting sampled with this status — defaults true;
+   * `false` marks a detector-disabled band (still NORMAL/DISABLED output).
+   */
+  enabled?: boolean;
+}
+
+/**
+ * Recorded status history: `segments[i]` covers [segments[i].t,
+ * segments[i+1].t) — the final segment ends at `endTime`. Top-level
+ * `enabled` is the latest sampled setting, never permission to hide older
+ * recorded segments. Gaps before the first segment and after `endTime` are
+ * unrecorded; nothing is fabricated from `since` or exit timestamps.
+ */
+export interface BlackSwanTimeline {
+  enabled: boolean;
+  startTime: number;
+  endTime: number;
+  segments: BlackSwanTransition[];
+}
+
 /** Persisted, per-mode portfolio protection state. */
 export interface BlackSwanState {
   status: BlackSwanStatus;

@@ -115,6 +115,7 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
   const result = await run.result;
 
   const body: BacktestPrecisionResponse = {
+    blackSwanTimeline: result.blackSwanTimeline,
     counts: result.counts,
     dataset: result.dataset,
     exchangeType: result.exchangeType,

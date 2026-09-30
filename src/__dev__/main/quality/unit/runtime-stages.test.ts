@@ -585,6 +585,225 @@ describe("productionStages.riskSentinel", () => {
 
     expect(getKlines).toHaveBeenCalledTimes(4);
   });
+
+  it("mirrors the full persisted next state onto the engine state", async () => {
+    const context = contextWith();
+    await productionStages.riskSentinel(context);
+
+    const persisted = mocks.statusByMode.live?.blackSwan;
+    expect(persisted?.status).toBe("CRISIS");
+    expect(context.state.blackSwanStatus).toEqual(persisted);
+    expect(context.state.blackSwanProtective).toBe(true);
+    // The live slice update never touched the sandbox slice.
+    expect(mocks.statusByMode.sandbox).toBeUndefined();
+  });
+
+  it("records the first transition at the evaluation time, not .since", async () => {
+    mocks.statusByMode.live = {
+      blackSwan: {
+        reason: "HEALTHY",
+        since: NOW - 3_600_000, // persisted since must not backdate history
+        status: "NORMAL",
+        t: NOW - 3_600_000,
+      },
+      dailyPnlLimitState: { d: "2026-09-03", usdt: -10 },
+    };
+    await productionStages.riskSentinel(contextWith());
+
+    const timeline = mocks.statusByMode.live?.blackSwanTimeline;
+    expect(timeline).toEqual({
+      enabled: true,
+      endTime: NOW,
+      segments: [{ enabled: true, status: "CRISIS", t: NOW }],
+      startTime: NOW,
+    });
+    // Unrelated persisted status fields survive the sentinel update.
+    expect(mocks.statusByMode.live?.dailyPnlLimitState).toEqual({
+      d: "2026-09-03",
+      usdt: -10,
+    });
+  });
+
+  it("extends endTime on repeated same-status evaluations without new segments", async () => {
+    const context = contextWith();
+    await productionStages.riskSentinel(context);
+
+    // Second tick returns stale BTC candles — CRISIS holds (DATA_STALE).
+    context.state.currentTime += MINUTE_MS;
+    (context.adapter.market.getKlines as any).mockResolvedValue([]);
+    await productionStages.riskSentinel(context);
+
+    const timeline = mocks.statusByMode.live?.blackSwanTimeline;
+    expect(timeline?.segments).toEqual([
+      { enabled: true, status: "CRISIS", t: NOW },
+    ]);
+    expect(timeline?.endTime).toBe(NOW + MINUTE_MS);
+  });
+
+  it("appends a segment on status change and keeps it across restarts", async () => {
+    const context = contextWith();
+    await productionStages.riskSentinel(context);
+
+    // Healthy candles on the next tick: CRISIS -> RECOVERY.
+    context.state.currentTime += MINUTE_MS;
+    (context.adapter.market.getKlines as any).mockImplementation(
+      async ({ symbol }: any) =>
+        symbol === "BTC_USDT"
+          ? crashCandles(NOW + MINUTE_MS).map((kline: any) => [
+              kline[0],
+              kline[1],
+              kline[2],
+              kline[3],
+              "100",
+              kline[5],
+              kline[6],
+            ])
+          : [],
+    );
+    await productionStages.riskSentinel(context);
+
+    const timeline = mocks.statusByMode.live?.blackSwanTimeline;
+    expect(timeline?.segments).toEqual([
+      { enabled: true, status: "CRISIS", t: NOW },
+      { enabled: true, status: "RECOVERY", t: NOW + MINUTE_MS },
+    ]);
+    expect(timeline?.endTime).toBe(NOW + MINUTE_MS);
+  });
+
+  it("records a distinct disabled band when protection toggles off", async () => {
+    mocks.statusByMode.live = {
+      blackSwanTimeline: {
+        enabled: true,
+        endTime: NOW - MINUTE_MS,
+        segments: [{ enabled: true, status: "NORMAL", t: NOW - MINUTE_MS }],
+        startTime: NOW - MINUTE_MS,
+      },
+    };
+    const context = contextWith();
+    context.state.config.management.blackSwan = {
+      ...DEFAULT_BLACK_SWAN_CONFIG,
+      enabled: false,
+    };
+    await productionStages.riskSentinel(context);
+
+    const timeline = mocks.statusByMode.live?.blackSwanTimeline;
+    expect(timeline?.segments).toEqual([
+      { enabled: true, status: "NORMAL", t: NOW - MINUTE_MS },
+      { enabled: false, status: "NORMAL", t: NOW },
+    ]);
+    expect(timeline?.enabled).toBe(false);
+    expect(timeline?.endTime).toBe(NOW);
+    expect(mocks.statusByMode.live?.blackSwan?.reason).toBe("DISABLED");
+  });
+
+  it("replaces a same-tick transition instead of adding a zero-width segment", async () => {
+    mocks.statusByMode.live = {
+      blackSwanTimeline: {
+        enabled: true,
+        endTime: NOW,
+        segments: [{ enabled: true, status: "NORMAL", t: NOW }],
+        startTime: NOW,
+      },
+    };
+    await productionStages.riskSentinel(contextWith());
+
+    const timeline = mocks.statusByMode.live?.blackSwanTimeline;
+    expect(timeline?.segments).toEqual([
+      { enabled: true, status: "CRISIS", t: NOW },
+    ]);
+    expect(timeline?.endTime).toBe(NOW);
+  });
+
+  it("ignores an out-of-order evaluation timestamp", async () => {
+    mocks.statusByMode.live = {
+      blackSwanTimeline: {
+        enabled: true,
+        endTime: NOW,
+        segments: [{ enabled: true, status: "WATCH", t: NOW }],
+        startTime: NOW,
+      },
+    };
+    const context = contextWith();
+    context.state.currentTime = NOW - MINUTE_MS;
+    await productionStages.riskSentinel(context);
+
+    const timeline = mocks.statusByMode.live?.blackSwanTimeline;
+    expect(timeline?.segments).toEqual([
+      { enabled: true, status: "WATCH", t: NOW },
+    ]);
+    expect(timeline?.endTime).toBe(NOW);
+  });
+
+  it("respects a persisted manual acknowledgement on live recovery", async () => {
+    const recovering = {
+      acknowledgedAt: NOW - MINUTE_MS,
+      reason: "MANUAL_ACK_REQUIRED",
+      recoverySince: NOW - 2 * MINUTE_MS,
+      since: NOW - 10 * MINUTE_MS,
+      status: "RECOVERY",
+      t: NOW - MINUTE_MS,
+    };
+    mocks.statusByMode.live = { blackSwan: recovering };
+    const context = contextWith();
+    context.state.config.management.blackSwan = {
+      ...DEFAULT_BLACK_SWAN_CONFIG,
+      enabled: true,
+      recoveryCooldownMinutes: 1,
+      requireManualLiveRecovery: true,
+    };
+    (context.adapter.market.getKlines as any).mockImplementation(
+      async ({ symbol }: any) =>
+        symbol === "BTC_USDT"
+          ? crashCandles(NOW).map((kline: any) => [
+              kline[0],
+              kline[1],
+              kline[2],
+              kline[3],
+              "100",
+              kline[5],
+              kline[6],
+            ])
+          : [],
+    );
+    await productionStages.riskSentinel(context);
+
+    // acknowledgedAt covers recoverySince + cooldown elapsed → NORMAL.
+    expect(mocks.statusByMode.live?.blackSwan?.status).toBe("NORMAL");
+    expect(context.state.blackSwanProtective).toBe(false);
+
+    // Without the acknowledgement the same inputs stay in RECOVERY.
+    vi.clearAllMocks();
+    mocks.statusByMode = {
+      live: { blackSwan: { ...recovering, acknowledgedAt: undefined } },
+    };
+    const unacknowledged = contextWith();
+    unacknowledged.state.config.management.blackSwan = {
+      ...DEFAULT_BLACK_SWAN_CONFIG,
+      enabled: true,
+      recoveryCooldownMinutes: 1,
+      requireManualLiveRecovery: true,
+    };
+    (unacknowledged.adapter.market.getKlines as any).mockImplementation(
+      async ({ symbol }: any) =>
+        symbol === "BTC_USDT"
+          ? crashCandles(NOW).map((kline: any) => [
+              kline[0],
+              kline[1],
+              kline[2],
+              kline[3],
+              "100",
+              kline[5],
+              kline[6],
+            ])
+          : [],
+    );
+    await productionStages.riskSentinel(unacknowledged);
+    expect(mocks.statusByMode.live?.blackSwan?.status).toBe("RECOVERY");
+    expect(mocks.statusByMode.live?.blackSwan?.reason).toBe(
+      "MANUAL_ACK_REQUIRED",
+    );
+    expect(unacknowledged.state.blackSwanProtective).toBe(true);
+  });
 });
 
 describe("productionStages.management", () => {

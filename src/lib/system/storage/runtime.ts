@@ -2,7 +2,10 @@ import path from "path";
 
 import fs from "fs-extra";
 
-import type { BlackSwanState } from "../trading/black-swan";
+import type {
+  BlackSwanState,
+  BlackSwanTimeline,
+} from "../trading/black-swan";
 import type {
   RuntimeCyclePerformanceSummary,
   RuntimeStageRunStatsMap,
@@ -46,6 +49,12 @@ export interface RuntimeAccountModeState {
  */
 export interface RuntimeSystemStatus {
   blackSwan?: BlackSwanState;
+  /**
+   * Recorded Black Swan status history for this mode — sparse transitions
+   * at actual sentinel evaluation times, appended atomically alongside
+   * `blackSwan`. Absent until the first post-upgrade evaluation.
+   */
+  blackSwanTimeline?: BlackSwanTimeline;
   dailyPnlLimitState?: {
     /** UTC day key. */
     d: string;

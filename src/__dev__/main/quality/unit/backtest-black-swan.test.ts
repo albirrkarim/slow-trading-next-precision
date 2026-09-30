@@ -1,3 +1,4 @@
+import fs from "fs-extra";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const MINUTE_MS = 60_000;
@@ -473,6 +474,65 @@ describe("backtestBlackSwan.riskSentinel", () => {
     expect(mocks.central).not.toHaveBeenCalled();
   });
 
+  it("writes the full detector state (status, reason, evidence) onto engine state", async () => {
+    const getKlines = klinesReturning({ BTC: windowCandles(NOW, 90) });
+    const { context, state } = makeContext({ getKlines });
+    await backtestBlackSwan.riskSentinel.create()(context);
+
+    const next = state.blackSwanStatus;
+    expect(next?.status).toBe("CRISIS");
+    expect(next?.reason).toBe("BTC_HARD_TRIGGER");
+    expect(next?.t).toBe(NOW);
+    expect(next?.evidence?.btc[5]).toBeDefined();
+    expect(state.blackSwanProtective).toBe(true);
+  });
+
+  it("keeps cooldown progress across hook recreation on the same engine state", async () => {
+    const getKlines = klinesReturning({
+      BTC: (endTime) => windowCandles(endTime, endTime === NOW ? 90 : 100),
+    });
+    const { context, state } = makeContext({
+      blackSwan: { enabled: true, recoveryCooldownMinutes: 60 },
+      getKlines,
+    });
+
+    const crisis = await backtestBlackSwan.riskSentinel.create()(context);
+    expect(crisis?.summary).toMatch(/CRISIS/);
+
+    // A fresh hook has no closure state — RECOVERY proves the previous
+    // CRISIS was read back from `context.state.blackSwanStatus`.
+    state.currentTime += MINUTE_MS;
+    const recreated = await backtestBlackSwan.riskSentinel.create()(context);
+    expect(recreated?.summary).toMatch(/RECOVERY/);
+    expect(state.blackSwanProtective).toBe(true);
+
+    state.currentTime += 60 * MINUTE_MS;
+    const healed = await backtestBlackSwan.riskSentinel.create()(context);
+    expect(healed?.summary).toMatch(/NORMAL \(HEALTHY\)/);
+  });
+
+  it("invokes onState with each evaluated next state after writing it", async () => {
+    const getKlines = klinesReturning({
+      BTC: (endTime) => windowCandles(endTime, endTime === NOW ? 90 : 100),
+    });
+    const { context, state } = makeContext({ getKlines });
+    const seen: BlackSwanState[] = [];
+    const hook = backtestBlackSwan.riskSentinel.create({
+      onState: (next) => {
+        // The callback fires after the full state is written.
+        expect(state.blackSwanStatus).toBe(next);
+        seen.push(next);
+      },
+    });
+
+    await hook(context);
+    state.currentTime += MINUTE_MS;
+    await hook(context);
+
+    expect(seen.map((item) => item.status)).toEqual(["CRISIS", "RECOVERY"]);
+    expect(seen.map((item) => item.t)).toEqual([NOW, NOW + MINUTE_MS]);
+  });
+
   it("keeps detector state isolated between independently created hooks", async () => {
     const crashing = klinesReturning({ BTC: windowCandles(NOW, 90) });
     const crisisContext = makeContext({ getKlines: crashing });
@@ -779,6 +839,173 @@ describe("precisionBacktest risk-sentinel wiring", () => {
     const { adapter, state } = mocks.engines.at(-1)!;
     expect(adapter.onRiskSentinel).toBeUndefined();
     expect(state.blackSwanProtective).toBe(true);
+  });
+
+  it("hydrates the full captured Black Swan state on precision-checker runs", async () => {
+    const startTime = DATASET_START + VPOINT_WARMUP_MS;
+    const endTime = startTime + 10 * MINUTE_MS;
+    mocks.prepareDataset.mockResolvedValue({
+      endTime,
+      getKlines: vi.fn(async () => []),
+      startTime: DATASET_START,
+      symbols: ["BTC", "SUI"],
+    });
+
+    const captured = {
+      reason: "BTC_HARD_TRIGGER",
+      since: startTime - MINUTE_MS,
+      status: "CRISIS",
+      t: startTime - MINUTE_MS,
+    };
+    const result = await precisionBacktest({
+      config: configWith({ enabled: true }),
+      endTime,
+      initialState: {
+        balance: {},
+        blackSwanProtective: false, // stale — the full state is authoritative
+        blackSwanStatus: captured,
+        openPositions: [],
+        vPointsMap: {},
+      },
+      mode: "precision-checker",
+      range: "custom",
+      startTime,
+      upToDateDecisionBacktest: false,
+      upToDateKlines: false,
+    } as never);
+
+    const { state } = mocks.engines.at(-1)!;
+    // Derived from the full status, not the stale boolean.
+    expect(state.blackSwanProtective).toBe(true);
+    expect(state.blackSwanStatus).toEqual(captured);
+    expect(state.blackSwanStatus).not.toBe(captured);
+    // Checker replays never record a timeline.
+    expect(
+      (result as { blackSwanTimeline?: unknown }).blackSwanTimeline,
+    ).toBeUndefined();
+  });
+
+  it("ignores an injected initialState on normal runs", async () => {
+    const result = await runBacktest({
+      blackSwan: { enabled: false },
+      initialState: {
+        balance: {},
+        blackSwanProtective: true,
+        blackSwanStatus: {
+          reason: "BTC_HARD_TRIGGER",
+          since: 1,
+          status: "CRISIS",
+          t: 1,
+        },
+        openPositions: [],
+        vPointsMap: {},
+      },
+    });
+
+    const { adapter, state } = mocks.engines.at(-1)!;
+    expect(adapter.onRiskSentinel).toBeUndefined();
+    expect(state.blackSwanProtective).toBeFalsy();
+    expect(state.blackSwanStatus).toBeUndefined();
+    expect(result.blackSwanTimeline).toEqual({
+      enabled: false,
+      endTime: DATASET_START + VPOINT_WARMUP_MS + 10 * MINUTE_MS,
+      segments: [],
+      startTime: DATASET_START + VPOINT_WARMUP_MS,
+    });
+  });
+
+  it("records the status timeline through the real sentinel hook", async () => {
+    const result = await runBacktest({
+      blackSwan: { enabled: true, recoveryCooldownMinutes: 1 },
+    });
+    const { adapter, state } = mocks.engines.at(-1)!;
+    const typedState = state as RuntimeEngineState;
+    const context = {
+      adapter,
+      helper: {
+        market: { updateMarkPrice: vi.fn(async () => undefined) },
+      },
+      state: typedState,
+    } as unknown as RuntimeContext;
+
+    const startTime = DATASET_START + VPOINT_WARMUP_MS;
+    const closes = new Map<number, number>([
+      [startTime, 100],
+      [startTime + MINUTE_MS, 95],
+      [startTime + 2 * MINUTE_MS, 90],
+      [startTime + 3 * MINUTE_MS, 100],
+      [startTime + 4 * MINUTE_MS, 100],
+      [startTime + 5 * MINUTE_MS, 100],
+    ]);
+    adapter.market.getKlines = vi.fn(async ({ endTime }: any) =>
+      windowCandles(endTime, closes.get(endTime) ?? 100),
+    );
+
+    for (const t of [...closes.keys()]) {
+      typedState.currentTime = t;
+      await adapter.onRiskSentinel!(context);
+    }
+
+    expect(result.blackSwanTimeline).toEqual({
+      enabled: true,
+      endTime: startTime + 10 * MINUTE_MS,
+      segments: [
+        { status: "NORMAL", t: startTime },
+        { status: "WATCH", t: startTime + MINUTE_MS },
+        { status: "CRISIS", t: startTime + 2 * MINUTE_MS },
+        { status: "RECOVERY", t: startTime + 3 * MINUTE_MS },
+        { status: "NORMAL", t: startTime + 4 * MINUTE_MS },
+      ],
+      startTime,
+    });
+    // The repeated healthy tick collapsed into the existing NORMAL segment.
+    expect(mocks.central).not.toHaveBeenCalled();
+  });
+
+  it("does not fabricate a NORMAL segment before the first evaluation", async () => {
+    const result = await runBacktest({
+      blackSwan: { enabled: true },
+    });
+    const { adapter, state } = mocks.engines.at(-1)!;
+    const typedState = state as RuntimeEngineState;
+    const context = {
+      adapter,
+      state: typedState,
+    } as unknown as RuntimeContext;
+    const startTime = DATASET_START + VPOINT_WARMUP_MS;
+
+    // Before any evaluation the timeline carries its bounds only.
+    expect(result.blackSwanTimeline?.segments).toEqual([]);
+
+    adapter.market.getKlines = vi.fn(async ({ endTime }: any) =>
+      windowCandles(endTime, 95),
+    );
+    typedState.currentTime = startTime + 2 * MINUTE_MS;
+    await adapter.onRiskSentinel!(context);
+
+    expect(result.blackSwanTimeline?.segments).toEqual([
+      { status: "WATCH", t: startTime + 2 * MINUTE_MS },
+    ]);
+  });
+
+  it("carries the timeline on the chunked result as well", async () => {
+    const dir = `/tmp/backtest-black-swan-chunked-${process.pid}`;
+    try {
+      const result = await runBacktest({
+        artifacts: { dir },
+        blackSwan: { enabled: true },
+      });
+
+      expect(result.blackSwanTimeline).toEqual({
+        enabled: true,
+        endTime: DATASET_START + VPOINT_WARMUP_MS + 10 * MINUTE_MS,
+        segments: [],
+        startTime: DATASET_START + VPOINT_WARMUP_MS,
+      });
+      expect("parts" in result).toBe(true);
+    } finally {
+      await fs.remove(dir);
+    }
   });
 });
 

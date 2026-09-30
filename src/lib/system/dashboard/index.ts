@@ -330,6 +330,10 @@ function buildState(params: {
     config: effective,
     runtime: toDashboardRuntime(config.runtime),
     blackSwan: clone(status.blackSwan ?? blackSwan.state.create()),
+    blackSwanTimeline:
+      status.blackSwanTimeline === undefined
+        ? undefined
+        : clone(status.blackSwanTimeline),
     binanceHealth: {
       current: binanceRequestCoordinator.cooldown.get(),
       logs: [],

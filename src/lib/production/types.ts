@@ -63,6 +63,7 @@ export interface ProductionStateOptions
     | "dailyPnlUsdt"
     | "dailyPnlDay"
     | "blackSwanProtective"
+    | "blackSwanStatus"
     | "strategy"
   > {
   /** Live exchange or sandbox mode. */
