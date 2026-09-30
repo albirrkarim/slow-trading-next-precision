@@ -79,6 +79,27 @@ function MultiLineTimelined({
     return undefined;
   }, [data, brushEndTimeMs]);
 
+  /** Brush selection in data indices — prop-snapped until the user drags. */
+  const [brushSel, setBrushSel] = useState<{
+    start?: number;
+    end?: number;
+  }>({});
+  const selStart = brushSel.start ?? brushStartIndex;
+  const selEnd = brushSel.end ?? brushEndIndex;
+
+  /** X domain follows the brush window so selections stretch full-width. */
+  const xDomain = useMemo((): [number | string, number | string] => {
+    if (data.length === 0) return ["dataMin", "dataMax"];
+    const s = Math.min(Math.max(selStart ?? 0, 0), data.length - 1);
+    const e = Math.min(Math.max(selEnd ?? data.length - 1, 0), data.length - 1);
+    const min = Number(data[Math.min(s, e)].timeMs);
+    const max = Number(data[Math.max(s, e)].timeMs);
+    return [
+      Number.isFinite(min) ? min : "dataMin",
+      Number.isFinite(max) ? max : "dataMax",
+    ];
+  }, [data, selStart, selEnd]);
+
   /** Resolves a brush index pair to the covered point-time range. */
   const reportVisibleRange = useCallback(
     (startIndex: number | undefined, endIndex: number | undefined) => {
@@ -191,10 +212,11 @@ function MultiLineTimelined({
     [isTradeGroupDefaultVisible, showTradeGroup, tradeGroups],
   );
 
-  /** Reset visibility when series changes */
+  /** Reset visibility and brush selection when series changes */
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       setVisible(new Set(series.map((_, i) => `s${i}`)));
+      setBrushSel({});
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
@@ -345,11 +367,11 @@ function MultiLineTimelined({
           <XAxis
             dataKey="timeMs"
             type="number"
-            domain={["dataMin", "dataMax"]}
+            domain={xDomain}
             scale="time"
             tickFormatter={formatXAxisTick}
             minTickGap={10}
-            allowDataOverflow={false}
+            allowDataOverflow
           />
           <YAxis tickFormatter={yTickFormatter} width="auto" />
           <Tooltip
@@ -399,18 +421,18 @@ function MultiLineTimelined({
             height={30}
             stroke="#8884d8"
             tickFormatter={formatXAxisTick}
-            startIndex={brushStartIndex}
-            endIndex={brushEndIndex}
-            onChange={(range) =>
-              reportVisibleRange(
+            startIndex={selStart}
+            endIndex={selEnd}
+            onChange={(range) => {
+              const start =
                 typeof range?.startIndex === "number"
                   ? range.startIndex
-                  : undefined,
-                typeof range?.endIndex === "number"
-                  ? range.endIndex
-                  : undefined,
-              )
-            }
+                  : undefined;
+              const end =
+                typeof range?.endIndex === "number" ? range.endIndex : undefined;
+              setBrushSel({ end, start });
+              reportVisibleRange(start, end);
+            }}
           />
         </LineChart>
       </ResponsiveContainer>

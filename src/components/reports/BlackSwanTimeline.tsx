@@ -41,8 +41,9 @@ interface Band {
   start: number;
   /** Logical (unclipped) interval end — tooltips report it verbatim. */
   end: number;
-  leftPct: number;
-  widthPct: number;
+  /** Visible-domain-clipped bounds driving the flex width ratio. */
+  clippedStart: number;
+  clippedEnd: number;
 }
 
 const LEGEND_ORDER: BandKind[] = [
@@ -217,12 +218,12 @@ export default function BlackSwanTimeline({
       })
       .filter((band) => band.clippedEnd > band.clippedStart)
       .map((band) => ({
+        clippedEnd: band.clippedEnd,
+        clippedStart: band.clippedStart,
         end: band.end,
         kind: band.kind,
-        leftPct: (100 * (band.clippedStart - a)) / (b - a),
         reason: band.reason,
         start: band.start,
-        widthPct: (100 * (band.clippedEnd - band.clippedStart)) / (b - a),
       }));
   })();
 
@@ -285,9 +286,9 @@ export default function BlackSwanTimeline({
           border: 1,
           borderColor: "divider",
           borderRadius: 1,
+          display: "flex",
           height: 22,
           overflow: "hidden",
-          position: "relative",
           width: "100%",
         }}
       >
@@ -297,15 +298,15 @@ export default function BlackSwanTimeline({
             <Tooltip arrow key={index} title={label}>
               <Box
                 aria-label={label}
-                style={{
-                  left: `${band.leftPct}%`,
-                  width: `${band.widthPct}%`,
-                }}
                 sx={{
                   bgcolor: colors[band.kind],
-                  bottom: 0,
-                  position: "absolute",
-                  top: 0,
+                  flexBasis: 0,
+                  flexGrow: Math.max(
+                    band.clippedEnd - band.clippedStart,
+                    1,
+                  ),
+                  flexShrink: 0,
+                  minWidth: 4,
                   "&:focus-visible": {
                     outline: `2px solid ${theme.palette.text.primary}`,
                     outlineOffset: -2,
