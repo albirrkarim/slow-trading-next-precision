@@ -1,6 +1,13 @@
 import type { BalanceSummary, Position } from "@/lib/system/trading";
 import type { ExchangeType, VolatilityPoint } from "@/lib/system/types";
 
+/**
+ * Milliseconds of dataset history consumed before the simulated clock starts —
+ * the engine builds the initial vPointsMap from ~2 months of klines, so the
+ * effective tradable window is `datasetStart + VPOINT_WARMUP_MS` → `endTime`.
+ */
+export const VPOINT_WARMUP_MS = 2 * 30 * 24 * 60 * 60_000;
+
 /** One account's balance summary captured at a single timestamp. */
 export interface BacktestBalanceSnapshot extends BalanceSummary {
   t: number;

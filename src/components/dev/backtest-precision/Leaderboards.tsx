@@ -234,7 +234,7 @@ export const HEADER_GROUPS: HeaderGroup[] = [
         id: "leaderboard.tradesPerDay",
         label: "Trades/Day",
         align: "right",
-        tooltip: "Closed positions per day over the run's range — realized income cadence.\nStored on the saved metric set; entries saved before this column existed fall back to trades ÷ range days from the config.\nHigher = more frequent income. Read it beside Win Rate and Sharpe.\nSource: leaderboard.tradesPerDay → positionsClosed ÷ (timeline span).",
+        tooltip: "Closed positions per day over the run's trading window — realized income cadence.\nThe ~2-month volatility-point warm-up is excluded: the divisor spans first→last balance snapshot, and the config-range fallback subtracts the same warm-up.\nHigher = more frequent income. Read it beside Win Rate and Sharpe.\nSource: leaderboard.tradesPerDay → positionsClosed ÷ (timeline span).",
     },
     {
         id: "leaderboard.sharpeRatio",

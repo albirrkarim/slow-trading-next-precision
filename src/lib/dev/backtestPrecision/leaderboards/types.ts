@@ -43,7 +43,10 @@ export interface BacktestLeaderboardMetrics {
   positionsClosed: number;
   /** Monthly-return Sharpe ratio (mean / stddev, no annualization). */
   sharpeRatio: number;
-  /** Closed positions per day over the run's timeline span. */
+  /**
+   * Closed positions per day over the balance-snapshot span — the effective
+   * trading window, which already excludes the ~2-month vPoint warm-up.
+   */
   tradesPerDay?: number;
   /** Winning closed positions / total closed positions * 100. */
   winRate: number;

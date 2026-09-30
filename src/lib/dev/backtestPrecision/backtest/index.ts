@@ -13,10 +13,11 @@ import tradingExit from "@/lib/system/trading/exit";
 import strategies from "@/lib/strategies";
 import type { BacktestPrecisionParams } from "../api/precision-api-types";
 import backtestArtifacts from "./artifacts";
-import type {
-  BacktestArtifactTarget,
-  BacktestChunkedResult,
-  BacktestPrecisionResult,
+import {
+  VPOINT_WARMUP_MS,
+  type BacktestArtifactTarget,
+  type BacktestChunkedResult,
+  type BacktestPrecisionResult,
 } from "./backtest-precision-types";
 import { preparePrecisionDataset } from "./data";
 import backtestStats from "./stats";
@@ -28,7 +29,6 @@ import {
 } from "./utils";
 
 const BACKTEST_ENTRY_CUTOFF_MS = 4 * 24 * 60 * 60 * 1000;
-const VPOINT_WARMUP_MS = 2 * 30 * 24 * 60 * 60_000;
 
 interface PrecisionBacktestParams extends BacktestPrecisionParams {
   mode?: "backtest" | "precision-checker";

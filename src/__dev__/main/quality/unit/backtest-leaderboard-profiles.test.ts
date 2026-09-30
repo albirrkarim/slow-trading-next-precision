@@ -117,25 +117,30 @@ describe("leaderboard profiles store", () => {
 });
 
 describe("leaderboard leaf reads", () => {
-    it("prefers the stored tradesPerDay and falls back to range days", () => {
+    it("prefers the stored tradesPerDay and falls back to range days minus warm-up", () => {
         const stored = entry("a", metrics({ positionsClosed: 10, tradesPerDay: 0.7 }));
         expect(readLeaf(stored, "leaderboard.tradesPerDay")).toBe(0.7);
 
-        // Legacy entry: 90 closed trades over a 180-day "6month" run → 0.5/day.
+        // Legacy entry: 90 closed trades over a 180-day "6month" run minus
+        // the ~60-day vPoint warm-up → 90 / 120 = 0.75/day.
         const legacy = entry(
             "b",
             metrics({ positionsClosed: 90 }),
             { range: "6month" },
         );
-        expect(readLeaf(legacy, "leaderboard.tradesPerDay")).toBeCloseTo(0.5, 3);
+        expect(readLeaf(legacy, "leaderboard.tradesPerDay")).toBeCloseTo(0.75, 3);
 
-        // Custom ranges resolve from explicit start/end times (10 days).
+        // Custom ranges resolve from explicit start/end times: 90 range days
+        // minus the warm-up → 30 trading days → 5 / 30.
         const custom = entry(
             "c",
             metrics({ positionsClosed: 5 }),
-            { endTime: 11 * 86400000, range: "custom", startTime: 86400000 },
+            { endTime: 91 * 86400000, range: "custom", startTime: 86400000 },
         );
-        expect(readLeaf(custom, "leaderboard.tradesPerDay")).toBeCloseTo(0.5, 3);
+        expect(readLeaf(custom, "leaderboard.tradesPerDay")).toBeCloseTo(
+            5 / 30,
+            3,
+        );
     });
 });
 

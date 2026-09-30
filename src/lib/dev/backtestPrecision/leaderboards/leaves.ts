@@ -1,3 +1,5 @@
+import { VPOINT_WARMUP_MS } from "../backtest/backtest-precision-types";
+
 import type {
   BacktestLeaderboardEntry,
   LeaderboardProfile,
@@ -80,15 +82,19 @@ export function minEquityOf(
 }
 
 /**
- * Closed positions per day. Prefers the stored metric; entries saved before
- * the field existed fall back to positionsClosed ÷ the config's range days.
+ * Closed positions per day. Prefers the stored metric — whose divisor is the
+ * balance-snapshot span, so it already excludes the ~2-month vPoint warm-up.
+ * Entries saved before the field existed fall back to positionsClosed ÷ the
+ * config's range days minus that same warm-up.
  */
 function tradesPerDayOf(entry: BacktestLeaderboardEntry): number | undefined {
   const stored = entry.leaderboard?.tradesPerDay;
   if (typeof stored === "number" && Number.isFinite(stored)) return stored;
   const days = rangeDaysOf(entry.backtestConfig);
   const closed = entry.leaderboard?.positionsClosed;
-  return days && typeof closed === "number" ? closed / days : undefined;
+  if (!days || typeof closed !== "number") return undefined;
+  const tradingDays = Math.max(1, days - VPOINT_WARMUP_MS / DAY_MS);
+  return closed / tradingDays;
 }
 
 /** Virtual leaf resolvers — values derived per entry, not stored fields. */
