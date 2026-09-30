@@ -66,11 +66,13 @@ function formatMarketCapPreview(value: unknown): string {
 
 export default function SettingsDialogManagementTab({
   configDraft,
+  hideCredentials,
   selectedAccountSlug,
   setConfigDraft,
   setSelectedAccountSlug,
 }: {
   configDraft: ConfigDraft;
+  hideCredentials?: boolean;
   selectedAccountSlug?: string;
   setConfigDraft: ConfigDraftSetter;
   setSelectedAccountSlug?: (slug: string) => void;
@@ -142,6 +144,7 @@ export default function SettingsDialogManagementTab({
                 </Box>
                 <ExchangeAccountManagerDialog
                   configDraft={configDraft}
+                  hideCredentials={hideCredentials}
                   selectedAccountSlug={selectedAccountSlug}
                   setConfigDraft={setConfigDraft}
                   setSelectedAccountSlug={setSelectedAccountSlug}

@@ -2,10 +2,12 @@
 
 import SettingsDialog from "@/components/settings/SettingsDialog";
 import {
+    type ConfigDraft,
     type ConfigDraftSetter,
     type DashboardState,
 } from "@/components/settings/settings-types";
 import { makeConfigDraft } from "@/components/settings/helpers";
+import sanitize from "@/lib/system/storage/sanitize";
 import { endpoints } from "@/components/endpoints";
 import { TIME_RANGE } from "@/lib/system/app-constants";
 import {
@@ -41,6 +43,11 @@ export const DEFAULT_BACKTEST_CONFIG: BacktestConfig = {
     // Config
     settings: undefined,
 };
+
+/** Removes credentials/notification secrets so they never enter the backtest draft. */
+function draftWithoutSecrets(draft: ConfigDraft): ConfigDraft {
+    return sanitize.stripSecrets(draft) as ConfigDraft;
+}
 
 interface BacktestConfigProps {
     backtestConfig: BacktestConfig;
@@ -82,7 +89,9 @@ export default function DynamicBacktestConfig({
                         ? current
                         : {
                             ...current,
-                            settings: makeConfigDraft(response.data),
+                            settings: draftWithoutSecrets(
+                                makeConfigDraft(response.data),
+                            ),
                         },
                 );
             });
@@ -100,7 +109,7 @@ export default function DynamicBacktestConfig({
         const response = await axios.get<DashboardState>(endpoints.system.state);
         setBacktestConfig((current) => ({
             ...current,
-            settings: makeConfigDraft(response.data),
+            settings: draftWithoutSecrets(makeConfigDraft(response.data)),
         }));
     };
 
@@ -230,6 +239,7 @@ export default function DynamicBacktestConfig({
                     configDraft={backtestConfig.settings}
                     dashboardState={dashboardState}
                     hiddenTabs={["notification", "withdraw", "mcp"]}
+                    hideCredentials
                     onResetToProduction={resetToProductionConfig}
                     setConfigDraft={setTradingConfig}
                 />

@@ -141,6 +141,11 @@ function CredentialSettingsField({
 
 interface ExchangeAccountManagerDialogProps {
   configDraft: ConfigDraft;
+  /**
+   * Hides the API credential fields — used by contexts (backtest settings)
+   * whose drafts must never carry exchange keys.
+   */
+  hideCredentials?: boolean;
   selectedAccountSlug?: string;
   setConfigDraft: ConfigDraftSetter;
   setSelectedAccountSlug?: (slug: string) => void;
@@ -148,6 +153,7 @@ interface ExchangeAccountManagerDialogProps {
 
 export default function ExchangeAccountManagerDialog({
   configDraft,
+  hideCredentials,
   selectedAccountSlug,
   setConfigDraft,
   setSelectedAccountSlug,
@@ -171,10 +177,23 @@ export default function ExchangeAccountManagerDialog({
     : (configDraft.accounts.find(
       (account) => account.slug === selectedSlug,
     )?.slug ?? configDraft.accounts[0]?.slug);
-  const editingExchangeAccount =
+  const editingExchangeAccountRaw =
     configDraft.accounts.find(
       (account) => account.slug === effectiveEditingAccountId,
     ) ?? configDraft.accounts[0];
+  // Drafts restored from stripped configs can carry no credentials object.
+  const editingExchangeAccount = editingExchangeAccountRaw
+    ? {
+        ...editingExchangeAccountRaw,
+        credentials: {
+          apiKey: "",
+          apiSecret: "",
+          ...((editingExchangeAccountRaw.credentials ?? {}) as Partial<
+            RuntimeAccountConfig["credentials"]
+          >),
+        },
+      }
+    : editingExchangeAccountRaw;
   const pairModeMissingHedge =
     pair.isPairMode({
       entryLegs: editingExchangeAccount?.trading.entryLegs,
@@ -588,6 +607,7 @@ export default function ExchangeAccountManagerDialog({
                       />
                     </Grid>
 
+                    {!hideCredentials && (
                     <Grid size={{ xs: 12 }}>
                       <CredentialSettingsField
                         label={`${getExchangeAccountTypeLabel(
@@ -614,7 +634,9 @@ export default function ExchangeAccountManagerDialog({
                         info="Private API key used for this account's balance checks and live orders."
                       />
                     </Grid>
+                    )}
 
+                    {!hideCredentials && (
                     <Grid size={{ xs: 12 }}>
                       <CredentialSettingsField
                         label={`${getExchangeAccountTypeLabel(
@@ -641,6 +663,16 @@ export default function ExchangeAccountManagerDialog({
                         info="Private API secret saved into the local SLOW config JSON."
                       />
                     </Grid>
+                    )}
+
+                    {hideCredentials && (
+                      <Grid size={{ xs: 12 }}>
+                        <Typography color="text.secondary" variant="caption">
+                          Exchange credentials are managed on the live dashboard
+                          — backtest configs never store API keys.
+                        </Typography>
+                      </Grid>
+                    )}
 
                   </Grid>
                 </Stack>

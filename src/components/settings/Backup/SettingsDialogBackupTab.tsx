@@ -33,9 +33,15 @@ export function stringifyConfigBackup(configDraft: ConfigDraft): string {
 }
 
 /**
- * Parses and validates a complete dashboard configuration backup.
+ * Parses and validates a complete dashboard configuration backup. Account
+ * credentials omitted from the backup (e.g. a stripped backtest config) fall
+ * back to the current draft's credentials for the same slug so a restore
+ * never wipes saved keys.
  */
-export function parseConfigBackup(raw: string): ConfigDraft {
+export function parseConfigBackup(
+  raw: string,
+  currentDraft?: ConfigDraft,
+): ConfigDraft {
   let parsed: unknown;
 
   try {
@@ -66,7 +72,24 @@ export function parseConfigBackup(raw: string): ConfigDraft {
     );
   }
 
-  return structuredClone(parsed) as unknown as ConfigDraft;
+  const imported = structuredClone(parsed) as unknown as ConfigDraft;
+  const credentialsBySlug = new Map(
+    (currentDraft?.accounts ?? []).map((account) => [
+      account.slug,
+      account.credentials,
+    ]),
+  );
+  imported.accounts = imported.accounts.map((account) => {
+    if (account.credentials) return account;
+    return {
+      ...account,
+      credentials: credentialsBySlug.get(account.slug) ?? {
+        apiKey: "",
+        apiSecret: "",
+      },
+    };
+  });
+  return imported;
 }
 
 export default function SettingsDialogBackupTab({
@@ -103,7 +126,7 @@ export default function SettingsDialogBackupTab({
 
   const loadBackup = () => {
     try {
-      const importedConfig = parseConfigBackup(importJson);
+      const importedConfig = parseConfigBackup(importJson, configDraft);
       setConfigDraft(importedConfig);
       setMessage({
         severity: "success",

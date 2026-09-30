@@ -75,6 +75,8 @@ export default function SettingsDialog(props: {
   setConfigDraft: ConfigDraftSetter;
 
   dashboardState?: DashboardState;
+  /** Hides exchange credential inputs — for contexts whose drafts must not carry keys. */
+  hideCredentials?: boolean;
   hiddenTabs?: readonly SettingsTab[];
   onCloseDialog?: () => void;
   onOpenDialog?: () => void;
@@ -102,6 +104,7 @@ export default function SettingsDialog(props: {
     configDraft,
     setConfigDraft,
     dashboardState,
+    hideCredentials,
     hiddenTabs = [],
     onCloseDialog,
     onOpenDialog,
@@ -255,6 +258,7 @@ export default function SettingsDialog(props: {
             {activeTab === "management" ? (
               <SettingsDialogManagementTab
                 configDraft={configDraft}
+                hideCredentials={hideCredentials}
                 selectedAccountSlug={selectedAccountSlug}
                 setConfigDraft={setConfigDraft}
                 setSelectedAccountSlug={setSelectedAccountSlug}

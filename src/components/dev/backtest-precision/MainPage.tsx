@@ -2,6 +2,7 @@
 
 import type { ConfigDraft } from "@/components/settings/settings-types";
 import { runtimeNormalize } from "@/lib/system/runtime";
+import sanitize from "@/lib/system/storage/sanitize";
 import SidebarButton from "@/components/ui/SidebarButton";
 import type {
     BacktestPrecisionParams,
@@ -63,15 +64,21 @@ export function normalizeBacktestConfig(raw: unknown): BacktestConfig {
             ? (runtimeConfig as ConfigDraft)
             : undefined;
 
+    const settings =
+        groupedSettings ??
+        ("settings" in runtimeConfig ? runtimeConfig.settings : undefined) ??
+        outerConfig.settings ??
+        DEFAULT_BACKTEST_CONFIG.settings;
+
     return {
         ...DEFAULT_BACKTEST_CONFIG,
         ...outerConfig,
         ...runtimeConfig,
-        settings:
-            groupedSettings ??
-            ("settings" in runtimeConfig ? runtimeConfig.settings : undefined) ??
-            outerConfig.settings ??
-            DEFAULT_BACKTEST_CONFIG.settings,
+        // Backtest configs never carry exchange credentials — strip keys that
+        // survived in old localStorage drafts or unsanitized sources.
+        settings: settings
+            ? (sanitize.stripSecrets(settings) as ConfigDraft)
+            : settings,
     };
 }
 

@@ -48,6 +48,46 @@ describe("settings config backup", () => {
     expect(backup).toContain("secret-value");
   });
 
+  it("keeps current credentials when the backup omits them", () => {
+    const backup = JSON.parse(stringifyConfigBackup(configDraft));
+    delete backup.accounts[0].credentials;
+
+    const restored = parseConfigBackup(JSON.stringify(backup), configDraft);
+
+    expect(restored.accounts[0].credentials).toEqual({
+      apiKey: "secret-key",
+      apiSecret: "secret-value",
+    });
+  });
+
+  it("uses pasted credentials when the backup carries them", () => {
+    const backup = JSON.parse(stringifyConfigBackup(configDraft));
+    backup.accounts[0].credentials = {
+      apiKey: "pasted-key",
+      apiSecret: "pasted-secret",
+    };
+
+    const restored = parseConfigBackup(JSON.stringify(backup), configDraft);
+
+    expect(restored.accounts[0].credentials).toEqual({
+      apiKey: "pasted-key",
+      apiSecret: "pasted-secret",
+    });
+  });
+
+  it("leaves credentials blank for accounts unknown to the draft", () => {
+    const backup = JSON.parse(stringifyConfigBackup(configDraft));
+    delete backup.accounts[0].credentials;
+    backup.accounts.push({ slug: "new-account" });
+
+    const restored = parseConfigBackup(JSON.stringify(backup), configDraft);
+
+    expect(restored.accounts[1].credentials).toEqual({
+      apiKey: "",
+      apiSecret: "",
+    });
+  });
+
   it("rejects invalid or incomplete backups", () => {
     expect(() => parseConfigBackup("not json")).toThrow(
       "The pasted value is not valid JSON.",
