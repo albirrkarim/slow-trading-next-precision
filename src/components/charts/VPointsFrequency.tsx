@@ -325,7 +325,7 @@ function VPointsFrequencyContent({
   startTime?: number;
   volatilityMap: Record<string, VolatilityPoint[]>;
 }) {
-  const { maxPctSymbol, maxPctAt, minPctSymbol, minPctAt, points, summary } =
+  const { maxPctSymbol, maxPctAt, minPctSymbol, minPctAt, points, summary, symbolsByLevel } =
     useMemo(() => {
       const rangedMap = runtimeEntrySequences.range.crop({
         endTimeMs: endTime,
@@ -333,6 +333,7 @@ function VPointsFrequencyContent({
         volatilityMap,
       });
       const rangedPoints = Object.values(rangedMap).flat();
+      const levelSymbolCounts = new Map<number, Map<string, number>>();
       let maxPct = Number.NEGATIVE_INFINITY;
       let minPct = Number.POSITIVE_INFINITY;
       let maxSymbol: string | null = null;
@@ -341,6 +342,11 @@ function VPointsFrequencyContent({
       let minAt: number | null = null;
       for (const [symbol, symbolPoints] of Object.entries(rangedMap)) {
         for (const point of symbolPoints) {
+          if (Number.isInteger(point.lvl)) {
+            const levelCounts = levelSymbolCounts.get(point.lvl) ?? new Map<string, number>();
+            levelCounts.set(symbol, (levelCounts.get(symbol) ?? 0) + 1);
+            levelSymbolCounts.set(point.lvl, levelCounts);
+          }
           if (!Number.isFinite(point.pct)) continue;
           if (point.pct > maxPct) {
             maxPct = point.pct;
@@ -360,6 +366,7 @@ function VPointsFrequencyContent({
         minPctSymbol: minSymbol,
         minPctAt: minAt,
       points: rangedPoints,
+      symbolsByLevel: levelSymbolCounts,
       // PROD:VPOINTS_FREQUENCY
       // PROD:VPOINTS_SUMMARY_PCT
       summary: summarizeVPoints(rangedPoints),
@@ -449,6 +456,34 @@ function VPointsFrequencyContent({
             level,
             maxDrawdown,
           );
+          const levelSymbolEntries = [
+            ...(symbolsByLevel.get(level)?.entries() ?? []),
+          ].sort(
+            (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
+          );
+          const visibleSymbols = levelSymbolEntries.slice(0, 40);
+          const levelSymbolsTooltip = levelSymbolEntries.length > 0 ? (
+            <Box component="span" sx={{ display: "block", textAlign: "left" }}>
+              <Box
+                component="span"
+                sx={{ display: "block", fontWeight: 700, mb: 0.25 }}
+              >
+                {levelSymbolEntries.length} coin
+                {levelSymbolEntries.length === 1 ? "" : "s"}
+              </Box>
+              {visibleSymbols.map(([symbol, symbolCount]) => (
+                <Box component="span" key={symbol} sx={{ display: "block" }}>
+                  {symbol.replace(/_USDT$/, "")} ×{" "}
+                  {symbolCount.toLocaleString()}
+                </Box>
+              ))}
+              {levelSymbolEntries.length > visibleSymbols.length && (
+                <Box component="span" sx={{ display: "block" }}>
+                  +{levelSymbolEntries.length - visibleSymbols.length} more
+                </Box>
+              )}
+            </Box>
+          ) : undefined;
 
           return (
             <Box
@@ -504,9 +539,15 @@ function VPointsFrequencyContent({
                   whiteSpace: "nowrap",
                 }}
               >
-                <Typography fontWeight={700} variant="body2">
-                  {count.toLocaleString()}
-                </Typography>
+                <Tooltip arrow enterTouchDelay={0} title={levelSymbolsTooltip}>
+                  <Typography
+                    fontWeight={700}
+                    sx={{ cursor: "help" }}
+                    variant="body2"
+                  >
+                    {count.toLocaleString()}
+                  </Typography>
+                </Tooltip>
                 {progressions.map(
                   ({
                     direction,
