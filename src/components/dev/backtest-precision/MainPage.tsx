@@ -446,6 +446,7 @@ export default function DynamicTradeAnalytics() {
                     artifacts={artifacts}
                     counts={data.counts}
                     exchangeType={data.exchangeType}
+                    settings={backtestConfig.settings}
                     summary={data.summary}
                 />
             )}

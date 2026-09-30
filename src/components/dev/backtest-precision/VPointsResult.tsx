@@ -11,6 +11,8 @@ import type {
 import type { ExchangeType } from "@/lib/system/types";
 import { Alert, Box, CircularProgress, Grid, Typography } from "@mui/material";
 
+import type { ConfigDraft } from "@/components/settings/settings-types";
+
 import BacktestResultSummary from "./ResultSummary";
 import type { useBacktestArtifacts } from "./use-backtest-artifacts";
 import VolatilityRails from "./VolatilityRails";
@@ -22,12 +24,14 @@ export default function VPointsResult({
   artifacts,
   counts,
   exchangeType,
+  settings,
   summary,
 }: {
   accounts?: Array<{ name?: string; slug: string }>;
   artifacts: Artifacts;
   counts: BacktestRunCounts;
   exchangeType: ExchangeType;
+  settings?: ConfigDraft | null;
   summary: BacktestRunSummary;
 }) {
   const { positions, vpoints } = artifacts;
@@ -80,7 +84,11 @@ export default function VPointsResult({
         </Grid>
 
         <Grid size={{ xs: 12, md: 4 }}>
-          <BacktestResultSummary accounts={accounts} summary={summary} />
+          <BacktestResultSummary
+            accounts={accounts}
+            settings={settings}
+            summary={summary}
+          />
           <VPointsFrequency volatilityMap={vpoints.data ?? {}} />
         </Grid>
       </Grid>

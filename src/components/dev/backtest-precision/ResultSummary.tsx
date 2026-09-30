@@ -21,11 +21,14 @@ import {
 
 import { DEFAULT_COLORS } from "@/lib/system/utils/ui/colors";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
+import type { ConfigDraft } from "@/components/settings/settings-types";
 import type {
     BacktestExitBuckets,
     BacktestReasonCount,
     BacktestRunSummary,
 } from "@/lib/dev/backtestPrecision/backtest/backtest-precision-types";
+
+import BacktestRiskAnalysis from "./RiskAnalysis";
 
 type ExitReasonSlice = BacktestReasonCount;
 
@@ -127,9 +130,10 @@ function ExitReasonPie(props: { data: ExitReasonSlice[]; title: string }) {
  */
 export default function BacktestResultSummary(props: {
     accounts?: Array<{ name?: string; slug: string }>;
+    settings?: ConfigDraft | null;
     summary: BacktestRunSummary;
 }) {
-    const { accounts, summary } = props;
+    const { accounts, settings, summary } = props;
     const nameBySlug = useMemo(
         () =>
             new Map(
@@ -369,6 +373,8 @@ export default function BacktestResultSummary(props: {
                     </Table>
                 )}
             </HeaderMetrics>
+
+            {settings && <BacktestRiskAnalysis settings={settings} />}
 
             <HeaderMetrics
                 rememberExpand="backtest-precision:exit-reasons"

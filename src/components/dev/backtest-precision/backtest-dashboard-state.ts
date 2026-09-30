@@ -26,7 +26,8 @@ export function buildBacktestDashboardState(
   );
   const combinedStartingBalance = enabledAccounts.reduce(
     (total, account) =>
-      total + normalizeStartingBalance(account.sandbox.initialBalanceUSDT),
+      total +
+        normalizeStartingBalance(account.sandbox?.initialBalanceUSDT ?? 0),
     0,
   );
 
@@ -36,7 +37,7 @@ export function buildBacktestDashboardState(
     accounts: structuredClone(configDraft.accounts),
     accountSummaries: configDraft.accounts.map((account) => {
       const startingBalanceUSDT = normalizeStartingBalance(
-        account.sandbox.initialBalanceUSDT,
+        account.sandbox?.initialBalanceUSDT ?? 0,
       );
       return {
         activeMode: "sandbox",
