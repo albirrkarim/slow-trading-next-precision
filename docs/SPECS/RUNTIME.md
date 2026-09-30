@@ -156,7 +156,14 @@ hooks, while backtest keeps them in memory only.
 
 The risk-sentinel and management stages are environment-owned: the engine
 dispatches them only when the adapter implements `onRiskSentinel` or
-`onManagement`. Production implements both; backtest omits them.
+`onManagement`. Production implements both with persisted status and
+notifications. A normal backtest implements the risk sentinel when Black
+Swan protection is enabled: it evaluates the shared detector over
+historical BTC and breadth candles with in-memory state, recovers
+automatically after cooldown, and routes forced exits through the shared
+monitoring pipeline without notifications. The precision checker keeps
+only the captured starting protective flag, and backtests still omit the
+management stage.
 
 TC: `BOTH:SPEEDUP_STAGE`
 

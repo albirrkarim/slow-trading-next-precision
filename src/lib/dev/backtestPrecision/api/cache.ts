@@ -13,12 +13,14 @@ import type {
 import backtestArtifacts from "../backtest/artifacts";
 
 /**
- * Cache layout version. v4 streams artifacts into fixed-size part files
- * (positions/, vpoints/<symbol>/, snapshots/<slug>/) plus meta.json; v3 used
- * monolithic field files. The version feeds the key so old entries miss and
- * recompute; `read`/`readField` still understand v3 for saved cachePaths.
+ * Cache key version — bumped whenever simulated results must recompute
+ * rather than reuse: v5 adds black-swan protection to normal backtests.
+ * CHUNKED_LAYOUT is the on-disk format: v4 streams artifacts into
+ * fixed-size part files (positions/, vpoints/<symbol>/, snapshots/<slug>/)
+ * plus meta.json; v3 used monolithic field files. `read`/`readField` still
+ * understand v3+ for saved cachePaths.
  */
-const CACHE_VERSION = 4;
+const CACHE_VERSION = 5;
 const CHUNKED_LAYOUT = 4;
 
 // Local-only cache — `storage/persistent` syncs between instances, so

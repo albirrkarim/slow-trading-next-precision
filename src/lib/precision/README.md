@@ -131,7 +131,7 @@ black-swan flag, entry cutoff, daily-PnL stop). The optional
 | `onNewVPoint` | Buffers detected points for the full result map | Merges each point into shared volatility files |
 | `retainRecentVPoints` | Unset — same window as production | Unset — default `DEFAULT_RECENT_VPOINTS` |
 | `onNotif` | Disabled/no-op | Delivers configured notifications |
-| `onRiskSentinel` | Omitted | Black Swan detection, status, and protection |
+| `onRiskSentinel` | Normal runs evaluate historical BTC/breadth in memory with automatic cooldown and silent shared emergency exits; precision checker keeps only the captured flag | Black Swan detection, status, and protection |
 | `onManagement` | Omitted | Balance snapshots and daily reporting stage |
 | `onStageStats` | Usually omitted | Persists per-stage run stats |
 | `onCycleComplete` | Usually omitted | Persists the per-cycle summary |

@@ -224,9 +224,10 @@ export interface RuntimeEngineStateGuard {
 
   /**
    * Black Swan protective flag read by the shared guard to veto entries
-   * and averaging. Production's risk-sentinel stage refreshes it each cycle;
-   * backtests seed it from the captured snapshot so protective windows
-   * replay identically.
+   * and averaging. Production's risk-sentinel stage persists and refreshes
+   * it each cycle; normal backtests refresh it silently from historical
+   * candles on every sentinel tick; the precision checker retains the
+   * captured starting flag.
    */
   blackSwanProtective?: boolean;
 
@@ -548,7 +549,9 @@ export interface RuntimeEngineAdapter {
   /**
    * Environment-owned risk-sentinel stage (Black Swan detection and
    * protection). Production implements evidence capture, persisted status,
-   * notifications, and emergency-exit marking; backtests omit it.
+   * notifications, and emergency-exit marking; normal backtests evaluate
+   * the same detector over dataset candles and mark emergency exits
+   * silently; the precision checker omits it.
    * May return stats refinements merged into the stage run record.
    */
   onRiskSentinel?: (

@@ -742,3 +742,67 @@ describe("productionStages.management", () => {
     ).toHaveLength(0);
   });
 });
+
+describe("runtime error reporting by mode", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.statusByMode = {};
+  });
+
+  it.each(["sandbox", "live"] as const)(
+    "still notifies NOTIF_ERROR when a stage throws in %s",
+    async (mode) => {
+      const state = createState({ mode });
+      const adapter = createAdapter(state, {
+        onRiskSentinel: async () => {
+          throw new Error("sentinel exploded");
+        },
+      });
+
+      await new RuntimeEngine(state, adapter).start();
+
+      expect(mocks.appendError).toHaveBeenCalledWith(
+        expect.objectContaining({ source: "runtime.stage.risk-sentinel" }),
+      );
+      expect(mocks.central).toHaveBeenCalledWith(
+        expect.objectContaining({ key: "NOTIF_ERROR" }),
+      );
+    },
+  );
+
+  it("appends a thrown backtest stage error without notifying", async () => {
+    const state = createState({ mode: "backtest" });
+    const adapter = createAdapter(state, {
+      onRiskSentinel: async () => {
+        throw new Error("sentinel exploded");
+      },
+    });
+
+    await new RuntimeEngine(state, adapter).start();
+
+    expect(mocks.appendError).toHaveBeenCalledWith(
+      expect.objectContaining({ source: "runtime.stage.risk-sentinel" }),
+    );
+    expect(mocks.central).not.toHaveBeenCalled();
+  });
+
+  it("appends a backtest startup-probe failure without notifying", async () => {
+    const state = createState({ mode: "backtest" });
+    let calls = 0;
+    const adapter = createAdapter(state, {
+      market: {
+        getKlines: vi.fn(async () => {
+          if (calls++ === 0) throw new Error("offline");
+          return [candle(0, 1.5)];
+        }),
+      },
+    });
+
+    await new RuntimeEngine(state, adapter).start();
+
+    expect(mocks.appendError).toHaveBeenCalledWith(
+      expect.objectContaining({ source: "runtime.startup.market-data" }),
+    );
+    expect(mocks.central).not.toHaveBeenCalled();
+  });
+});

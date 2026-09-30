@@ -123,7 +123,11 @@ export class RuntimeEngine {
             "[Precision Runtime] cycle failed — engine continues",
             error,
           );
-          await runtimeErrors.record("runtime.cycle", error);
+          await runtimeErrors.record(
+            "runtime.cycle",
+            error,
+            this.state.mode !== "backtest",
+          );
         }
       }
     } finally {
@@ -202,7 +206,11 @@ export class RuntimeEngine {
       if (runtimeErrors.isAbort(error)) throw error;
       failed = error;
       systemLog.error(`[Precision Runtime] ${stage} pass failed`, error);
-      await runtimeErrors.record(`runtime.stage.${stage}`, error);
+      await runtimeErrors.record(
+        `runtime.stage.${stage}`,
+        error,
+        this.state.mode !== "backtest",
+      );
     }
     const ms = Date.now() - startedAt;
     const stats: RuntimeStageRunStats = {
@@ -231,7 +239,11 @@ export class RuntimeEngine {
             `[Precision Runtime] failed to record ${stage} stats`,
             statsError,
           );
-          await runtimeErrors.record(`runtime.stats.${stage}`, statsError);
+          await runtimeErrors.record(
+            `runtime.stats.${stage}`,
+            statsError,
+            this.state.mode !== "backtest",
+          );
         });
     }
 
@@ -369,7 +381,11 @@ export class RuntimeEngine {
               "[Precision Runtime] failed to record cycle stats",
               cycleError,
             );
-            await runtimeErrors.record("runtime.stats.cycle", cycleError);
+            await runtimeErrors.record(
+              "runtime.stats.cycle",
+              cycleError,
+              this.state.mode !== "backtest",
+            );
           });
       }
     } finally {

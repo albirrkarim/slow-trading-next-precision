@@ -191,11 +191,16 @@ async function marketData(params: {
               .map((item) => `- ${item.label}: ${item.detail ?? "failed"}`)
               .join("\n"),
         ),
+        state.mode !== "backtest",
       )
       .catch(() => undefined);
   } catch (error) {
     await runtimeErrors
-      .record("runtime.startup.market-data", error)
+      .record(
+        "runtime.startup.market-data",
+        error,
+        state.mode !== "backtest",
+      )
       .catch(() => undefined);
   }
 }

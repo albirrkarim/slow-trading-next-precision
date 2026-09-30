@@ -1,6 +1,6 @@
 import fs from "fs-extra";
 import path from "path";
-import { randomUUID } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import { afterEach, describe, expect, it } from "vitest";
 
 import backtestResultCache from "@/lib/dev/backtestPrecision/api/cache";
@@ -9,6 +9,17 @@ import type { BacktestChunkedResult } from "@/lib/dev/backtestPrecision/backtest
 import type { Position } from "@/lib/system/trading";
 
 describe("backtest cache publication", () => {
+  it("keys the identity on the v5 simulation version, not v4", () => {
+    const identity = { config: {}, range: "6month" };
+    const hash = (version: number) =>
+      createHash("sha256")
+        .update(`{"config":{},"range":"6month","v":${version}}`)
+        .digest("hex");
+
+    expect(backtestResultCache.key(identity)).toBe(hash(5));
+    expect(backtestResultCache.key(identity)).not.toBe(hash(4));
+  });
+
   const key = backtestResultCache.key({
     config: { test: randomUUID() },
     range: "6month",

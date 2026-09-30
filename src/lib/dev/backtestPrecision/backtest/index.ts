@@ -10,9 +10,11 @@ import tradingAveraging from "@/lib/system/trading/averaging";
 import entryAction from "@/lib/system/trading/entry-action";
 import pairAction from "@/lib/system/trading/pair-action";
 import tradingExit from "@/lib/system/trading/exit";
+import blackSwan from "@/lib/system/trading/black-swan";
 import strategies from "@/lib/strategies";
 import type { BacktestPrecisionParams } from "../api/precision-api-types";
 import backtestArtifacts from "./artifacts";
+import backtestBlackSwan from "./black-swan";
 import {
   VPOINT_WARMUP_MS,
   type BacktestArtifactTarget,
@@ -277,6 +279,13 @@ export async function precisionBacktest(
     },
     onNotif: () => true,
   };
+
+  if (
+    !isPrecisionChecker &&
+    blackSwan.config.normalize(params.config.management.blackSwan).enabled
+  ) {
+    adapter.onRiskSentinel = backtestBlackSwan.riskSentinel.create();
+  }
 
   // The configured strategy module plugs producers/guard/bookkeeping into
   // the same engine — absent means the built-in default pipeline.

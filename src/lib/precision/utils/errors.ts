@@ -5,11 +5,18 @@ import { runtimeLogs } from "../../system/storage";
  * Persists a stage/cycle failure to the error log without breaking the loop,
  * and reports it once per hour bucket through the NOTIF_ERROR channel so an
  * operational fault is visible without spamming on every failing pass.
+ * `notify: false` keeps the error-log append but skips the external
+ * notification — backtest runs never emit runtime notifications.
  */
-async function recordRuntimeError(source: string, error: unknown) {
+async function recordRuntimeError(
+  source: string,
+  error: unknown,
+  notify = true,
+) {
   await runtimeLogs
     ?.appendError?.({ source, error })
     ?.catch(() => undefined);
+  if (!notify) return;
 
   const message = error instanceof Error ? error.message : String(error);
   const hourBucket = Math.floor(Date.now() / 3_600_000);
