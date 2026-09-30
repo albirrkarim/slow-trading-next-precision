@@ -116,6 +116,7 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
 
   const body: BacktestPrecisionResponse = {
     counts: result.counts,
+    dataset: result.dataset,
     exchangeType: result.exchangeType,
     summary: result.summary,
     cached: false,

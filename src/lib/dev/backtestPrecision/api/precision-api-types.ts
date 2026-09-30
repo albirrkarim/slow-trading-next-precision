@@ -40,6 +40,12 @@ export interface BacktestPrecisionResponse {
   summary: BacktestRunSummary;
   /** True when the body was served from the saved result cache. */
   cached?: boolean;
+  /**
+   * Effective dataset window actually simulated, after intersecting every
+   * symbol's data availability. Trading starts ~VPOINT_WARMUP_MS after
+   * `dataset.startTime`; absent on legacy cache entries.
+   */
+  dataset?: { endTime: number; startTime: number };
   /** Stable key identifying the run's artifact directory. */
   cacheKey?: string;
   /** Absolute path of the cache directory holding this result's artifacts. */

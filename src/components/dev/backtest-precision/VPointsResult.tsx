@@ -4,9 +4,10 @@ import { useEffect } from "react";
 
 import VPointsFrequency from "@/components/charts/VPointsFrequency";
 import { TradesTableSection } from "@/components/reports/TradesTableSection";
-import type {
-  BacktestRunCounts,
-  BacktestRunSummary,
+import {
+  VPOINT_WARMUP_MS,
+  type BacktestRunCounts,
+  type BacktestRunSummary,
 } from "@/lib/dev/backtestPrecision/backtest/backtest-precision-types";
 import type { ExchangeType } from "@/lib/system/types";
 import { Alert, Box, CircularProgress, Grid, Typography } from "@mui/material";
@@ -23,6 +24,7 @@ export default function VPointsResult({
   accounts,
   artifacts,
   counts,
+  datasetStartTimeMs,
   exchangeType,
   settings,
   summary,
@@ -30,6 +32,8 @@ export default function VPointsResult({
   accounts?: Array<{ name?: string; slug: string }>;
   artifacts: Artifacts;
   counts: BacktestRunCounts;
+  /** Effective dataset start — trading begins once the vPoint warm-up ends. */
+  datasetStartTimeMs?: number;
   exchangeType: ExchangeType;
   settings?: ConfigDraft | null;
   summary: BacktestRunSummary;
@@ -51,7 +55,14 @@ export default function VPointsResult({
 
   return (
     <Box sx={{ p: 0.5 }}>
-      <VolatilityRails volatilityMap={vpoints.data ?? {}} />
+      <VolatilityRails
+        tradingStartTimeMs={
+          datasetStartTimeMs !== undefined
+            ? datasetStartTimeMs + VPOINT_WARMUP_MS
+            : undefined
+        }
+        volatilityMap={vpoints.data ?? {}}
+      />
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, md: 8 }}>
           <Typography variant="h6" sx={{ mb: 1 }}>

@@ -11,8 +11,11 @@ import type { VolatilityPoint } from "@/lib/system/types";
 
 
 export default function VolatilityRails({
+  tradingStartTimeMs,
   volatilityMap,
 }: {
+  /** Dataset start + vPoint warm-up — the moment the simulated clock began. */
+  tradingStartTimeMs?: number;
   volatilityMap: Record<string, VolatilityPoint[]>;
 }) {
   const chartData = useMemo(() => {
@@ -49,6 +52,17 @@ export default function VolatilityRails({
             <MultiLineTimelined
               height={420}
               names={chartData.names}
+              referenceLines={
+                tradingStartTimeMs !== undefined
+                  ? [
+                      {
+                        color: "#ed6c02",
+                        label: "Warm-up ends · trading starts",
+                        timeMs: tradingStartTimeMs,
+                      },
+                    ]
+                  : undefined
+              }
               series={chartData.series}
             />
           </Box>

@@ -445,6 +445,7 @@ export default function DynamicTradeAnalytics() {
                     accounts={backtestConfig.settings?.accounts}
                     artifacts={artifacts}
                     counts={data.counts}
+                    datasetStartTimeMs={data.dataset?.startTime}
                     exchangeType={data.exchangeType}
                     settings={backtestConfig.settings}
                     summary={data.summary}
