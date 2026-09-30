@@ -57,8 +57,12 @@ import type {
   RuntimeEngineState,
 } from "@/lib/precision/types";
 import tradingExit from "@/lib/system/trading/exit";
+import blackSwan, {
+  type BlackSwanState,
+} from "@/lib/system/trading/black-swan";
 import type { Kline } from "@/lib/system/types";
 import { createTestPosition } from "../fixtures/position";
+import oct11Fixture from "../fixtures/black-swan-oct11.json";
 
 const NOW = Date.UTC(2026, 8, 3, 10, 4);
 const DATASET_START = Date.UTC(2024, 0, 1);
@@ -673,7 +677,7 @@ describe("backtestBlackSwan.riskSentinel", () => {
     const closed = exited[0] as {
       closed: { message: string; reason: string };
     };
-    expect(closed.closed.reason).toBe("FORCED");
+    expect(closed.closed.reason).toBe("BLACK_SWAN_EXIT");
     expect(closed.closed.message).toContain("BLACK_SWAN:BTC_HARD_TRIGGER");
     expect(state.markPriceMap.SUI?.price).toBe(9);
     expect(balance["acc-1"].locked).toBe(0);
@@ -682,11 +686,11 @@ describe("backtestBlackSwan.riskSentinel", () => {
   });
 });
 
-function configWith(blackSwan?: unknown) {
+function configWith(blackSwanConfig?: unknown) {
   return {
     accounts: [{ enabled: true, slug: "acc-1", trading: {} }],
     management: {
-      blackSwan,
+      blackSwan: blackSwanConfig,
       exchangeType: "binance",
       symbols: ["SUI"],
       tradingMode: "spot",
@@ -775,5 +779,94 @@ describe("precisionBacktest risk-sentinel wiring", () => {
     const { adapter, state } = mocks.engines.at(-1)!;
     expect(adapter.onRiskSentinel).toBeUndefined();
     expect(state.blackSwanProtective).toBe(true);
+  });
+});
+
+const OCT11_CANDLES = oct11Fixture.candles as unknown as Record<string, Kline[]>;
+const OCT11_LEGACY_PRESET = {
+  enabled: true,
+  btcHardTrigger: {
+    fifteenMinuteDrawdownPct: 10,
+    fiveMinuteDrawdownPct: 8,
+    sixtyMinuteDrawdownPct: 14,
+  },
+  btcWarning: { fifteenMinuteDrawdownPct: 6, fiveMinuteDrawdownPct: 4 },
+  breadthConfirmation: {
+    affectedSymbolsPct: 50,
+    altDrawdownPct: 8,
+    minimumValidSymbols: 5,
+    windowMinutes: 5,
+  },
+};
+
+function oct11Context(blackSwanConfig: unknown) {
+  const getKlines = vi.fn(async (params: any) => {
+    const base = String(params.symbol)
+      .replace(/_?USDT$/, "")
+      .toUpperCase();
+    return (OCT11_CANDLES[base] ?? []).filter(
+      (kline) => Number(kline[6]) <= Number(params.endTime),
+    );
+  });
+  return makeContext({
+    blackSwan: blackSwanConfig,
+    getKlines,
+    symbols: oct11Fixture.symbols,
+  });
+}
+
+describe("oct11 historical replay", () => {
+  let monitorSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    monitorSpy = vi
+      .spyOn(monitoring.position, "monitor")
+      .mockImplementation(async () => undefined);
+  });
+
+  afterEach(() => {
+    monitorSpy.mockRestore();
+  });
+
+  it("legacy preset holds NORMAL at 04:16, warns at 04:17, hard-crashes at 04:20", async () => {
+    const evaluateSpy = vi.spyOn(blackSwan.detector, "evaluate");
+    const { context, state } = oct11Context(OCT11_LEGACY_PRESET);
+    const hook = backtestBlackSwan.riskSentinel.create();
+
+    const patches = [];
+    for (const tick of oct11Fixture.ticks) {
+      state.currentTime = tick;
+      patches.push(await hook(context));
+    }
+
+    expect(patches[2]?.summary).toMatch(/NORMAL/);
+    expect(patches[3]?.summary).toMatch(/WATCH \(BTC_WARNING\)/);
+    expect(patches[4]?.summary).toMatch(/CRISIS \(BTC_HARD_TRIGGER\)/);
+
+    const watchState = evaluateSpy.mock.results[7]
+      ?.value as BlackSwanState;
+    expect(watchState.status).toBe("WATCH");
+    expect(watchState.evidence?.breadth?.valid).toBe(3);
+    expect(watchState.evidence?.breadth?.affected).toBe(3);
+  });
+
+  it("new defaults reach SYSTEMIC_BREADTH CRISIS at 04:16", async () => {
+    const evaluateSpy = vi.spyOn(blackSwan.detector, "evaluate");
+    const { context, state } = oct11Context({ enabled: true });
+    const hook = backtestBlackSwan.riskSentinel.create();
+
+    const patches = [];
+    for (const tick of oct11Fixture.ticks.slice(0, 3)) {
+      state.currentTime = tick;
+      patches.push(await hook(context));
+    }
+
+    expect(patches[2]?.summary).toMatch(/CRISIS \(SYSTEMIC_BREADTH\)/);
+    const crisisState = evaluateSpy.mock.results.at(-1)
+      ?.value as BlackSwanState;
+    expect(crisisState.evidence?.breadth?.valid).toBe(3);
+    expect(state.blackSwanProtective).toBe(true);
+    expect(mocks.central).not.toHaveBeenCalled();
   });
 });

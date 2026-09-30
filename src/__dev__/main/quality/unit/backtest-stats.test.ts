@@ -74,6 +74,19 @@ describe("backtest run stats", () => {
     expect(summary.exits.alt.lossCoins).toEqual([{ count: 1, reason: "BBB" }]);
   });
 
+  it("keeps BLACK_SWAN_EXIT distinct from FORCED in exit histograms", () => {
+    const tracker = backtestStats.tracker.create();
+
+    tracker.onExit(closedPosition({ netUsdt: -3, reason: "BLACK_SWAN_EXIT" }));
+    tracker.onExit(closedPosition({ netUsdt: -1, reason: "FORCED" }));
+
+    const summary = tracker.summary();
+    expect(summary.exits.main.loss).toEqual([
+      { count: 1, reason: "BLACK_SWAN_EXIT" },
+      { count: 1, reason: "FORCED" },
+    ]);
+  });
+
   it("builds account rows from first/last snapshots with win-loss tallies", () => {
     const tracker = backtestStats.tracker.create();
 

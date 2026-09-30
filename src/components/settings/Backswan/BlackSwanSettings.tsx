@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   Alert,
   Box,
+  Button,
   Chip,
   type ChipProps,
   FormControlLabel,
@@ -14,6 +15,7 @@ import {
   Typography,
 } from "@mui/material";
 import blackSwanModel, {type BlackSwanConfig, type BlackSwanStatus} from "@/lib/system/trading/black-swan";
+import { normalizeDatasetSymbol } from "@/lib/dev/klines";
 import SettingsDialogSection from "../Components/SettingsDialogSection";
 import SettingsInfoField from "../Components/SettingsInfoField";
 import BlackSwanSavingsPreview from "./BlackSwanSavingsPreview";
@@ -117,6 +119,23 @@ export default function BlackSwanSettings({
   const config = blackSwanModel.config.normalize(configDraft.management.blackSwan);
   const currentState = blackSwanModel.state.normalize(dashboardState.blackSwan);
   const exitPolicyDetails = EXIT_POLICY_DETAILS[config.exitPolicy];
+  const nonBtcSymbolCount = new Set(
+    (configDraft.management.symbols ?? [])
+      .map(normalizeDatasetSymbol)
+      .filter((symbol) => symbol && symbol !== "BTC"),
+  ).size;
+  const breadthUnderConfigured =
+    config.enabled &&
+    nonBtcSymbolCount < config.breadthConfirmation.minimumValidSymbols;
+  const resetDetectorThresholds = () =>
+    update({
+      ...config,
+      btcWarning: { ...blackSwanModel.config.defaults.btcWarning },
+      btcHardTrigger: { ...blackSwanModel.config.defaults.btcHardTrigger },
+      breadthConfirmation: {
+        ...blackSwanModel.config.defaults.breadthConfirmation,
+      },
+    });
   // PROD:BLACK_SWAN_SAVINGS_PREVIEW_RESOURCE_GUARD
   const [showSavingsPreview, setShowSavingsPreview] = useState(false);
 
@@ -357,6 +376,16 @@ export default function BlackSwanSettings({
                 close in that window.
               </Alert>
 
+              <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+                <Button
+                  onClick={resetDetectorThresholds}
+                  size="small"
+                  variant="outlined"
+                >
+                  Reset detector thresholds
+                </Button>
+              </Box>
+
               <Box>
                 <Typography fontWeight={700} sx={{ mb: 1 }} variant="body2">
                   WATCH thresholds — either one pauses entries and averaging
@@ -465,7 +494,18 @@ export default function BlackSwanSettings({
             title="Altcoin breadth confirmation"
             description="After BTC reaches WATCH, the sentinel checks whether enough configured non-BTC symbols are falling together. A single altcoin crash cannot activate global protection."
           >
-            <Box
+            <Stack spacing={2}>
+              {breadthUnderConfigured && (
+                <Alert severity="warning">
+                  Breadth confirmation needs{" "}
+                  {config.breadthConfirmation.minimumValidSymbols} valid non-BTC
+                  symbols, but only {nonBtcSymbolCount} are configured. The
+                  breadth CRISIS path cannot trigger with this configuration;
+                  BTC hard-trigger protection remains active. Lower the minimum
+                  or add symbols.
+                </Alert>
+              )}
+              <Box
               sx={{
                 display: "grid",
                 gap: 1.5,
@@ -534,7 +574,8 @@ export default function BlackSwanSettings({
                 }
                 value={config.breadthConfirmation.minimumValidSymbols}
               />
-            </Box>
+              </Box>
+            </Stack>
           </SettingsDialogSection>
         </Box>
       </Grid>

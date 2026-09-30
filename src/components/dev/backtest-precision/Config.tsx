@@ -24,6 +24,7 @@ import { useEffect, useMemo, type Dispatch, type SetStateAction } from "react";
 import axios from "axios";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import { buildBacktestDashboardState } from "./backtest-dashboard-state";
+import backtestBlackSwanConfig from "./black-swan-config";
 import type { BacktestConfig } from "./types";
 
 export const DEFAULT_BACKTEST_CONFIG: BacktestConfig = {
@@ -46,7 +47,9 @@ export const DEFAULT_BACKTEST_CONFIG: BacktestConfig = {
 
 /** Removes credentials/notification secrets so they never enter the backtest draft. */
 function draftWithoutSecrets(draft: ConfigDraft): ConfigDraft {
-    return sanitize.stripSecrets(draft) as ConfigDraft;
+    return backtestBlackSwanConfig.upgradeLegacyDefaults(
+        sanitize.stripSecrets(draft) as ConfigDraft,
+    );
 }
 
 interface BacktestConfigProps {

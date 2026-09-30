@@ -18,6 +18,9 @@ import { makeConfigDraft } from "@/components/settings/helpers";
 import { useLiveDashboardNavbar } from "@/components/dashboard/navigation/useLiveDashboardNavbar";
 import { TradingMode } from "@/lib/exchange";
 import { runtimeDefaults } from "@/lib/system/runtime";
+import blackSwan, {
+  type BlackSwanConfig,
+} from "@/lib/system/trading/black-swan";
 
 vi.mock("axios", () => ({
   default: {
@@ -741,6 +744,105 @@ describe("settings dialog save payload", () => {
       takeProfitPercent: 7,
       useStopLossPlus: true,
     });
+  });
+});
+
+describe("black swan breadth guard", () => {
+  function renderTab(options: {
+    customize?: (config: BlackSwanConfig) => BlackSwanConfig;
+    minimumValidSymbols?: number;
+    symbols?: string[];
+  }) {
+    const draft = makeConfigDraft(dashboardState());
+    draft.management.symbols =
+      options.symbols ?? ["BTC", "AAVE", "LINK", "SUI"];
+    const blackSwanConfig: BlackSwanConfig = {
+      ...blackSwan.config.defaults,
+      enabled: true,
+      breadthConfirmation: {
+        ...blackSwan.config.defaults.breadthConfirmation,
+        minimumValidSymbols: options.minimumValidSymbols ?? 5,
+      },
+    };
+    draft.management.blackSwan =
+      options.customize?.(blackSwanConfig) ?? blackSwanConfig;
+    let nextDraft = draft;
+    const setConfigDraft = vi.fn((update) => {
+      nextDraft = typeof update === "function" ? update(nextDraft) : update;
+    });
+    render(
+      <SettingsDialogBlackSwanTab
+        configDraft={nextDraft}
+        dashboardState={dashboardState()}
+        setConfigDraft={setConfigDraft}
+      />,
+    );
+    return { getDraft: () => nextDraft };
+  }
+
+  it("warns when configured non-BTC symbols cannot satisfy the breadth minimum", () => {
+    renderTab({ minimumValidSymbols: 5 });
+
+    expect(
+      screen.getByText(/breadth CRISIS path cannot trigger/i),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(/5 valid non-BTC symbols, but only 3 are configured/i),
+    ).toBeTruthy();
+  });
+
+  it("counts unique normalized non-BTC symbols only", () => {
+    renderTab({
+      minimumValidSymbols: 5,
+      symbols: ["BTC", "BTC_USDT", "btc_usdt", "SUI", "sui_usdt", "AAVE", "LINK"],
+    });
+
+    expect(
+      screen.getByText(/5 valid non-BTC symbols, but only 3 are configured/i),
+    ).toBeTruthy();
+  });
+
+  it("clears the warning once the minimum matches the configured symbols", () => {
+    renderTab({ minimumValidSymbols: 3 });
+
+    expect(
+      screen.queryByText(/breadth CRISIS path cannot trigger/i),
+    ).toBeNull();
+  });
+
+  it("resets detector thresholds to the calibrated defaults and preserves response controls", () => {
+    const { getDraft } = renderTab({
+      customize: (config) => ({
+        ...config,
+        btcWarning: {
+          fifteenMinuteDrawdownPct: 9,
+          fiveMinuteDrawdownPct: 4,
+        },
+        exitPolicy: "FLATTEN_ALL",
+        maxDataAgeMinutes: 3,
+        recoveryCooldownMinutes: 90,
+        requireManualLiveRecovery: false,
+      }),
+      minimumValidSymbols: 5,
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Reset detector thresholds" }),
+    );
+
+    const next = getDraft().management.blackSwan!;
+    expect(next.btcWarning).toEqual(blackSwan.config.defaults.btcWarning);
+    expect(next.btcHardTrigger).toEqual(
+      blackSwan.config.defaults.btcHardTrigger,
+    );
+    expect(next.breadthConfirmation).toEqual(
+      blackSwan.config.defaults.breadthConfirmation,
+    );
+    expect(next.enabled).toBe(true);
+    expect(next.exitPolicy).toBe("FLATTEN_ALL");
+    expect(next.maxDataAgeMinutes).toBe(3);
+    expect(next.recoveryCooldownMinutes).toBe(90);
+    expect(next.requireManualLiveRecovery).toBe(false);
   });
 });
 

@@ -85,7 +85,7 @@ const MINUTE_MS = 60_000;
 export const DEFAULT_BLACK_SWAN_CONFIG: BlackSwanConfig = {
   enabled: false,
   btcWarning: {
-    fiveMinuteDrawdownPct: 4,
+    fiveMinuteDrawdownPct: 2.8,
     fifteenMinuteDrawdownPct: 6,
   },
   btcHardTrigger: {
@@ -97,7 +97,7 @@ export const DEFAULT_BLACK_SWAN_CONFIG: BlackSwanConfig = {
     windowMinutes: 5,
     altDrawdownPct: 8,
     affectedSymbolsPct: 50,
-    minimumValidSymbols: 5,
+    minimumValidSymbols: 3,
   },
   maxDataAgeMinutes: 2,
   exitPolicy: "CLOSE_ADVERSE",

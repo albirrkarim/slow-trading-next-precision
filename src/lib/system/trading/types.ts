@@ -256,6 +256,7 @@ export type PositionCloseReason =
   | "LIQUIDATED"
   | "MANUAL"
   | "FORCED"
+  | "BLACK_SWAN_EXIT"
   | "UNKNOWN";
 
 export interface PositionCloseEvent {

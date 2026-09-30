@@ -26,6 +26,7 @@ import { CopyText } from "@/components/ui/CopyText";
 import { delayExecution } from "../../client/utils";
 import { endpoints } from "../../endpoints";
 import PrecisionBTestConfig, { DEFAULT_BACKTEST_CONFIG } from "./Config";
+import backtestBlackSwanConfig from "./black-swan-config";
 import BacktestBalanceChart from "./BalanceChart";
 import BacktestDailyPnlCalendar from "./DailyPnlCalendar";
 import Leaderboards from "./Leaderboards";
@@ -83,13 +84,19 @@ export function normalizeBacktestConfig(raw: unknown): BacktestConfig {
 }
 
 export default function DynamicTradeAnalytics() {
-    const before = localStorage.getItem(BACKTEST_KEY);
-
-    const [backtestConfig, setBacktestConfig] = useState<BacktestConfig>(
-        before
-            ? normalizeBacktestConfig(JSON.parse(before))
-            : DEFAULT_BACKTEST_CONFIG,
-    );
+    const [backtestConfig, setBacktestConfig] = useState<BacktestConfig>(() => {
+        const before = localStorage.getItem(BACKTEST_KEY);
+        if (!before) return DEFAULT_BACKTEST_CONFIG;
+        const normalized = normalizeBacktestConfig(JSON.parse(before));
+        return normalized.settings
+            ? {
+                    ...normalized,
+                    settings: backtestBlackSwanConfig.upgradeLegacyDefaults(
+                        normalized.settings,
+                    ),
+                }
+            : normalized;
+    });
 
     const [data, setData] = useState<BacktestPrecisionResponse | null>(null);
     const artifacts = useBacktestArtifacts(data?.cacheKey);

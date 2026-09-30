@@ -980,6 +980,35 @@ describe("multi strategy exit", () => {
     );
   });
 
+  it.each(["BTC_HARD_TRIGGER", "SYSTEMIC_BREADTH"])(
+    "black swan force exit stamps BLACK_SWAN_EXIT and keeps the trigger detail (%s)",
+    async (trigger) => {
+      const position = makePosition();
+      position.control = { forceExit: { reason: `BLACK_SWAN:${trigger}` } };
+      const context = makeContext(
+        ["a1"],
+        { SUI: [makePoint(-1, 0)] },
+        {
+          currentTime: 5_000,
+          markPriceMap: { SUI: { lastUpdated: 5_000, price: 90 } },
+        },
+      );
+
+      const decision = await strategy.decisions.findExit(context, position);
+
+      expect(decision).not.toBeNull();
+      if (!decision) return;
+      const executed = strategy.actions.executeExit(context, decision);
+
+      expect(executed).not.toBeNull();
+      if (!executed) return;
+      expect(executed.closed?.reason).toBe("BLACK_SWAN_EXIT");
+      expect(executed.closed?.message).toContain("FINAL SELL");
+      expect(executed.closed?.message).toContain(`BLACK_SWAN:${trigger}`);
+      expect(executed.control).toBeUndefined();
+    },
+  );
+
   it("hard percent stop loss closes below the configured boundary", async () => {
     const position = makePosition();
     const context = makeContext(
