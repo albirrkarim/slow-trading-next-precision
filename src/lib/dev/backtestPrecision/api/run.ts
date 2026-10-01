@@ -114,6 +114,10 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
   });
   const result = await run.result;
 
+  // meta.json's createdAt identifies this artifact generation — lazy detail
+  // loads key on it so a same-key recompute invalidates resolved entries.
+  const meta = await backtestResultCache.readMeta(cacheKey);
+
   const body: BacktestPrecisionResponse = {
     blackSwanTimeline: result.blackSwanTimeline,
     counts: result.counts,
@@ -123,6 +127,7 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
     cached: false,
     cacheKey,
     cachePath,
+    createdAt: meta?.createdAt,
   };
   res.json(body);
 }

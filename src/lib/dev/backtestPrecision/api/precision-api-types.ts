@@ -56,4 +56,10 @@ export interface BacktestPrecisionResponse {
   cacheKey?: string;
   /** Absolute path of the cache directory holding this result's artifacts. */
   cachePath?: string;
+  /**
+   * meta.json write time identifying this artifact generation — a recompute
+   * under the same `cacheKey` produces a new value, so clients can key lazy
+   * artifact loads on it and discard entries resolved before the recompute.
+   */
+  createdAt?: number;
 }

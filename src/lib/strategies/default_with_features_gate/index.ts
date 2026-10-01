@@ -30,7 +30,7 @@ export const FEATURE_GATE_BOUNDS: Required<FeatureGateBounds> = {
   btcMaxPriceNormalized: 0.8,
   btcMinPriceNormalized: 0.3,
   maxPriceNormalized: 0.8,
-  minPriceNormalized: 0.2,
+  minPriceNormalized: 0.3,
 };
 
 /** Compact date tag for gate messages, e.g. " on 2026-09-25". */
@@ -56,9 +56,7 @@ function outsideBounds(
     return { p: current };
   }
 
-  const h = [...coin.priceNormalizedHistory].reverse()
-
-  for (const { p, t } of h) {
+  for (const { p, t } of [...coin.priceNormalizedHistory].reverse()) {
     if (p < min || p > max) return { p, t };
   }
   return undefined;

@@ -99,7 +99,7 @@ export default function DynamicTradeAnalytics() {
     });
 
     const [data, setData] = useState<BacktestPrecisionResponse | null>(null);
-    const artifacts = useBacktestArtifacts(data?.cacheKey);
+    const artifacts = useBacktestArtifacts(data?.cacheKey, data?.createdAt);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [savingLeaderboard, setSavingLeaderboard] = useState(false);
