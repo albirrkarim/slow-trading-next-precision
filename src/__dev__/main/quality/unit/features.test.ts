@@ -167,10 +167,11 @@ describe("features.update", () => {
       },
     });
 
-    // First update records the initial value as the first history point.
+    // First update seeds the trail by replaying the pivot timeline — the
+    // only in-window pivot is the latest one, recorded at its own time.
     features.update(context);
     const first = context.state.features!.coins.SUI.priceNormalizedHistory;
-    expect(first).toEqual([{ p: 0.5, t: NOW }]);
+    expect(first).toEqual([{ p: 0.5, t: NOW - DAY_MS }]);
 
     // Same pivots → same value → no append, same array reference stays.
     features.update(context);
@@ -188,6 +189,63 @@ describe("features.update", () => {
     expect(history).toHaveLength(2);
     expect(history[1].t).toBe(later);
     expect(history[1].p).toBeCloseTo(0.25); // envelope [8,12], latest 9
+  });
+
+  it("reconstructs the trail from the pivot timeline at first update", () => {
+    const context = contextWith({
+      vPointsMap: {
+        SUI: [
+          point(NOW - 30 * DAY_MS, 8),
+          point(NOW - 20 * DAY_MS, 12),
+          point(NOW - 8 * DAY_MS, 10),
+          point(NOW - 4 * DAY_MS, 14),
+          point(NOW - DAY_MS, 9),
+        ],
+      },
+    });
+    features.update(context);
+
+    // The two pre-window pivots are envelope anchors only; the three
+    // in-window pivots replay as-of their own times against the pivots
+    // that preceded them: 10→0.5, 14→1.5, then 9 lands in an envelope
+    // that now includes 14 → (9-8)/(14-8) ≈ 0.167.
+    const history =
+      context.state.features!.coins.SUI.priceNormalizedHistory;
+    expect(history).toHaveLength(3);
+    expect(history[0]).toEqual({ p: 0.5, t: NOW - 8 * DAY_MS });
+    expect(history[1]).toEqual({ p: 1.5, t: NOW - 4 * DAY_MS });
+    expect(history[2].t).toBe(NOW - DAY_MS);
+    expect(history[2].p).toBeCloseTo(1 / 6);
+    // Current value equals the last replayed point — no extra tick point.
+    expect(context.state.features!.coins.SUI.priceNormalized).toBeCloseTo(
+      1 / 6,
+    );
+  });
+
+  it("resumes a persisted trail instead of reseeding it", () => {
+    const existing = [{ p: 0.4, t: NOW - 5 * DAY_MS }];
+    const context = contextWith({
+      features: {
+        coins: {
+          SUI: {
+            priceNormalized: 0.4,
+            priceNormalizedHistory: existing,
+          },
+        },
+        shared: {},
+      },
+      vPointsMap: {
+        SUI: [
+          point(NOW - 30 * DAY_MS, 8),
+          point(NOW - 20 * DAY_MS, 12),
+          point(NOW - DAY_MS, 9.6), // (9.6-8)/(12-8) = 0.4 — unchanged
+        ],
+      },
+    });
+    features.update(context);
+    expect(context.state.features!.coins.SUI.priceNormalizedHistory).toBe(
+      existing,
+    );
   });
 
   it("trims history older than 10 days but keeps the last survivor", () => {

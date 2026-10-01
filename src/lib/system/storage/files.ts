@@ -65,6 +65,9 @@ const prod = {
   get strategy() {
     return `${prodDir()}/strategy.json`;
   },
+  get features() {
+    return `${prodDir()}/features.json`;
+  },
 
   accountRoot: accountDir,
   account: accountModeFiles,

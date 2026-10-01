@@ -55,7 +55,10 @@ function outsideBounds(
   if (current !== undefined && (current < min || current > max)) {
     return { p: current };
   }
-  for (const { p, t } of [...coin.priceNormalizedHistory].reverse()) {
+
+  const h = [...coin.priceNormalizedHistory].reverse()
+
+  for (const { p, t } of h) {
     if (p < min || p > max) return { p, t };
   }
   return undefined;

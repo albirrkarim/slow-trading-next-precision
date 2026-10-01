@@ -74,6 +74,8 @@ export interface ProductionStateOptions
   currentTime?: number;
   /** Existing detector memory captured before the runtime starts. */
   vPointsMap?: RuntimeEngineState["vPointsMap"];
+  /** Persisted feature store slice — resumes the trails across restarts. */
+  features?: RuntimeEngineState["features"];
   /** Existing latest prices captured before the runtime starts. */
   markPriceMap?: RuntimeEngineState["markPriceMap"];
 }

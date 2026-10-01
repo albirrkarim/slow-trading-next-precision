@@ -752,6 +752,15 @@ function createProductionFactory(): ProductionRuntimeFactory {
       persistedStatus.blackSwan,
       currentTime,
     );
+
+    // PROD:FEATURES_STATE_LOAD — the feature-store trails (priceNormalized
+    // history) resume across restarts exactly where the last flush left
+    // them; absent on first boot, `features.update` then reseeds each trail
+    // by replaying the persisted pivot timeline.
+    const persistedFeatures = await runtimeStorage.features
+      .load(mode === "sandbox" ? "sandbox" : "live")
+      .catch(() => undefined);
+
     const runtimeState = state.create({
       balance,
       blackSwanProtective: blackSwan.state.isProtective(persistedBlackSwan),
@@ -767,6 +776,7 @@ function createProductionFactory(): ProductionRuntimeFactory {
       mode,
       openPositions,
       strategy: persistedStrategy,
+      features: persistedFeatures,
       vPointsMap,
       markPriceMap: {},
     });
@@ -814,7 +824,30 @@ function createProductionFactory(): ProductionRuntimeFactory {
       onPairAction: handlers.onPairAction,
       onCycleComplete: productionStages.cycleComplete,
       onExit: handlers.onExit,
-      onFeatureUpdate: (context) => features.update(context),
+      onFeatureUpdate: async (context) => {
+        const previous = context.state.features;
+        features.update(context);
+        // PROD:FEATURES_STATE_PERSIST — trails move only when a pivot shifts
+        // a reading, so a changedCoins diff keeps the flush sparse instead
+        // of rewriting `features.json` every tick.
+        const next = context.state.features;
+        if (
+          next !== undefined &&
+          features.changedCoins(previous?.coins, next.coins).length > 0
+        ) {
+          await runtimeStorage.features
+            .save(
+              context.state.mode === "sandbox" ? "sandbox" : "live",
+              next,
+            )
+            .catch((error) => {
+              systemLog.error(
+                "[Precision Runtime] features persist failed",
+                error,
+              );
+            });
+        }
+      },
       onManagement: productionStages.management,
       onNewVPoint: async (symbol, newVPoint) => {
         // Each detected point is merged into the shared volatility file

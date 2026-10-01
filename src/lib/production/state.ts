@@ -17,6 +17,9 @@ function create(options: ProductionStateOptions): RuntimeEngineState {
     // Strategy-owned persisted slot (pair ledgers, pending re-entries) —
     // loaded verbatim from `strategy.json[mode]`, never interpreted here.
     strategy: options.strategy,
+    // Persisted feature store (`features.json[mode]`) — absent on first
+    // boot; `features.update` then reseeds each trail from the vPoint seed.
+    features: options.features,
     vPointsMap: options.vPointsMap ?? {},
   };
 }

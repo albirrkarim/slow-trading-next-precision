@@ -1,6 +1,10 @@
 import type { VolatilityPoint } from "@/lib/system/types";
 
-import { FEATURES_VPOINT_WINDOW_MS } from "./types";
+import {
+  FEATURES_HISTORY_WINDOW_MS,
+  FEATURES_VPOINT_WINDOW_MS,
+  type FeatureHistoryPoint,
+} from "./types";
 
 /**
  * Normalizes the latest pivot price into the envelope of earlier pivot
@@ -44,4 +48,56 @@ export function computePriceNormalized(params: {
   }
   if (!(maxP > minP)) return 0.5;
   return (latest.p - minP) / (maxP - minP);
+}
+
+/**
+ * Reconstructs the value-change trail live `features.update` ticks would
+ * have produced from the pivot timeline itself: each in-window pivot is
+ * evaluated as the latest against the envelope of the pivots before it, and
+ * only value changes are kept. Seeds `priceNormalizedHistory` at boot when
+ * no persisted trail exists — a restart then resumes with real history
+ * instead of a single point.
+ *
+ * Envelope-slide drift between pivots (old pivots aging out of the window
+ * with no new pivot forming) is not reproducible from pivot events alone —
+ * the seed captures pivot-driven changes, which is where the excursions a
+ * gate cares about happen.
+ */
+/**
+ * Approximate equality for normalized values. Recomputed readings can drift
+ * from a persisted value by float epsilon (e.g. 0.4 vs
+ * 0.3999999999999999), so exact `!==` would append phantom changes on every
+ * resume — values are ratios inside a small envelope, so 1e-9 separates
+ * real moves from noise.
+ */
+export function isSameNormalizedValue(
+  a: number | undefined,
+  b: number | undefined,
+): boolean {
+  if (a === undefined || b === undefined) return a === b;
+  return Math.abs(a - b) <= 1e-9;
+}
+
+export function replayPriceNormalizedHistory(params: {
+  now: number;
+  points: VolatilityPoint[] | undefined;
+  windowMs?: number;
+}): FeatureHistoryPoint[] {
+  const points = params.points ?? [];
+  const cutoff = params.now - FEATURES_HISTORY_WINDOW_MS;
+  const history: FeatureHistoryPoint[] = [];
+  for (let index = 0; index < points.length; index++) {
+    const pivot = points[index];
+    if (pivot.t < cutoff) continue;
+    const value = computePriceNormalized({
+      now: pivot.t,
+      points: points.slice(0, index + 1),
+      windowMs: params.windowMs,
+    });
+    if (value === undefined) continue;
+    if (!isSameNormalizedValue(history[history.length - 1]?.p, value)) {
+      history.push({ p: value, t: pivot.t });
+    }
+  }
+  return history;
 }

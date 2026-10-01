@@ -12,6 +12,7 @@ import type {
 } from "../runtime/stages";
 import vpoints from "../utils/vpoints";
 import type { Position, RuntimeHistoryPosition } from "../trading";
+import type { RuntimeFeatures } from "../../features/types";
 import type { ExchangeType, VolatilityPoint } from "../types";
 import runtimeCatalog from "./catalog";
 import jsonFile from "./json-file";
@@ -93,6 +94,43 @@ async function readJsonFile(filePath: string): Promise<unknown> {
 async function loadStrategy(mode: RuntimeMode): Promise<unknown> {
   const raw = await readJsonFile(storageFiles.prod.strategy);
   return isRecord(raw) ? raw[mode] : undefined;
+}
+
+/**
+ * Loads the persisted feature store for one mode (`features.json[mode]`) —
+ * the `state.features` snapshot production maintains between ticks so a
+ * restart resumes the `priceNormalizedHistory` trail instead of restarting
+ * from a single point. `undefined` when no slice exists; the next
+ * `features.update` reseeds it by replaying the stored pivot timeline.
+ */
+async function loadFeatures(
+  mode: RuntimeMode,
+): Promise<RuntimeFeatures | undefined> {
+  const raw = await readJsonFile(storageFiles.prod.features);
+  const slice = isRecord(raw) ? raw[mode] : undefined;
+  return isRecord(slice) && isRecord(slice.coins)
+    ? (slice as unknown as RuntimeFeatures)
+    : undefined;
+}
+
+/**
+ * Atomically persists the feature store slice for one mode. The value is
+ * written verbatim (compact JSON); `undefined` clears the slice while
+ * leaving the other mode's record intact.
+ */
+async function saveFeatures(
+  mode: RuntimeMode,
+  value: RuntimeFeatures | undefined,
+): Promise<void> {
+  await jsonFile.update.atomic(storageFiles.prod.features, (raw) => {
+    const file = isRecord(raw) ? raw : {};
+    if (value === undefined) {
+      const next = { ...file };
+      delete next[mode];
+      return next;
+    }
+    return { ...file, [mode]: value };
+  });
 }
 
 /**
@@ -594,6 +632,10 @@ const runtimeStorage = {
     purgeAccount: purgeStrategyAccount,
     purgeAccountRecords,
     save: saveStrategy,
+  },
+  features: {
+    load: loadFeatures,
+    save: saveFeatures,
   },
   history: {
     append: appendHistory,

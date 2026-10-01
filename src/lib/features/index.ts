@@ -1,6 +1,10 @@
 import type { RuntimeContext } from "@/lib/precision/types";
 
-import { computePriceNormalized } from "./price-normalized";
+import {
+  computePriceNormalized,
+  isSameNormalizedValue,
+  replayPriceNormalizedHistory,
+} from "./price-normalized";
 import {
   FEATURES_HISTORY_WINDOW_MS,
   type CoinFeatures,
@@ -27,17 +31,23 @@ function update(context: RuntimeContext): void {
   const cutoff = now - FEATURES_HISTORY_WINDOW_MS;
   const coins: Record<string, CoinFeatures> = {};
   for (const symbol of Object.keys(context.state.vPointsMap)) {
-    const priceNormalized = computePriceNormalized({
-      now,
-      points: context.state.vPointsMap[symbol],
-    });
+    const points = context.state.vPointsMap[symbol];
+    const priceNormalized = computePriceNormalized({ now, points });
     // Step-series trail: append only when the value changed; reuse the
     // previous array when nothing moved so changedCoins stays sparse.
     let history =
       context.state.features?.coins[symbol]?.priceNormalizedHistory ??
       EMPTY_HISTORY;
+    if (history.length === 0 && priceNormalized !== undefined) {
+      // No persisted trail (first boot, fresh symbol): reconstruct what
+      // live ticks would have captured by replaying the pivot timeline.
+      history = replayPriceNormalizedHistory({ now, points });
+    }
     const last = history[history.length - 1];
-    if (priceNormalized !== undefined && last?.p !== priceNormalized) {
+    if (
+      priceNormalized !== undefined &&
+      !isSameNormalizedValue(last?.p, priceNormalized)
+    ) {
       history = [...history, { p: priceNormalized, t: now }];
     }
     // Points append chronologically, so only the head can fall out of the

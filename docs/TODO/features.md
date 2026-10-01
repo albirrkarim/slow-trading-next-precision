@@ -28,8 +28,10 @@ interface CoinFeatures {
    * valid range. Step function — changes only when a new vPoint forms. */
   priceNormalized?: number;
   /** Rolling ~10-day trail (`FEATURES_HISTORY_WINDOW_MS`) of value-change
-   * points; appends only when the value moves, the last survivor is kept
-   * even when stale so "unchanged since t" stays readable. */
+   * points (`t` = when the reading changed — pivot time for seeded points,
+   * tick time for live appends); appends only when the value moves beyond
+   * a 1e-9 float epsilon, the last survivor is kept even when stale so
+   * "unchanged since t" stays readable. */
   priceNormalizedHistory: { t: number; p: number }[];
 }
 ```
@@ -46,6 +48,18 @@ interface CoinFeatures {
   Every adapter delegates to the same shared module — the math must be
   identical across live/sandbox/backtest (also wired on the quick-backtest
   and `driver/backtest-precision` adapters, which don't persist a stream).
+- **Persisted across restarts** — `features.json[mode]` (live/sandbox
+  slices, same pattern as `strategy.json`): production loads it into
+  `state.features` at boot and the adapter re-flushes it only when
+  `changedCoins` reports a moved value — trails resume exactly where the
+  last flush left them.
+- **Seeded when missing** — a coin with an empty trail (first boot, fresh
+  symbol, deleted file) gets `priceNormalizedHistory` reconstructed by
+  replaying each in-window pivot through `computePriceNormalized` as-of the
+  pivot's own time. The seed captures pivot-driven changes; envelope-slide
+  drift between pivots is not reconstructible from pivot events alone.
+  Backtests get the same seed for free since `state.features` starts
+  undefined after the warm-up vPoint fill.
 
 ```ts
 // src/lib/features/
