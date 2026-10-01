@@ -136,6 +136,33 @@ export default function BlackSwanSettings({
         ...blackSwanModel.config.defaults.breadthConfirmation,
       },
     });
+  const resetAll = () =>
+    setConfigDraft((previous) =>
+      previous
+        ? {
+            ...previous,
+            management: {
+              ...previous.management,
+              blackSwan: {
+                ...blackSwanModel.config.defaults,
+                btcWarning: {
+                  ...blackSwanModel.config.defaults.btcWarning,
+                },
+                btcHardTrigger: {
+                  ...blackSwanModel.config.defaults.btcHardTrigger,
+                },
+                breadthConfirmation: {
+                  ...blackSwanModel.config.defaults.breadthConfirmation,
+                },
+              },
+            },
+            runtime: {
+              ...previous.runtime,
+              blackSwanStageIntervalMinutes: 1,
+            },
+          }
+        : previous,
+    );
   // PROD:BLACK_SWAN_SAVINGS_PREVIEW_RESOURCE_GUARD
   const [showSavingsPreview, setShowSavingsPreview] = useState(false);
 
@@ -197,6 +224,13 @@ export default function BlackSwanSettings({
                   </Stack>
                 </Box>
 
+                <Button
+                  onClick={resetAll}
+                  size="small"
+                  variant="outlined"
+                >
+                  Reset all Black Swan settings
+                </Button>
               </Box>
 
               <Alert severity={config.enabled ? "success" : "warning"}>
