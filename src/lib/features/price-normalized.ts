@@ -86,9 +86,15 @@ export function replayPriceNormalizedHistory(params: {
   now: number;
   points: VolatilityPoint[] | undefined;
   windowMs?: number;
+  /**
+   * Trail lookback — defaults to the runtime record window
+   * (`FEATURES_HISTORY_WINDOW_MS`); analysis tooling passes a wider span to
+   * reconstruct a longer trail than production persists.
+   */
+  historyWindowMs?: number;
 }): FeatureHistoryPoint[] {
   const points = params.points ?? [];
-  const cutoff = params.now - FEATURES_HISTORY_WINDOW_MS;
+  const cutoff = params.now - (params.historyWindowMs ?? FEATURES_HISTORY_WINDOW_MS);
   const history: FeatureHistoryPoint[] = [];
   for (let index = 0; index < points.length; index++) {
     const pivot = points[index];

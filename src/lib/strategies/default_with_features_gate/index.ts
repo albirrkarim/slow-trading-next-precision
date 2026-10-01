@@ -4,6 +4,7 @@ import type {
 } from "@/lib/features/types";
 import defaultDecision from "@/lib/precision/defaultDecision";
 import type { RuntimeContext } from "@/lib/precision/types";
+import type { VolatilityPoint } from "@/lib/system/types/market";
 
 import type { StrategyAPI } from "../types";
 
@@ -34,6 +35,17 @@ export const FEATURE_GATE_BOUNDS: Required<FeatureGateBounds> = {
   maxPriceNormalized: 0.8,
   minPriceNormalized: 0.3,
 };
+
+/**
+ * Deep-run repetition limit mined from `storage/analysis/case1`: a level-1
+ * entry whose previous same-side run already reached `|lvl| >= 4`
+ * escalates again at roughly 4x the ~1.2% base rate — the only
+ * sequence feature that separated at all. Coverage is small (catches a
+ * few percent of escalations) but the collateral is near zero, so the
+ * guard stays cheap. Applies only to `|lvl| === 1` candidates — the
+ * level the user asked to protect; deeper entries are untouched.
+ */
+export const PREV_RUN_DEPTH_LIMIT = 4;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -71,16 +83,38 @@ function outsideBounds(
 }
 
 /**
+ * Returns the deepest `|lvl|` the previous completed same-side run
+ * reached before the candidate pivot, walking `points` backwards past the
+ * current run (same `l`, ending at the candidate) and the intervening
+ * opposite-side run. `|lvl|` deepens monotonically inside a run, so the
+ * first same-side point found below the opposite block is the deepest.
+ * Undefined when no earlier same-side run exists — "no opinion".
+ */
+function prevSameSideRunDepth(
+  points: VolatilityPoint[] | undefined,
+  side: "T" | "B",
+  upto: number,
+): number | undefined {
+  if (!points) return undefined;
+  let i = upto - 1;
+  while (i >= 0 && points[i].l === side) i--;
+  while (i >= 0 && points[i].l !== side) i--;
+  return i >= 0 && points[i].l === side ? Math.abs(points[i].lvl) : undefined;
+}
+
+/**
  * Returns the feature-gate refusal for one symbol at the current tick, or
  * undefined when the candidate may pass. Checks the BTC market-context
  * bound first, then the candidate coin's own bound — each judged on the
- * current value plus history samples inside `historyWindowDays`. An
+ * current value plus history samples inside `historyWindowDays` — and
+ * last the deep-run repetition guard on level-1 signals. An
  * undefined `priceNormalized` (thin pivot history) means "no opinion" —
  * never a block.
  */
 function gateReason(
   context: RuntimeContext,
   symbol: string,
+  signal?: VolatilityPoint,
 ): string | undefined {
   const bounds = FEATURE_GATE_BOUNDS;
   const cutoff =
@@ -113,6 +147,23 @@ function gateReason(
       `${bounds.minPriceNormalized}–${bounds.maxPriceNormalized}`
     );
   }
+
+  if (signal && Math.abs(signal.lvl) === 1) {
+    const points = context.state.vPointsMap[symbol.toUpperCase()];
+    const upto =
+      points?.at(-1)?.id === signal.id
+        ? points.length - 1
+        : (points?.findIndex((p) => p.id === signal.id) ?? -1);
+    const prevDepth =
+      upto >= 0 ? prevSameSideRunDepth(points, signal.l, upto) : undefined;
+    if (prevDepth !== undefined && prevDepth >= PREV_RUN_DEPTH_LIMIT) {
+      return (
+        `the previous ${signal.l} run already reached level ` +
+        `${prevDepth} — repeat level-1 entries after deep runs escalate ` +
+        `disproportionately (mined limit ${PREV_RUN_DEPTH_LIMIT})`
+      );
+    }
+  }
   return undefined;
 }
 
@@ -124,9 +175,10 @@ function gateReason(
  * violating `FEATURE_GATE_BOUNDS` — any `priceNormalizedHistory` sample
  * outside the zone within the last `historyWindowDays` counts as a
  * violation, not just the current value (BTC context veto first, then the
- * coin's own envelope zone) — and explains the rejection through
- * `diagnostics.explain` so the dashboard shows a gated signal instead of a
- * silent no-entry.
+ * coin's own envelope zone) — plus level-1 signals whose previous same-side
+ * run already reached `PREV_RUN_DEPTH_LIMIT`. Rejections are explained
+ * through `diagnostics.explain` so the dashboard shows a gated signal
+ * instead of a silent no-entry.
  *
  * Manual operator-forced entries are intentionally not gated (`shape` stays
  * omitted) — a manual entry is an explicit override.
@@ -139,7 +191,11 @@ const defaultWithFeaturesGate: StrategyAPI = {
         const candidates = await defaultDecision.entry.find(context);
         return candidates.filter(
           (candidate) =>
-            gateReason(context, candidate.symbol) === undefined,
+            gateReason(
+              context,
+              candidate.symbol,
+              candidate.type === "entry" ? candidate.entrySignal : undefined,
+            ) === undefined,
         );
       },
     },
@@ -147,7 +203,7 @@ const defaultWithFeaturesGate: StrategyAPI = {
   diagnostics: {
     explain: ({ context, symbol, decision }) => {
       if (!decision) return undefined;
-      const reason = gateReason(context, symbol);
+      const reason = gateReason(context, symbol, decision.entrySignal);
       if (!reason) return undefined;
       return {
         code: "FEATURE_GATE",
