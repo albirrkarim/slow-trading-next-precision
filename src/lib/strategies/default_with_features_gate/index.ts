@@ -21,17 +21,21 @@ import type { StrategyAPI } from "../types";
  *   volatility anchor even when it is not a traded symbol, so below 0.3
  *   means the market is breaking down and above 0.8 means it is extended.
  *
- * Both bounds apply to the whole `priceNormalizedHistory` trail (rolling
- * 10-day window), not just the current value — a coin that recently
- * touched outside its zone is rejected even when it has since moved back
- * inside.
+ * Both bounds apply to the recent portion of `priceNormalizedHistory`,
+ * not just the current value — a coin that touched outside its zone
+ * within `historyWindowDays` is rejected even when it has since moved
+ * back inside. The recorded trail itself keeps the full 10-day window
+ * (`FEATURES_HISTORY_WINDOW_MS`); the gate only judges its freshest days.
  */
 export const FEATURE_GATE_BOUNDS: Required<FeatureGateBounds> = {
-  btcMaxPriceNormalized: 0.8,
+  btcMaxPriceNormalized: 0.9,
   btcMinPriceNormalized: 0.3,
+  historyWindowDays: 5,
   maxPriceNormalized: 0.8,
   minPriceNormalized: 0.3,
 };
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Compact date tag for gate messages, e.g. " on 2026-09-25". */
 function formatDayTag(t?: number): string {
@@ -42,13 +46,16 @@ function formatDayTag(t?: number): string {
 
 /**
  * Returns the freshest `priceNormalized` sample outside `[min, max]`,
- * scanning the current value first then the history trail newest-to-oldest.
- * Absent values are "no opinion" — never a violation.
+ * scanning the current value first then the history trail newest-to-oldest
+ * — limited to samples at or after `cutoffMs` (the judge window; the
+ * recorded trail itself reaches further back). Absent values are "no
+ * opinion" — never a violation.
  */
 function outsideBounds(
   coin: CoinFeatures | undefined,
   min: number,
   max: number,
+  cutoffMs: number,
 ): { p: number; t?: number } | undefined {
   if (!coin) return undefined;
   const current = coin.priceNormalized;
@@ -57,6 +64,7 @@ function outsideBounds(
   }
 
   for (const { p, t } of [...coin.priceNormalizedHistory].reverse()) {
+    if (t < cutoffMs) break;
     if (p < min || p > max) return { p, t };
   }
   return undefined;
@@ -65,20 +73,24 @@ function outsideBounds(
 /**
  * Returns the feature-gate refusal for one symbol at the current tick, or
  * undefined when the candidate may pass. Checks the BTC market-context
- * bound first, then the candidate coin's own bound — each across its whole
- * 10-day history trail. An undefined `priceNormalized` (thin pivot
- * history) means "no opinion" — never a block.
+ * bound first, then the candidate coin's own bound — each judged on the
+ * current value plus history samples inside `historyWindowDays`. An
+ * undefined `priceNormalized` (thin pivot history) means "no opinion" —
+ * never a block.
  */
 function gateReason(
   context: RuntimeContext,
   symbol: string,
 ): string | undefined {
   const bounds = FEATURE_GATE_BOUNDS;
+  const cutoff =
+    context.state.currentTime - bounds.historyWindowDays * DAY_MS;
 
   const btcViolation = outsideBounds(
     context.state.features?.coins.BTC,
     bounds.btcMinPriceNormalized,
     bounds.btcMaxPriceNormalized,
+    cutoff,
   );
   if (btcViolation) {
     return (
@@ -92,6 +104,7 @@ function gateReason(
     context.state.features?.coins[symbol.toUpperCase()],
     bounds.minPriceNormalized,
     bounds.maxPriceNormalized,
+    cutoff,
   );
   if (coinViolation) {
     return (
@@ -109,9 +122,9 @@ function gateReason(
  * `defaultDecision.entry.find` and still flow through the shared
  * eligibility/approval guard unchanged; this strategy only drops candidates
  * violating `FEATURE_GATE_BOUNDS` — any `priceNormalizedHistory` sample
- * outside the zone within the rolling 10-day trail counts as a violation,
- * not just the current value (BTC context veto first, then the coin's own
- * envelope zone) — and explains the rejection through
+ * outside the zone within the last `historyWindowDays` counts as a
+ * violation, not just the current value (BTC context veto first, then the
+ * coin's own envelope zone) — and explains the rejection through
  * `diagnostics.explain` so the dashboard shows a gated signal instead of a
  * silent no-entry.
  *

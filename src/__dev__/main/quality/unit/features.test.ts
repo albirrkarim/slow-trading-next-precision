@@ -12,7 +12,9 @@ import type {
   RuntimeContext,
   RuntimeEntryDecision,
 } from "@/lib/precision/types";
-import strategy from "@/lib/strategies/default_with_features_gate";
+import strategy, {
+  FEATURE_GATE_BOUNDS,
+} from "@/lib/strategies/default_with_features_gate";
 import defaultDecision from "@/lib/precision/defaultDecision";
 import vpoints from "@/lib/system/utils/vpoints";
 import type { Position } from "@/lib/system/trading";
@@ -319,8 +321,16 @@ describe("vpoints.retainRecent sinceMs", () => {
 describe("default_with_features_gate", () => {
   const find = vi.mocked(defaultDecision.entry.find);
 
-  // The gate bounds are strategy-owned constants: coin zone [0.2, 0.8],
-  // BTC market-context veto outside [0.3, 0.8].
+  // Bounds are strategy-owned constants that get tuned — fixtures derive
+  // from them so the suite covers the gate logic, not literal numbers.
+  const coinMin = FEATURE_GATE_BOUNDS.minPriceNormalized;
+  const coinMax = FEATURE_GATE_BOUNDS.maxPriceNormalized;
+  const btcMin = FEATURE_GATE_BOUNDS.btcMinPriceNormalized;
+  const btcMax = FEATURE_GATE_BOUNDS.btcMaxPriceNormalized;
+  const coinIn = (coinMin + coinMax) / 2;
+  const btcIn = (btcMin + btcMax) / 2;
+  // Half the judge window — always inside it regardless of tuning.
+  const recently = (FEATURE_GATE_BOUNDS.historyWindowDays * DAY_MS) / 2;
 
   it("filters candidates outside the coin priceNormalized zone", async () => {
     find.mockResolvedValue([
@@ -331,17 +341,23 @@ describe("default_with_features_gate", () => {
     const context = contextWith({
       features: {
         coins: {
-          AAVE: { priceNormalized: 0.15, priceNormalizedHistory: [] },
-          LINK: { priceNormalized: 0.9, priceNormalizedHistory: [] },
-          SUI: { priceNormalized: 0.2, priceNormalizedHistory: [] },
+          AAVE: {
+            priceNormalized: coinMin - 0.1,
+            priceNormalizedHistory: [],
+          },
+          LINK: {
+            priceNormalized: coinMax + 0.1,
+            priceNormalizedHistory: [],
+          },
+          SUI: { priceNormalized: coinMin, priceNormalizedHistory: [] },
         },
         shared: {},
       },
       symbols: ["SUI", "LINK", "AAVE"],
     });
 
-    // LINK above the 0.8 ceiling and AAVE below the 0.2 floor drop; SUI on
-    // the inclusive floor boundary stays.
+    // LINK above the ceiling and AAVE below the floor drop; SUI sits on the
+    // inclusive floor boundary and stays.
     const kept = await strategy.decisions!.entry!.find(context);
     expect(kept.map((entry) => entry.symbol)).toEqual(["SUI"]);
   });
@@ -351,9 +367,12 @@ describe("default_with_features_gate", () => {
     const context = contextWith({
       features: {
         coins: {
-          BTC: { priceNormalized: 0.9, priceNormalizedHistory: [] },
-          LINK: { priceNormalized: 0.4, priceNormalizedHistory: [] },
-          SUI: { priceNormalized: 0.2, priceNormalizedHistory: [] },
+          BTC: {
+            priceNormalized: btcMax + 0.1,
+            priceNormalizedHistory: [],
+          },
+          LINK: { priceNormalized: coinIn, priceNormalizedHistory: [] },
+          SUI: { priceNormalized: coinIn, priceNormalizedHistory: [] },
         },
         shared: {},
       },
@@ -378,8 +397,11 @@ describe("default_with_features_gate", () => {
     const context = contextWith({
       features: {
         coins: {
-          BTC: { priceNormalized: 0.25, priceNormalizedHistory: [] },
-          SUI: { priceNormalized: 0.4, priceNormalizedHistory: [] },
+          BTC: {
+            priceNormalized: btcMin - 0.1,
+            priceNormalizedHistory: [],
+          },
+          SUI: { priceNormalized: coinIn, priceNormalizedHistory: [] },
         },
         shared: {},
       },
@@ -392,8 +414,8 @@ describe("default_with_features_gate", () => {
     const context = contextWith({
       features: {
         coins: {
-          BTC: { priceNormalized: 0.5, priceNormalizedHistory: [] },
-          SUI: { priceNormalized: 0.2, priceNormalizedHistory: [] },
+          BTC: { priceNormalized: btcIn, priceNormalizedHistory: [] },
+          SUI: { priceNormalized: coinMin, priceNormalizedHistory: [] },
         },
         shared: {},
       },
@@ -402,17 +424,18 @@ describe("default_with_features_gate", () => {
   });
 
   it("rejects a coin whose recent history touched outside the zone", async () => {
+    const excursion = coinMax + 0.15;
     find.mockResolvedValue([candidate("SUI")]);
     const context = contextWith({
       features: {
         coins: {
-          // Current value is inside [0.2, 0.8] but the 10-day trail holds a
-          // 0.95 excursion — the history veto still blocks the entry.
+          // Current value is inside the zone but the 10-day trail holds an
+          // excursion above the ceiling — the history veto still blocks.
           SUI: {
-            priceNormalized: 0.5,
+            priceNormalized: coinIn,
             priceNormalizedHistory: [
-              { p: 0.95, t: NOW - 3 * DAY_MS },
-              { p: 0.5, t: NOW - DAY_MS },
+              { p: excursion, t: NOW - recently },
+              { p: coinIn, t: NOW - DAY_MS },
             ],
           },
         },
@@ -428,7 +451,30 @@ describe("default_with_features_gate", () => {
       symbol: "SUI",
     });
     expect(explained?.code).toBe("FEATURE_GATE");
-    expect(explained?.reason).toContain("0.950");
+    expect(explained?.reason).toContain(excursion.toFixed(3));
+  });
+
+  it("ignores excursions that aged out of the judge window", async () => {
+    find.mockResolvedValue([candidate("SUI")]);
+    const beyond = (FEATURE_GATE_BOUNDS.historyWindowDays + 1) * DAY_MS;
+    const context = contextWith({
+      features: {
+        coins: {
+          BTC: { priceNormalized: btcIn, priceNormalizedHistory: [] },
+          // The excursion predates the judge window — the record keeps it
+          // for display but the gate no longer counts it.
+          SUI: {
+            priceNormalized: coinIn,
+            priceNormalizedHistory: [
+              { p: coinMax + 0.15, t: NOW - beyond },
+              { p: coinIn, t: NOW - DAY_MS },
+            ],
+          },
+        },
+        shared: {},
+      },
+    });
+    expect(await strategy.decisions!.entry!.find(context)).toHaveLength(1);
   });
 
   it("vetoes every candidate when BTC history broke its bounds", async () => {
@@ -437,23 +483,23 @@ describe("default_with_features_gate", () => {
       features: {
         coins: {
           BTC: {
-            priceNormalized: 0.5,
+            priceNormalized: btcIn,
             priceNormalizedHistory: [
-              { p: 0.2, t: NOW - 2 * DAY_MS },
-              { p: 0.5, t: NOW - DAY_MS },
+              { p: btcMin - 0.1, t: NOW - recently },
+              { p: btcIn, t: NOW - DAY_MS },
             ],
           },
-          LINK: { priceNormalized: 0.4, priceNormalizedHistory: [] },
-          SUI: { priceNormalized: 0.5, priceNormalizedHistory: [] },
+          LINK: { priceNormalized: coinIn, priceNormalizedHistory: [] },
+          SUI: { priceNormalized: coinIn, priceNormalizedHistory: [] },
         },
         shared: {},
       },
       symbols: ["SUI", "LINK"],
     });
 
-    // BTC is inside its zone now but dipped to 0.2 two days ago — the
-    // market-context veto blocks every candidate while that excursion is
-    // still inside the 10-day trail.
+    // BTC is inside its zone now but dipped below the floor two days ago —
+    // the market-context veto blocks every candidate while that excursion
+    // is still inside the 10-day trail.
     expect(await strategy.decisions!.entry!.find(context)).toEqual([]);
   });
 
@@ -468,7 +514,10 @@ describe("default_with_features_gate", () => {
     const context = contextWith({
       features: {
         coins: {
-          SUI: { priceNormalized: 0.95, priceNormalizedHistory: [] },
+          SUI: {
+            priceNormalized: coinMax + 0.15,
+            priceNormalizedHistory: [],
+          },
         },
         shared: {},
       },

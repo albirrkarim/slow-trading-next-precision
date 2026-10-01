@@ -70,4 +70,11 @@ export interface FeatureGateBounds {
   maxPriceNormalized?: number;
   btcMinPriceNormalized?: number;
   btcMaxPriceNormalized?: number;
+  /**
+   * How many recent days of the `priceNormalizedHistory` trail the gate
+   * judges. The record itself keeps the full
+   * `FEATURES_HISTORY_WINDOW_MS` (~10 days) for display; only samples
+   * newer than `now - historyWindowDays` count as violations.
+   */
+  historyWindowDays?: number;
 }
