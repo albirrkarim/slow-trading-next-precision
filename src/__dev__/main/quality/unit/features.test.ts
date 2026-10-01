@@ -127,21 +127,34 @@ describe("computePriceNormalized", () => {
 });
 
 describe("features.update", () => {
-  it("writes a coin entry for every configured symbol", () => {
+  it("writes a coin entry for every symbol tracked in vPointsMap", () => {
+    // vPointsMap always carries BTC market context plus configured coins —
+    // features follow the map keys, not the traded-symbol config.
     const context = contextWith({
-      symbols: ["SUI", "SUI_USDT"],
+      symbols: ["SUI"],
       vPointsMap: {
-        SUI: [
+        BTC: [
           point(NOW - 30 * DAY_MS, 80),
           point(NOW - 20 * DAY_MS, 120),
           point(NOW - DAY_MS, 100),
         ],
+        SUI: [
+          point(NOW - 30 * DAY_MS, 8),
+          point(NOW - 20 * DAY_MS, 12),
+          point(NOW - DAY_MS, 10),
+        ],
       },
     });
     features.update(context);
-    expect(Object.keys(context.state.features!.coins)).toEqual(["SUI"]);
+    expect(Object.keys(context.state.features!.coins).sort()).toEqual([
+      "BTC",
+      "SUI",
+    ]);
     expect(
       context.state.features!.coins.SUI.priceNormalized,
+    ).toBeCloseTo(0.5);
+    expect(
+      context.state.features!.coins.BTC.priceNormalized,
     ).toBeCloseTo(0.5);
   });
 });

@@ -28,7 +28,7 @@ import backtestArtifacts from "../backtest/artifacts";
  * plus meta.json; v3 used monolithic field files. `read`/`readField` still
  * understand v3+ for saved cachePaths.
  */
-const CACHE_VERSION = 9;
+const CACHE_VERSION = 10;
 const CHUNKED_LAYOUT = 4;
 
 // Local-only cache — `storage/persistent` syncs between instances, so

@@ -1,26 +1,24 @@
 import type { RuntimeContext } from "@/lib/precision/types";
-import autoRemove from "@/lib/system/trading/auto-remove";
 
 import { computePriceNormalized } from "./price-normalized";
 import type { CoinFeatures } from "./types";
 
 /**
- * Recomputes `state.features` for every configured symbol from the current
- * runtime state. Replaces the whole store with a fresh object so callers
- * comparing against the previous snapshot see exact per-symbol diffs.
+ * Recomputes `state.features` from the current runtime state for every
+ * symbol present in `state.vPointsMap` — the map already carries the
+ * canonical tracked set (configured coins, open-position coins, and the
+ * BTC market context), so features follow exactly the symbols that have
+ * pivot data in both backtest and production.
+ *
+ * Replaces the whole store with a fresh object so callers comparing
+ * against the previous snapshot see exact per-symbol diffs.
  *
  * Called inside `adapter.onFeatureUpdate` — production writes state only;
  * the backtest adapter additionally delta-records the artifact stream.
  */
 function update(context: RuntimeContext): void {
   const coins: Record<string, CoinFeatures> = {};
-  const symbols = new Set(
-    context.state.config.management.symbols.map((symbol) =>
-      autoRemove.symbol.normalize(symbol),
-    ),
-  );
-  for (const symbol of symbols) {
-    if (!symbol) continue;
+  for (const symbol of Object.keys(context.state.vPointsMap)) {
     coins[symbol] = {
       priceNormalized: computePriceNormalized({
         now: context.state.currentTime,

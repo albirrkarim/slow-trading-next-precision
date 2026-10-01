@@ -34,6 +34,9 @@ interface CoinFeatures {
 
 - `RuntimeEngineState.features?: RuntimeFeatures` — snapshotted into
   precision test cases like `vPointsMap`/`blackSwanStatus`.
+- `features.coins` iterates `state.vPointsMap` keys — the tracked set, which
+  always includes BTC as the market-context anchor (`entry.getSymbols` adds
+  it unconditionally), so BTC features exist even when BTC is not traded.
 - `adapter.onFeatureUpdate(context)` runs once at startup warm-up and before
   every capture-entry stage (after `updateMarkPrice`/`updateVPointsMap`).
   Every adapter delegates to the same shared module — the math must be
@@ -111,7 +114,7 @@ trading tick in backtest and production boot.
   `vpoints/<symbol>/`), appended by the backtest adapter's `onFeatureUpdate`
   only when a coin's feature values change; records are
   `BacktestFeatureRecord = { t } & CoinFeatures`.
-- `manifest.features` reports per-symbol part counts; `CACHE_VERSION = 9`
+- `manifest.features` reports per-symbol part counts; `CACHE_VERSION = 10`
   forces reruns, and `/api/dev/backtest-precision/detail?field=features`
   serves the stream lazily (`{ featuresMap }` or `{ symbol, features }`).
 - `PriceNormalized.tsx` — a standalone collapsible section **below
@@ -167,4 +170,4 @@ post-hoc evaluation of feature values vs outcomes.
 - Unit coverage: `features.test.ts` (extractor envelope math, degenerate
   cases, `changedCoins`, retention `sinceMs`, gate filter + diagnostics),
   `backtest-artifacts.test.ts` (feature stream spool/read), cache-publish
-  v9 key.
+  v10 key.
