@@ -105,9 +105,12 @@ defined from the first trading tick in backtest and production boot.
 
 ## Entry snapshot
 
-At commit, copy the symbol's coin features into the position record
-(`position.features` or similar) so post-hoc evaluation can correlate entry
-feature values with outcomes.
+At commit, snapshot the symbol's coin features into
+`position.strategy.entry.feature` — the existing `Position<TFeature>` slot
+the shared runtime never reads inside. Precedence: `decision.feature`
+(strategy-authored override) else `state.features.coins[symbol]` — so every
+position records its entry features regardless of strategy, enabling
+post-hoc evaluation of feature values vs outcomes.
 
 ## Strategy
 
