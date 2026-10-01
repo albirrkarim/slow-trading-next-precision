@@ -3,6 +3,23 @@
 `VOLATILITY_THRESHOLD` is a deployment-level strategy tuning value. It
 controls the percentage price move required to activate volatility detection.
 When it is not configured, the system defaults to `5`.
+`VOLATILITY_RETRACE_PERCENT` controls the pullback from a local extreme that
+confirms a pivot once a sequence is active; unset, it defaults to `1`.
+
+`management.volatilityThreshold` and `management.volatilityRetracePct`
+override both detector controls per runtime configuration. A finite positive
+value wins; absent or invalid values fall back to the environment defaults.
+The override is consistent across a run: the same resolved values feed pivot
+formation and every derived default (counter-sequence excursion guard, rescue
+distance, drift caps, adaptive-averaging profit floor, extreme-vPoint bypass).
+
+In production the override applies to future detection only. Persisted
+per-symbol volatility files seed `vPointsMap` unchanged — historical levels,
+prices, and `usedBy` markers are kept, so the resulting timeline may mix
+points detected under different parameters. A detector-config change
+invalidates the runtime volatility cursor so subsequent candles are evaluated
+with the new values. Regenerating a symbol's persisted file (`reinitialize`)
+detects under the configured override.
 
 Production and backtest should use the same configured threshold when their
 volatility points are expected to be comparable. Changing this threshold

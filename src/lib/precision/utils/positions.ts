@@ -8,7 +8,10 @@ import type {
 } from "@/lib/system/trading";
 import type { VolatilityPoint } from "@/lib/system/types";
 import vpoints from "@/lib/system/utils/vpoints";
-import { VOLATILITY_THRESHOLD } from "@/lib/system/constants";
+import {
+  resolveVolatilityThreshold,
+  VOLATILITY_THRESHOLD,
+} from "@/lib/system/constants";
 
 const MAX_HISTORY_POINTS = 24 * 90;
 const MINUTE_MS = 60 * 1000;
@@ -434,6 +437,9 @@ function updateMonitoringStage(
     takeProfitPercent: accountConfig.takeProfitPercent,
     useStopLossPlus: accountConfig.useStopLossPlus,
     volatilityPoints,
+    volatilityThresholdPct: resolveVolatilityThreshold(
+      context.state.config.management,
+    ),
   });
   const stage = reasons.length > 0 ? "speedup" : "standard";
   const reason =

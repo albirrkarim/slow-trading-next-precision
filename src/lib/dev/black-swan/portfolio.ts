@@ -1,4 +1,5 @@
 import type { UnifiedKline } from "@/lib/exchange/types";
+import { resolveVolatilityThreshold } from "@/lib/system/constants";
 import positions from "@/lib/precision/utils/positions";
 import blackSwan, {
   type BlackSwanConfig,
@@ -281,6 +282,9 @@ function applyAveraging(params: {
     reservedQuoteAsset: params.reservedQuoteAsset,
     step,
     triggerVolatilityPct: params.point.pct,
+    volatilityThresholdPct: resolveVolatilityThreshold(
+      params.tradingConfig,
+    ),
   });
   if (!projection.canExecute) {
     return {
@@ -515,6 +519,9 @@ function replayPosition(params: {
       takeProfitPercent: params.tradingConfig.takeProfitPercent,
       useStopLossPlus: params.tradingConfig.useStopLossPlus,
       volatilityPoints: confirmedVPoints,
+      volatilityThresholdPct: resolveVolatilityThreshold(
+        params.tradingConfig,
+      ),
     });
     const monitoringStageAtExit =
       speedupReasons.length > 0 ? "speedup" : "standard";
@@ -581,6 +588,9 @@ function replayPosition(params: {
         timeMs: t,
         volatilityPoints: confirmedVPoints,
         roundTripFeeRatio,
+        volatilityThresholdPct: resolveVolatilityThreshold(
+          params.tradingConfig,
+        ),
       });
       if (decision.action === "SELL") {
         const exitPrice = decision.position?.closed?.price ?? currentPrice;
@@ -675,6 +685,9 @@ function replayPosition(params: {
       .slice(0, vPointIndex)
       .map(({ point }) => point),
     roundTripFeeRatio,
+    volatilityThresholdPct: resolveVolatilityThreshold(
+      params.tradingConfig,
+    ),
   });
   return finish(exitFromDecision({
     metrics: snapshot.metrics,

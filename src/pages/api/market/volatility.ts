@@ -2,7 +2,11 @@ import type { ExchangeType } from "@/lib/exchange/types";
 import { DEFAULT_EXCHANGE } from "@/lib/exchange/constants";
 import { resolveMarketTypeForTradingMode } from "@/lib/exchange/utils";
 import production from "@/lib/production";
-import { windowsMs } from "@/lib/system/constants";
+import {
+  resolveVolatilityRetracePct,
+  resolveVolatilityThreshold,
+  windowsMs,
+} from "@/lib/system/constants";
 import { runtimeStorage, storageFiles } from "@/lib/system/storage";
 import type { VolatilityPoint } from "@/lib/system/types";
 import { reserve, runtimeEntrySequences } from "@/lib/system/trading";
@@ -163,6 +167,12 @@ async function keepTheVolatilityUpdated(
             symbol: `${symbol}_USDT`,
             tradingMode: catalog.config.management.tradingMode,
           }),
+          moveThreshold: resolveVolatilityThreshold(
+            catalog.config.management,
+          ),
+          retracePercent: resolveVolatilityRetracePct(
+            catalog.config.management,
+          ),
           symbol,
         });
 

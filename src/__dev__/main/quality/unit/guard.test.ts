@@ -233,6 +233,34 @@ describe("guard.allows — shared environment approval gate", () => {
     expect(guard.allows(entry(), contextFor(twoPoints))).toBe(true);
   });
 
+  it("resolves the staleness excursion against a management threshold override", () => {
+    // BOTH:GLOBAL_VOLATILITY_THRESHOLD — `management.volatilityThreshold=8`
+    // means a counter-excursion at the env default no longer makes the
+    // latest point stale.
+    const point = {
+      id: "T_stale",
+      t: NOW - 60_000,
+      l: "T",
+      p: 1.5,
+      pct: 4,
+      vb: 1,
+      vq: 1,
+      lvl: 1,
+      maxDownPct: VOLATILITY_THRESHOLD,
+    };
+    const state = makeState({ vPointsMap: { SUI: [point] as never[] } });
+    state.config.management.volatilityThreshold = 8;
+    expect(guard.allows(entry(), contextFor(state))).toBe(true);
+    // An excursion that reaches the override still vetoes.
+    const deeper = makeState({
+      vPointsMap: {
+        SUI: [{ ...point, maxDownPct: 8 } as never],
+      },
+    });
+    deeper.config.management.volatilityThreshold = 8;
+    expect(guard.allows(entry(), contextFor(deeper))).toBe(false);
+  });
+
   it("applies the seeded entry cutoff to automatic entries only", () => {
     const state = makeState({ entryCutoffTime: NOW - 1000 });
     expect(guard.allows(entry(), contextFor(state))).toBe(false);

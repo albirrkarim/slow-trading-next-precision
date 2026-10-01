@@ -6,7 +6,7 @@ import binanceRequestCoordinator, {
 import { TradingMode } from "@/lib/exchange/types";
 import { resolveMarketTypeForTradingMode } from "@/lib/exchange/utils";
 
-import { VOLATILITY_THRESHOLD } from "../constants";
+import { resolveVolatilityThreshold } from "../constants";
 import { systemLog } from "../logging";
 import runtimeAccountConfig from "../runtime/account-config";
 import type { RuntimeStageRunStatsMap } from "../runtime/stages";
@@ -325,7 +325,7 @@ function buildState(params: {
     ],
     activeMode: mode,
     globalConfig: {
-      volatilityThresholdPct: VOLATILITY_THRESHOLD,
+      volatilityThresholdPct: resolveVolatilityThreshold(config.management),
     },
     config: effective,
     runtime: toDashboardRuntime(config.runtime),

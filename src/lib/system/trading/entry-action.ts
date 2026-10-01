@@ -16,6 +16,7 @@ import type {
   PositionExecutionMode,
 } from "./types";
 import { TradingMode } from "@/lib/exchange/types";
+import { resolveVolatilityThreshold } from "../constants";
 
 import autoRemove from "./auto-remove";
 import runtimeEntryLeverage from "./leverage";
@@ -349,13 +350,16 @@ function planAttempt(
   // freshest mark, after the decision-time gate in entry.findDecisions.
   // Operator-forced manual entries are exempt: the request is explicit.
   if (!decision.manual) {
-    const drift = lateEntryVPointDrift.evaluate({
-      currentPrice: mark.price,
-      direction: decision.direction,
-      enabled: config.lateEntryVPointPriceDriftEnabled,
-      limitPct: config.lateEntryVPointPriceDriftPct,
-      vPointPrice: signal.p,
-    });
+    const drift = lateEntryVPointDrift.evaluate(
+      {
+        currentPrice: mark.price,
+        direction: decision.direction,
+        enabled: config.lateEntryVPointPriceDriftEnabled,
+        limitPct: config.lateEntryVPointPriceDriftPct,
+        vPointPrice: signal.p,
+      },
+      resolveVolatilityThreshold(context.state.config.management),
+    );
     if (drift.blocked) {
       const reason = drift.reason ?? "Entry blocked by late-entry drift.";
       systemLog.debug(reason);

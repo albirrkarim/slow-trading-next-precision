@@ -103,6 +103,7 @@ export async function precisionBacktest(
           dataset.getKlines,
           datasetStartTime,
           currentTime,
+          params.config.management,
         );
   const spool = params.artifacts
     ? backtestArtifacts.spool.create(

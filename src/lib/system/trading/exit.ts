@@ -25,7 +25,10 @@ import type {
   TradeDecision,
 } from "./types";
 import type { VolatilityPoint } from "../types";
-import { VOLATILITY_THRESHOLD } from "../constants";
+import {
+  resolveVolatilityThreshold,
+  VOLATILITY_THRESHOLD,
+} from "../constants";
 
 const TRADE_MESSAGE = {
   hold: "[HOLD]",
@@ -151,6 +154,7 @@ function evaluatePostAverageRescue({
   netPnlPercent,
   position,
   config,
+  volatilityThresholdPct = VOLATILITY_THRESHOLD,
 }: {
   currentPrice: number;
   direction?: Position["direction"];
@@ -158,6 +162,7 @@ function evaluatePostAverageRescue({
   netPnlPercent: number;
   position?: Pick<Position, "strategy"> | null;
   config?: PostAverageRescueExitConfig;
+  volatilityThresholdPct?: number;
 }) {
   // BOTH:POST_AVERAGE_RESCUE_EXIT
   const completedAveragingCount = countCompletedAveraging(position);
@@ -178,7 +183,8 @@ function evaluatePostAverageRescue({
     favorableDistancePercent,
     minimumNetPnlPercent,
     shouldExit:
-      favorableDistancePercent >= VOLATILITY_THRESHOLD && hasRequiredNetPnl,
+      favorableDistancePercent >= volatilityThresholdPct &&
+      hasRequiredNetPnl,
   };
 }
 
@@ -415,8 +421,12 @@ function normalizeLevelBasedDriftConfig(
 function getLevelBasedDriftCondition(
   absoluteLevel: number,
   config?: LevelBasedPctDriftStopLossConfig,
+  defaultAdverseDriftPct?: number,
 ) {
-  const normalized = normalizeLevelBasedDriftConfig(config);
+  const normalized = normalizeLevelBasedDriftConfig(
+    config,
+    defaultAdverseDriftPct,
+  );
   if (!normalized.enabled) return undefined;
   return normalized.conditions.find(
     (condition) => condition.absoluteLevel === Math.abs(absoluteLevel),
@@ -441,14 +451,16 @@ function evaluateLevelBasedDrift({
   currentPrice,
   direction,
   vPoint,
+  volatilityThresholdPct,
 }: {
   config?: LevelBasedPctDriftStopLossConfig;
   currentPrice: number;
   direction: Position["direction"];
   vPoint?: { lvl: number; p: number } | null;
+  volatilityThresholdPct?: number;
 }) {
   const condition = vPoint
-    ? getLevelBasedDriftCondition(vPoint.lvl, config)
+    ? getLevelBasedDriftCondition(vPoint.lvl, config, volatilityThresholdPct)
     : undefined;
   const triggerPrice =
     condition && vPoint
@@ -618,6 +630,7 @@ function evaluateExit(params: {
   volatilityPoints: VolatilityPoint[];
   config: ExitEvaluationConfig;
   roundTripFeeRatio: number;
+  volatilityThresholdPct?: number;
 }): TradeDecision {
   const {
     position,
@@ -627,6 +640,7 @@ function evaluateExit(params: {
     volatilityPoints,
     config,
     roundTripFeeRatio,
+    volatilityThresholdPct = VOLATILITY_THRESHOLD,
   } = params;
   const readableTime = timeMsToReadable(timeMs);
 
@@ -753,6 +767,7 @@ function evaluateExit(params: {
     currentPrice: price,
     direction,
     vPoint: lastVolatility,
+    volatilityThresholdPct,
   });
 
   // BOTH:LEVEL_BASED_PCT_DRIFT_STOP_LOSS
@@ -937,6 +952,7 @@ function evaluateExit(params: {
     lastVolatilityPrice: lastVPrice,
     position,
     config: config.postAverageRescueExit,
+    volatilityThresholdPct,
   });
 
   // BOTH:POST_AVERAGE_RESCUE_EXIT
@@ -1205,6 +1221,9 @@ async function findDecision(
     volatilityPoints,
     config,
     roundTripFeeRatio,
+    volatilityThresholdPct: resolveVolatilityThreshold(
+      context.state.config.management,
+    ),
   });
 
   if (tradeDecision.action !== "SELL") {

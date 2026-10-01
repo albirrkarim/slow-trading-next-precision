@@ -1,4 +1,9 @@
 import type { RuntimeEngineState } from "@/lib/precision/types";
+import {
+  resolveVolatilityRetracePct,
+  resolveVolatilityThreshold,
+  type VolatilityThresholdOverride,
+} from "@/lib/system/constants";
 import type { FetchKlines } from "@/lib/system/types";
 import vpoints from "@/lib/system/utils/vpoints";
 import type { BacktestPrecisionParams } from "../api/precision-api-types";
@@ -75,14 +80,21 @@ export function snapshotAccountBalances(
   );
 }
 
-/** Creates volatility history using only candles closed by the runtime start. */
+/**
+ * Creates volatility history using only candles closed by the runtime start.
+ * `management` carries the optional detector overrides so a backtest's
+ * warm-up stream is detected under the same params as its live window.
+ */
 export async function createInitialVPointsMap(
   symbols: string[],
   getKlines: FetchKlines,
   startTime: number,
   currentTime: number,
+  management?: VolatilityThresholdOverride | null,
 ): Promise<RuntimeEngineState["vPointsMap"]> {
   const vPointsMap: RuntimeEngineState["vPointsMap"] = {};
+  const moveThreshold = resolveVolatilityThreshold(management);
+  const retracePercent = resolveVolatilityRetracePct(management);
 
   for (const symbol of symbols) {
     const klines = await getKlines({
@@ -94,6 +106,8 @@ export async function createInitialVPointsMap(
     });
     vPointsMap[symbol] = vpoints.detectVPoints({
       klines: klines.filter((kline) => kline[6] <= currentTime),
+      moveThreshold,
+      retracePercent,
       symbol,
     });
   }

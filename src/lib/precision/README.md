@@ -159,6 +159,7 @@ const vPointsMap = await createInitialVPointsMap(
   dataset.getKlines,
   dataset.startTime,
   currentTime,
+  params.config.management,
 );
 
 const state: RuntimeEngineState = {

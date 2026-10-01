@@ -7,6 +7,10 @@ import type {
   RuntimeVPointMemory,
 } from "../types";
 import {
+  resolveVolatilityRetracePct,
+  resolveVolatilityThreshold,
+} from "@/lib/system/constants";
+import {
   DEFAULT_RECENT_VPOINTS,
   LIVE_FEED_KLINES_MISS_GRACE_MS,
   LIVE_FEED_MISS_GRACE_MS,
@@ -22,6 +26,9 @@ interface VolatilityCursor {
   lastKnownPointId?: string;
   lastProcessedOpenTime: number;
   memory: RuntimeVPointMemory;
+  /** Detector params this cursor's memory was created with. */
+  moveThreshold: number;
+  retracePercent: number;
 }
 
 /** Binds reusable market-state updates to one runtime state and adapter. */
@@ -170,13 +177,27 @@ function create(
       adapter.market.live?.track(symbols, interval);
 
       const intervalCursors = (volatilityCursors[interval] ??= {});
+      const moveThreshold = resolveVolatilityThreshold(
+        state.config.management,
+      );
+      const retracePercent = resolveVolatilityRetracePct(
+        state.config.management,
+      );
 
       for (const symbol of symbols) {
         const points = state.vPointsMap[symbol] ?? [];
         let previousPoint = points.at(-1);
         let cursor = intervalCursors[symbol];
 
-        if (cursor?.lastKnownPointId !== previousPoint?.id) {
+        // A new point or a changed detector config invalidates the cursor:
+        // the next memory is re-seeded at the latest point with the resolved
+        // params, so a config override applies to all future detection.
+        if (
+          !cursor ||
+          cursor.lastKnownPointId !== previousPoint?.id ||
+          cursor.moveThreshold !== moveThreshold ||
+          cursor.retracePercent !== retracePercent
+        ) {
           cursor = undefined;
           delete intervalCursors[symbol];
         }
@@ -237,6 +258,8 @@ function create(
             firstClose:
               previousPoint?.p ?? Number(closedKlines[0][4]),
             firstTime: previousPoint?.t ?? closedKlines[0][0],
+            moveThreshold,
+            retracePercent,
           });
         const firstIndex = cursor ? 0 : 1;
 
@@ -259,6 +282,8 @@ function create(
           lastKnownPointId: previousPoint?.id,
           lastProcessedOpenTime: closedKlines.at(-1)?.[0] ?? startTime,
           memory,
+          moveThreshold,
+          retracePercent,
         };
         // Bounds the runtime window to recent points, the feature-envelope
         // window, plus anything open positions still depend on; the full

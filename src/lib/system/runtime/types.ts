@@ -246,6 +246,19 @@ export interface RuntimeManagementConfig {
   safeUSDTPerMonth?: number;
   /** Minimum trading capital that must remain after safe-haven moves. */
   minimalAssetOnTrade?: number;
+  /**
+   * Override for the env `VOLATILITY_THRESHOLD` — the percentage move that
+   * activates a volatility UP/DOWN sequence. Finite positive values win;
+   * absent/zero falls back to the env default. Applies only to points
+   * detected AFTER the change; persisted vPoints are never re-derived.
+   */
+  volatilityThreshold?: number;
+  /**
+   * Override for the env `VOLATILITY_RETRACE_PERCENT` — the retrace from a
+   * local extreme that confirms a pivot once a sequence is active. Same
+   * fallback and forward-only semantics as `volatilityThreshold`.
+   */
+  volatilityRetracePct?: number;
 }
 
 /** Global runtime controls shared by every runtime environment. */

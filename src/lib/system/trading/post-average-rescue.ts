@@ -143,6 +143,7 @@ function evaluate({
   netPnlPercent,
   position,
   config,
+  volatilityThresholdPct = VOLATILITY_THRESHOLD,
 }: {
   currentPrice: number;
   direction?: Position["direction"];
@@ -150,6 +151,7 @@ function evaluate({
   netPnlPercent: number;
   position?: RescuePosition | null;
   config?: PostAverageRescueExitConfig;
+  volatilityThresholdPct?: number;
 }) {
   // BOTH:POST_AVERAGE_RESCUE_EXIT
   const completedAveragingCount = getCompletedAveragingCount(position);
@@ -170,7 +172,8 @@ function evaluate({
     favorableDistancePercent,
     minimumNetPnlPercent,
     shouldExit:
-      favorableDistancePercent >= VOLATILITY_THRESHOLD && hasRequiredNetPnl,
+      favorableDistancePercent >= volatilityThresholdPct &&
+      hasRequiredNetPnl,
   };
 }
 

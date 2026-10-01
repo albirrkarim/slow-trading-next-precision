@@ -73,6 +73,8 @@ export const SHARED_MANAGEMENT_CONFIG_KEYS = [
   "strategy",
   "symbols",
   "tradingMode",
+  "volatilityRetracePct",
+  "volatilityThreshold",
 ] as const satisfies ReadonlyArray<keyof RuntimeManagementConfig>;
 
 type FlatConfig = RuntimeManagementConfig & RuntimeAccountTradingConfig;

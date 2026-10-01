@@ -17,6 +17,39 @@ export const VOLATILITY_RETRACE_PERCENT = process.env
   ? Number.parseFloat(process.env.VOLATILITY_RETRACE_PERCENT)
   : 1; // in percent
 
+/** Shape of the management section fields that override the env defaults. */
+export interface VolatilityThresholdOverride {
+  volatilityThreshold?: number;
+  volatilityRetracePct?: number;
+}
+
+/**
+ * Effective percentage move required to activate volatility detection:
+ * `management.volatilityThreshold` when it holds a finite positive value,
+ * else the `VOLATILITY_THRESHOLD` env default. Applies to NEW detection —
+ * already persisted vPoints are never re-derived.
+ */
+export function resolveVolatilityThreshold(
+  management?: VolatilityThresholdOverride | null,
+): number {
+  const value = Number(management?.volatilityThreshold);
+  return Number.isFinite(value) && value > 0 ? value : VOLATILITY_THRESHOLD;
+}
+
+/**
+ * Effective retrace percent that confirms a pivot:
+ * `management.volatilityRetracePct` when finite positive, else the
+ * `VOLATILITY_RETRACE_PERCENT` env default.
+ */
+export function resolveVolatilityRetracePct(
+  management?: VolatilityThresholdOverride | null,
+): number {
+  const value = Number(management?.volatilityRetracePct);
+  return Number.isFinite(value) && value > 0
+    ? value
+    : VOLATILITY_RETRACE_PERCENT;
+}
+
 const HALF_HOUR_MS = 1000 * 60 * 30;
 const HOUR_MS = HALF_HOUR_MS * 2;
 const DAY_MS = HOUR_MS * 24;

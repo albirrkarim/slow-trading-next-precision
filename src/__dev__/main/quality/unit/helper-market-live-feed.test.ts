@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   appendError: vi.fn(async () => undefined),
   central: vi.fn(async () => true),
   closedKlines: vi.fn(),
+  createMemory: vi.fn((params: unknown) => params),
   getKlines: vi.fn(),
   getSymbols: vi.fn(() => ["SUI"]),
   liveMarkPrice: vi.fn(),
@@ -30,7 +31,7 @@ vi.mock("@/lib/system/trading/entry", () => ({
 
 vi.mock("@/lib/system/utils/vpoints", () => ({
   default: {
-    createMemory: vi.fn((params: unknown) => params),
+    createMemory: mocks.createMemory,
     processKline: mocks.processKline,
     retainRecent: vi.fn(
       (params: { points: unknown[] }) => params.points,
@@ -328,6 +329,53 @@ describe("market helper live-feed miss logging", () => {
     await helper.updateVPointsMap("5m");
 
     expect(mocks.appendError).not.toHaveBeenCalled();
+  });
+
+  it("seeds detector memory with the resolved management overrides", async () => {
+    // BOTH:GLOBAL_VOLATILITY_THRESHOLD — management overrides feed future
+    // detection while the persisted/seeded points stay untouched.
+    state.config.management.volatilityThreshold = 8;
+    state.config.management.volatilityRetracePct = 0.5;
+    mocks.closedKlines.mockReturnValue(undefined);
+    mocks.getKlines.mockResolvedValue([closedKline(now - 1)]);
+
+    await helper.updateVPointsMap("5m");
+
+    expect(mocks.createMemory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        moveThreshold: 8,
+        retracePercent: 0.5,
+      }),
+    );
+  });
+
+  it("re-seeds the volatility cursor only when the detector config changes", async () => {
+    mocks.closedKlines.mockReturnValue(undefined);
+    mocks.getKlines.mockImplementation(async () => [closedKline(now - 1)]);
+
+    await helper.updateVPointsMap("5m");
+    expect(mocks.createMemory).toHaveBeenCalledTimes(1);
+
+    // Same config → the cursor's memory is reused, no re-seed.
+    now += INTERVAL_MS;
+    vi.setSystemTime(now);
+    state.currentTime = now;
+    await helper.updateVPointsMap("5m");
+    expect(mocks.createMemory).toHaveBeenCalledTimes(1);
+
+    // A changed override invalidates the cursor: the next memory is built
+    // at the latest point with the new params, so the override applies to
+    // future detection only.
+    state.config.management.volatilityThreshold = 8;
+    now += INTERVAL_MS;
+    vi.setSystemTime(now);
+    state.currentTime = now;
+    await helper.updateVPointsMap("5m");
+
+    expect(mocks.createMemory).toHaveBeenCalledTimes(2);
+    expect(mocks.createMemory).toHaveBeenLastCalledWith(
+      expect.objectContaining({ moveThreshold: 8 }),
+    );
   });
 
   it("records an error when closed klines keep missing past the grace", async () => {

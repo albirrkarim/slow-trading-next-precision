@@ -214,7 +214,7 @@ export default function RuntimeMonitoringSettings({
             number={5}
             name="Post-average target approach"
             status="Uses volatility threshold"
-            behavior="After at least one averaging execution, enters Speedup when favorable drift from the latest vPoint is greater than VOLATILITY_THRESHOLD / 2."
+            behavior="After at least one averaging execution, enters Speedup when favorable drift from the latest vPoint is greater than half the resolved volatility threshold."
           />
 
           <SettingsRuleAccordion

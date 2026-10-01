@@ -236,6 +236,64 @@ export default function SettingsDialogManagementTab({
       </SettingsGroup>
 
       <SettingsGroup
+        description="Controls how volatility points are detected. Overrides apply only to points detected after the change — already stored vPoints are never re-derived. Set 0 to use the server env default."
+        title="Volatility Detection"
+      >
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <SettingsInfoField
+              fullWidth
+              info="Percent move from the last pivot that starts a new UP/DOWN volatility sequence — controls vPoint formation plus every derived default (rescue distance, drift caps, counter-sequence guard). 0 = server env VOLATILITY_THRESHOLD."
+              label="Volatility Threshold (%)"
+              onChange={(event) =>
+                updateManagement({
+                  volatilityThreshold: Math.max(
+                    0,
+                    Number(event.target.value) || 0,
+                  ),
+                })
+              }
+              size="small"
+              slotProps={{
+                htmlInput: {
+                  inputMode: "decimal",
+                  min: 0,
+                  step: "any",
+                },
+              }}
+              type="number"
+              value={configDraft.management.volatilityThreshold ?? 0}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <SettingsInfoField
+              fullWidth
+              info="Percent pullback from a local extreme that confirms a vPoint pivot once a sequence is active. 0 = server env VOLATILITY_RETRACE_PERCENT."
+              label="Pivot Retrace (%)"
+              onChange={(event) =>
+                updateManagement({
+                  volatilityRetracePct: Math.max(
+                    0,
+                    Number(event.target.value) || 0,
+                  ),
+                })
+              }
+              size="small"
+              slotProps={{
+                htmlInput: {
+                  inputMode: "decimal",
+                  min: 0,
+                  step: "any",
+                },
+              }}
+              type="number"
+              value={configDraft.management.volatilityRetracePct ?? 0}
+            />
+          </Grid>
+        </Grid>
+      </SettingsGroup>
+
+      <SettingsGroup
         description="Choose which coins SLOW may trade and when a coin should be retired from new entries. Removing a coin from Symbols does not interrupt management of an existing position."
         title="Coin Management"
       >

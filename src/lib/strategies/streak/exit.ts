@@ -1,7 +1,7 @@
 import tradingExit from "@/lib/system/trading/exit";
 import reserve from "@/lib/system/trading/reserve";
 import type { Position } from "@/lib/system/trading";
-import { VOLATILITY_THRESHOLD } from "@/lib/system/constants";
+import { resolveVolatilityThreshold } from "@/lib/system/constants";
 import type {
   RuntimeContext,
   RuntimeExitDecision,
@@ -91,7 +91,7 @@ async function find(
       currentPrice: context.state.markPriceMap[symbol]?.price,
       direction: position.direction,
       lastVolatilityPrice: lastPoint?.p,
-    }) >= VOLATILITY_THRESHOLD;
+    }) >= resolveVolatilityThreshold(context.state.config.management);
 
   return tradingExit.findDecision(context, position, {
     config: tpReenabled

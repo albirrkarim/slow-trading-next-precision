@@ -1,5 +1,6 @@
 import type { RuntimeContext } from "@/lib/precision/types";
 import { TradingMode } from "@/lib/exchange/types";
+import { resolveVolatilityThreshold } from "../constants";
 import type { ExchangeAccountSlug } from "@/lib/exchange/account-context";
 import type { RuntimeAccountConfig } from "@/lib/system/runtime";
 import type { VolatilityPoint } from "@/lib/system/types";
@@ -157,13 +158,16 @@ function explainMissingDecision(
 
   // BOTH:LATE_ENTRY_VPOINT_PRICE_DRIFT_PCT — mirrors the decision-time gate
   // so the dashboard explains the same block the pipeline applied.
-  const drift = lateEntryVPointDrift.evaluate({
-    currentPrice: context.state.markPriceMap[symbol]?.price,
-    direction: lastPoint?.l === "B" ? "LONG" : "SHORT",
-    enabled: account?.trading.lateEntryVPointPriceDriftEnabled,
-    limitPct: account?.trading.lateEntryVPointPriceDriftPct,
-    vPointPrice: Number(lastPoint?.p),
-  });
+  const drift = lateEntryVPointDrift.evaluate(
+    {
+      currentPrice: context.state.markPriceMap[symbol]?.price,
+      direction: lastPoint?.l === "B" ? "LONG" : "SHORT",
+      enabled: account?.trading.lateEntryVPointPriceDriftEnabled,
+      limitPct: account?.trading.lateEntryVPointPriceDriftPct,
+      vPointPrice: Number(lastPoint?.p),
+    },
+    resolveVolatilityThreshold(context.state.config.management),
+  );
   if (drift.blocked) {
     return {
       code: "LATE_ENTRY_VPOINT_PRICE_DRIFT",
@@ -245,13 +249,16 @@ function explainRejectedPlan(
     const accountTrading = context.helper.getAccountConfig(
       decision.accountSlug,
     );
-    const drift = lateEntryVPointDrift.evaluate({
-      currentPrice: mark.price,
-      direction: decision.direction,
-      enabled: accountTrading.lateEntryVPointPriceDriftEnabled,
-      limitPct: accountTrading.lateEntryVPointPriceDriftPct,
-      vPointPrice: decision.entrySignal.p,
-    });
+    const drift = lateEntryVPointDrift.evaluate(
+      {
+        currentPrice: mark.price,
+        direction: decision.direction,
+        enabled: accountTrading.lateEntryVPointPriceDriftEnabled,
+        limitPct: accountTrading.lateEntryVPointPriceDriftPct,
+        vPointPrice: decision.entrySignal.p,
+      },
+      resolveVolatilityThreshold(context.state.config.management),
+    );
     if (drift.blocked) {
       return {
         code: "LATE_ENTRY_VPOINT_PRICE_DRIFT",

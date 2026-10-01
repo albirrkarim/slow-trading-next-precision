@@ -58,6 +58,7 @@ async function main() {
     dataset.getKlines,
     dataset.startTime,
     currentTime,
+    params.config.management,
   );
   const detectedVPoints: Record<string, VolatilityPoint[]> = {};
 

@@ -1,4 +1,4 @@
-import { VOLATILITY_THRESHOLD } from "@/lib/system/constants";
+import { resolveVolatilityThreshold } from "@/lib/system/constants";
 import autoRemove from "@/lib/system/trading/auto-remove";
 import runtimeDailyPnlLimit from "@/lib/system/trading/daily-pnl-limit";
 import type { RuntimeAccountConfig } from "@/lib/system/runtime";
@@ -107,7 +107,7 @@ function policy(
   if (
     latestPoint &&
     Math.max(latestPoint.maxUpPct ?? 0, latestPoint.maxDownPct ?? 0) >=
-      VOLATILITY_THRESHOLD
+      resolveVolatilityThreshold(state.config.management)
   ) {
     return false;
   }

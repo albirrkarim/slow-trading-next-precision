@@ -589,6 +589,8 @@ function resolveAveragingRescueProjection(params: {
   rescueProjectionGuardEnabled?: boolean;
   triggerVolatilityPct?: number;
   targetMovePct?: number;
+  /** Effective detector threshold — defaults the rescue move + extreme bypass. */
+  volatilityThresholdPct?: number;
 }): AveragingRescueProjection {
   // BOTH:AVERAGING_IMPROVES_RESCUE_PROJECTION
   const {
@@ -598,12 +600,27 @@ function resolveAveragingRescueProjection(params: {
     rescueAnchorPrice,
     adaptiveAveraging: adaptiveAveragingConfig,
     rescueProjectionGuardEnabled = true,
-    targetMovePct = DEFAULT_ADAPTIVE_AVERAGING_TARGET_MOVE_PCT,
+    targetMovePct: requestedTargetMovePct,
+    volatilityThresholdPct = VOLATILITY_THRESHOLD,
   } = params;
-  const resolvedAdaptiveAveraging = adaptiveAveraging.config.normalize(
+  const targetMovePct = requestedTargetMovePct ?? volatilityThresholdPct;
+  const normalizedAdaptive = adaptiveAveraging.config.normalize(
     adaptiveAveragingConfig,
     false,
   );
+  const configuredMinProjectedProfitPct = Number(
+    adaptiveAveragingConfig?.minProjectedProfitPct,
+  );
+  const resolvedAdaptiveAveraging: AdaptiveAveragingConfig = {
+    ...normalizedAdaptive,
+    // The seeded floor derives from the detector threshold — honor the
+    // effective value unless the user pinned the field explicitly.
+    minProjectedProfitPct:
+      Number.isFinite(configuredMinProjectedProfitPct) &&
+      configuredMinProjectedProfitPct >= 0
+        ? normalizedAdaptive.minProjectedProfitPct
+        : Math.floor(volatilityThresholdPct / 2),
+  };
   const baseMarginUsdt =
     typeof position.exposure.marginUsdt === "number" &&
     Number.isFinite(position.exposure.marginUsdt)
@@ -666,7 +683,7 @@ function resolveAveragingRescueProjection(params: {
     typeof params.triggerVolatilityPct === "number" &&
     Number.isFinite(params.triggerVolatilityPct) &&
     params.triggerVolatilityPct >
-      VOLATILITY_THRESHOLD * EXTREME_VPOINT_THRESHOLD_MULTIPLIER;
+      volatilityThresholdPct * EXTREME_VPOINT_THRESHOLD_MULTIPLIER;
 
   const baseProjectedProfitPct = calculateProjectedAveragingProfitPct({
     direction: position.direction ?? "LONG",

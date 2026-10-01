@@ -1,5 +1,6 @@
 import tradingEntry from "@/lib/system/trading/entry";
 import lateEntryVPointDrift from "@/lib/system/trading/late-entry-vpoint-drift";
+import { resolveVolatilityThreshold } from "@/lib/system/constants";
 import type { Position } from "@/lib/system/trading";
 import type { VolatilityPoint } from "@/lib/system/types";
 import vpoints from "@/lib/system/utils/vpoints";
@@ -89,14 +90,17 @@ async function find(
     }
 
     const accountTrading = context.helper.getAccountConfig(record.accountSlug);
-    const drift = lateEntryVPointDrift.evaluate({
-      currentPrice:
-        context.state.markPriceMap[record.symbol.toUpperCase()]?.price,
-      direction,
-      enabled: accountTrading.lateEntryVPointPriceDriftEnabled,
-      limitPct: accountTrading.lateEntryVPointPriceDriftPct,
-      vPointPrice: anchor.p,
-    });
+    const drift = lateEntryVPointDrift.evaluate(
+      {
+        currentPrice:
+          context.state.markPriceMap[record.symbol.toUpperCase()]?.price,
+        direction,
+        enabled: accountTrading.lateEntryVPointPriceDriftEnabled,
+        limitPct: accountTrading.lateEntryVPointPriceDriftPct,
+        vPointPrice: anchor.p,
+      },
+      resolveVolatilityThreshold(context.state.config.management),
+    );
     if (drift.blocked) {
       record.reason = `entry blocked: ${drift.reason ?? "price drifted from anchor"}`;
       continue;

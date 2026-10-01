@@ -1,6 +1,11 @@
 import { TradingMode, type UnifiedKline } from "@/lib/exchange/types";
 import runtimeQuickBacktest from "@/lib/dev/quick-backtest";
 import blackSwan from "@/lib/system/trading/black-swan";
+import {
+  resolveVolatilityRetracePct,
+  resolveVolatilityThreshold,
+  type VolatilityThresholdOverride,
+} from "@/lib/system/constants";
 import { storageFiles } from "@/lib/system/storage";
 import vpoints from "@/lib/system/utils/vpoints";
 import klines from "@/lib/system/utils/klines";
@@ -422,6 +427,7 @@ interface GeneratedVPoints {
  */
 function buildVPointConfirmationTimes(params: {
   candles: UnifiedKline[];
+  management?: VolatilityThresholdOverride | null;
   signal?: AbortSignal;
   symbol: string;
 }): Record<string, number> {
@@ -430,6 +436,8 @@ function buildVPointConfirmationTimes(params: {
   let memory = vpoints.createMemory({
     firstClose: Number(first[4]),
     firstTime: Number(first[0]),
+    moveThreshold: resolveVolatilityThreshold(params.management),
+    retracePercent: resolveVolatilityRetracePct(params.management),
   });
   const confirmationTimes: Record<string, number> = {};
   let previousPoint: VolatilityPoint | undefined;
@@ -455,17 +463,26 @@ function buildVPointConfirmationTimes(params: {
 
 function generateVPointMap(params: {
   candleMap: Record<string, UnifiedKline[]>;
+  management?: VolatilityThresholdOverride | null;
   signal?: AbortSignal;
   symbols: string[];
 }): GeneratedVPoints {
   const volatilityMap: Record<string, VolatilityPoint[]> = {};
   const confirmationTBySymbol: Record<string, Record<string, number>> = {};
+  const moveThreshold = resolveVolatilityThreshold(params.management);
+  const retracePercent = resolveVolatilityRetracePct(params.management);
   for (const symbol of params.symbols) {
     params.signal?.throwIfAborted();
     const candles = params.candleMap[symbol] ?? [];
-    volatilityMap[symbol] = vpoints.detectVPoints({ klines: candles, symbol });
+    volatilityMap[symbol] = vpoints.detectVPoints({
+      klines: candles,
+      moveThreshold,
+      retracePercent,
+      symbol,
+    });
     confirmationTBySymbol[symbol] = buildVPointConfirmationTimes({
       candles,
+      management: params.management,
       signal: params.signal,
       symbol,
     });
@@ -523,6 +540,7 @@ async function runSavings(
   });
   const generatedVPoints = generateVPointMap({
     candleMap: fiveMinuteCandleMap,
+    management: input.tradingConfig,
     signal: input.signal,
     symbols,
   });

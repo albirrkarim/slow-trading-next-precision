@@ -10,6 +10,7 @@ import type {
   PositionReserveStep,
 } from "./types";
 import { TradingMode } from "@/lib/exchange/types";
+import { resolveVolatilityThreshold } from "../constants";
 import type { VolatilityPoint } from "../types";
 
 import reserve from "./reserve";
@@ -337,6 +338,9 @@ function planAttempt(
     rescueProjectionGuardEnabled:
       config.averagingRescueProjectionGuardEnabled !== false,
     triggerVolatilityPct: decision.recommendation.pct,
+    volatilityThresholdPct: resolveVolatilityThreshold(
+      context.state.config.management,
+    ),
   });
   if (!rescueProjection.canExecute) {
     const detail =

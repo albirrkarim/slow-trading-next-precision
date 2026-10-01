@@ -6,7 +6,11 @@ import {
 } from "@/lib/exchange/market-cap";
 import type { ExchangeType } from "@/lib/exchange/types";
 import { resolveMarketTypeForTradingMode } from "@/lib/exchange/utils";
-import { windowsMs } from "@/lib/system/constants";
+import {
+  resolveVolatilityRetracePct,
+  resolveVolatilityThreshold,
+  windowsMs,
+} from "@/lib/system/constants";
 import { systemLog } from "@/lib/system/logging";
 import { runtimeStorage, storageFiles } from "@/lib/system/storage";
 import type { VolatilityPoint } from "@/lib/system/types";
@@ -149,6 +153,12 @@ async function initializeDashboard(req: NextApiRequest, res: NextApiResponse) {
               symbol: `${symbol}_USDT`,
               tradingMode,
             }),
+            moveThreshold: resolveVolatilityThreshold(
+              catalog.config.management,
+            ),
+            retracePercent: resolveVolatilityRetracePct(
+              catalog.config.management,
+            ),
             symbol,
           });
 

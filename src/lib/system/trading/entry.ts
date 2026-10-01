@@ -3,6 +3,7 @@ import type {
   RuntimeEntryDecision,
 } from "@/lib/precision/types";
 import { TradingMode } from "@/lib/exchange/types";
+import { resolveVolatilityThreshold } from "../constants";
 import type { RuntimeConfig } from "../runtime";
 import type { VolatilityPoint } from "../types";
 import vpoints from "../utils/vpoints";
@@ -268,13 +269,16 @@ async function findDecisions(
       // signal whose current mark already drifted past the profitable-move
       // cap is skipped; the execution-time check in entryAction re-runs it
       // on the freshest mark before the fill. Blocked points stay unused.
-      const drift = lateEntryVPointDrift.evaluate({
-        currentPrice: context.state.markPriceMap[symbol]?.price,
-        direction: entrySignal.l === "B" ? "LONG" : "SHORT",
-        enabled: account.trading.lateEntryVPointPriceDriftEnabled,
-        limitPct: account.trading.lateEntryVPointPriceDriftPct,
-        vPointPrice: entrySignal.p,
-      });
+      const drift = lateEntryVPointDrift.evaluate(
+        {
+          currentPrice: context.state.markPriceMap[symbol]?.price,
+          direction: entrySignal.l === "B" ? "LONG" : "SHORT",
+          enabled: account.trading.lateEntryVPointPriceDriftEnabled,
+          limitPct: account.trading.lateEntryVPointPriceDriftPct,
+          vPointPrice: entrySignal.p,
+        },
+        resolveVolatilityThreshold(context.state.config.management),
+      );
       if (drift.blocked) continue;
 
       decisions.push({

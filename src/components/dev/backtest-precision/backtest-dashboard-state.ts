@@ -2,7 +2,7 @@ import type {
   ConfigDraft,
   DashboardState,
 } from "@/components/settings/settings-types";
-import { VOLATILITY_THRESHOLD } from "@/lib/system/constants";
+import { resolveVolatilityThreshold } from "@/lib/system/constants";
 import { runtimeAccountConfig, runtimeDefaults } from "@/lib/system/runtime";
 import { blackSwan } from "@/lib/system/trading/black-swan";
 
@@ -78,7 +78,11 @@ export function buildBacktestDashboardState(
           ...runtimeDefaults.trading.create(),
           ...configDraft.management,
         },
-    globalConfig: { volatilityThresholdPct: VOLATILITY_THRESHOLD },
+    globalConfig: {
+      volatilityThresholdPct: resolveVolatilityThreshold(
+        configDraft.management,
+      ),
+    },
     history: [],
     openPositions: [],
     runtime: { ...configDraft.runtime },

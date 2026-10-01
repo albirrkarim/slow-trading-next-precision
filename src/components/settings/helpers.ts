@@ -50,6 +50,8 @@ export function pickTradingConfigFields(
     safeUSDTPerMonth,
     safePercentPerMonth,
     minimalAssetOnTrade,
+    volatilityRetracePct,
+    volatilityThreshold,
   } = tradingConfig;
 
   return {
@@ -81,6 +83,8 @@ export function pickTradingConfigFields(
     safeUSDTPerMonth,
     safePercentPerMonth,
     minimalAssetOnTrade,
+    volatilityRetracePct,
+    volatilityThreshold,
   };
 }
 
@@ -99,6 +103,8 @@ export function makeConfigDraft(state: DashboardState): ConfigDraft {
       exchangeType: state.config.exchangeType,
       tradingMode: state.config.tradingMode,
       decisionEngineVersion: state.config.decisionEngineVersion,
+      volatilityRetracePct: state.config.volatilityRetracePct,
+      volatilityThreshold: state.config.volatilityThreshold,
       blackSwan: structuredClone(state.config.blackSwan),
     },
     runtime,
