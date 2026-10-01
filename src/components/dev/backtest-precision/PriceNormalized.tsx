@@ -9,7 +9,7 @@ import MultiLineTimelined from "@/components/ui/Chart/MultiLineTimelined";
 import type { BacktestFeatureRecord } from "@/lib/dev/backtestPrecision/backtest/backtest-precision-types";
 import type { FeatureGateConfig } from "@/lib/features/types";
 import type { LeveledMarkers } from "@/lib/system/utils/ui/chart-markers";
-import { COLORS_BG } from "@/lib/system/utils/ui/colors";
+import { DEFAULT_COLORS } from "@/lib/system/utils/ui/colors";
 
 import type { LazyArtifact } from "./use-backtest-artifacts";
 
@@ -38,8 +38,8 @@ function PriceNormalizedBody({
       if (records.length === 0) continue;
       const orderIdx = symbolOrder.indexOf(symbol);
       const color =
-        COLORS_BG[
-          (orderIdx >= 0 ? orderIdx : fallbackIdx) % COLORS_BG.length
+        DEFAULT_COLORS[
+          (orderIdx >= 0 ? orderIdx : fallbackIdx) % DEFAULT_COLORS.length
         ];
       names.push(symbol);
       series.push(
@@ -95,6 +95,7 @@ function PriceNormalizedBody({
       sx={{ minWidth: 0 }}
     >
       <MultiLineTimelined
+        colors={DEFAULT_COLORS}
         height={300}
         lineType="stepAfter"
         names={chartData.names}

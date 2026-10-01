@@ -122,7 +122,8 @@ trading tick in backtest and production boot.
   artifact load on first expand.
 - One `priceNormalized` **step line** (`lineType="stepAfter"`) per symbol —
   only for symbols with at least one defined record; per-point colors reuse
-  the Volatility Rails palette order so each coin keeps its color.
+  the Volatility Rails palette order via `DEFAULT_COLORS` (the saturated
+  index-aligned twin of `COLORS_BG`) so each coin keeps its hue family.
 - Horizontal guides (`yReferenceLines`) at 0 and 1 plus the configured gate
   bounds from `management.featureGate`.
 

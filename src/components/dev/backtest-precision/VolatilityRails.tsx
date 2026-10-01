@@ -11,6 +11,7 @@ import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import MultiLineTimelined from "@/components/ui/Chart/MultiLineTimelined";
 import type { BacktestBlackSwanTimeline } from "@/lib/dev/backtestPrecision/backtest/backtest-precision-types";
 import { makeSeries } from "@/lib/system/utils/ui/series";
+import { DEFAULT_COLORS } from "@/lib/system/utils/ui/colors";
 import type { VolatilityPoint } from "@/lib/system/types";
 
 
@@ -31,7 +32,7 @@ export default function VolatilityRails({
 }) {
   const chartData = useMemo(() => {
     const names = Object.keys(volatilityMap);
-    const { series } = makeSeries(volatilityMap);
+    const { series } = makeSeries(volatilityMap, DEFAULT_COLORS);
 
     return {
       names,
@@ -73,6 +74,7 @@ export default function VolatilityRails({
           >
             {chartData.totalPoints > 0 ? (
               <MultiLineTimelined
+                colors={DEFAULT_COLORS}
                 height={420}
                 names={chartData.names}
                 onVisibleTimeRangeChange={onVisibleRange}
