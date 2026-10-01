@@ -343,6 +343,62 @@ describe("default_with_features_gate", () => {
     expect(await strategy.decisions!.entry!.find(context)).toHaveLength(1);
   });
 
+  it("rejects a coin whose recent history touched outside the zone", async () => {
+    find.mockResolvedValue([candidate("SUI")]);
+    const context = contextWith({
+      features: {
+        coins: {
+          // Current value is inside [0.2, 0.8] but the 10-day trail holds a
+          // 0.95 excursion — the history veto still blocks the entry.
+          SUI: {
+            priceNormalized: 0.5,
+            priceNormalizedHistory: [
+              { p: 0.95, t: NOW - 3 * DAY_MS },
+              { p: 0.5, t: NOW - DAY_MS },
+            ],
+          },
+        },
+        shared: {},
+      },
+    });
+    expect(await strategy.decisions!.entry!.find(context)).toEqual([]);
+
+    const explained = strategy.diagnostics!.explain!({
+      accountSlug: "main",
+      context,
+      decision: candidate("SUI"),
+      symbol: "SUI",
+    });
+    expect(explained?.code).toBe("FEATURE_GATE");
+    expect(explained?.reason).toContain("0.950");
+  });
+
+  it("vetoes every candidate when BTC history broke its bounds", async () => {
+    find.mockResolvedValue([candidate("SUI"), candidate("LINK")]);
+    const context = contextWith({
+      features: {
+        coins: {
+          BTC: {
+            priceNormalized: 0.5,
+            priceNormalizedHistory: [
+              { p: 0.2, t: NOW - 2 * DAY_MS },
+              { p: 0.5, t: NOW - DAY_MS },
+            ],
+          },
+          LINK: { priceNormalized: 0.4, priceNormalizedHistory: [] },
+          SUI: { priceNormalized: 0.5, priceNormalizedHistory: [] },
+        },
+        shared: {},
+      },
+      symbols: ["SUI", "LINK"],
+    });
+
+    // BTC is inside its zone now but dipped to 0.2 two days ago — the
+    // market-context veto blocks every candidate while that excursion is
+    // still inside the 10-day trail.
+    expect(await strategy.decisions!.entry!.find(context)).toEqual([]);
+  });
+
   it("passes every candidate when features are absent", async () => {
     find.mockResolvedValue([candidate("SUI"), candidate("LINK")]);
     const context = contextWith({});

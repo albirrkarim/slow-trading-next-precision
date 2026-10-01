@@ -152,15 +152,20 @@ across ticks when unchanged).
 - `decisions.entry.find` wraps `defaultDecision.entry.find` and drops
   candidates whose coin's `priceNormalized` falls outside the coin zone.
   Undefined feature values never block — "no opinion" is not a veto.
-- **BTC market-context bound** — `coins.BTC` `priceNormalized` is checked
-  first and vetoes *every* candidate when BTC sits outside its envelope
-  zone. BTC is always in `vPointsMap` (Black Swan anchor), so the context
-  exists even when BTC is not traded.
+- **History excursion rule** — bounds apply to the whole 10-day
+  `priceNormalizedHistory` trail, not just the current value: any recorded
+  sample outside the zone counts as a violation, so a coin that recently
+  broke out is rejected even after it moved back inside. Violations age
+  out as the trail trims past 10 days.
+- **BTC market-context bound** — `coins.BTC` is checked first, across its
+  history trail as well, and vetoes *every* candidate on an outside
+  sample. BTC is always in `vPointsMap` (Black Swan anchor), so the
+  context exists even when BTC is not traded.
 - **Strategy-owned bounds** — `FEATURE_GATE_BOUNDS` is an exported constant
   in the strategy module (coin `[0.2, 0.8]`, BTC veto `[0.3, 0.8]`,
   inclusive). Deliberately not a settings field: gate policy belongs to the
-  strategy so richer rules (e.g. `priceNormalizedHistory` excursions) can
-  live there without config plumbing. The chart reads the same exported
+  strategy so richer rules (e.g. the history excursion check) can live
+  there without config plumbing. The chart reads the same exported
   constant for its guides.
 - **No `guard` member** — the engine falls back to the shared
   `guard.allows` wholesale, so every shared protection (runner toggle,
@@ -168,8 +173,9 @@ across ticks when unchanged).
   the producer level instead, per the strategy contract.
 - No `shape` — operator-forced manual entries bypass the gate by design.
 - `diagnostics.explain` returns `FEATURE_GATE` ("Blocked by the feature
-  gate: priceNormalized 0.95 is above the gate ceiling 0.8.") so the
-  dashboard explains the skip instead of a silent no-entry.
+  gate: priceNormalized 0.950 on 2026-09-25 is outside the gate zone
+  0.2–0.8.") so the dashboard explains the skip instead of a silent
+  no-entry — historical violations carry their recorded date.
 
 ## Status notes (implemented)
 
