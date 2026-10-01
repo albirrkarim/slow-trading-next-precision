@@ -2,6 +2,7 @@ import { SYSTEM_API } from "./constants";
 
 export const systemEndpoints = {
   state: `${SYSTEM_API}/state`,
+  features: `${SYSTEM_API}/features`,
   history: `${SYSTEM_API}/history`,
   logs: `${SYSTEM_API}/logs`,
   queue: `${SYSTEM_API}/queue`,

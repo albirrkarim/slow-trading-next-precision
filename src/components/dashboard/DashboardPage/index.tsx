@@ -34,6 +34,7 @@ import PrecisionTestCaseControls from "../navigation/PrecisionTestCaseControls";
 import useCoinMetadata from "./useCoinMetadata";
 import useDashboardActions from "./useDashboardActions";
 import useDashboardData from "./useDashboardData";
+import PriceNormalizedSection from "./PriceNormalizedSection";
 import VolatilitySection from "./VolatilitySection";
 
 export type { DashboardConfig } from "./types";
@@ -188,18 +189,28 @@ export default function DynamicTradeHistoryPage({
   ) : null;
 
   const volatilitySection = (
-    <VolatilitySection
-      config={config}
-      dashboardState={dashboardState}
-      data={data}
-      isMobile={isMobile}
-      loading={loading}
-      onResetVPointUsed={() => void resetAllVPointUsed()}
-      onVolatilityVisibleRange={onVolatilityVisibleRange}
-      resettingVPointUsed={resettingVPointUsed}
-      updateConfig={updateConfig}
-      volatilityRange={volatilityRange}
-    />
+    <>
+      <VolatilitySection
+        config={config}
+        dashboardState={dashboardState}
+        data={data}
+        isMobile={isMobile}
+        loading={loading}
+        onResetVPointUsed={() => void resetAllVPointUsed()}
+        onVolatilityVisibleRange={onVolatilityVisibleRange}
+        resettingVPointUsed={resettingVPointUsed}
+        updateConfig={updateConfig}
+        volatilityRange={volatilityRange}
+      />
+      <PriceNormalizedSection
+        config={config}
+        dashboardState={dashboardState}
+        isMobile={isMobile}
+        onVolatilityVisibleRange={onVolatilityVisibleRange}
+        symbols={symbols}
+        volatilityRange={volatilityRange}
+      />
+    </>
   );
 
   return (

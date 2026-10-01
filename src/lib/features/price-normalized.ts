@@ -17,6 +17,10 @@ import {
  * numerator is a pivot price (not the mark price), which makes the feature a
  * step function that only moves when a new vPoint forms.
  *
+ * Values are quantized to 3 decimals: the display precision, enough
+ * granularity for gate bounds, and the point where recomputation float
+ * drift and sub-0.1% moves stop churning the recorded trail.
+ *
  * Returns `0.5` for a flat range and `undefined` until at least two earlier
  * pivots exist inside the window — absence is "no opinion", not a block.
  */
@@ -47,7 +51,7 @@ export function computePriceNormalized(params: {
     if (point.p > maxP) maxP = point.p;
   }
   if (!(maxP > minP)) return 0.5;
-  return (latest.p - minP) / (maxP - minP);
+  return parseFloat(((latest.p - minP) / (maxP - minP)).toFixed(3));
 }
 
 /**

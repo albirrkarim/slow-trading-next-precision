@@ -34,8 +34,8 @@ export interface CoinFeatures {
    * Position of the latest pivot price inside the trailing pivot-price
    * envelope: `0` = range floor, `1` = range top, `>1`/`<0` = pivot formed
    * beyond the prior envelope (breakout), `0.5` = flat/degenerate range.
-   * Undefined until at least two earlier pivots exist in the window —
-   * absence means "no opinion", never a block.
+   * Quantized to 3 decimals. Undefined until at least two earlier pivots
+   * exist in the window — absence means "no opinion", never a block.
    */
   priceNormalized?: number;
 

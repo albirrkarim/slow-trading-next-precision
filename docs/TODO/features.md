@@ -109,9 +109,10 @@ priceNormalized = (latest.p - minP) / (maxP - minP);
 - The latest pivot is **excluded** from its own range — `>1` / `<0` then mean
   "new pivot beyond the prior 2-month envelope" instead of a self-fulfilling
   edge reading.
-- Gate semantics: `<= 0.2` = pivot formed near the range floor (dip zone),
-  `>= 0.8` = near the top (chasing). Thresholds are strategy-owned constants
-  (`FEATURE_GATE_BOUNDS` in the gate strategy module), not settings.
+- Gate semantics: low values = pivot formed near the range floor (dip
+  zone), high = near the top (chasing). Thresholds are strategy-owned
+  constants (`FEATURE_GATE_BOUNDS` in the gate strategy module), not
+  settings.
 - Undefined until a symbol has >= 2 pivots in the window — no opinion, not a
   block.
 
@@ -145,6 +146,23 @@ trading tick in backtest and production boot.
   index-aligned twin of `COLORS_BG`) so each coin keeps its hue family.
 - Horizontal guides (`yReferenceLines`) at the 0 / 1 envelope edges only.
 
+## Production display
+
+- `GET /api/system/features?mode=live|sandbox` serves the runtime feature
+  store: the running engine's in-memory `state.features` when its mode
+  matches, else the persisted `features.json[mode]` slice, plus a server
+  timestamp `t`.
+- `PriceNormalizedSection.tsx` sits directly **below the Volatility
+  Points section** on the production dashboard. It draws each coin's
+  `priceNormalizedHistory` trail as a step line — the trail is itself the
+  time series, so no artifact stream is needed — and appends a flat tail
+  point at the fetch time so the current value reaches the chart edge.
+- Fetches lazily while expanded and refetches on every dashboard-state
+  poll; colors index into `DEFAULT_COLORS` by symbol order — the saturated
+  index-aligned twin of `COLORS_BG`, matching the backtest chart — pads to
+  `config.startTime/endTime`, and its
+  brush follows / reports the shared `volatilityRange` selection.
+
 ## Entry snapshot
 
 At commit, snapshot the **whole `RuntimeFeatures` store** into
@@ -164,18 +182,20 @@ across ticks when unchanged).
 - `decisions.entry.find` wraps `defaultDecision.entry.find` and drops
   candidates whose coin's `priceNormalized` falls outside the coin zone.
   Undefined feature values never block — "no opinion" is not a veto.
-- **History excursion rule** — bounds apply to the whole 10-day
-  `priceNormalizedHistory` trail, not just the current value: any recorded
-  sample outside the zone counts as a violation, so a coin that recently
-  broke out is rejected even after it moved back inside. Violations age
-  out as the trail trims past 10 days.
+- **History excursion rule** — bounds apply to the freshest
+  `historyWindowDays` of the `priceNormalizedHistory` trail, not just the
+  current value: any recorded sample outside the zone within that judge
+  window counts as a violation, so a coin that recently broke out is
+  rejected even after it moved back inside. Violations age out once they
+  slide past the judge window (the trail itself still keeps ~10 days for
+  display and diagnostics).
 - **BTC market-context bound** — `coins.BTC` is checked first, across its
   history trail as well, and vetoes *every* candidate on an outside
   sample. BTC is always in `vPointsMap` (Black Swan anchor), so the
   context exists even when BTC is not traded.
 - **Strategy-owned bounds** — `FEATURE_GATE_BOUNDS` is an exported constant
-  in the strategy module (coin `[0.2, 0.8]`, BTC veto `[0.3, 0.8]`,
-  inclusive). Deliberately not a settings field: gate policy belongs to the
+  in the strategy module (coin `[0.3, 0.8]`, BTC veto `[0.3, 0.8]`,
+  `historyWindowDays: 5`, all inclusive). Deliberately not a settings field: gate policy belongs to the
   strategy so richer rules (e.g. the history excursion check) can live
   there without config plumbing.
 - **No `guard` member** — the engine falls back to the shared
