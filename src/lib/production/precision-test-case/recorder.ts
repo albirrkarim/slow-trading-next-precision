@@ -2,6 +2,7 @@ import path from "path";
 
 import fs from "fs-extra";
 
+import { FEATURES_VPOINT_WINDOW_MS } from "@/lib/features";
 import type { RuntimeEngineState } from "@/lib/precision/types";
 import { runtimeSymbols } from "@/lib/system/runtime";
 import {
@@ -52,12 +53,15 @@ function cloneConfigWithoutCredentials(
 
 /**
  * Bounds each symbol's persisted vPoints while preserving replay dependencies.
- * Uses the shared retention rule (latest 10 ∪ points since the earliest open
- * position ∪ position-referenced points) — see `vpoints.retainRecent`.
+ * Uses the shared retention rule (latest 10 ∪ feature-envelope window ∪
+ * points since the earliest open position ∪ position-referenced points) —
+ * see `vpoints.retainRecent`. The window clause keeps enough pivot envelope
+ * for the replayed feature store to compute identical values.
  */
 function snapshotVPoints(
   vPointsMap: RuntimeEngineState["vPointsMap"],
   openPositions: RuntimeEngineState["openPositions"],
+  currentTime: number,
 ): RuntimeEngineState["vPointsMap"] {
   return Object.fromEntries(
     Object.entries(vPointsMap).map(([symbol, points]) => [
@@ -68,6 +72,7 @@ function snapshotVPoints(
           points,
           positions: openPositions,
           recent: 10,
+          sinceMs: currentTime - FEATURES_VPOINT_WINDOW_MS,
         }),
       ),
     ]),
@@ -326,8 +331,14 @@ async function start(
           : clone(state.blackSwanStatus),
       dailyPnlDay: state.dailyPnlDay,
       dailyPnlUsdt: state.dailyPnlUsdt,
+      features:
+        state.features === undefined ? undefined : clone(state.features),
       openPositions: clone(state.openPositions),
-      vPointsMap: snapshotVPoints(state.vPointsMap, state.openPositions),
+      vPointsMap: snapshotVPoints(
+        state.vPointsMap,
+        state.openPositions,
+        state.currentTime,
+      ),
       strategy: clone(state.strategy),
     },
     startTime,
@@ -393,6 +404,8 @@ async function end(state: RuntimeEngineState): Promise<PrecisionTestCaseResult> 
           : clone(state.blackSwanStatus),
       dailyPnlDay: state.dailyPnlDay,
       dailyPnlUsdt: state.dailyPnlUsdt,
+      features:
+        state.features === undefined ? undefined : clone(state.features),
       openPositions: clone(state.openPositions),
       vPointsMap: diffVPoints(
         initialTestCase.initialState.vPointsMap,

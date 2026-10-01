@@ -99,6 +99,9 @@ export class RuntimeEngine {
       // runs on empty market data.
       await this.helper.market.updateMarkPrice();
       await this.helper.market.updateVPointsMap();
+      // Seeds state.features from the warmed vPoints so entry snapshots and
+      // diagnostics see feature values before the first capture tick.
+      await this.adapter.onFeatureUpdate?.(this.context);
       this.ready = true;
 
       const clock = this.adapter.clock;
@@ -337,6 +340,10 @@ export class RuntimeEngine {
             async (context) => {
               await this.helper.market.updateMarkPrice();
               await this.helper.market.updateVPointsMap();
+              // BOTH:FEATURES_BEFORE_ENTRY_CAPTURE — refresh state.features
+              // on the freshest market snapshot so gates and the entry
+              // snapshot see this tick's values.
+              await this.adapter.onFeatureUpdate?.(context);
               await monitoring.entry.capture(context);
             },
           ),

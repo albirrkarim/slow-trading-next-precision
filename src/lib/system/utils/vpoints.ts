@@ -386,11 +386,15 @@ function mergeById(
  * dependencies of open positions.
  *
  * A point is retained when it is among the latest `recent` points, occurred at
- * or after the earliest open position's entry time, or is explicitly
- * referenced by an open position's entry/intermediate vPoints:
+ * or after `sinceMs` (the feature-envelope window), occurred at or after the
+ * earliest open position's entry time, or is explicitly referenced by an open
+ * position's entry/intermediate vPoints:
  *
- * `keep = latestN || point.t >= earliestOpenPositionTime || openPositionReferencesPoint`
+ * `keep = latestN || point.t >= sinceMs || point.t >= earliestOpenPositionTime || openPositionReferencesPoint`
  *
+ * The `sinceMs` clause keeps the trailing pivot envelope (e.g. the 2-month
+ * `FEATURES_VPOINT_WINDOW_MS`) in `state.vPointsMap` so `lib/features`
+ * computations read the full window instead of only the latest N points.
  * The entry-time clause is required so post-entry target vPoints survive the
  * window: BOTH:AVERAGING_STOPS_AFTER_TARGET_VPOINT resolves them from the
  * vPoints map, so trimming them would let a position keep averaging after a
@@ -404,6 +408,8 @@ function retainRecent(params: {
   points: VolatilityPoint[];
   positions: Position[];
   recent: number;
+  /** Optional lower time bound — points at/after it always survive. */
+  sinceMs?: number;
 }): VolatilityPoint[] {
   const positions = params.positions.filter(
     (position) =>
@@ -423,6 +429,7 @@ function retainRecent(params: {
   return params.points.filter(
     (point, index) =>
       index >= Math.max(0, params.points.length - params.recent) ||
+      (params.sinceMs !== undefined && point.t >= params.sinceMs) ||
       (earliestOpenT !== undefined && point.t >= earliestOpenT) ||
       referencedIds.has(point.id),
   );

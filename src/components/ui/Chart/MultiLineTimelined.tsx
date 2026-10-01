@@ -35,6 +35,14 @@ export interface VolatilityMultiLineProps {
   height?: number;
   defaultShowEntryGroups?: boolean;
   yTickFormatter?: (value: unknown) => string;
+  /**
+   * Recharts line interpolation for regular series (TRADE/ENTRY groups and
+   * "Worker Needed" keep their own). Defaults to "monotone"; step series
+   * like the feature stream pass "stepAfter".
+   */
+  lineType?: "linear" | "monotone" | "stepAfter";
+  /** Horizontal guides drawn at y-values, e.g. feature gate bounds. */
+  yReferenceLines?: { y: number; label?: string; color?: string }[];
   /** Vertical markers drawn at absolute times, e.g. a recorded window. */
   referenceLines?: { timeMs: number; label?: string; color?: string }[];
   /** Initial brush selection bounds as absolute times; snapped to nearest points. */
@@ -58,6 +66,8 @@ function MultiLineTimelined({
   height = 420,
   defaultShowEntryGroups = false,
   yTickFormatter,
+  lineType,
+  yReferenceLines,
   referenceLines,
   brushStartTimeMs,
   brushEndTimeMs,
@@ -390,10 +400,32 @@ function MultiLineTimelined({
             dataColors={dataColors}
             dataColorsMain={dataColorsMain}
             dataKeys={dataKeys}
+            lineType={lineType}
             seriesNames={seriesNames}
             visible={visible}
             showTradeGroup={effectiveShowTradeGroup}
           />
+
+          {yReferenceLines?.map((line) => (
+            <ReferenceLine
+              key={`y-${line.y}-${line.label ?? ""}`}
+              y={line.y}
+              stroke={line.color ?? "#90a4ae"}
+              strokeDasharray="4 4"
+              strokeWidth={1}
+              ifOverflow="extendDomain"
+              label={
+                line.label
+                  ? {
+                      value: line.label,
+                      position: "insideTopRight",
+                      fontSize: 11,
+                      fill: line.color ?? "#90a4ae",
+                    }
+                  : undefined
+              }
+            />
+          ))}
 
           {referenceLines?.map((line) => (
             <ReferenceLine

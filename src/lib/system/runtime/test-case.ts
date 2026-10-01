@@ -1,3 +1,4 @@
+import type { RuntimeFeatures } from "@/lib/features/types";
 import type { BalanceSummary, Position } from "../trading";
 import type { BlackSwanState } from "../trading/black-swan";
 import type { VolatilityPoint } from "../types/market";
@@ -31,6 +32,12 @@ export interface PrecisionRuntimeSnapshot {
    * the compatibility fallback for older captures.
    */
   blackSwanStatus?: BlackSwanState;
+  /**
+   * Feature store captured with the snapshot so replays hydrate
+   * `state.features` instead of seeing an empty map on the first tick —
+   * recomputed deterministically by `features.update` afterwards.
+   */
+  features?: RuntimeFeatures;
 }
 
 /**

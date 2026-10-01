@@ -34,9 +34,11 @@ interface CoinFeatures {
 
 - `RuntimeEngineState.features?: RuntimeFeatures` — snapshotted into
   precision test cases like `vPointsMap`/`blackSwanStatus`.
-- `adapter.onFeatureUpdate(context)` runs before the capture-entry stage
-  (after `updateMarkPrice`/`updateVPointsMap`). Both adapters delegate to the
-  same shared module — the math must be identical across live/sandbox/backtest.
+- `adapter.onFeatureUpdate(context)` runs once at startup warm-up and before
+  every capture-entry stage (after `updateMarkPrice`/`updateVPointsMap`).
+  Every adapter delegates to the same shared module — the math must be
+  identical across live/sandbox/backtest (also wired on the quick-backtest
+  and `driver/backtest-precision` adapters, which don't persist a stream).
 
 ```ts
 // src/lib/features/
@@ -53,12 +55,21 @@ features.update(context);
 // production adapter — state only
 onFeatureUpdate: (context) => features.update(context),
 
-// backtest adapter — same compute + delta-record artifact
+// backtest adapter — same compute + per-symbol delta-record artifact.
+// `features.changedCoins` shallow-compares the previous coin snapshot; each
+// changed symbol appends `{ t: currentTime, ...coinFeatures }` to its own
+// `features/<symbol>/part-*.json` stream.
 onFeatureUpdate: async (context) => {
-  const previous = context.state.features?.coins;
+  const previous = context.state.features;
   features.update(context);
-  if (differs(previous, context.state.features.coins)) {
-    await spool.pushFeatures(context.state.features);
+  for (const symbol of features.changedCoins(
+    previous?.coins,
+    context.state.features?.coins ?? {},
+  )) {
+    await spool.pushFeature(symbol, {
+      ...context.state.features.coins[symbol],
+      t: context.state.currentTime,
+    });
   }
 },
 ```
@@ -84,24 +95,33 @@ priceNormalized = (latest.p - minP) / (maxP - minP);
 
 ## vPointsMap retention
 
-`state.vPointsMap` must hold 2 months of pivots — currently capped by count
-(`DEFAULT_RECENT_VPOINTS = 10`). Extend `retainRecent` with a time-window
-clause: `keep = within 2 months OR latest N OR position-referenced`. Warmup
-already seeds 2 months (`VPOINT_INITIAL_LOOKBACK_MINUTES`), so features are
-defined from the first trading tick in backtest and production boot.
+`state.vPointsMap` must hold 2 months of pivots — previously capped purely
+by count (`DEFAULT_RECENT_VPOINTS = 10`). `vpoints.retainRecent` now takes a
+`sinceMs` clause: `keep = latest N OR point.t >= sinceMs OR position-
+referenced`. `FEATURES_VPOINT_WINDOW_MS` (`src/lib/features/types.ts`) is
+the shared 2-month span — passed by `helper/market` retention, the
+production bootstrap seed, and the test-case `snapshotVPoints` so the
+envelope survives every trim. Warmup already seeds 2 months
+(`VPOINT_INITIAL_LOOKBACK_MINUTES`), so features are defined from the first
+trading tick in backtest and production boot.
 
 ## Backtest display
 
-- New `features/` artifact stream (same chunked spool pattern as
-  `vpoints/<symbol>/`), appended by the backtest adapter's
-  `onFeatureUpdate` only when a value changes.
-- New dedicated section **below Volatility Rails** — fully separate
-  collapsible section with its own header ("Price Normalized"), not nested
-  inside VolatilityRails or sharing its header/metrics.
-- One `priceNormalized` line per symbol, horizontal guides at the gate
-  bounds (e.g. 0.2 / 0.8) plus 0 and 1.
-- Reuses `MultiLineTimelined` but keeps its **own independent brush** —
-  no zoom sync with the volatility chart.
+- `features/<symbol>/part-*.json` artifact stream (same chunked spool as
+  `vpoints/<symbol>/`), appended by the backtest adapter's `onFeatureUpdate`
+  only when a coin's feature values change; records are
+  `BacktestFeatureRecord = { t } & CoinFeatures`.
+- `manifest.features` reports per-symbol part counts; `CACHE_VERSION = 9`
+  forces reruns, and `/api/dev/backtest-precision/detail?field=features`
+  serves the stream lazily (`{ featuresMap }` or `{ symbol, features }`).
+- `PriceNormalized.tsx` — a standalone collapsible section **below
+  Volatility Rails** with its own header, own brush (no zoom sync), and lazy
+  artifact load on first expand.
+- One `priceNormalized` **step line** (`lineType="stepAfter"`) per symbol —
+  only for symbols with at least one defined record; per-point colors reuse
+  the Volatility Rails palette order so each coin keeps its color.
+- Horizontal guides (`yReferenceLines`) at 0 and 1 plus the configured gate
+  bounds from `management.featureGate`.
 
 ## Entry snapshot
 
@@ -114,21 +134,37 @@ post-hoc evaluation of feature values vs outcomes.
 
 ## Strategy
 
-`src/lib/strategies/default_with_features_gate`:
+`src/lib/strategies/default_with_features_gate` (registered as
+`StrategySlug` `"default_with_features_gate"`):
 
-- `decisions.entry.find` wraps `defaultDecision.entry.find` and filters
-  candidates through the feature gate (configurable bounds in
-  `management`/strategy config so backtest drafts can tune them).
-- `guard` delegates to shared `guard.common`/`guard.entry.policy` — do not
-  reimplement protections.
-- `diagnostics.explain` reports gate rejections ("feature gate:
-  priceNormalized 0.93 > 0.8") so blocked entries are explainable.
+- `decisions.entry.find` wraps `defaultDecision.entry.find` and drops
+  candidates whose coin's `priceNormalized` falls outside
+  `management.featureGate` bounds
+  (`FeatureGateConfig.minPriceNormalized` / `.maxPriceNormalized`,
+  inclusive). Undefined feature values never block — "no opinion" is not a
+  veto.
+- **No `guard` member** — the engine falls back to the shared
+  `guard.allows` wholesale, so every shared protection (runner toggle,
+  black-swan, daily-PnL, capacity) applies unchanged. Filtering happens at
+  the producer level instead, per the strategy contract.
+- No `shape` — operator-forced manual entries bypass the gate by design.
+- `diagnostics.explain` returns `FEATURE_GATE` ("Blocked by the feature
+  gate: priceNormalized 0.95 is above the configured maximum 0.8.") so the
+  dashboard explains the skip instead of a silent no-entry.
+- Bounds are editable in Settings → Management when the strategy is
+  selected; `featureGate` rides `SHARED_MANAGEMENT_CONFIG_KEYS` so settings
+  saves and effective-config extraction preserve it.
 
-## Open considerations
+## Status notes (implemented)
 
-- Precision-checker replays recompute features deterministically; capture
-  the starting `features` in `initialState` so the first tick doesn't see an
-  empty map.
+- `PrecisionRuntimeSnapshot.features` is captured at record start and end
+  and hydrated into replay `state.features`, so the first replayed tick sees
+  the production store instead of an empty map; `features.update` recomputes
+  it deterministically afterwards.
 - Recording cadence is delta-based (sparse by design) — but a float never
   repeats exactly, so compare with a tolerance epsilon if any future feature
   moves continuously.
+- Unit coverage: `features.test.ts` (extractor envelope math, degenerate
+  cases, `changedCoins`, retention `sinceMs`, gate filter + diagnostics),
+  `backtest-artifacts.test.ts` (feature stream spool/read), cache-publish
+  v9 key.

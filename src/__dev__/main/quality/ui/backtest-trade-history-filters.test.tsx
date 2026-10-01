@@ -77,6 +77,14 @@ const renderSection = () =>
     />,
   );
 
+// The section collapses by default; expand only when a previous render in
+// this file has not already persisted the expanded state.
+const expandIfCollapsed = () => {
+  if (!screen.queryByTestId("backtest-history")) {
+    fireEvent.click(screen.getByText(/Trade History/));
+  }
+};
+
 const visibleRows = () => screen.getByTestId("backtest-history").textContent;
 
 describe("filterBacktestTradeHistory", () => {
@@ -100,6 +108,7 @@ describe("Backtest trade-history filters", () => {
   it("filters by account and shows the filtered count", async () => {
     const user = userEvent.setup();
     renderSection();
+    expandIfCollapsed();
 
     expect(visibleRows()).toBe("acc-1:BTC,acc-2:ETH,acc-1:SOL,acc-2:SUI");
 
@@ -112,6 +121,7 @@ describe("Backtest trade-history filters", () => {
 
   it("filters by inclusive entry-date bounds", () => {
     renderSection();
+    expandIfCollapsed();
 
     fireEvent.change(screen.getByLabelText("Entry from"), {
       target: { value: "2024-05-01" },
@@ -130,6 +140,7 @@ describe("Backtest trade-history filters", () => {
   it("applies account and date filters together", async () => {
     const user = userEvent.setup();
     renderSection();
+    expandIfCollapsed();
 
     await user.click(screen.getByRole("combobox", { name: "Account" }));
     await user.click(screen.getByRole("option", { name: "Main (2)" }));
@@ -144,6 +155,7 @@ describe("Backtest trade-history filters", () => {
   it("clears all filters at once", async () => {
     const user = userEvent.setup();
     renderSection();
+    expandIfCollapsed();
 
     await user.click(screen.getByRole("combobox", { name: "Account" }));
     await user.click(screen.getByRole("option", { name: "Main (2)" }));

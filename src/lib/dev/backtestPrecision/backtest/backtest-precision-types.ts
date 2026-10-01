@@ -1,3 +1,4 @@
+import type { CoinFeatures } from "@/lib/features/types";
 import type { BalanceSummary, Position } from "@/lib/system/trading";
 import type {
   BlackSwanTimeline,
@@ -20,6 +21,17 @@ export interface BacktestBalanceSnapshot extends BalanceSummary {
 export type BacktestBlackSwanTransition = BlackSwanTransition;
 export type BacktestBlackSwanTimeline = BlackSwanTimeline;
 
+/**
+ * One recorded coin-feature sample — `t` plus the coin's feature fields at
+ * that tick. The backtest adapter appends a record only when a feature value
+ * changed, so the stream stays sparse (pivot-derived features are step
+ * functions).
+ */
+export interface BacktestFeatureRecord extends CoinFeatures {
+  /** Feature-update tick in Unix milliseconds. */
+  t: number;
+}
+
 export interface BacktestPrecisionResult {
   /**
    * Recorded Black Swan status transitions at detector evaluation times.
@@ -31,6 +43,11 @@ export interface BacktestPrecisionResult {
   positions: Position[];
   /** Per-account balance timelines keyed by account slug. */
   balanceSnapshots: Record<string, BacktestBalanceSnapshot[]>;
+  /**
+   * Recorded coin-feature timelines keyed by base symbol (`features/`
+   * artifact dir). Absent on legacy cache entries predating the stream.
+   */
+  featuresMap?: Record<string, BacktestFeatureRecord[]>;
 }
 
 /**
@@ -51,6 +68,8 @@ export interface BacktestArtifactManifest {
   positions: number;
   vpoints: Record<string, number>;
   snapshots: Record<string, number>;
+  /** Per-symbol feature-stream part counts; absent on older entries. */
+  features?: Record<string, number>;
 }
 
 /** One named histogram bucket (exit reason or symbol). */

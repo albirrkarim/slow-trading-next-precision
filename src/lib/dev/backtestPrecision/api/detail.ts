@@ -6,7 +6,13 @@ import backtestLeaderboards from "../leaderboards";
 import backtestResultCache from "./cache";
 
 const KEY_PATTERN = /^[0-9a-f]{64}$/;
-const FIELDS = new Set(["positions", "vpoints", "snapshots", "metrics"]);
+const FIELDS = new Set([
+  "features",
+  "positions",
+  "vpoints",
+  "snapshots",
+  "metrics",
+]);
 
 const pickQuery = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
@@ -24,7 +30,8 @@ const pickInt = (value: string | undefined) => {
  * `field=positions` returns `{positions, total, offset, limit}` honoring
  * `offset`/`limit` (defaults to the whole list). `field=vpoints` returns
  * `{vPointsMap}` or `{symbol, vPoints}` when `symbol` is given;
- * `field=snapshots` returns `{balanceSnapshots}` or `{slug, snapshots}`.
+ * `field=snapshots` returns `{balanceSnapshots}` or `{slug, snapshots}`;
+ * `field=features` returns `{featuresMap}` or `{symbol, features}`.
  */
 export default async function backtestDetailHandler(
   req: NextApiRequest,
@@ -48,9 +55,9 @@ export default async function backtestDetailHandler(
     return;
   }
   if (!field || !FIELDS.has(field)) {
-    res
-      .status(400)
-      .json({ error: '"field" must be positions|vpoints|snapshots|metrics.' });
+    res.status(400).json({
+      error: '"field" must be positions|vpoints|snapshots|features|metrics.',
+    });
     return;
   }
 
@@ -66,7 +73,7 @@ export default async function backtestDetailHandler(
 
   const data = await backtestResultCache.readField(
     key,
-    field as "positions" | "vpoints" | "snapshots",
+    field as "features" | "positions" | "vpoints" | "snapshots",
     name,
   );
   if (data === null || data === undefined) {
@@ -96,6 +103,15 @@ export default async function backtestDetailHandler(
       return;
     }
     res.json({ vPointsMap: data });
+    return;
+  }
+
+  if (field === "features") {
+    if (name) {
+      res.json({ symbol: name, features: data });
+      return;
+    }
+    res.json({ featuresMap: data });
     return;
   }
 

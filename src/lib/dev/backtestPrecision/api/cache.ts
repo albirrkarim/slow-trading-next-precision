@@ -7,6 +7,7 @@ import type {
   BacktestBalanceSnapshot,
   BacktestBlackSwanTimeline,
   BacktestChunkedResult,
+  BacktestFeatureRecord,
   BacktestPrecisionResult,
   BacktestRunCounts,
   BacktestRunSummary,
@@ -18,13 +19,16 @@ import backtestArtifacts from "../backtest/artifacts";
  * rather than reuse: v5 adds black-swan protection to normal backtests;
  * v6 calibrates its defaults and stamps the distinct BLACK_SWAN_EXIT close
  * reason; v7 records the Black Swan status timeline into meta.json; v8 adds
- * the per-segment detector reason shown in the timeline list.
+ * the per-segment detector reason shown in the timeline list; v9 adds the
+ * per-symbol `features/` artifact stream plus entry-feature snapshots on
+ * positions, so reruns carry feature data.
  * CHUNKED_LAYOUT is the on-disk format: v4 streams artifacts into
- * fixed-size part files (positions/, vpoints/<symbol>/, snapshots/<slug>/)
+ * fixed-size part files (positions/, vpoints/<symbol>/, snapshots/<slug>/,
+ * features/<symbol>/)
  * plus meta.json; v3 used monolithic field files. `read`/`readField` still
  * understand v3+ for saved cachePaths.
  */
-const CACHE_VERSION = 8;
+const CACHE_VERSION = 9;
 const CHUNKED_LAYOUT = 4;
 
 // Local-only cache — `storage/persistent` syncs between instances, so
@@ -59,7 +63,7 @@ interface BacktestResultCacheIdentity {
   startTime?: number;
 }
 
-type BacktestDetailField = "positions" | "vpoints" | "snapshots";
+type BacktestDetailField = "features" | "positions" | "vpoints" | "snapshots";
 
 /** Serializes with sorted object keys so hashing ignores input field order. */
 function stableStringify(value: unknown): string {
@@ -289,16 +293,19 @@ async function read(
 
   try {
     if (chunked) {
-      const [positions, vPointsMap, balanceSnapshots] = await Promise.all([
-        backtestArtifacts.read.positions(dir),
-        backtestArtifacts.read.vpoints(dir),
-        backtestArtifacts.read.snapshots(dir),
-      ]);
+      const [positions, vPointsMap, balanceSnapshots, featuresMap] =
+        await Promise.all([
+          backtestArtifacts.read.positions(dir),
+          backtestArtifacts.read.vpoints(dir),
+          backtestArtifacts.read.snapshots(dir),
+          backtestArtifacts.read.features(dir),
+        ]);
       return {
         balanceSnapshots:
           balanceSnapshots as Record<string, BacktestBalanceSnapshot[]>,
         blackSwanTimeline: meta.blackSwanTimeline,
         exchangeType: meta?.exchangeType ?? "binance",
+        featuresMap: featuresMap as Record<string, BacktestFeatureRecord[]>,
         positions,
         vPointsMap: vPointsMap as Record<string, VolatilityPoint[]>,
       };
@@ -369,6 +376,8 @@ async function readField(
     if (chunked) {
       if (field === "positions") return backtestArtifacts.read.positions(dir);
       if (field === "vpoints") return backtestArtifacts.read.vpoints(dir, name);
+      if (field === "features")
+        return backtestArtifacts.read.features(dir, name);
       return backtestArtifacts.read.snapshots(dir, name);
     }
 
@@ -378,6 +387,8 @@ async function readField(
       const file = legacyFile("positions");
       return (await fs.pathExists(file)) ? fs.readJson(file) : null;
     }
+    // v3 dirs predate the features stream — no file to serve.
+    if (field === "features") return null;
     const mapFile =
       field === "vpoints"
         ? legacyFile("vPointsMap")

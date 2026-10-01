@@ -1,4 +1,5 @@
 import { getFeeCalculator } from "@/lib/exchange/fees";
+import features from "@/lib/features";
 import { RuntimeEngine } from "@/lib/precision";
 import type {
   RuntimeEngineAdapter,
@@ -309,6 +310,9 @@ async function runSingle({
     onNewVPoint: async (symbol, newVPoint) => {
       (detectedVPoints[symbol] ??= []).push(newVPoint);
     },
+    // Feature store keeps parity with live/backtest so feature gates and
+    // entry snapshots behave identically on the quick path.
+    onFeatureUpdate: (context) => features.update(context),
     onStateChange: async () => {
       snapshot(state.currentTime);
     },

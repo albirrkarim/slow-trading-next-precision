@@ -4,6 +4,7 @@ dotenv.config();
 
 import fs from "fs-extra";
 import v8 from "v8";
+import features from "@/lib/features";
 import { RuntimeEngine } from "@/lib/precision";
 import type {
   RuntimeEngineAdapter,
@@ -139,6 +140,9 @@ async function main() {
     onNewVPoint: async (symbol, newVPoint) => {
       (detectedVPoints[symbol] ??= []).push(newVPoint);
     },
+    // Keep the feature store current so gates and entry snapshots behave
+    // like production; the driver does not persist a features stream.
+    onFeatureUpdate: (context) => features.update(context),
     onNotif: () => true,
   };
 

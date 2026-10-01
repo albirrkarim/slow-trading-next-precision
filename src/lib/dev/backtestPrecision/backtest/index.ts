@@ -1,3 +1,4 @@
+import features from "@/lib/features";
 import { RuntimeEngine } from "@/lib/precision";
 import type {
   RuntimeEngineAdapter,
@@ -21,6 +22,7 @@ import {
   type BacktestBlackSwanTimeline,
   type BacktestBlackSwanTransition,
   type BacktestChunkedResult,
+  type BacktestFeatureRecord,
   type BacktestPrecisionResult,
 } from "./backtest-precision-types";
 import { preparePrecisionDataset } from "./data";
@@ -126,6 +128,7 @@ export async function precisionBacktest(
     ? {}
     : structuredClone(vPointsMap);
   const detectedVPoints: Record<string, VolatilityPoint[]> = {};
+  const detectedFeatures: Record<string, BacktestFeatureRecord[]> = {};
 
   const state: RuntimeEngineState = {
     balance:
@@ -158,6 +161,13 @@ export async function precisionBacktest(
       : undefined,
     dailyPnlDay: initialState?.dailyPnlDay,
     dailyPnlUsdt: initialState?.dailyPnlUsdt,
+    // Replays hydrate the captured feature store so the first tick matches
+    // what production saw; `features.update` recomputes it deterministically
+    // on every feature-update pass afterwards.
+    features:
+      initialState?.features === undefined
+        ? undefined
+        : structuredClone(initialState.features),
   };
   let clockTime = state.currentTime;
   const history: RuntimeEngineState["openPositions"] = [];
@@ -286,6 +296,28 @@ export async function precisionBacktest(
       }
       (detectedVPoints[symbol] ??= []).push(newVPoint);
     },
+    // BTEST:FEATURES_ARTIFACT — same shared compute as production, then the
+    // changed coins append `{t, ...coinFeatures}` rows per symbol so the
+    // dashboard can chart feature values over the run.
+    onFeatureUpdate: async (context) => {
+      const previous = context.state.features;
+      features.update(context);
+      const nextCoins = context.state.features?.coins ?? {};
+      const changed = features.changedCoins(previous?.coins, nextCoins);
+      await Promise.all(
+        changed.map(async (symbol) => {
+          const record: BacktestFeatureRecord = {
+            ...nextCoins[symbol],
+            t: context.state.currentTime,
+          };
+          if (spool) {
+            await spool.pushFeature(symbol, record);
+            return;
+          }
+          (detectedFeatures[symbol] ??= []).push(record);
+        }),
+      );
+    },
     onNotif: () => true,
   };
 
@@ -364,5 +396,6 @@ export async function precisionBacktest(
     vPointsMap: resultVPointsMap,
     positions: [...history, ...state.openPositions],
     balanceSnapshots,
+    featuresMap: detectedFeatures,
   };
 }

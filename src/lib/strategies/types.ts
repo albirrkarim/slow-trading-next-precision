@@ -56,6 +56,7 @@ import type {
 export type StrategySlug =
   | "both"
   | "streak"
+  | "default_with_features_gate"
   | "custom_gpt6_astra_bounded_cover_v1";
 
 /**

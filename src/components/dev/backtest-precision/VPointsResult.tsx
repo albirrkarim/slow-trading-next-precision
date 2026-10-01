@@ -15,6 +15,7 @@ import { Box, Grid } from "@mui/material";
 import type { ConfigDraft } from "@/components/settings/settings-types";
 
 import BacktestTradeHistory from "./BacktestTradeHistory";
+import PriceNormalized from "./PriceNormalized";
 import BacktestResultSummary from "./ResultSummary";
 import type { useBacktestArtifacts } from "./use-backtest-artifacts";
 import VolatilityRails from "./VolatilityRails";
@@ -46,15 +47,15 @@ export default function VPointsResult({
   summary: BacktestRunSummary;
 }) {
   const { positions, vpoints } = artifacts;
-  const { ensure: ensurePositions } = positions;
   const { ensure: ensureVpoints } = vpoints;
 
-  // The trade-history section is always visible — its rows embed per-symbol
-  // vPoint charts — so both fields load as soon as a result exists.
+  // vPoints feed the always-rendered frequency card plus the collapsible
+  // rails and feature charts, so they load as soon as a result exists.
+  // Positions stay lazy — Trade History collapses by default and the Daily
+  // PnL Calendar dialog loads them when it opens.
   useEffect(() => {
-    void ensurePositions();
     void ensureVpoints();
-  }, [ensurePositions, ensureVpoints]);
+  }, [ensureVpoints]);
 
   return (
     <Box sx={{ p: 0.5 }}>
@@ -68,6 +69,11 @@ export default function VPointsResult({
             : undefined
         }
         volatilityMap={vpoints.data ?? {}}
+      />
+      <PriceNormalized
+        featureGate={settings?.management.featureGate}
+        features={artifacts.features}
+        symbolOrder={Object.keys(vpoints.data ?? {})}
       />
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, md: 8 }}>

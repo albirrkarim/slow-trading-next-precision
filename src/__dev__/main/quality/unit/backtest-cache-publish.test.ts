@@ -9,15 +9,15 @@ import type { BacktestChunkedResult } from "@/lib/dev/backtestPrecision/backtest
 import type { Position } from "@/lib/system/trading";
 
 describe("backtest cache publication", () => {
-  it("keys the identity on the v8 simulation version, not v7", () => {
+  it("keys the identity on the v9 simulation version, not v8", () => {
     const identity = { config: {}, range: "6month" };
     const hash = (version: number) =>
       createHash("sha256")
         .update(`{"config":{},"range":"6month","v":${version}}`)
         .digest("hex");
 
-    expect(backtestResultCache.key(identity)).toBe(hash(8));
-    expect(backtestResultCache.key(identity)).not.toBe(hash(7));
+    expect(backtestResultCache.key(identity)).toBe(hash(9));
+    expect(backtestResultCache.key(identity)).not.toBe(hash(8));
   });
 
   const key = backtestResultCache.key({

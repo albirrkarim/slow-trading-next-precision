@@ -47,6 +47,7 @@ describe("backtest artifact spool", () => {
     const manifest = await spool.finalize();
 
     expect(manifest).toEqual({
+      features: {},
       positions: 3,
       snapshots: {},
       vpoints: {},
@@ -121,13 +122,46 @@ describe("backtest artifact spool", () => {
     ]);
   });
 
+  it("streams features per symbol and reads them scoped or merged", async () => {
+    const spool = backtestArtifacts.spool.create(dir, 2);
+
+    await spool.pushFeature("AAA", { priceNormalized: 0.4, t: 1 });
+    await spool.pushFeature("BBB", { priceNormalized: 0.9, t: 2 });
+    await spool.pushFeature("AAA", { priceNormalized: 0.6, t: 3 });
+    await spool.pushFeature("AAA", { priceNormalized: 1.1, t: 4 });
+    const manifest = await spool.finalize();
+
+    expect(manifest.features).toEqual({ AAA: 2, BBB: 1 });
+
+    const scoped = (await backtestArtifacts.read.features(
+      dir,
+      "AAA",
+    )) as { t: number; priceNormalized?: number }[];
+    expect(scoped.map((record) => record.priceNormalized)).toEqual([
+      0.4, 0.6, 1.1,
+    ]);
+
+    const merged = (await backtestArtifacts.read.features(dir)) as Record<
+      string,
+      { t: number }[]
+    >;
+    expect(Object.keys(merged).sort()).toEqual(["AAA", "BBB"]);
+    expect(merged.BBB.map((record) => record.t)).toEqual([2]);
+  });
+
   it("handles an empty run", async () => {
     const spool = backtestArtifacts.spool.create(dir, 5);
     const manifest = await spool.finalize();
 
-    expect(manifest).toEqual({ positions: 0, snapshots: {}, vpoints: {} });
+    expect(manifest).toEqual({
+      features: {},
+      positions: 0,
+      snapshots: {},
+      vpoints: {},
+    });
     expect(await backtestArtifacts.read.positions(dir)).toEqual([]);
     expect(await backtestArtifacts.read.vpoints(dir)).toEqual({});
     expect(await backtestArtifacts.read.snapshots(dir)).toEqual({});
+    expect(await backtestArtifacts.read.features(dir)).toEqual({});
   });
 });

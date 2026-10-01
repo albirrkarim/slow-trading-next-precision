@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { TradesTableSection } from "@/components/reports/TradesTableSection";
+import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import type { Position } from "@/lib/system/trading";
 import type { ExchangeType, VolatilityPoint } from "@/lib/system/types";
 import {
@@ -59,9 +60,59 @@ export default function BacktestTradeHistory({
   positions: LazyArtifact<Position[]>;
   vpoints: LazyArtifact<Record<string, VolatilityPoint[]>>;
 }) {
-  const tradeHistory = (positions.data ?? [])
-    .filter((position) => position.closed)
-    .map((position) => ({ ...position, mode: "sandbox" as const }));
+  const tradeHistory = useMemo(
+    () =>
+      (positions.data ?? [])
+        .filter((position) => position.closed)
+        .map((position) => ({ ...position, mode: "sandbox" as const })),
+    [positions.data],
+  );
+
+  return (
+    <HeaderMetrics
+      defaultExpanded={false}
+      headerCanBeClicked
+      rememberExpand="precision-backtest-trade-history"
+      title={
+        <Typography fontWeight={700} variant="body1">
+          Trade History (
+          {positions.data ? tradeHistory.length : closedCount})
+        </Typography>
+      }
+    >
+      {(expanded) =>
+        expanded && (
+          <TradeHistoryBody
+            accounts={accounts}
+            exchangeType={exchangeType}
+            positions={positions}
+            tradeHistory={tradeHistory}
+            vpoints={vpoints}
+          />
+        )
+      }
+    </HeaderMetrics>
+  );
+}
+
+/** Body — mounts only while expanded, so the positions artifact stays lazy. */
+function TradeHistoryBody({
+  accounts,
+  exchangeType,
+  positions,
+  tradeHistory,
+  vpoints,
+}: {
+  accounts?: Array<{ name?: string; slug: string }>;
+  exchangeType: ExchangeType;
+  positions: LazyArtifact<Position[]>;
+  tradeHistory: Array<Position & { mode: "sandbox" }>;
+  vpoints: LazyArtifact<Record<string, VolatilityPoint[]>>;
+}) {
+  const { ensure } = positions;
+  useEffect(() => {
+    void ensure();
+  }, [ensure]);
 
   // Trade filters AND-combined: account slug plus entry-date bounds.
   const [filterAccount, setFilterAccount] = useState("");
@@ -106,10 +157,6 @@ export default function BacktestTradeHistory({
 
   return (
     <Box>
-      <Typography variant="h6" sx={{ mb: 1 }}>
-        Trade History (
-        {positions.data ? tradeHistory.length : closedCount})
-      </Typography>
       {positions.data && (
         <Box
           sx={{

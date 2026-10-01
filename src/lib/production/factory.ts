@@ -10,6 +10,7 @@ import {
   type ExchangeAccount,
 } from "@/lib/exchange/account-context";
 import { resolveMarketTypeForTradingMode } from "@/lib/exchange/utils";
+import features, { FEATURES_VPOINT_WINDOW_MS } from "@/lib/features";
 import type {
   RuntimeContext,
   RuntimeDecision,
@@ -701,13 +702,16 @@ function createProductionFactory(): ProductionRuntimeFactory {
       );
     }
 
+    const currentTime = Date.now();
+
     // PROD:VPOINTS_BOOTSTRAP_FROM_STORAGE
     // Seeds vPointsMap from the persisted per-symbol volatility files instead
     // of transient model memory: each file keeps the full detected point list
     // including `usedBy` markers, so a restart does not re-consume
     // entry signals. The latest 7 points are injected, expanded by the shared
-    // retention rule so open positions keep their referenced/post-entry
-    // vPoints. Runtime market updates merge new points on top of this seed.
+    // retention rule so the feature-envelope window and open positions keep
+    // their referenced/post-entry vPoints. Runtime market updates merge new
+    // points on top of this seed.
     for (const source of vPointSources.values()) {
       const points = await runtimeStorage.vpoints.read({
         exchangeType: source.exchangeType,
@@ -719,6 +723,9 @@ function createProductionFactory(): ProductionRuntimeFactory {
         points,
         positions: openPositions,
         recent: BOOTSTRAP_VPOINT_COUNT,
+        // The feature store computes against the trailing pivot envelope —
+        // a restart must reseed the full window, not just the latest 7.
+        sinceMs: currentTime - FEATURES_VPOINT_WINDOW_MS,
       });
       if (retained.length > (vPointsMap[source.symbol]?.length ?? 0)) {
         vPointsMap[source.symbol] = retained;
@@ -741,7 +748,6 @@ function createProductionFactory(): ProductionRuntimeFactory {
       .load(mode === "sandbox" ? "sandbox" : "live")
       .catch(() => undefined);
 
-    const currentTime = Date.now();
     const persistedBlackSwan = blackSwan.state.normalize(
       persistedStatus.blackSwan,
       currentTime,
@@ -808,6 +814,7 @@ function createProductionFactory(): ProductionRuntimeFactory {
       onPairAction: handlers.onPairAction,
       onCycleComplete: productionStages.cycleComplete,
       onExit: handlers.onExit,
+      onFeatureUpdate: (context) => features.update(context),
       onManagement: productionStages.management,
       onNewVPoint: async (symbol, newVPoint) => {
         // Each detected point is merged into the shared volatility file

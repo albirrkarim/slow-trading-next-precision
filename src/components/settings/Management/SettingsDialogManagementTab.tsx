@@ -31,6 +31,10 @@ const STRATEGY_OPTIONS = [
   { label: "Default", value: "default" },
   { label: "Both (pair: MAIN + COUNTER)", value: "both" },
   { label: "Streak", value: "streak" },
+  {
+    label: "Default + Features Gate",
+    value: "default_with_features_gate",
+  },
 ] satisfies { label: string; value: "default" | StrategySlug }[];
 
 function parseNumber(value: string) {
@@ -226,6 +230,54 @@ export default function SettingsDialogManagementTab({
                   </MenuItem>
                 ))}
               </SettingsInfoField>
+
+              {configDraft.management.strategy ===
+                "default_with_features_gate" && (
+                <>
+                  <SettingsInfoField
+                    fullWidth
+                    info="Inclusive lower bound on the coin's priceNormalized feature (latest pivot price inside its trailing 2-month pivot envelope: 0 = floor, 1 = top). Candidates below it are skipped. Leave empty for no floor."
+                    label="Feature Gate: Min Price Normalized"
+                    onChange={(event) => {
+                      const raw = event.target.value;
+                      updateManagement({
+                        featureGate: {
+                          ...configDraft.management.featureGate,
+                          minPriceNormalized:
+                            raw === "" ? undefined : parseNumber(raw),
+                        },
+                      });
+                    }}
+                    size="small"
+                    type="number"
+                    value={
+                      configDraft.management.featureGate
+                        ?.minPriceNormalized ?? ""
+                    }
+                  />
+                  <SettingsInfoField
+                    fullWidth
+                    info="Inclusive upper bound on the coin's priceNormalized feature. Candidates above it are skipped — e.g. 0.8 blocks entries whose latest pivot formed near the top of the 2-month envelope. Leave empty for no ceiling."
+                    label="Feature Gate: Max Price Normalized"
+                    onChange={(event) => {
+                      const raw = event.target.value;
+                      updateManagement({
+                        featureGate: {
+                          ...configDraft.management.featureGate,
+                          maxPriceNormalized:
+                            raw === "" ? undefined : parseNumber(raw),
+                        },
+                      });
+                    }}
+                    size="small"
+                    type="number"
+                    value={
+                      configDraft.management.featureGate
+                        ?.maxPriceNormalized ?? ""
+                    }
+                  />
+                </>
+              )}
             </Stack>
           </Grid>
         </Grid>

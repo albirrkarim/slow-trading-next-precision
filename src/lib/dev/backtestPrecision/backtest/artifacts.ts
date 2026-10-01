@@ -8,6 +8,7 @@ import type { VolatilityPoint } from "@/lib/system/types";
 import type {
   BacktestArtifactManifest,
   BacktestBalanceSnapshot,
+  BacktestFeatureRecord,
 } from "./backtest-precision-types";
 
 /** Default number of records written per part file. */
@@ -79,6 +80,8 @@ const vpointsDir = (dir: string, symbol?: string) =>
   symbol ? path.join(dir, "vpoints", symbol) : path.join(dir, "vpoints");
 const snapshotsDir = (dir: string, slug?: string) =>
   slug ? path.join(dir, "snapshots", slug) : path.join(dir, "snapshots");
+const featuresDir = (dir: string, symbol?: string) =>
+  symbol ? path.join(dir, "features", symbol) : path.join(dir, "features");
 
 /**
  * Incremental artifact writer for a running backtest. Buffers records in
@@ -89,6 +92,7 @@ function createSpool(dir: string, chunkSize = DEFAULT_CHUNK_SIZE) {
   const positions = newKeyedBuffer<Position>();
   const vpoints = new Map<string, KeyedBuffer<VolatilityPoint>>();
   const snapshots = new Map<string, KeyedBuffer<BacktestBalanceSnapshot>>();
+  const features = new Map<string, KeyedBuffer<BacktestFeatureRecord>>();
 
   const slotFor = <T>(map: Map<string, KeyedBuffer<T>>, key: string) => {
     let slot = map.get(key);
@@ -125,6 +129,14 @@ function createSpool(dir: string, chunkSize = DEFAULT_CHUNK_SIZE) {
       }
       return pushChunked(snapshotsDir(dir, slug), slot, snapshot, chunkSize);
     },
+    /** Appends one symbol's feature sample to `features/<symbol>/`. */
+    pushFeature: (symbol: string, record: BacktestFeatureRecord) =>
+      pushChunked(
+        featuresDir(dir, symbol),
+        slotFor(features, symbol),
+        record,
+        chunkSize,
+      ),
     /** Flushes every pending buffer and reports the written part counts. */
     async finalize(): Promise<BacktestArtifactManifest> {
       await flushSlot(positionsDir(dir), positions);
@@ -138,10 +150,16 @@ function createSpool(dir: string, chunkSize = DEFAULT_CHUNK_SIZE) {
         await flushSlot(snapshotsDir(dir, slug), slot);
         snapshotParts[slug] = slot.part;
       }
+      const featureParts: Record<string, number> = {};
+      for (const [symbol, slot] of features) {
+        await flushSlot(featuresDir(dir, symbol), slot);
+        featureParts[symbol] = slot.part;
+      }
       return {
         positions: positions.part,
         vpoints: vpointsParts,
         snapshots: snapshotParts,
+        features: featureParts,
       };
     },
   };
@@ -184,6 +202,25 @@ const backtestArtifacts = {
       for (const name of slugs) {
         map[name] = await readParts<BacktestBalanceSnapshot>(
           snapshotsDir(dir, name),
+        );
+      }
+      return map;
+    },
+    /** One symbol's feature records when `symbol` is given, else the map. */
+    async features(
+      dir: string,
+      symbol?: string,
+    ): Promise<
+      BacktestFeatureRecord[] | Record<string, BacktestFeatureRecord[]>
+    > {
+      if (symbol) {
+        return readParts<BacktestFeatureRecord>(featuresDir(dir, symbol));
+      }
+      const symbols = await listChildDirs(featuresDir(dir));
+      const map: Record<string, BacktestFeatureRecord[]> = {};
+      for (const name of symbols) {
+        map[name] = await readParts<BacktestFeatureRecord>(
+          featuresDir(dir, name),
         );
       }
       return map;

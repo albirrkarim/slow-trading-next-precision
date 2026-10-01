@@ -1,3 +1,4 @@
+import { FEATURES_VPOINT_WINDOW_MS } from "@/lib/features";
 import entry from "@/lib/system/trading/entry";
 
 import type {
@@ -259,14 +260,19 @@ function create(
           lastProcessedOpenTime: closedKlines.at(-1)?.[0] ?? startTime,
           memory,
         };
-        // Bounds the runtime window to recent points plus anything open
-        // positions still depend on; the full history lives in persisted
-        // volatility files (production) or the adapter's buffers (backtest).
+        // Bounds the runtime window to recent points, the feature-envelope
+        // window, plus anything open positions still depend on; the full
+        // history lives in persisted volatility files (production) or the
+        // adapter's buffers (backtest).
         state.vPointsMap[symbol] = vpoints.retainRecent({
           symbol,
           points,
           positions: state.openPositions,
           recent: adapter.retainRecentVPoints ?? DEFAULT_RECENT_VPOINTS,
+          // BOTH:VPOINT_FEATURE_WINDOW — lib/features computations (e.g.
+          // priceNormalized) read the trailing ~2-month pivot envelope from
+          // state.vPointsMap, so retention must not trim inside it.
+          sinceMs: currentTime - FEATURES_VPOINT_WINDOW_MS,
         });
       }
 

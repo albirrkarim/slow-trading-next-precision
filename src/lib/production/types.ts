@@ -37,6 +37,8 @@ export interface ProductionAdapterOptions {
   onStateChange?: RuntimeEngineAdapter["onStateChange"];
   /** Receives each newly detected vPoint for production persistence. */
   onNewVPoint?: RuntimeEngineAdapter["onNewVPoint"];
+  /** Refreshes `state.features` before entry capture (state-only here). */
+  onFeatureUpdate?: RuntimeEngineAdapter["onFeatureUpdate"];
   /** Optional notification delivery hook. */
   onNotif?: RuntimeEngineAdapter["onNotif"];
   /** Environment-owned risk-sentinel stage body. */

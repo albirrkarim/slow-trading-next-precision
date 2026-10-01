@@ -8,6 +8,8 @@ interface ChartLinesProps {
     dataColorsMain: string[];
     visible: Set<string>;
     showTradeGroup: Record<string, boolean>;
+    /** Interpolation for regular (non-grouped) lines; defaults to "monotone". */
+    lineType?: "linear" | "monotone" | "stepAfter";
 }
 
 function getTradeGroup(name: string) {
@@ -17,7 +19,7 @@ function getTradeGroup(name: string) {
 }
 
 const ChartLines: React.FC<ChartLinesProps> = React.memo(
-    ({ dataKeys, seriesNames, dataColors, dataColorsMain, visible, showTradeGroup }) => {
+    ({ dataKeys, seriesNames, dataColors, dataColorsMain, visible, showTradeGroup, lineType }) => {
         const lines = dataKeys.map((key, idx) => {
             const name = seriesNames[idx];
             const isGrouped = name.startsWith("TRADE ") || name.startsWith("ENTRY ");
@@ -66,7 +68,7 @@ const ChartLines: React.FC<ChartLinesProps> = React.memo(
                                     ? "linear"
                                     : isWorkerNeeded
                                         ? "stepAfter"
-                                        : "monotone"
+                                        : (lineType ?? "monotone")
                             }
                             dataKey={key}
                             stroke={color}
@@ -101,7 +103,8 @@ const ChartLines: React.FC<ChartLinesProps> = React.memo(
         prev.dataColors === next.dataColors &&
         prev.dataColorsMain === next.dataColorsMain &&
         prev.visible === next.visible &&
-        prev.showTradeGroup === next.showTradeGroup
+        prev.showTradeGroup === next.showTradeGroup &&
+        prev.lineType === next.lineType
 );
 
 export default ChartLines;

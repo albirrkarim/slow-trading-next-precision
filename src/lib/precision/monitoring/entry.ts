@@ -133,10 +133,22 @@ async function executeDecision(
     // The decision→position hop: the strategy's leg payload (e.g.
     // `{pairId, role, entryLegs}`) lands on `position.strategy.logic` so
     // producers, the pair-aware guard, and `onActionResult` can correlate
-    // legs for the position's whole persisted lifecycle.
+    // legs for the position's whole persisted lifecycle. The entry-feature
+    // snapshot lands on `position.strategy.entry.feature` — the leg's own
+    // `feature` payload wins, else the live coin features at entry time.
     const logic = leg.strategy;
-    if (logic !== undefined) {
-      position.strategy = { ...position.strategy, logic };
+    const feature =
+      leg.feature ??
+      context.state.features?.coins[leg.symbol.toUpperCase()];
+    if (logic !== undefined || feature !== undefined) {
+      position.strategy = {
+        ...position.strategy,
+        entry: {
+          ...position.strategy.entry,
+          ...(feature !== undefined ? { feature } : {}),
+        },
+        ...(logic !== undefined ? { logic } : {}),
+      };
     }
     context.state.openPositions.push(position);
     recordEntryBalance(

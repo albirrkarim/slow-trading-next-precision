@@ -14,6 +14,7 @@ const loaders: Record<
   both: () => import("./both"),
   custom_gpt6_astra_bounded_cover_v1: () =>
     import("./custom_gpt6_astra_bounded_cover_v1"),
+  default_with_features_gate: () => import("./default_with_features_gate"),
   streak: () => import("./streak"),
 };
 

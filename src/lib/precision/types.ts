@@ -1,4 +1,5 @@
 import type { StrategyAPI } from "@/lib/strategies";
+import type { RuntimeFeatures } from "@/lib/features/types";
 import type { FetchKlines, Kline, VolatilityPoint } from "@/lib/system/types";
 import type {
   AveragingRecommendation,
@@ -199,6 +200,15 @@ export interface RuntimeEngineStateBasic {
    * assigns and reads its own shape (`context.state.strategy`).
    */
   strategy?: unknown;
+
+  /**
+   * Derived feature store refreshed by `adapter.onFeatureUpdate` before
+   * every capture-entry pass (and once during startup warm-up). Written by
+   * the shared `lib/features` module so live, sandbox, and backtest compute
+   * identical values; strategies may gate candidates on it and the entry
+   * commit snapshots the coin's features into `position.strategy.entry`.
+   */
+  features?: RuntimeFeatures;
 }
 
 /**
@@ -281,6 +291,14 @@ export interface RuntimeEntryDecision {
    * when the candidate filled or a thrown execution error aborted it.
    */
   blockReason?: string;
+  /**
+   * Strategy-authored entry-feature payload landing on
+   * `position.strategy.entry.feature` at commit. When unset the shared
+   * commit stores the live `state.features.coins[symbol]` snapshot instead,
+   * so every position records the features seen at entry regardless of
+   * strategy.
+   */
+  feature?: unknown;
   /**
    * Free-form strategy-owned payload carried through guard, adapter, and
    * `onActionResult` uninterpreted. On a successful entry the shared commit
@@ -482,6 +500,18 @@ export interface RuntimeEngineAdapter {
     symbol: string,
     newVPoint: VolatilityPoint,
   ) => Promise<void>;
+
+  /**
+   * Feature-store refresh dispatched once at startup warm-up and inside
+   * every capture-entry prep block — after `updateMarkPrice`/
+   * `updateVPointsMap` and before the entry capture. Every implementation
+   * delegates to the shared `lib/features` module; the backtest adapter
+   * additionally delta-records changed coin features into its artifact
+   * stream, production just keeps `state.features` current.
+   */
+  onFeatureUpdate?: (
+    context: RuntimeContext,
+  ) => Promise<void> | void;
 
   /**
    * Optional environment-specific approval extension that runs after the
