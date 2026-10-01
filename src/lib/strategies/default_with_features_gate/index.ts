@@ -28,7 +28,7 @@ import type { StrategyAPI } from "../types";
  * (`FEATURES_HISTORY_WINDOW_MS`); the gate only judges its freshest days.
  */
 export const FEATURE_GATE_BOUNDS: Required<FeatureGateBounds> = {
-  btcMaxPriceNormalized: 0.9,
+  btcMaxPriceNormalized: 0.8,
   btcMinPriceNormalized: 0.3,
   historyWindowDays: 5,
   maxPriceNormalized: 0.8,
