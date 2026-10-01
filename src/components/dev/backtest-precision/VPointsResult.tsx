@@ -18,6 +18,7 @@ import type { ConfigDraft } from "@/components/settings/settings-types";
 import BacktestTradeHistory from "./BacktestTradeHistory";
 import PriceNormalized from "./PriceNormalized";
 import BacktestResultSummary from "./ResultSummary";
+import TradesOverTime from "./TradesOverTime";
 import type { useBacktestArtifacts } from "./use-backtest-artifacts";
 import VolatilityRails from "./VolatilityRails";
 
@@ -81,6 +82,11 @@ export default function VPointsResult({
             : undefined
         }
         symbolOrder={Object.keys(vpoints.data ?? {})}
+      />
+      <TradesOverTime
+        datasetEndTimeMs={datasetEndTimeMs}
+        datasetStartTimeMs={datasetStartTimeMs}
+        positions={positions}
       />
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, md: 8 }}>
