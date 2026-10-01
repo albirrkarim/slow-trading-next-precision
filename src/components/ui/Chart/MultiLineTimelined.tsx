@@ -36,6 +36,11 @@ export interface VolatilityMultiLineProps {
   defaultShowEntryGroups?: boolean;
   yTickFormatter?: (value: unknown) => string;
   /**
+   * Fixed Y-axis pixel width; defaults to Recharts "auto". Set it when
+   * stacked charts must keep their plot areas (time axes) aligned.
+   */
+  yAxisWidth?: number;
+  /**
    * Recharts line interpolation for regular series (TRADE/ENTRY groups and
    * "Worker Needed" keep their own). Defaults to "monotone"; step series
    * like the feature stream pass "stepAfter".
@@ -66,6 +71,7 @@ function MultiLineTimelined({
   height = 420,
   defaultShowEntryGroups = false,
   yTickFormatter,
+  yAxisWidth,
   lineType,
   yReferenceLines,
   referenceLines,
@@ -383,7 +389,7 @@ function MultiLineTimelined({
             minTickGap={10}
             allowDataOverflow
           />
-          <YAxis tickFormatter={yTickFormatter} width="auto" />
+          <YAxis tickFormatter={yTickFormatter} width={yAxisWidth ?? "auto"} />
           <Tooltip
             content={(props) => (
               <CustomTooltip

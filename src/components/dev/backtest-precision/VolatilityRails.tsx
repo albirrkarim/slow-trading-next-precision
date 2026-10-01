@@ -12,6 +12,7 @@ import MultiLineTimelined from "@/components/ui/Chart/MultiLineTimelined";
 import type { BacktestBlackSwanTimeline } from "@/lib/dev/backtestPrecision/backtest/backtest-precision-types";
 import { makeSeries } from "@/lib/system/utils/ui/series";
 import { DEFAULT_COLORS } from "@/lib/system/utils/ui/colors";
+import { CHART_Y_AXIS_WIDTH } from "@/components/charts/constants";
 import type { VolatilityPoint } from "@/lib/system/types";
 
 
@@ -77,6 +78,7 @@ export default function VolatilityRails({
                 colors={DEFAULT_COLORS}
                 height={420}
                 names={chartData.names}
+                yAxisWidth={CHART_Y_AXIS_WIDTH}
                 onVisibleTimeRangeChange={onVisibleRange}
                 referenceLines={
                   tradingStartTimeMs !== undefined

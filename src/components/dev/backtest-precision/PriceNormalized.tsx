@@ -9,6 +9,7 @@ import MultiLineTimelined from "@/components/ui/Chart/MultiLineTimelined";
 import type { BacktestFeatureRecord } from "@/lib/dev/backtestPrecision/backtest/backtest-precision-types";
 import type { FeatureGateConfig } from "@/lib/features/types";
 import type { LeveledMarkers } from "@/lib/system/utils/ui/chart-markers";
+import { CHART_Y_AXIS_WIDTH } from "@/components/charts/constants";
 import { DEFAULT_COLORS } from "@/lib/system/utils/ui/colors";
 
 import type { LazyArtifact } from "./use-backtest-artifacts";
@@ -100,6 +101,7 @@ function PriceNormalizedBody({
         lineType="stepAfter"
         names={chartData.names}
         series={chartData.series}
+        yAxisWidth={CHART_Y_AXIS_WIDTH}
         yReferenceLines={yReferenceLines}
         yTickFormatter={formatYTick}
       />
