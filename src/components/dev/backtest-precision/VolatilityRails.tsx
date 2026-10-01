@@ -78,8 +78,10 @@ export default function VolatilityRails({
                 colors={DEFAULT_COLORS}
                 height={420}
                 names={chartData.names}
-                yAxisWidth={CHART_Y_AXIS_WIDTH}
                 onVisibleTimeRangeChange={onVisibleRange}
+                padEndTimeMs={datasetEndTimeMs}
+                padStartTimeMs={datasetStartTimeMs}
+                yAxisWidth={CHART_Y_AXIS_WIDTH}
                 referenceLines={
                   tradingStartTimeMs !== undefined
                     ? [

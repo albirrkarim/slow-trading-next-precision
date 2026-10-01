@@ -17,10 +17,14 @@ import type { LazyArtifact } from "./use-backtest-artifacts";
 const formatYTick = (value: unknown) => Number(value).toFixed(2);
 
 function PriceNormalizedBody({
+  datasetEndTimeMs,
+  datasetStartTimeMs,
   featureGate,
   featuresMap,
   symbolOrder,
 }: {
+  datasetEndTimeMs?: number;
+  datasetStartTimeMs?: number;
   featureGate?: FeatureGateConfig;
   featuresMap?: Record<string, BacktestFeatureRecord[]>;
   /** Volatility-rail symbol order so both charts share per-symbol colors. */
@@ -100,6 +104,8 @@ function PriceNormalizedBody({
         height={300}
         lineType="stepAfter"
         names={chartData.names}
+        padEndTimeMs={datasetEndTimeMs}
+        padStartTimeMs={datasetStartTimeMs}
         series={chartData.series}
         yAxisWidth={CHART_Y_AXIS_WIDTH}
         yReferenceLines={yReferenceLines}
@@ -116,10 +122,15 @@ function PriceNormalizedBody({
  * artifact lazily on first expand, like the other chunked sections.
  */
 export default function PriceNormalized({
+  datasetEndTimeMs,
+  datasetStartTimeMs,
   featureGate,
   features,
   symbolOrder,
 }: {
+  /** Shared dataset frame — pads the axis so it aligns with Volatility Rails. */
+  datasetEndTimeMs?: number;
+  datasetStartTimeMs?: number;
   featureGate?: FeatureGateConfig;
   features: LazyArtifact<Record<string, BacktestFeatureRecord[]>>;
   symbolOrder: string[];
@@ -137,7 +148,7 @@ export default function PriceNormalized({
       }
     >
       {(expanded) =>
-        expanded && <LazyBody features={features} featureGate={featureGate} symbolOrder={symbolOrder} />
+        expanded && <LazyBody datasetEndTimeMs={datasetEndTimeMs} datasetStartTimeMs={datasetStartTimeMs} features={features} featureGate={featureGate} symbolOrder={symbolOrder} />
       }
     </HeaderMetrics>
   );
@@ -145,10 +156,14 @@ export default function PriceNormalized({
 
 /** Mounts only while expanded so the artifact request fires lazily. */
 function LazyBody({
+  datasetEndTimeMs,
+  datasetStartTimeMs,
   featureGate,
   features,
   symbolOrder,
 }: {
+  datasetEndTimeMs?: number;
+  datasetStartTimeMs?: number;
   featureGate?: FeatureGateConfig;
   features: LazyArtifact<Record<string, BacktestFeatureRecord[]>>;
   symbolOrder: string[];
@@ -174,6 +189,8 @@ function LazyBody({
   }
   return (
     <PriceNormalizedBody
+      datasetEndTimeMs={datasetEndTimeMs}
+      datasetStartTimeMs={datasetStartTimeMs}
       featureGate={featureGate}
       featuresMap={data}
       symbolOrder={symbolOrder}

@@ -50,6 +50,13 @@ export interface VolatilityMultiLineProps {
   yReferenceLines?: { y: number; label?: string; color?: string }[];
   /** Vertical markers drawn at absolute times, e.g. a recorded window. */
   referenceLines?: { timeMs: number; label?: string; color?: string }[];
+  /**
+   * Extends the merged data to these absolute times with empty rows so the
+   * axis domain and brush strip cover the full frame even when series start
+   * later — keeps stacked charts time-aligned (e.g. warm-up vs trading span).
+   */
+  padStartTimeMs?: number;
+  padEndTimeMs?: number;
   /** Initial brush selection bounds as absolute times; snapped to nearest points. */
   brushStartTimeMs?: number;
   brushEndTimeMs?: number;
@@ -75,11 +82,35 @@ function MultiLineTimelined({
   lineType,
   yReferenceLines,
   referenceLines,
+  padStartTimeMs,
+  padEndTimeMs,
   brushStartTimeMs,
   brushEndTimeMs,
   onVisibleTimeRangeChange,
 }: VolatilityMultiLineProps) {
-  const { data, textMaps } = useMemo(() => buildMergedData(series), [series]);
+  const { data, textMaps } = useMemo(() => {
+    const merged = buildMergedData(series);
+    const padRow = (timeMs: number): Record<string, any> => ({
+      time: new Date(timeMs).toISOString(),
+      timeMs,
+      ...Object.fromEntries(series.map((_, i) => [`s${i}`, null])),
+    });
+    const first = Number(merged.data[0]?.timeMs);
+    const last = Number(merged.data[merged.data.length - 1]?.timeMs);
+    if (
+      padStartTimeMs !== undefined &&
+      (!Number.isFinite(first) || padStartTimeMs < first)
+    ) {
+      merged.data.unshift(padRow(padStartTimeMs));
+    }
+    if (
+      padEndTimeMs !== undefined &&
+      (!Number.isFinite(last) || padEndTimeMs > last)
+    ) {
+      merged.data.push(padRow(padEndTimeMs));
+    }
+    return merged;
+  }, [series, padStartTimeMs, padEndTimeMs]);
 
   const brushStartIndex = useMemo(() => {
     if (brushStartTimeMs == null) return undefined;

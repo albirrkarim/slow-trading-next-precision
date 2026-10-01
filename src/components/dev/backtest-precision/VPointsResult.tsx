@@ -71,6 +71,8 @@ export default function VPointsResult({
         volatilityMap={vpoints.data ?? {}}
       />
       <PriceNormalized
+        datasetEndTimeMs={datasetEndTimeMs}
+        datasetStartTimeMs={datasetStartTimeMs}
         featureGate={settings?.management.featureGate}
         features={artifacts.features}
         symbolOrder={Object.keys(vpoints.data ?? {})}
