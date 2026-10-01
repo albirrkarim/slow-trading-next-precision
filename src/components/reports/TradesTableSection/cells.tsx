@@ -3,6 +3,7 @@
 import type { ReactElement } from "react";
 import { Box, Tooltip, Typography } from "@mui/material";
 import ButtonDialog from "@/components/ui/ButtonDialog";
+import JsonTreeViewer from "@/components/ui/JsonTreeViewer";
 import type { SlowTradingReportRow } from "../types";
 
 const metricTooltipSlotProps = {
@@ -80,17 +81,10 @@ export function FeatureCell({ row }: { row: SlowTradingReportRow }) {
         >
           {() => (
             <Box sx={{ p: 2 }}>
-              <Box
-                component="pre"
-                sx={{
-                  m: 0,
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-word",
-                  fontSize: "0.75rem",
-                }}
-              >
-                {JSON.stringify(entryFeature, null, 2)}
-              </Box>
+              <JsonTreeViewer
+                ariaLabel={`Feature payload for ${row.symbol}`}
+                value={entryFeature as object}
+              />
             </Box>
           )}
         </ButtonDialog>

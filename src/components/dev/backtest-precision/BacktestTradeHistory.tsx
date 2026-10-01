@@ -21,6 +21,12 @@ import type { LazyArtifact } from "./use-backtest-artifacts";
 export interface BacktestTradeFilters {
   /** Account slug; undefined matches every account. */
   account?: string;
+  /**
+   * Exclusive exit-level floor on `Math.abs(closed.vPoint.lvl)` — `3` keeps
+   * trades that exited at level 4 or deeper on either side. Trades without
+   * an exit vPoint never match a set bound.
+   */
+  exitLevelGt?: number;
   /** Inclusive entry-time lower bound; undefined matches from the start. */
   fromMs?: number;
   /** Inclusive entry-time upper bound; undefined matches to the end. */
@@ -28,21 +34,34 @@ export interface BacktestTradeFilters {
 }
 
 /**
- * Filters backtest trades by account slug and entry-time bounds. All set
- * filters apply with AND semantics; unset filters match everything.
+ * Filters backtest trades by account slug, entry-time bounds, and exit
+ * vPoint level. All set filters apply with AND semantics; unset filters
+ * match everything.
  */
 export function filterBacktestTradeHistory<
-  T extends { account: string; opened: { t: number } },
+  T extends {
+    account: string;
+    closed?: { vPoint?: { lvl: number } };
+    opened: { t: number };
+  },
 >(history: T[], filters: BacktestTradeFilters): T[] {
-  const { account, fromMs, toMs } = filters;
-  if (!account && fromMs === undefined && toMs === undefined) {
+  const { account, exitLevelGt, fromMs, toMs } = filters;
+  if (
+    !account &&
+    exitLevelGt === undefined &&
+    fromMs === undefined &&
+    toMs === undefined
+  ) {
     return history;
   }
   return history.filter(
     (trade) =>
       (!account || trade.account === account) &&
       (fromMs === undefined || trade.opened.t >= fromMs) &&
-      (toMs === undefined || trade.opened.t <= toMs),
+      (toMs === undefined || trade.opened.t <= toMs) &&
+      (exitLevelGt === undefined ||
+        (trade.closed?.vPoint?.lvl !== undefined &&
+          Math.abs(trade.closed.vPoint.lvl) > exitLevelGt)),
   );
 }
 
@@ -114,11 +133,14 @@ function TradeHistoryBody({
     void ensure();
   }, [ensure]);
 
-  // Trade filters AND-combined: account slug plus entry-date bounds.
+  // Trade filters AND-combined: account slug, entry-date bounds, exit level.
   const [filterAccount, setFilterAccount] = useState("");
   const [filterFromDate, setFilterFromDate] = useState("");
   const [filterToDate, setFilterToDate] = useState("");
-  const hasFilters = Boolean(filterAccount || filterFromDate || filterToDate);
+  const [filterExitLevel, setFilterExitLevel] = useState("");
+  const hasFilters = Boolean(
+    filterAccount || filterFromDate || filterToDate || filterExitLevel,
+  );
   const effectiveFilterAccount = (accounts ?? []).some(
     (account) => account.slug === filterAccount,
   )
@@ -130,14 +152,25 @@ function TradeHistoryBody({
   const filterToMs = filterToDate
     ? new Date(`${filterToDate}T23:59:59.999`).getTime()
     : undefined;
+  const filterExitLevelN =
+    filterExitLevel === "" || !Number.isFinite(Number(filterExitLevel))
+      ? undefined
+      : Number(filterExitLevel);
   const filteredTradeHistory = useMemo(
     () =>
       filterBacktestTradeHistory(tradeHistory, {
         account: effectiveFilterAccount || undefined,
+        exitLevelGt: filterExitLevelN,
         fromMs: filterFromMs,
         toMs: filterToMs,
       }),
-    [tradeHistory, effectiveFilterAccount, filterFromMs, filterToMs],
+    [
+      tradeHistory,
+      effectiveFilterAccount,
+      filterExitLevelN,
+      filterFromMs,
+      filterToMs,
+    ],
   );
   const tradeCountByAccount = useMemo(() => {
     const perAccount = new Map<string, number>();
@@ -212,11 +245,21 @@ function TradeHistoryBody({
               value={filterToDate}
               onChange={(event) => setFilterToDate(event.target.value)}
             />
+            <TextField
+              label="Exit level >"
+              size="small"
+              slotProps={{ inputLabel: { shrink: true } }}
+              sx={{ width: { xs: "100%", sm: 110 } }}
+              type="number"
+              value={filterExitLevel}
+              onChange={(event) => setFilterExitLevel(event.target.value)}
+            />
             {hasFilters && (
               <Button
                 size="small"
                 onClick={() => {
                   setFilterAccount("");
+                  setFilterExitLevel("");
                   setFilterFromDate("");
                   setFilterToDate("");
                 }}

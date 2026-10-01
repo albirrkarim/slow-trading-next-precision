@@ -102,6 +102,24 @@ describe("filterBacktestTradeHistory", () => {
     });
     expect(filtered.map((trade) => trade.symbol)).toEqual(["SOL"]);
   });
+
+  it("keeps only exits deeper than the bound on either level side", () => {
+    const exits = [
+      { account: "a", closed: { vPoint: { lvl: 4 } }, opened: { t: 1 }, symbol: "DEEP" },
+      { account: "a", closed: { vPoint: { lvl: -5 } }, opened: { t: 2 }, symbol: "DEEP_SHORT" },
+      { account: "a", closed: { vPoint: { lvl: 3 } }, opened: { t: 3 }, symbol: "EDGE" },
+      { account: "a", closed: {}, opened: { t: 4 }, symbol: "NO_VPOINT" },
+      { account: "a", opened: { t: 5 }, symbol: "STILL_OPEN" },
+    ] as Position[];
+
+    // Exclusive bound: level 3 stays out, +4 and -5 both pass by magnitude;
+    // trades without an exit vPoint never satisfy a set bound.
+    expect(
+      filterBacktestTradeHistory(exits, { exitLevelGt: 3 }).map(
+        (trade) => trade.symbol,
+      ),
+    ).toEqual(["DEEP", "DEEP_SHORT"]);
+  });
 });
 
 describe("Backtest trade-history filters", () => {
