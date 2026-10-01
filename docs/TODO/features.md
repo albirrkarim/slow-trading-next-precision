@@ -129,9 +129,7 @@ trading tick in backtest and production boot.
   only for symbols with at least one defined record; per-point colors reuse
   the Volatility Rails palette order via `DEFAULT_COLORS` (the saturated
   index-aligned twin of `COLORS_BG`) so each coin keeps its hue family.
-- Horizontal guides (`yReferenceLines`) at 0 and 1 plus the strategy's
-  `FEATURE_GATE_BOUNDS` — drawn only when the run used
-  `default_with_features_gate`.
+- Horizontal guides (`yReferenceLines`) at the 0 / 1 envelope edges only.
 
 ## Entry snapshot
 
@@ -165,8 +163,7 @@ across ticks when unchanged).
   in the strategy module (coin `[0.2, 0.8]`, BTC veto `[0.3, 0.8]`,
   inclusive). Deliberately not a settings field: gate policy belongs to the
   strategy so richer rules (e.g. the history excursion check) can live
-  there without config plumbing. The chart reads the same exported
-  constant for its guides.
+  there without config plumbing.
 - **No `guard` member** — the engine falls back to the shared
   `guard.allows` wholesale, so every shared protection (runner toggle,
   black-swan, daily-PnL, capacity) applies unchanged. Filtering happens at
