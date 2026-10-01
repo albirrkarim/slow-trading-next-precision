@@ -83,7 +83,7 @@ export default function VPointsResult({
         positions={positions}
       />
       <Grid container spacing={2}>
-        <Grid size={{ xs: 12, md: 8 }}>
+        <Grid size={{ xs: 12, md: 8, lg: 9 }}>
           <BacktestTradeHistory
             accounts={accounts}
             closedCount={counts.closedPositions}
@@ -93,7 +93,7 @@ export default function VPointsResult({
           />
         </Grid>
 
-        <Grid size={{ xs: 12, md: 4 }}>
+        <Grid size={{ xs: 12, md: 4, lg: 3 }}>
           <BacktestResultSummary
             accounts={accounts}
             settings={settings}

@@ -4,7 +4,7 @@
 
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import BacktestTradeHistory, {
   filterBacktestTradeHistory,
@@ -23,6 +23,14 @@ vi.mock("@/components/reports/TradesTableSection", () => ({
 }));
 
 const day = (value: string) => new Date(`${value}T12:00:00`).getTime();
+
+beforeEach(() => {
+  // Filter values persist in localStorage between mounts — reset so each
+  // test starts from the unfiltered state.
+  window.localStorage.removeItem(
+    "precision-backtest-trade-history-filters",
+  );
+});
 
 const positions = [
   {

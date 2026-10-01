@@ -18,6 +18,47 @@ import {
 
 import type { LazyArtifact } from "./use-backtest-artifacts";
 
+const FILTER_STORAGE_KEY = "precision-backtest-trade-history-filters";
+
+interface StoredTradeFilters {
+  account?: string;
+  exitLevel?: string;
+  from?: string;
+  to?: string;
+}
+
+/** Reads the last used filter values; `{}` when storage is unavailable. */
+function readStoredFilters(): StoredTradeFilters {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(FILTER_STORAGE_KEY);
+    const parsed: unknown = raw ? JSON.parse(raw) : undefined;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as StoredTradeFilters)
+      : {};
+  } catch {
+    // Local storage can be unavailable in private or restricted contexts.
+    return {};
+  }
+}
+
+/** Persists the current filter values; removes the key once all are empty. */
+function writeStoredFilters(filters: StoredTradeFilters): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (filters.account || filters.exitLevel || filters.from || filters.to) {
+      window.localStorage.setItem(
+        FILTER_STORAGE_KEY,
+        JSON.stringify(filters),
+      );
+    } else {
+      window.localStorage.removeItem(FILTER_STORAGE_KEY);
+    }
+  } catch {
+    // Local storage can be unavailable in private or restricted contexts.
+  }
+}
+
 export interface BacktestTradeFilters {
   /** Account slug; undefined matches every account. */
   account?: string;
@@ -134,10 +175,18 @@ function TradeHistoryBody({
   }, [ensure]);
 
   // Trade filters AND-combined: account slug, entry-date bounds, exit level.
-  const [filterAccount, setFilterAccount] = useState("");
-  const [filterFromDate, setFilterFromDate] = useState("");
-  const [filterToDate, setFilterToDate] = useState("");
-  const [filterExitLevel, setFilterExitLevel] = useState("");
+  // Values persist in localStorage so collapse/unmount and reloads keep them.
+  const [storedFilters] = useState(readStoredFilters);
+  const [filterAccount, setFilterAccount] = useState(
+    storedFilters.account ?? "",
+  );
+  const [filterFromDate, setFilterFromDate] = useState(
+    storedFilters.from ?? "",
+  );
+  const [filterToDate, setFilterToDate] = useState(storedFilters.to ?? "");
+  const [filterExitLevel, setFilterExitLevel] = useState(
+    storedFilters.exitLevel ?? "",
+  );
   const hasFilters = Boolean(
     filterAccount || filterFromDate || filterToDate || filterExitLevel,
   );
@@ -172,6 +221,15 @@ function TradeHistoryBody({
       filterToMs,
     ],
   );
+  useEffect(() => {
+    writeStoredFilters({
+      account: filterAccount,
+      exitLevel: filterExitLevel,
+      from: filterFromDate,
+      to: filterToDate,
+    });
+  }, [filterAccount, filterExitLevel, filterFromDate, filterToDate]);
+
   const tradeCountByAccount = useMemo(() => {
     const perAccount = new Map<string, number>();
     for (const trade of tradeHistory) {
