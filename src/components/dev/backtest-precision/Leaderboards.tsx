@@ -4,6 +4,8 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteIcon from "@mui/icons-material/Delete";
 import LeaderboardIcon from "@mui/icons-material/Leaderboard";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import StarIcon from "@mui/icons-material/Star";
+import StarOutlineIcon from "@mui/icons-material/StarOutline";
 import UploadIcon from "@mui/icons-material/Upload";
 import {
     Box,
@@ -424,13 +426,13 @@ export const TEXT_FIELDS = new Map<string, (value: unknown) => string>([
     ],
 ]);
 
-/** Total leaf columns plus the trailing Actions column. */
+/** Total leaf columns plus the leading Favorite and trailing Actions columns. */
 function tableColspan(groups: HeaderGroup[]): number {
     return (
         groups.reduce(
             (sum, group) => sum + (group.children?.length ?? 1),
             0,
-        ) + 1
+        ) + 2
     );
 }
 
@@ -557,6 +559,26 @@ function LeaderboardsContent({
             await load();
         } catch {
             setError("Failed to delete the entry.");
+        }
+    };
+
+    /** Persists the favorite flag on the entry file, then patches the row. */
+    const toggleFavorite = async (entry: BacktestLeaderboardEntry) => {
+        try {
+            const response = await axios.patch<{
+                entry: BacktestLeaderboardEntry;
+            }>(endpoints.dev.backtestPrecisionLeaderboards, {
+                favorite: entry.favorite !== true,
+                id: entry.id,
+            });
+            const updated = response.data.entry;
+            setEntries((previous) =>
+                previous.map((candidate) =>
+                    candidate.id === updated.id ? updated : candidate,
+                ),
+            );
+        } catch {
+            setError("Failed to update the favorite flag.");
         }
     };
 
@@ -752,6 +774,13 @@ function LeaderboardsContent({
                         >
                             <TableHead sx={TABLE_HEAD_SX}>
                                 <TableRow>
+                                    <TableCell align="center" rowSpan={2}>
+                                        <HeaderTooltip title="Favorite runs are marked with a filled star and stored on the entry file.">
+                                            <span>
+                                                <StarIcon fontSize="small" />
+                                            </span>
+                                        </HeaderTooltip>
+                                    </TableCell>
                                     {headerGroups.map((group) =>
                                         group.children ? (
                                             <TableCell
@@ -814,6 +843,42 @@ function LeaderboardsContent({
                             <TableBody>
                                 {sortedEntries.map((entry) => (
                                     <TableRow hover key={entry.id}>
+                                        <TableCell>
+                                            <Tooltip
+                                                title={
+                                                    entry.favorite === true
+                                                        ? "Remove from favorites"
+                                                        : "Mark as favorite"
+                                                }
+                                            >
+                                                <IconButton
+                                                    aria-label={
+                                                        entry.favorite === true
+                                                            ? "Remove from favorites"
+                                                            : "Mark as favorite"
+                                                    }
+                                                    onClick={() =>
+                                                        void toggleFavorite(
+                                                            entry,
+                                                        )
+                                                    }
+                                                    size="small"
+                                                    sx={{
+                                                        color:
+                                                            entry.favorite ===
+                                                            true
+                                                                ? "warning.main"
+                                                                : undefined,
+                                                    }}
+                                                >
+                                                    {entry.favorite === true ? (
+                                                        <StarIcon fontSize="small" />
+                                                    ) : (
+                                                        <StarOutlineIcon fontSize="small" />
+                                                    )}
+                                                </IconButton>
+                                            </Tooltip>
+                                        </TableCell>
                                         {headerGroups.flatMap((group) =>
                                             (group.children ?? [{ id: group.id }]).map((leaf) =>
                                                 renderCell(entry, leaf.id),

@@ -143,12 +143,36 @@ async function remove(id: string): Promise<boolean> {
   return true;
 }
 
+/**
+ * Toggles the user-marked favorite flag on one entry; null when the entry
+ * does not exist or the file is malformed. The key is dropped when unfavorited
+ * so files stay compact.
+ */
+async function setFavorite(
+  id: string,
+  favorite: boolean,
+): Promise<BacktestLeaderboardEntry | null> {
+  const filePath = path.join(resultsDir(), `${id}.json`);
+  if (!(await fs.pathExists(filePath))) return null;
+  try {
+    const entry = await fs.readJson(filePath);
+    if (!isEntry(entry)) return null;
+    if (favorite) entry.favorite = true;
+    else delete entry.favorite;
+    await jsonFile.write.atomic(filePath, entry);
+    return entry;
+  } catch {
+    return null;
+  }
+}
+
 const leaderboardsStore = {
   dir,
   list,
   remove,
   resultsDir,
   save,
+  setFavorite,
 } as const;
 
 export default leaderboardsStore;

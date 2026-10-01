@@ -188,4 +188,34 @@ describe("backtest leaderboards store", () => {
         expect(await leaderboardsStore.remove(entry.id)).toBe(true);
         expect(await leaderboardsStore.remove(entry.id)).toBe(false);
     });
+
+    it("toggles the favorite flag on the stored entry file", async () => {
+        const metrics = computeLeaderboardMetrics({
+            balanceSnapshots: { acc1: [snapshot(T0, 1000), snapshot(T0 + DAY, 1010)] },
+            positions: [],
+        });
+        const entry = await leaderboardsStore.save({
+            backtestConfig: { range: "1month", settings: { marker: 2 } },
+            leaderboard: metrics,
+        });
+        expect(entry.favorite).toBeUndefined();
+
+        const favored = await leaderboardsStore.setFavorite(entry.id, true);
+        expect(favored?.favorite).toBe(true);
+        expect(
+            (await leaderboardsStore.list()).find((e) => e.id === entry.id)
+                ?.favorite,
+        ).toBe(true);
+
+        // Unfavoriting drops the key from the file to keep storage compact.
+        const cleared = await leaderboardsStore.setFavorite(entry.id, false);
+        expect(cleared?.favorite).toBeUndefined();
+        const raw = await fs.readJson(
+            path.join(TEST_DIR, "results", `${entry.id}.json`),
+        );
+        expect("favorite" in raw).toBe(false);
+
+        expect(await leaderboardsStore.setFavorite("000000000000", true)).toBeNull();
+        await leaderboardsStore.remove(entry.id);
+    });
 });

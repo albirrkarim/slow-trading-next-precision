@@ -75,6 +75,8 @@ export interface BacktestLeaderboardEntry {
   t: number;
   /** Result-cache key the metrics were computed from, when available. */
   cacheKey?: string;
+  /** User-marked favorite flag; absent when not favorited to keep files compact. */
+  favorite?: boolean;
   label?: string;
   /** The BacktestConfig used for the run, including `settings` (ConfigDraft). */
   backtestConfig: unknown;

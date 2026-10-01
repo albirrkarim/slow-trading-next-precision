@@ -80,6 +80,29 @@ export default async function backtestLeaderboardsHandler(
     return;
   }
 
+  if (req.method === "PATCH") {
+    const body = isRecord(req.body) ? req.body : {};
+    const id = typeof body.id === "string" ? body.id : "";
+    if (!/^[0-9a-f]{12}$/.test(id)) {
+      res.status(400).json({ error: '"id" must be a 12-char entry hash.' });
+      return;
+    }
+    if (typeof body.favorite !== "boolean") {
+      res.status(400).json({ error: '"favorite" must be a boolean.' });
+      return;
+    }
+    const entry = await backtestLeaderboards.store.setFavorite(
+      id,
+      body.favorite,
+    );
+    if (!entry) {
+      res.status(404).json({ error: "Leaderboard entry not found." });
+      return;
+    }
+    res.json({ entry });
+    return;
+  }
+
   if (req.method === "DELETE") {
     const body = isRecord(req.body) ? req.body : req.query;
     const id = typeof body.id === "string" ? body.id : "";
@@ -96,6 +119,6 @@ export default async function backtestLeaderboardsHandler(
     return;
   }
 
-  res.setHeader("Allow", ["GET", "POST", "DELETE"]);
+  res.setHeader("Allow", ["DELETE", "GET", "PATCH", "POST"]);
   res.status(405).end(`Method ${req.method} Not Allowed`);
 }
