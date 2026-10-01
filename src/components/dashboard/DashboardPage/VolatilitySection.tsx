@@ -11,6 +11,7 @@ import BlackSwanTimeline, {
 } from "@/components/reports/BlackSwanTimeline";
 import DateSelectionDialog from "@/components/settings/Components/DateSelectionDialog";
 import type { RuntimeDashboardState } from "@/lib/system/dashboard";
+import { DEFAULT_COLORS } from "@/lib/system/utils/ui/colors";
 
 import type { DashboardConfig, KlineMarker } from "./types";
 
@@ -99,6 +100,7 @@ export default function VolatilitySection(props: {
             </Button>
             {data ? (
               <MultiLineTimelined
+                colors={DEFAULT_COLORS}
                 names={data.names}
                 onVisibleTimeRangeChange={onVolatilityVisibleRange}
                 series={data.series}

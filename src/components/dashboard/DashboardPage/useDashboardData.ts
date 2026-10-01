@@ -197,7 +197,7 @@ export default function useDashboardData() {
       const vMap = resp1.data.data;
       setVolatilityMap(vMap);
 
-      const { series, markers } = makeSeries(vMap);
+      const { series, markers } = makeSeries(vMap, DEFAULT_COLORS);
 
       const colorMapContrast = Object.fromEntries(
         symbolsLocal.map((symbol, index) => [
