@@ -14,6 +14,18 @@
 export const FEATURES_VPOINT_WINDOW_MS = 2 * 30 * 24 * 60 * 60 * 1000;
 
 /**
+ * Rolling window for per-coin feature history trails (e.g.
+ * `priceNormalizedHistory`) — keeps roughly the recent decision horizon.
+ */
+export const FEATURES_HISTORY_WINDOW_MS = 10 * 24 * 60 * 60 * 1000;
+
+/** Compact feature-history sample: the value `p` observed at time `t` (ms). */
+export interface FeatureHistoryPoint {
+  t: number;
+  p: number;
+}
+
+/**
  * Per-symbol feature values keyed by feature name. Sparse by design:
  * features derived from pivot prices only move when a new vPoint forms.
  */
@@ -26,7 +38,16 @@ export interface CoinFeatures {
    * absence means "no opinion", never a block.
    */
   priceNormalized?: number;
-  [feature: string]: number | undefined;
+
+  /**
+   * Rolling trail of `priceNormalized` change points within the last
+   * `FEATURES_HISTORY_WINDOW_MS` (~10 days). Appends only when the value
+   * changes (it is a step function); the last surviving point is kept even
+   * when older than the window so "unchanged since t" stays readable.
+   */
+  priceNormalizedHistory: FeatureHistoryPoint[];
+
+  [feature: string]: number | FeatureHistoryPoint[] | undefined;
 }
 
 /** Feature store carried on `RuntimeEngineState.features`. */
@@ -38,14 +59,15 @@ export interface RuntimeFeatures {
 }
 
 /**
- * Entry-gate bounds on `priceNormalized` (`management.featureGate`). A
- * candidate is rejected when its coin's value falls outside `[min, max]`;
- * unset bounds disable that side entirely — an absent gate passes every
- * candidate through like the default pipeline.
+ * Entry-gate bounds on `priceNormalized`. Bounds are strategy-owned
+ * constants (see `default_with_features_gate`), not settings — a candidate
+ * is rejected when its coin's value falls outside `[min, max]` or when the
+ * BTC market anchor sits outside `[btcMin, btcMax]`. Undefined feature
+ * values never block — absence is "no opinion".
  */
-export interface FeatureGateConfig {
-  /** Inclusive lower bound; unset disables the floor check. */
+export interface FeatureGateBounds {
   minPriceNormalized?: number;
-  /** Inclusive upper bound; unset disables the ceiling check. */
   maxPriceNormalized?: number;
+  btcMinPriceNormalized?: number;
+  btcMaxPriceNormalized?: number;
 }

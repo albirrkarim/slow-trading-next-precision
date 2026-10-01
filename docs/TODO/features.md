@@ -27,6 +27,10 @@ interface CoinFeatures {
    * 0 = range floor, 1 = range top, >1/<0 = beyond prior envelope, 0.5 = no
    * valid range. Step function — changes only when a new vPoint forms. */
   priceNormalized?: number;
+  /** Rolling ~10-day trail (`FEATURES_HISTORY_WINDOW_MS`) of value-change
+   * points; appends only when the value moves, the last survivor is kept
+   * even when stale so "unchanged since t" stays readable. */
+  priceNormalizedHistory: { t: number; p: number }[];
 }
 ```
 
@@ -45,7 +49,7 @@ interface CoinFeatures {
 
 ```ts
 // src/lib/features/
-//   types.ts              — RuntimeFeatures, CoinFeatures, feature config
+//   types.ts              — RuntimeFeatures, CoinFeatures, FeatureGateBounds
 //   index.ts              — grouped export: features.update(context)
 //   price-normalized.ts   — first extractor; one file per feature as it grows
 
@@ -92,7 +96,8 @@ priceNormalized = (latest.p - minP) / (maxP - minP);
   "new pivot beyond the prior 2-month envelope" instead of a self-fulfilling
   edge reading.
 - Gate semantics: `<= 0.2` = pivot formed near the range floor (dip zone),
-  `>= 0.8` = near the top (chasing). Thresholds live in config.
+  `>= 0.8` = near the top (chasing). Thresholds are strategy-owned constants
+  (`FEATURE_GATE_BOUNDS` in the gate strategy module), not settings.
 - Undefined until a symbol has >= 2 pivots in the window — no opinion, not a
   block.
 
@@ -124,17 +129,20 @@ trading tick in backtest and production boot.
   only for symbols with at least one defined record; per-point colors reuse
   the Volatility Rails palette order via `DEFAULT_COLORS` (the saturated
   index-aligned twin of `COLORS_BG`) so each coin keeps its hue family.
-- Horizontal guides (`yReferenceLines`) at 0 and 1 plus the configured gate
-  bounds from `management.featureGate`.
+- Horizontal guides (`yReferenceLines`) at 0 and 1 plus the strategy's
+  `FEATURE_GATE_BOUNDS` — drawn only when the run used
+  `default_with_features_gate`.
 
 ## Entry snapshot
 
-At commit, snapshot the symbol's coin features into
+At commit, snapshot the **whole `RuntimeFeatures` store** into
 `position.strategy.entry.feature` — the existing `Position<TFeature>` slot
 the shared runtime never reads inside. Precedence: `decision.feature`
-(strategy-authored override) else `state.features.coins[symbol]` — so every
-position records its entry features regardless of strategy, enabling
-post-hoc evaluation of feature values vs outcomes.
+(strategy-authored override) else `structuredClone(state.features)` — so
+every position records the full feature context at entry, including the
+BTC market anchor that can gate other coins' entries. The clone detaches
+the record from later store ticks (history arrays are reference-shared
+across ticks when unchanged).
 
 ## Strategy
 
@@ -142,22 +150,26 @@ post-hoc evaluation of feature values vs outcomes.
 `StrategySlug` `"default_with_features_gate"`):
 
 - `decisions.entry.find` wraps `defaultDecision.entry.find` and drops
-  candidates whose coin's `priceNormalized` falls outside
-  `management.featureGate` bounds
-  (`FeatureGateConfig.minPriceNormalized` / `.maxPriceNormalized`,
-  inclusive). Undefined feature values never block — "no opinion" is not a
-  veto.
+  candidates whose coin's `priceNormalized` falls outside the coin zone.
+  Undefined feature values never block — "no opinion" is not a veto.
+- **BTC market-context bound** — `coins.BTC` `priceNormalized` is checked
+  first and vetoes *every* candidate when BTC sits outside its envelope
+  zone. BTC is always in `vPointsMap` (Black Swan anchor), so the context
+  exists even when BTC is not traded.
+- **Strategy-owned bounds** — `FEATURE_GATE_BOUNDS` is an exported constant
+  in the strategy module (coin `[0.2, 0.8]`, BTC veto `[0.3, 0.8]`,
+  inclusive). Deliberately not a settings field: gate policy belongs to the
+  strategy so richer rules (e.g. `priceNormalizedHistory` excursions) can
+  live there without config plumbing. The chart reads the same exported
+  constant for its guides.
 - **No `guard` member** — the engine falls back to the shared
   `guard.allows` wholesale, so every shared protection (runner toggle,
   black-swan, daily-PnL, capacity) applies unchanged. Filtering happens at
   the producer level instead, per the strategy contract.
 - No `shape` — operator-forced manual entries bypass the gate by design.
 - `diagnostics.explain` returns `FEATURE_GATE` ("Blocked by the feature
-  gate: priceNormalized 0.95 is above the configured maximum 0.8.") so the
+  gate: priceNormalized 0.95 is above the gate ceiling 0.8.") so the
   dashboard explains the skip instead of a silent no-entry.
-- Bounds are editable in Settings → Management when the strategy is
-  selected; `featureGate` rides `SHARED_MANAGEMENT_CONFIG_KEYS` so settings
-  saves and effective-config extraction preserve it.
 
 ## Status notes (implemented)
 

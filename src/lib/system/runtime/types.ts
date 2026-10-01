@@ -1,4 +1,3 @@
-import type { FeatureGateConfig } from "@/lib/features/types";
 import type {
   LevelBasedPctDriftStopLossConfig,
   PostAverageRescueExitConfig,
@@ -240,12 +239,6 @@ export interface RuntimeManagementConfig {
    * "default" is not itself a strategy module.
    */
   strategy?: string;
-  /**
-   * Inclusive `priceNormalized` bounds consumed by the
-   * `default_with_features_gate` strategy — candidates outside the range
-   * are skipped. Other strategies ignore it.
-   */
-  featureGate?: FeatureGateConfig;
   /** Portfolio crash-protection thresholds shared by every account. */
   blackSwan?: RuntimeBlackSwanConfig;
   /** Monthly safe-haven targets shared by every account. */

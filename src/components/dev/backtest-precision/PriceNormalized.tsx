@@ -7,7 +7,7 @@ import { Box, Typography } from "@mui/material";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import MultiLineTimelined from "@/components/ui/Chart/MultiLineTimelined";
 import type { BacktestFeatureRecord } from "@/lib/dev/backtestPrecision/backtest/backtest-precision-types";
-import type { FeatureGateConfig } from "@/lib/features/types";
+import type { FeatureGateBounds } from "@/lib/features/types";
 import type { LeveledMarkers } from "@/lib/system/utils/ui/chart-markers";
 import { CHART_Y_AXIS_WIDTH } from "@/components/charts/constants";
 import { DEFAULT_COLORS } from "@/lib/system/utils/ui/colors";
@@ -16,17 +16,54 @@ import type { LazyArtifact } from "./use-backtest-artifacts";
 
 const formatYTick = (value: unknown) => Number(value).toFixed(2);
 
+/**
+ * Builds the 0 / 1 envelope guides plus the strategy's gate bound guides,
+ * deduped by y-value so overlapping bounds (e.g. coin max == BTC max)
+ * render one line.
+ */
+function buildGuides(gateBounds?: FeatureGateBounds) {
+  const byY = new Map<
+    number,
+    { color: string; label: string; y: number }
+  >();
+  const add = (y: number, label: string, color = "#ed6c02") => {
+    if (!byY.has(y)) byY.set(y, { color, label, y });
+  };
+  byY.set(0, { color: "#78909c", label: "0", y: 0 });
+  byY.set(1, { color: "#78909c", label: "1", y: 1 });
+  if (gateBounds?.minPriceNormalized !== undefined) {
+    add(gateBounds.minPriceNormalized, `gate min ${gateBounds.minPriceNormalized}`);
+  }
+  if (gateBounds?.maxPriceNormalized !== undefined) {
+    add(gateBounds.maxPriceNormalized, `gate max ${gateBounds.maxPriceNormalized}`);
+  }
+  if (gateBounds?.btcMinPriceNormalized !== undefined) {
+    add(
+      gateBounds.btcMinPriceNormalized,
+      `BTC min ${gateBounds.btcMinPriceNormalized}`,
+    );
+  }
+  if (gateBounds?.btcMaxPriceNormalized !== undefined) {
+    add(
+      gateBounds.btcMaxPriceNormalized,
+      `BTC max ${gateBounds.btcMaxPriceNormalized}`,
+    );
+  }
+  return [...byY.values()];
+}
+
 function PriceNormalizedBody({
   datasetEndTimeMs,
   datasetStartTimeMs,
-  featureGate,
   featuresMap,
+  gateBounds,
   symbolOrder,
 }: {
   datasetEndTimeMs?: number;
   datasetStartTimeMs?: number;
-  featureGate?: FeatureGateConfig;
   featuresMap?: Record<string, BacktestFeatureRecord[]>;
+  /** Gate bounds to draw as guides — passed only when the gate strategy ran. */
+  gateBounds?: FeatureGateBounds;
   /** Volatility-rail symbol order so both charts share per-symbol colors. */
   symbolOrder: string[];
 }) {
@@ -70,28 +107,7 @@ function PriceNormalizedBody({
     );
   }
 
-  const yReferenceLines = [
-    { color: "#78909c", label: "0", y: 0 },
-    { color: "#78909c", label: "1", y: 1 },
-    ...(featureGate?.minPriceNormalized !== undefined
-      ? [
-          {
-            color: "#ed6c02",
-            label: `gate min ${featureGate.minPriceNormalized}`,
-            y: featureGate.minPriceNormalized,
-          },
-        ]
-      : []),
-    ...(featureGate?.maxPriceNormalized !== undefined
-      ? [
-          {
-            color: "#ed6c02",
-            label: `gate max ${featureGate.maxPriceNormalized}`,
-            y: featureGate.maxPriceNormalized,
-          },
-        ]
-      : []),
-  ];
+  const yReferenceLines = buildGuides(gateBounds);
 
   return (
     <Box
@@ -118,21 +134,22 @@ function PriceNormalizedBody({
 /**
  * Price Normalized — the recorded per-symbol `priceNormalized` feature
  * stream as step lines (values only move when a new vPoint forms), with
- * guides at 0 / 1 and the configured feature-gate bounds. Loads its
- * artifact lazily on first expand, like the other chunked sections.
+ * guides at 0 / 1 and the feature-gate bounds when the gate strategy ran.
+ * Loads its artifact lazily on first expand, like the other chunked
+ * sections.
  */
 export default function PriceNormalized({
   datasetEndTimeMs,
   datasetStartTimeMs,
-  featureGate,
   features,
+  gateBounds,
   symbolOrder,
 }: {
   /** Shared dataset frame — pads the axis so it aligns with Volatility Rails. */
   datasetEndTimeMs?: number;
   datasetStartTimeMs?: number;
-  featureGate?: FeatureGateConfig;
   features: LazyArtifact<Record<string, BacktestFeatureRecord[]>>;
+  gateBounds?: FeatureGateBounds;
   symbolOrder: string[];
 }) {
   return (
@@ -148,7 +165,7 @@ export default function PriceNormalized({
       }
     >
       {(expanded) =>
-        expanded && <LazyBody datasetEndTimeMs={datasetEndTimeMs} datasetStartTimeMs={datasetStartTimeMs} features={features} featureGate={featureGate} symbolOrder={symbolOrder} />
+        expanded && <LazyBody datasetEndTimeMs={datasetEndTimeMs} datasetStartTimeMs={datasetStartTimeMs} features={features} gateBounds={gateBounds} symbolOrder={symbolOrder} />
       }
     </HeaderMetrics>
   );
@@ -158,14 +175,14 @@ export default function PriceNormalized({
 function LazyBody({
   datasetEndTimeMs,
   datasetStartTimeMs,
-  featureGate,
   features,
+  gateBounds,
   symbolOrder,
 }: {
   datasetEndTimeMs?: number;
   datasetStartTimeMs?: number;
-  featureGate?: FeatureGateConfig;
   features: LazyArtifact<Record<string, BacktestFeatureRecord[]>>;
+  gateBounds?: FeatureGateBounds;
   symbolOrder: string[];
 }) {
   const { ensure, error, data } = features;
@@ -191,8 +208,8 @@ function LazyBody({
     <PriceNormalizedBody
       datasetEndTimeMs={datasetEndTimeMs}
       datasetStartTimeMs={datasetStartTimeMs}
-      featureGate={featureGate}
       featuresMap={data}
+      gateBounds={gateBounds}
       symbolOrder={symbolOrder}
     />
   );

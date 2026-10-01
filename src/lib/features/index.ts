@@ -1,7 +1,13 @@
 import type { RuntimeContext } from "@/lib/precision/types";
 
 import { computePriceNormalized } from "./price-normalized";
-import type { CoinFeatures } from "./types";
+import {
+  FEATURES_HISTORY_WINDOW_MS,
+  type CoinFeatures,
+  type FeatureHistoryPoint,
+} from "./types";
+
+const EMPTY_HISTORY: FeatureHistoryPoint[] = [];
 
 /**
  * Recomputes `state.features` from the current runtime state for every
@@ -17,13 +23,34 @@ import type { CoinFeatures } from "./types";
  * the backtest adapter additionally delta-records the artifact stream.
  */
 function update(context: RuntimeContext): void {
+  const now = context.state.currentTime;
+  const cutoff = now - FEATURES_HISTORY_WINDOW_MS;
   const coins: Record<string, CoinFeatures> = {};
   for (const symbol of Object.keys(context.state.vPointsMap)) {
+    const priceNormalized = computePriceNormalized({
+      now,
+      points: context.state.vPointsMap[symbol],
+    });
+    // Step-series trail: append only when the value changed; reuse the
+    // previous array when nothing moved so changedCoins stays sparse.
+    let history =
+      context.state.features?.coins[symbol]?.priceNormalizedHistory ??
+      EMPTY_HISTORY;
+    const last = history[history.length - 1];
+    if (priceNormalized !== undefined && last?.p !== priceNormalized) {
+      history = [...history, { p: priceNormalized, t: now }];
+    }
+    // Points append chronologically, so only the head can fall out of the
+    // window — and keep the latest survivor so "unchanged since t" reads.
+    if (history.length > 1 && history[0].t < cutoff) {
+      history = history.filter(
+        (point, index) =>
+          point.t >= cutoff || index === history.length - 1,
+      );
+    }
     coins[symbol] = {
-      priceNormalized: computePriceNormalized({
-        now: context.state.currentTime,
-        points: context.state.vPointsMap[symbol],
-      }),
+      priceNormalized,
+      priceNormalizedHistory: history,
     };
   }
   context.state.features = { coins, shared: {} };

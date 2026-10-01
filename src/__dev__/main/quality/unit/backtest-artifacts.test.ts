@@ -125,10 +125,26 @@ describe("backtest artifact spool", () => {
   it("streams features per symbol and reads them scoped or merged", async () => {
     const spool = backtestArtifacts.spool.create(dir, 2);
 
-    await spool.pushFeature("AAA", { priceNormalized: 0.4, t: 1 });
-    await spool.pushFeature("BBB", { priceNormalized: 0.9, t: 2 });
-    await spool.pushFeature("AAA", { priceNormalized: 0.6, t: 3 });
-    await spool.pushFeature("AAA", { priceNormalized: 1.1, t: 4 });
+    await spool.pushFeature("AAA", {
+      priceNormalized: 0.4,
+      priceNormalizedHistory: [],
+      t: 1,
+    });
+    await spool.pushFeature("BBB", {
+      priceNormalized: 0.9,
+      priceNormalizedHistory: [],
+      t: 2,
+    });
+    await spool.pushFeature("AAA", {
+      priceNormalized: 0.6,
+      priceNormalizedHistory: [],
+      t: 3,
+    });
+    await spool.pushFeature("AAA", {
+      priceNormalized: 1.1,
+      priceNormalizedHistory: [],
+      t: 4,
+    });
     const manifest = await spool.finalize();
 
     expect(manifest.features).toEqual({ AAA: 2, BBB: 1 });

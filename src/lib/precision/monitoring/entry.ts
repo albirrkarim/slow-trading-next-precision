@@ -135,11 +135,15 @@ async function executeDecision(
     // producers, the pair-aware guard, and `onActionResult` can correlate
     // legs for the position's whole persisted lifecycle. The entry-feature
     // snapshot lands on `position.strategy.entry.feature` — the leg's own
-    // `feature` payload wins, else the live coin features at entry time.
+    // `feature` payload wins, else the WHOLE live feature store at entry
+    // time (cloned so context features like the BTC anchor travel with the
+    // position and later store ticks never mutate the record).
     const logic = leg.strategy;
     const feature =
       leg.feature ??
-      context.state.features?.coins[leg.symbol.toUpperCase()];
+      (context.state.features
+        ? structuredClone(context.state.features)
+        : undefined);
     if (logic !== undefined || feature !== undefined) {
       position.strategy = {
         ...position.strategy,

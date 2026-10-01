@@ -35,7 +35,6 @@ function point(t: number, p: number): VolatilityPoint {
 }
 
 function contextWith(params: {
-  featureGate?: { maxPriceNormalized?: number; minPriceNormalized?: number };
   features?: RuntimeContext["state"]["features"];
   symbols?: string[];
   vPointsMap?: Record<string, VolatilityPoint[]>;
@@ -46,7 +45,6 @@ function contextWith(params: {
         management: {
           description: "",
           exchangeType: "binance",
-          featureGate: params.featureGate,
           name: "test",
           symbols: params.symbols ?? ["SUI"],
           tradingMode: "futures",
@@ -157,14 +155,81 @@ describe("features.update", () => {
       context.state.features!.coins.BTC.priceNormalized,
     ).toBeCloseTo(0.5);
   });
+
+  it("appends priceNormalized changes to a rolling 10-day history", () => {
+    const context = contextWith({
+      vPointsMap: {
+        SUI: [
+          point(NOW - 30 * DAY_MS, 8),
+          point(NOW - 20 * DAY_MS, 12),
+          point(NOW - DAY_MS, 10),
+        ],
+      },
+    });
+
+    // First update records the initial value as the first history point.
+    features.update(context);
+    const first = context.state.features!.coins.SUI.priceNormalizedHistory;
+    expect(first).toEqual([{ p: 0.5, t: NOW }]);
+
+    // Same pivots → same value → no append, same array reference stays.
+    features.update(context);
+    expect(context.state.features!.coins.SUI.priceNormalizedHistory).toBe(
+      first,
+    );
+
+    // A new pivot changes the value → one new history point is appended.
+    const later = NOW + DAY_MS;
+    context.state.currentTime = later;
+    context.state.vPointsMap.SUI.push(point(later - DAY_MS, 9));
+    features.update(context);
+    const history =
+      context.state.features!.coins.SUI.priceNormalizedHistory;
+    expect(history).toHaveLength(2);
+    expect(history[1].t).toBe(later);
+    expect(history[1].p).toBeCloseTo(0.25); // envelope [8,12], latest 9
+  });
+
+  it("trims history older than 10 days but keeps the last survivor", () => {
+    const context = contextWith({
+      features: {
+        coins: {
+          SUI: {
+            priceNormalized: 0.5,
+            priceNormalizedHistory: [
+              { p: 0.9, t: NOW - 20 * DAY_MS },
+              { p: 0.5, t: NOW - 12 * DAY_MS },
+            ],
+          },
+        },
+        shared: {},
+      },
+      vPointsMap: {
+        SUI: [
+          point(NOW - 30 * DAY_MS, 8),
+          point(NOW - 20 * DAY_MS, 12),
+          point(NOW - DAY_MS, 10),
+        ],
+      },
+    });
+
+    // Value unchanged (0.5) → no append; both stale points collapse to the
+    // last one, which survives so "unchanged since t" stays readable.
+    features.update(context);
+    expect(
+      context.state.features!.coins.SUI.priceNormalizedHistory,
+    ).toEqual([{ p: 0.5, t: NOW - 12 * DAY_MS }]);
+  });
 });
 
 describe("features.changedCoins", () => {
   it("lists only symbols whose feature values moved", () => {
-    const previous = { SUI: { priceNormalized: 0.5 } };
+    const previous = {
+      SUI: { priceNormalized: 0.5, priceNormalizedHistory: [] },
+    };
     const next = {
-      LINK: { priceNormalized: 0.1 },
-      SUI: { priceNormalized: 0.8 },
+      LINK: { priceNormalized: 0.1, priceNormalizedHistory: [] },
+      SUI: { priceNormalized: 0.8, priceNormalizedHistory: [] },
     };
     expect(features.changedCoins(previous, next).sort()).toEqual([
       "LINK",
@@ -196,25 +261,89 @@ describe("vpoints.retainRecent sinceMs", () => {
 describe("default_with_features_gate", () => {
   const find = vi.mocked(defaultDecision.entry.find);
 
-  it("filters candidates outside the configured priceNormalized bounds", async () => {
-    find.mockResolvedValue([candidate("SUI"), candidate("LINK")]);
+  // The gate bounds are strategy-owned constants: coin zone [0.2, 0.8],
+  // BTC market-context veto outside [0.3, 0.8].
+
+  it("filters candidates outside the coin priceNormalized zone", async () => {
+    find.mockResolvedValue([
+      candidate("SUI"),
+      candidate("LINK"),
+      candidate("AAVE"),
+    ]);
     const context = contextWith({
-      featureGate: { maxPriceNormalized: 0.8 },
       features: {
         coins: {
-          LINK: { priceNormalized: 0.9 },
-          SUI: { priceNormalized: 0.2 },
+          AAVE: { priceNormalized: 0.15, priceNormalizedHistory: [] },
+          LINK: { priceNormalized: 0.9, priceNormalizedHistory: [] },
+          SUI: { priceNormalized: 0.2, priceNormalizedHistory: [] },
+        },
+        shared: {},
+      },
+      symbols: ["SUI", "LINK", "AAVE"],
+    });
+
+    // LINK above the 0.8 ceiling and AAVE below the 0.2 floor drop; SUI on
+    // the inclusive floor boundary stays.
+    const kept = await strategy.decisions!.entry!.find(context);
+    expect(kept.map((entry) => entry.symbol)).toEqual(["SUI"]);
+  });
+
+  it("blocks every candidate when BTC sits outside its context bounds", async () => {
+    find.mockResolvedValue([candidate("SUI"), candidate("LINK")]);
+    const context = contextWith({
+      features: {
+        coins: {
+          BTC: { priceNormalized: 0.9, priceNormalizedHistory: [] },
+          LINK: { priceNormalized: 0.4, priceNormalizedHistory: [] },
+          SUI: { priceNormalized: 0.2, priceNormalizedHistory: [] },
         },
         shared: {},
       },
       symbols: ["SUI", "LINK"],
     });
 
-    const kept = await strategy.decisions!.entry!.find(context);
-    expect(kept.map((entry) => entry.symbol)).toEqual(["SUI"]);
+    expect(await strategy.decisions!.entry!.find(context)).toEqual([]);
+
+    // The BTC veto also explains skipped candidates via diagnostics.
+    const explained = strategy.diagnostics!.explain!({
+      accountSlug: "main",
+      context,
+      decision: candidate("SUI"),
+      symbol: "SUI",
+    });
+    expect(explained?.code).toBe("FEATURE_GATE");
+    expect(explained?.reason).toContain("BTC");
   });
 
-  it("passes every candidate when no gate is configured", async () => {
+  it("vetoes candidates when BTC breaks down below its floor", async () => {
+    find.mockResolvedValue([candidate("SUI")]);
+    const context = contextWith({
+      features: {
+        coins: {
+          BTC: { priceNormalized: 0.25, priceNormalizedHistory: [] },
+          SUI: { priceNormalized: 0.4, priceNormalizedHistory: [] },
+        },
+        shared: {},
+      },
+    });
+    expect(await strategy.decisions!.entry!.find(context)).toEqual([]);
+  });
+
+  it("leaves the coin zone alone while BTC stays inside its bounds", async () => {
+    find.mockResolvedValue([candidate("SUI")]);
+    const context = contextWith({
+      features: {
+        coins: {
+          BTC: { priceNormalized: 0.5, priceNormalizedHistory: [] },
+          SUI: { priceNormalized: 0.2, priceNormalizedHistory: [] },
+        },
+        shared: {},
+      },
+    });
+    expect(await strategy.decisions!.entry!.find(context)).toHaveLength(1);
+  });
+
+  it("passes every candidate when features are absent", async () => {
     find.mockResolvedValue([candidate("SUI"), candidate("LINK")]);
     const context = contextWith({});
     const kept = await strategy.decisions!.entry!.find(context);
@@ -223,9 +352,10 @@ describe("default_with_features_gate", () => {
 
   it("explains a gated decision through diagnostics", () => {
     const context = contextWith({
-      featureGate: { maxPriceNormalized: 0.8 },
       features: {
-        coins: { SUI: { priceNormalized: 0.95 } },
+        coins: {
+          SUI: { priceNormalized: 0.95, priceNormalizedHistory: [] },
+        },
         shared: {},
       },
     });

@@ -9,6 +9,7 @@ import {
   type BacktestRunCounts,
   type BacktestRunSummary,
 } from "@/lib/dev/backtestPrecision/backtest/backtest-precision-types";
+import { FEATURE_GATE_BOUNDS } from "@/lib/strategies/default_with_features_gate";
 import type { ExchangeType } from "@/lib/system/types";
 import { Box, Grid } from "@mui/material";
 
@@ -73,8 +74,12 @@ export default function VPointsResult({
       <PriceNormalized
         datasetEndTimeMs={datasetEndTimeMs}
         datasetStartTimeMs={datasetStartTimeMs}
-        featureGate={settings?.management.featureGate}
         features={artifacts.features}
+        gateBounds={
+          settings?.management.strategy === "default_with_features_gate"
+            ? FEATURE_GATE_BOUNDS
+            : undefined
+        }
         symbolOrder={Object.keys(vpoints.data ?? {})}
       />
       <Grid container spacing={2}>

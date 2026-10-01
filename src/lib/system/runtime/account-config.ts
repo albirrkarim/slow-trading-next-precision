@@ -69,7 +69,6 @@ export const SHARED_MANAGEMENT_CONFIG_KEYS = [
   "decisionEngineVersion",
   "description",
   "exchangeType",
-  "featureGate",
   "name",
   "strategy",
   "symbols",
