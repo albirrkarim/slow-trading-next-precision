@@ -3,6 +3,7 @@
 import type { ConfigDraft } from "@/components/settings/settings-types";
 import { runtimeNormalize } from "@/lib/system/runtime";
 import sanitize from "@/lib/system/storage/sanitize";
+import DarkToggle from "@/components/ui/DarkToggle";
 import SidebarButton from "@/components/ui/SidebarButton";
 import type {
     BacktestPrecisionParams,
@@ -345,6 +346,8 @@ export default function DynamicTradeAnalytics() {
                             onApplyConfig={applySavedConfig}
                             onRunConfig={runSavedConfig}
                         />
+
+                        <DarkToggle />
                     </Box>
                 </Box>
             </Box>

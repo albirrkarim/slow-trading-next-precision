@@ -210,6 +210,24 @@ export const HEADER_GROUPS: HeaderGroup[] = [
         tooltip: "The management.strategy selection active for this run (Both, Streak, or a custom slug).\nSaved entries without a settings block ran the built-in default pipeline.\nSource: backtestConfig.settings.management.strategy on the saved entry.",
     },
     {
+        id: "volatilityDetection",
+        label: "V Thres",
+        align: "center",
+        tooltip: "Volatility detector params this run was saved with.\nmove — percent move from the last pivot that starts a new UP/DOWN volatility sequence (management.volatilityThreshold).\nretrace — percent pullback from a local extreme that confirms a pivot once a sequence is active (management.volatilityRetracePct).\nenv = the field was unset, so the run used the server env default (VOLATILITY_THRESHOLD / VOLATILITY_RETRACE_PERCENT). Entries saved before these fields existed also show env.\nSource: backtestConfig.settings.management on the saved entry.",
+        children: [
+            {
+                id: "backtestConfig.settings.management.volatilityThreshold",
+                label: "move",
+                tooltip: "management.volatilityThreshold — percent move activating a volatility sequence.\nenv = server env default was used.",
+            },
+            {
+                id: "backtestConfig.settings.management.volatilityRetracePct",
+                label: "retrace",
+                tooltip: "management.volatilityRetracePct — percent retrace confirming a pivot.\nenv = server env default was used.",
+            },
+        ],
+    },
+    {
         id: "minEquity",
         label: "Min Equity",
         tooltip: "Minimum equity the saved config was sized to run — the sum of every enabled account's starting balance.\nShown as [name $x] + [name $y] = $total.\nSorting compares the $total.\nSource: backtestConfig.settings.accounts[].enabled + sandbox.initialBalanceUSDT.",
@@ -410,6 +428,12 @@ const PLAIN_FIELDS = new Set([
     "leaderboard.tradesPerDay",
 ]);
 
+/** Detector param cell: the saved override as a percent, "env" when unset/zero. */
+function formatVolatilityParam(value: unknown): string {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) && numeric > 0 ? `${numeric}%` : "env";
+}
+
 /** Text leaf columns: field id -> cell formatter. Sorting uses the raw leaf. */
 export const TEXT_FIELDS = new Map<string, (value: unknown) => string>([
     [
@@ -423,6 +447,14 @@ export const TEXT_FIELDS = new Map<string, (value: unknown) => string>([
             strategyChipLabel(
                 typeof value === "string" ? value : undefined,
             ),
+    ],
+    [
+        "backtestConfig.settings.management.volatilityThreshold",
+        formatVolatilityParam,
+    ],
+    [
+        "backtestConfig.settings.management.volatilityRetracePct",
+        formatVolatilityParam,
     ],
 ]);
 
