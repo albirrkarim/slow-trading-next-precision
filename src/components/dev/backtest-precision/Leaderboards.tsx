@@ -85,9 +85,37 @@ function formatUsdt(value: number | undefined) {
     return value < 0 ? `-$${Math.abs(value).toFixed(2)}` : `$${value.toFixed(2)}`;
 }
 
+const JAKARTA_TIME_FORMATTER = new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    hour: "2-digit",
+    hourCycle: "h23",
+    minute: "2-digit",
+    month: "short",
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+});
+
+function jakartaTimeParts(t: number) {
+    const parts = JAKARTA_TIME_FORMATTER.formatToParts(new Date(t));
+    const get = (type: string) =>
+        parts.find((part) => part.type === type)?.value ?? "";
+    return {
+        day: get("day"),
+        hour: get("hour"),
+        minute: get("minute"),
+        month: get("month"),
+        year: get("year"),
+    };
+}
+
+/** WIB "02 Oct 07:32" — 24h clock; year appended only when it differs. */
 export function formatTime(t?: number) {
     if (!t) return "-";
-    return new Date(t).toLocaleString();
+    const { day, hour, minute, month, year } = jakartaTimeParts(t);
+    const yearSuffix = year === jakartaTimeParts(Date.now()).year
+        ? ""
+        : ` ${year}`;
+    return `${day} ${month}${yearSuffix} ${hour}:${minute}`;
 }
 
 /** Min-equity cell: "[name $x] + [name $y] = $total" over enabled accounts. */
@@ -197,7 +225,7 @@ export const HEADER_GROUPS: HeaderGroup[] = [
     {
         id: "t",
         label: "Saved At",
-        tooltip: "Local time the run was persisted via the \"Save run to leaderboards\" button.\nSource: entry.t on the saved file (storage/leaderboards/[hash].json).",
+        tooltip: "When the run was persisted via the \"Save run to leaderboards\" button.\nShown in WIB (Asia/Jakarta), DD MMM [YYYY] HH:mm 24h — the year appears only when it differs from the current one.\nSource: entry.t on the saved file (storage/leaderboards/[hash].json).",
     },
     {
         id: "backtestConfig.range",
@@ -511,9 +539,11 @@ export default function Leaderboards({
                     </IconButton>
                 </Tooltip>
             )}
+            forceFullscreen
             maxWidth={false}
             title="Leaderboards"
             titleLong="Backtest Leaderboards"
+            useAppBar
         >
             {(handleClose: () => void) => (
                 <LeaderboardsContent
