@@ -3,23 +3,30 @@
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "@mui/material/styles";
 import type { IChartApi, ISeriesApi } from "lightweight-charts";
-import { createChart, ColorType, CandlestickSeries, createSeriesMarkers, HistogramSeries, LineSeries, LineStyle } from "lightweight-charts";
+import { createChart, ColorType, CandlestickSeries, createSeriesMarkers, HistogramSeries } from "lightweight-charts";
 import type { Marker } from "@/lib/system/utils/ui/chart-markers";
 import type {
     ChartProps,
     MarkerHoverState,
     TrajectoryDirection,
     TrajectoryHoverState,
-    TrajectoryPoint,
+    TrajectoryMetaPoint,
 } from "./types";
 import { activePositionToMarkers, aimPositionToMarkers } from "./markers";
-import { computePricePrecision } from "./precision";
 import {
-    computeTrajectoryPnl,
+    BetterCloseOverlay,
+    MarkerHoverTooltip,
+    TrajectoryHoverTooltip,
+} from "./overlays";
+import { computePricePrecision } from "./precision";
+import { createCrosshairHandler } from "./crosshair";
+import {
     getMaxProjectedTime,
-    normalizeTrajectoryTime,
     padDataWithFutureWhitespace,
 } from "./trajectory";
+import { useBetterCloseLine } from "./useBetterCloseLine";
+import { useEntryOrderLines, usePriceLines } from "./usePriceLines";
+import { useTrajectorySeries } from "./useTrajectorySeries";
 
 export default function CurrencyChart({ data, markers, activePosition, aimPosition, dashedEntryPriceLine = false, tpPrice, slPrice, betterToCloseAt, entryOrders, height = 400, trajectory, trajectoryAnchor, trajectoryDirection, initialVisibleRange }: ChartProps) {
     const theme = useTheme();
@@ -31,16 +38,14 @@ export default function CurrencyChart({ data, markers, activePosition, aimPositi
     const seriesRef = useRef<ISeriesApi<any> | null>(null);
     const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
     const trajectorySeriesRef = useRef<ISeriesApi<"Line">[]>([]);
-    const trajectoryMetaRef = useRef<Map<ISeriesApi<"Line">, Array<{ point: TrajectoryPoint; scenario: string; pointIndex: number; normalizedTime: number }>>>(new Map());
+    const trajectoryMetaRef = useRef<Map<ISeriesApi<"Line">, TrajectoryMetaPoint[]>>(new Map());
     const trajectoryAnchorPriceRef = useRef<number | undefined>(trajectoryAnchor?.price);
     const trajectoryDirectionRef = useRef<TrajectoryDirection>(trajectoryDirection);
     const markersPrimitiveRef = useRef<any>(null);
-    const entryOrderLinesRef = useRef<any[]>([]);
     const resolvedAimPosition =
         aimPosition ?? activePosition?.strategy.entry.feature?.aimPosition;
     const [trajectoryHover, setTrajectoryHover] = useState<TrajectoryHoverState | null>(null);
     const [markerHover, setMarkerHover] = useState<MarkerHoverState | null>(null);
-    const [betterCloseLineX, setBetterCloseLineX] = useState<number | null>(null);
     const markerMetaRef = useRef<Marker[]>([]);
     const previousDataWindowRef = useRef<{ firstTime: number; lastTime: number } | null>(null);
     const previousProjectedTimeRef = useRef<number | null>(null);
@@ -99,121 +104,16 @@ export default function CurrencyChart({ data, markers, activePosition, aimPositi
         seriesRef.current = candlestickSeries;
         volumeSeriesRef.current = volumeSeries;
 
-        const handleCrosshairMove = (param: any) => {
-            const container = chartContainerRef.current;
-            if (
-                !container ||
-                !param?.point ||
-                typeof param.point.x !== "number" ||
-                typeof param.point.y !== "number" ||
-                param.point.x < 0 ||
-                param.point.y < 0 ||
-                param.point.x > container.clientWidth ||
-                param.point.y > container.clientHeight
-            ) {
-                setTrajectoryHover(null);
-                setMarkerHover(null);
-                return;
-            }
-
-            for (const [series, points] of trajectoryMetaRef.current.entries()) {
-                const dataAtPoint = param.seriesData?.get?.(series);
-                if (!dataAtPoint) {
-                    continue;
-                }
-
-                const hoveredTime =
-                    typeof dataAtPoint.time === "number"
-                        ? dataAtPoint.time
-                        : typeof param.time === "number"
-                            ? param.time
-                            : null;
-                const hoveredValue =
-                    typeof dataAtPoint.value === "number"
-                        ? dataAtPoint.value
-                        : typeof dataAtPoint.close === "number"
-                            ? dataAtPoint.close
-                            : null;
-
-                const matchedPoint = points.find((item) =>
-                    item.normalizedTime === hoveredTime &&
-                    hoveredValue !== null &&
-                    Math.abs(item.point.price - hoveredValue) <= Math.max(item.point.price * 0.000001, 1e-10),
-                );
-
-                if (!matchedPoint) {
-                    continue;
-                }
-
-                setTrajectoryHover({
-                    x: Math.min(param.point.x + 12, Math.max(8, container.clientWidth - 320)),
-                    y: Math.max(8, param.point.y - 12),
-                    scenario: matchedPoint.scenario,
-                    pointIndex: matchedPoint.pointIndex,
-                    point: matchedPoint.point,
-                    pnlPercent: computeTrajectoryPnl({
-                        entryPrice: trajectoryAnchorPriceRef.current,
-                        pointPrice: matchedPoint.point.price,
-                        direction: trajectoryDirectionRef.current,
-                    }),
-                });
-                setMarkerHover(null);
-                return;
-            }
-
-            setTrajectoryHover(null);
-
-            const candleSeries = seriesRef.current;
-            const hoveredSeriesData = candleSeries
-                ? param.seriesData?.get?.(candleSeries)
-                : null;
-            const hoveredTime =
-                typeof hoveredSeriesData?.time === "number"
-                    ? hoveredSeriesData.time
-                    : typeof param.time === "number"
-                        ? param.time
-                        : null;
-
-            if (!candleSeries || hoveredTime === null) {
-                setMarkerHover(null);
-                return;
-            }
-
-            const markerMatch = markerMetaRef.current
-                .filter(
-                    (marker) =>
-                        marker.time === hoveredTime &&
-                        typeof marker.price === "number" &&
-                        Number.isFinite(marker.price) &&
-                        typeof marker.tooltipText === "string" &&
-                        marker.tooltipText.length > 0,
-                )
-                .map((marker) => {
-                    const coordinate = candleSeries.priceToCoordinate(marker.price!);
-                    return {
-                        marker,
-                        coordinate,
-                        distance:
-                            typeof coordinate === "number"
-                                ? Math.abs(coordinate - param.point.y)
-                                : Number.POSITIVE_INFINITY,
-                    };
-                })
-                .filter((item) => Number.isFinite(item.distance))
-                .sort((a, b) => a.distance - b.distance)[0];
-
-            if (markerMatch && markerMatch.distance <= 18) {
-                setMarkerHover({
-                    x: Math.min(param.point.x + 12, Math.max(8, container.clientWidth - 320)),
-                    y: Math.max(8, param.point.y - 12),
-                    title: markerMatch.marker.tooltipTitle ?? markerMatch.marker.text,
-                    text: markerMatch.marker.tooltipText ?? markerMatch.marker.text,
-                });
-                return;
-            }
-
-            setMarkerHover(null);
-        };
+        const handleCrosshairMove = createCrosshairHandler({
+            chartContainerRef,
+            seriesRef,
+            trajectoryMetaRef,
+            markerMetaRef,
+            trajectoryAnchorPriceRef,
+            trajectoryDirectionRef,
+            setTrajectoryHover,
+            setMarkerHover,
+        });
 
         chart.subscribeCrosshairMove(handleCrosshairMove);
 
@@ -363,274 +263,40 @@ export default function CurrencyChart({ data, markers, activePosition, aimPositi
         }
     }, [activePosition, betterToCloseAt, data, initialVisibleRange, markers, resolvedAimPosition, trajectory, trajectoryAnchor]);
 
-    useEffect(() => {
-        const chart = chartRef.current;
-        const container = chartContainerRef.current;
-        const normalizedTime =
-            typeof betterToCloseAt === "number"
-                ? normalizeTrajectoryTime(betterToCloseAt)
-                : null;
-        let animationFrameId: number | null = null;
+    const betterCloseLineX = useBetterCloseLine({
+        chartRef,
+        chartContainerRef,
+        betterToCloseAt,
+        data,
+        height,
+        markers,
+        trajectory,
+        trajectoryAnchor,
+    });
 
-        if (!chart || !container || normalizedTime === null) {
-            animationFrameId = window.requestAnimationFrame(() => {
-                setBetterCloseLineX(null);
-            });
-            return () => {
-                if (animationFrameId !== null) {
-                    window.cancelAnimationFrame(animationFrameId);
-                }
-            };
-        }
+    useTrajectorySeries({
+        chartRef,
+        trajectory,
+        trajectoryAnchor,
+        trajectorySeriesRef,
+        trajectoryMetaRef,
+        setTrajectoryHover,
+    });
 
-        const updateLinePosition = () => {
-            const coordinate = chart.timeScale().timeToCoordinate(normalizedTime as any);
-            setBetterCloseLineX(
-                typeof coordinate === "number" &&
-                    Number.isFinite(coordinate) &&
-                    coordinate >= 0 &&
-                    coordinate <= container.clientWidth
-                    ? coordinate
-                    : null,
-            );
-        };
+    usePriceLines({
+        seriesRef,
+        activePosition,
+        chartEntryLineColor,
+        dashedEntryPriceLine,
+        resolvedAimPosition,
+        tpPrice,
+        slPrice,
+    });
 
-        const handleResize = () => {
-            window.requestAnimationFrame(updateLinePosition);
-        };
-
-        animationFrameId = window.requestAnimationFrame(updateLinePosition);
-        chart.timeScale().subscribeVisibleLogicalRangeChange(updateLinePosition);
-        window.addEventListener("resize", handleResize);
-
-        return () => {
-            if (animationFrameId !== null) {
-                window.cancelAnimationFrame(animationFrameId);
-            }
-            chart.timeScale().unsubscribeVisibleLogicalRangeChange(updateLinePosition);
-            window.removeEventListener("resize", handleResize);
-        };
-    }, [betterToCloseAt, data, height, markers, trajectory, trajectoryAnchor]);
-
-    useEffect(() => {
-        const chart = chartRef.current;
-        if (!chart) {
-            return undefined;
-        }
-
-        trajectorySeriesRef.current.forEach((series) => {
-            chart.removeSeries(series);
-        });
-        trajectorySeriesRef.current = [];
-        trajectoryMetaRef.current.clear();
-        const resetHoverFrameId = window.requestAnimationFrame(() => {
-            setTrajectoryHover(null);
-        });
-
-        const colors = ["#ff7043", "#42a5f5", "#66bb6a", "#ab47bc"];
-        const scenarioNames = ["A", "B", "C", "D"];
-        const anchorTime = trajectoryAnchor
-            ? normalizeTrajectoryTime(trajectoryAnchor.time)
-            : null;
-        const anchor =
-            anchorTime !== null &&
-            typeof trajectoryAnchor?.price === "number" &&
-            Number.isFinite(trajectoryAnchor.price) &&
-            trajectoryAnchor.price > 0
-                ? { time: anchorTime as any, value: trajectoryAnchor.price }
-                : null;
-
-        trajectory?.forEach((scenario, index) => {
-            const scenarioPoints = scenario
-                .map((point) => {
-                    const time = normalizeTrajectoryTime(point.time);
-                    if (
-                        time === null ||
-                        typeof point.price !== "number" ||
-                        !Number.isFinite(point.price) ||
-                        point.price <= 0
-                    ) {
-                        return null;
-                    }
-
-                    return {
-                        time: time as any,
-                        value: point.price,
-                    };
-                })
-                .filter((point): point is { time: any; value: number } =>
-                    Boolean(point),
-                )
-                .sort((a, b) => a.time - b.time);
-            const points =
-                anchor && (scenarioPoints[0]?.time ?? Number.POSITIVE_INFINITY) > anchor.time
-                    ? [anchor, ...scenarioPoints]
-                    : scenarioPoints;
-
-            if (points.length === 0) {
-                return;
-            }
-
-            const series = chart.addSeries(LineSeries, {
-                color: colors[index % colors.length],
-                lineWidth: 2,
-                lineStyle: index === 2 ? 0 : 2,
-                priceLineVisible: false,
-                lastValueVisible: false,
-                pointMarkersVisible: true,
-                pointMarkersRadius: 4,
-                crosshairMarkerVisible: true,
-                title: `AIM ${String.fromCharCode(65 + index)}`,
-            });
-
-            series.setData(points);
-            trajectorySeriesRef.current.push(series);
-            trajectoryMetaRef.current.set(
-                series,
-                scenario
-                    .map((point, pointIndex) => {
-                        const normalizedTime = normalizeTrajectoryTime(point.time);
-                        if (normalizedTime === null) {
-                            return null;
-                        }
-
-                        return {
-                            point,
-                            pointIndex,
-                            normalizedTime,
-                            scenario: scenarioNames[index] ?? String.fromCharCode(65 + index),
-                        };
-                    })
-                    .filter((item): item is { point: TrajectoryPoint; scenario: string; pointIndex: number; normalizedTime: number } => Boolean(item)),
-            );
-        });
-
-        return () => {
-            window.cancelAnimationFrame(resetHoverFrameId);
-        };
-    }, [trajectory, trajectoryAnchor]);
-
-    // Handle Active Position Entry Line
-    const entryLineRef = useRef<any>(null);
-    const aimLineRef = useRef<any>(null);
-    const tpLineRef = useRef<any>(null);
-    const slLineRef = useRef<any>(null);
-
-    useEffect(() => {
-        if (!seriesRef.current) return;
-
-        // Remove existing line
-        if (entryLineRef.current) {
-            seriesRef.current.removePriceLine(entryLineRef.current);
-            entryLineRef.current = null;
-        }
-
-        // console.log("activePosition", activePosition)
-
-        if (activePosition?.exposure.averageEntryPrice) {
-            const hasAveragingExecutions =
-                (activePosition.strategy.averaging.executions?.length ?? 0) > 0;
-
-            entryLineRef.current = seriesRef.current.createPriceLine({
-                price: activePosition.exposure.averageEntryPrice,
-                color: chartEntryLineColor,
-                lineWidth: 2,
-                // BTEST:BACKTEST_TRADE_CHART_AVERAGING
-                lineStyle: dashedEntryPriceLine
-                    ? LineStyle.Dashed
-                    : LineStyle.Dotted,
-                axisLabelVisible: true,
-                title: hasAveragingExecutions ? 'Avg Entry' : 'Entry',
-            });
-        }
-
-    }, [activePosition, chartEntryLineColor, dashedEntryPriceLine]);
-
-    useEffect(() => {
-        if (!seriesRef.current) return;
-
-        if (aimLineRef.current) {
-            seriesRef.current.removePriceLine(aimLineRef.current);
-            aimLineRef.current = null;
-        }
-
-        if (resolvedAimPosition && typeof resolvedAimPosition.beginPrice === "number") {
-            aimLineRef.current = seriesRef.current.createPriceLine({
-                price: resolvedAimPosition.beginPrice,
-                color: "#f9a825",
-                lineWidth: 2,
-                lineStyle: 1,
-                axisLabelVisible: true,
-                title: "AIM",
-            });
-        }
-    }, [resolvedAimPosition]);
-
-    useEffect(() => {
-        if (!seriesRef.current) return;
-
-        if (tpLineRef.current) {
-            seriesRef.current.removePriceLine(tpLineRef.current);
-            tpLineRef.current = null;
-        }
-
-        if (typeof tpPrice === "number" && Number.isFinite(tpPrice) && tpPrice > 0) {
-            tpLineRef.current = seriesRef.current.createPriceLine({
-                price: tpPrice,
-                color: "#2e7d32",
-                lineWidth: 2,
-                lineStyle: 2,
-                axisLabelVisible: true,
-                title: "TP",
-            });
-        }
-    }, [tpPrice]);
-
-    useEffect(() => {
-        if (!seriesRef.current) return;
-
-        if (slLineRef.current) {
-            seriesRef.current.removePriceLine(slLineRef.current);
-            slLineRef.current = null;
-        }
-
-        if (typeof slPrice === "number" && Number.isFinite(slPrice) && slPrice > 0) {
-            slLineRef.current = seriesRef.current.createPriceLine({
-                price: slPrice,
-                color: "#d32f2f",
-                lineWidth: 2,
-                lineStyle: 2,
-                axisLabelVisible: true,
-                title: "SL",
-            });
-        }
-    }, [slPrice]);
-
-
-    useEffect(() => {
-        const series = seriesRef.current;
-        if (!series) return;
-
-        // Cleanup existing lines
-        entryOrderLinesRef.current.forEach((line) => {
-            series.removePriceLine(line);
-        });
-        entryOrderLinesRef.current = [];
-
-        entryOrders.forEach((order) => {
-            if (typeof order.targetPrice === "number" && Number.isFinite(order.targetPrice) && order.targetPrice > 0) {
-                const line = series.createPriceLine({
-                    price: order.targetPrice,
-                    color: '#2962FF',
-                    lineWidth: 2,
-                    lineStyle: 1, // Dotted
-                    axisLabelVisible: true,
-                    title: `${(order.side ?? "ORDER").toUpperCase()} MAKER ${order.targetPrice}`,
-                });
-                entryOrderLinesRef.current.push(line);
-            }
-        });
-    }, [entryOrders]);
+    useEntryOrderLines({
+        seriesRef,
+        entryOrders,
+    });
 
     const betterCloseLabel =
         typeof betterToCloseAt === "number" && Number.isFinite(betterToCloseAt) && betterToCloseAt > 0
@@ -639,110 +305,12 @@ export default function CurrencyChart({ data, markers, activePosition, aimPositi
 
     return (
         <div ref={chartContainerRef} style={{ position: "relative" }}>
-            {betterCloseLineX !== null && betterCloseLabel ? (
-                <>
-                    <div
-                        style={{
-                            position: "absolute",
-                            top: 0,
-                            bottom: 0,
-                            left: betterCloseLineX,
-                            transform: "translateX(-50%)",
-                            width: 0,
-                            borderLeft: "3px dashed rgba(255, 87, 34, 0.98)",
-                            pointerEvents: "none",
-                            zIndex: 9,
-                            boxShadow: "0 0 0 1px rgba(255,255,255,0.18)",
-                        }}
-                        title={`Better close at ${betterCloseLabel}`}
-                    />
-                    <div
-                        style={{
-                            position: "absolute",
-                            top: 10,
-                            left: betterCloseLineX,
-                            transform: "translateX(-50%)",
-                            pointerEvents: "none",
-                            zIndex: 10,
-                            background: "rgba(255, 87, 34, 0.16)",
-                            border: "1px solid rgba(255, 87, 34, 0.65)",
-                            color: "#ff7043",
-                            borderRadius: 999,
-                            padding: "3px 9px",
-                            fontSize: 11,
-                            fontWeight: 700,
-                            whiteSpace: "nowrap",
-                            boxShadow: "0 4px 16px rgba(0,0,0,0.22)",
-                        }}
-                        title={`Better close at ${betterCloseLabel}`}
-                    >
-                        Better close
-                    </div>
-                </>
-            ) : null}
+            <BetterCloseOverlay label={betterCloseLabel} lineX={betterCloseLineX} />
             {trajectoryHover ? (
-                <div
-                    style={{
-                        position: "absolute",
-                        left: trajectoryHover.x,
-                        top: trajectoryHover.y,
-                        zIndex: 20,
-                        maxWidth: 320,
-                        pointerEvents: "none",
-                        background: "rgba(15, 23, 42, 0.95)",
-                        border: "1px solid rgba(148, 163, 184, 0.35)",
-                        borderRadius: 8,
-                        padding: "10px 12px",
-                        color: "#e5e7eb",
-                        fontSize: 12,
-                        lineHeight: 1.45,
-                        boxShadow: "0 10px 25px rgba(0,0,0,0.35)",
-                    }}
-                >
-                    <div style={{ fontWeight: 700, marginBottom: 4 }}>
-                        AIM {trajectoryHover.scenario}.{trajectoryHover.pointIndex}
-                    </div>
-                    <div>
-                        {trajectoryHover.point.timeHuman}
-                    </div>
-                    <div>
-                        Price: {trajectoryHover.point.price}
-                    </div>
-                    <div>
-                        Entry PnL: {trajectoryHover.pnlPercent === null
-                            ? "—"
-                            : `${trajectoryHover.pnlPercent > 0 ? "+" : ""}${trajectoryHover.pnlPercent.toFixed(2)}%`}
-                    </div>
-                    <div style={{ marginTop: 6 }}>
-                        {trajectoryHover.point.message}
-                    </div>
-                </div>
+                <TrajectoryHoverTooltip hover={trajectoryHover} />
             ) : null}
             {!trajectoryHover && markerHover ? (
-                <div
-                    style={{
-                        position: "absolute",
-                        left: markerHover.x,
-                        top: markerHover.y,
-                        zIndex: 20,
-                        maxWidth: 320,
-                        pointerEvents: "none",
-                        background: "rgba(15, 23, 42, 0.95)",
-                        border: "1px solid rgba(148, 163, 184, 0.35)",
-                        borderRadius: 8,
-                        padding: "10px 12px",
-                        color: "#e5e7eb",
-                        fontSize: 12,
-                        lineHeight: 1.45,
-                        boxShadow: "0 10px 25px rgba(0,0,0,0.35)",
-                        whiteSpace: "pre-wrap",
-                    }}
-                >
-                    <div style={{ fontWeight: 700, marginBottom: 4 }}>
-                        {markerHover.title}
-                    </div>
-                    <div>{markerHover.text}</div>
-                </div>
+                <MarkerHoverTooltip hover={markerHover} />
             ) : null}
         </div>
     );

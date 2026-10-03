@@ -55,6 +55,13 @@ export type MarkerHoverState = {
     text: string;
 };
 
+export type TrajectoryMetaPoint = {
+    point: TrajectoryPoint;
+    scenario: string;
+    pointIndex: number;
+    normalizedTime: number;
+};
+
 export interface ChartProps {
     data: CandlePoint[];
     markers?: Marker[];
