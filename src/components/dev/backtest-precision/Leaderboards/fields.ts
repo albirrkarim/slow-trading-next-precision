@@ -44,6 +44,15 @@ function formatVolatilityParam(value: unknown): string {
     return Number.isFinite(numeric) && numeric > 0 ? `${numeric}%` : "env";
 }
 
+/** CSV of configured symbols shown under the label; "" when unset. */
+export function formatCoinSymbols(value: unknown): string {
+    if (!Array.isArray(value)) return "";
+    return value
+        .map((symbol) => (typeof symbol === "string" ? symbol.trim() : ""))
+        .filter(Boolean)
+        .join(", ");
+}
+
 /** Text leaf columns: field id -> cell formatter. Sorting uses the raw leaf. */
 export const TEXT_FIELDS = new Map<string, (value: unknown) => string>([
     [

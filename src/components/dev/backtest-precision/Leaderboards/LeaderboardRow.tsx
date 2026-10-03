@@ -12,13 +12,14 @@ import {
     TableCell,
     TableRow,
     Tooltip,
+    Typography,
 } from "@mui/material";
 
 import type { BacktestLeaderboardEntry } from "@/lib/dev/backtestPrecision/leaderboards";
 import type { BacktestConfig } from "../types";
 
 import type { HeaderGroup } from "./columns";
-import { formatCell, INVERT_FIELDS, TEXT_FIELDS } from "./fields";
+import { formatCell, formatCoinSymbols, INVERT_FIELDS, TEXT_FIELDS } from "./fields";
 import { formatMinEquity, formatNumber, formatTime, getGradientColor } from "./format";
 
 export function LeaderboardRow(props: {
@@ -55,6 +56,15 @@ export function LeaderboardRow(props: {
         const background = range
             ? getGradientColor(numeric, range.min, range.max, INVERT_FIELDS.has(fieldId))
             : "inherit";
+        const labelText =
+            entryRow.label ??
+            ((entryRow.backtestConfig as BacktestConfig)?.name ||
+                (entryRow.backtestConfig as BacktestConfig)?.range ||
+                entryRow.id);
+        const coinCsv = formatCoinSymbols(
+            (entryRow.backtestConfig as BacktestConfig)?.settings?.management
+                ?.symbols,
+        );
         return (
             <TableCell key={fieldId} sx={{ backgroundColor: background }}>
                 {fieldId === "profileScore"
@@ -62,10 +72,20 @@ export function LeaderboardRow(props: {
                     : fieldId === "minEquity"
                     ? formatMinEquity(entryRow)
                     : fieldId === "label"
-                      ? entryRow.label ??
-                      ((entryRow.backtestConfig as BacktestConfig)?.name ||
-                          (entryRow.backtestConfig as BacktestConfig)?.range ||
-                          entryRow.id)
+                      ? (
+                          <Box>
+                              {labelText}
+                              {coinCsv && (
+                                  <Typography
+                                      color="text.secondary"
+                                      component="div"
+                                      variant="caption"
+                                  >
+                                      {coinCsv}
+                                  </Typography>
+                              )}
+                          </Box>
+                      )
                     : fieldId === "t"
                       ? formatTime(entryRow.t)
                       : TEXT_FIELDS.get(fieldId)?.(value) ??
