@@ -9,6 +9,7 @@ import type {
     LeaderboardProfile,
 } from "@/lib/dev/backtestPrecision/leaderboards";
 import {
+    rangeDaysOf,
     readLeaf,
     scoreEntries,
 } from "@/lib/dev/backtestPrecision/leaderboards/leaves";
@@ -158,6 +159,18 @@ export function useLeaderboardData() {
         [scores],
     );
 
+    /**
+     * Numeric basis for the cell gradient. Text leaves get a numeric proxy:
+     * the Range column shades by the run's duration in days.
+     */
+    const gradientValue = useCallback(
+        (entry: BacktestLeaderboardEntry, fieldId: string): unknown =>
+            fieldId === "backtestConfig.range"
+                ? rangeDaysOf(entry.backtestConfig)
+                : leafValue(entry, fieldId),
+        [leafValue],
+    );
+
     /** Numeric range per leaf column so gradient shading is relative across rows. */
     const columnRanges = useMemo(() => {
         const leafIds = headerGroups.flatMap(
@@ -166,7 +179,7 @@ export function useLeaderboardData() {
         const ranges = new Map<string, { min: number; max: number }>();
         for (const id of leafIds) {
             const values = entries
-                .map((entry) => leafValue(entry, id))
+                .map((entry) => gradientValue(entry, id))
                 .filter((v): v is number => typeof v === "number" && !Number.isNaN(v));
             ranges.set(id, {
                 min: values.length ? Math.min(...values) : 0,
@@ -174,7 +187,7 @@ export function useLeaderboardData() {
             });
         }
         return ranges;
-    }, [entries, headerGroups, leafValue]);
+    }, [entries, gradientValue, headerGroups]);
 
     const sortedEntries = useMemo(() => {
         const rows = [...entries];
@@ -207,6 +220,7 @@ export function useLeaderboardData() {
         copyConfig,
         entries,
         error,
+        gradientValue,
         handleSort,
         headerGroups,
         leafValue,

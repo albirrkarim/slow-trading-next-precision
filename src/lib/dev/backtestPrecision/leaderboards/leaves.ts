@@ -47,7 +47,7 @@ function nestedValue(obj: unknown, path: string): unknown {
  * The run's duration in days — explicit startTime/endTime first, else the
  * named range label ("1month", "6month", …). Undefined when neither resolves.
  */
-function rangeDaysOf(config: unknown): number | undefined {
+export function rangeDaysOf(config: unknown): number | undefined {
   const c = config as ConfigLike | undefined;
   if (
     typeof c?.startTime === "number" &&

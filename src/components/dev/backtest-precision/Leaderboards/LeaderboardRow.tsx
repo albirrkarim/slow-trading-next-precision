@@ -24,6 +24,7 @@ import { formatMinEquity, formatNumber, formatTime, getGradientColor } from "./f
 export function LeaderboardRow(props: {
     columnRanges: Map<string, { min: number; max: number }>;
     entry: BacktestLeaderboardEntry;
+    gradientValue: (entry: BacktestLeaderboardEntry, fieldId: string) => unknown;
     headerGroups: HeaderGroup[];
     leafValue: (entry: BacktestLeaderboardEntry, fieldId: string) => unknown;
     onApplyConfig?: (config: BacktestConfig) => void;
@@ -35,6 +36,7 @@ export function LeaderboardRow(props: {
     const {
         columnRanges,
         entry,
+        gradientValue,
         headerGroups,
         leafValue,
         onApplyConfig,
@@ -47,7 +49,9 @@ export function LeaderboardRow(props: {
     const renderCell = (entryRow: BacktestLeaderboardEntry, fieldId: string) => {
         const value = leafValue(entryRow, fieldId);
         const range = columnRanges.get(fieldId);
-        const numeric = typeof value === "number" ? value : undefined;
+        const gradientRaw = gradientValue(entryRow, fieldId);
+        const numeric =
+            typeof gradientRaw === "number" ? gradientRaw : undefined;
         const background = range
             ? getGradientColor(numeric, range.min, range.max, INVERT_FIELDS.has(fieldId))
             : "inherit";

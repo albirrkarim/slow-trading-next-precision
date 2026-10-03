@@ -20,7 +20,7 @@ export const HEADER_GROUPS: HeaderGroup[] = [
     {
         id: "backtestConfig.range",
         label: "Range",
-        tooltip: "The backtest menu's range selection used for this run (e.g. 1month, 1year).\nSource: backtestConfig.range on the saved entry.",
+        tooltip: "The backtest menu's range selection used for this run (e.g. 1month, 1year).\nLonger is better — shaded by the resolved span in days.\nSource: backtestConfig.range on the saved entry.",
     },
     {
         id: "backtestConfig.settings.management.strategy",

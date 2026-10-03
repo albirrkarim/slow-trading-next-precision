@@ -87,6 +87,7 @@ function LeaderboardsContent({
         copyConfig,
         entries,
         error,
+        gradientValue,
         handleSort,
         headerGroups,
         leafValue,
@@ -142,6 +143,7 @@ function LeaderboardsContent({
                                     <LeaderboardRow
                                         columnRanges={columnRanges}
                                         entry={entry}
+                                        gradientValue={gradientValue}
                                         headerGroups={headerGroups}
                                         key={entry.id}
                                         leafValue={leafValue}
