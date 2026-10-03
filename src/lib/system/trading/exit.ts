@@ -1055,7 +1055,11 @@ function evaluateExit(params: {
 
   // BOTH:VOLATILITY_TARGET_TP
   // C.3  TP when already hit volatility target zone.
-  if (hasHitTargetZone && actualGain > 0) {
+  if (
+    config.volatilityTargetTakeProfitEnabled !== false &&
+    hasHitTargetZone &&
+    actualGain > 0
+  ) {
     // TP at current price
     const reason = `[SELL] ${readableTime} ${
       TRADE_MESSAGE.sell.TP

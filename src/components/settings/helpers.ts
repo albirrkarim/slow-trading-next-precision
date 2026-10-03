@@ -33,6 +33,7 @@ export function pickTradingConfigFields(
     exitOnVPointAbsLevel,
     stopLossUSDT,
     volatilityTargetStopLossPercent,
+    volatilityTargetTakeProfitEnabled,
     postAverageRescueExit,
     postAverageStopLoss: rawPostAverageStopLoss,
     levelBasedPctDriftStopLoss: rawLevelBasedPctDriftStopLoss,
@@ -60,6 +61,7 @@ export function pickTradingConfigFields(
     exitOnVPointAbsLevel,
     stopLossUSDT,
     volatilityTargetStopLossPercent,
+    volatilityTargetTakeProfitEnabled,
     postAverageRescueExit: postAverageRescue.config.normalize(
       postAverageRescueExit,
     ),

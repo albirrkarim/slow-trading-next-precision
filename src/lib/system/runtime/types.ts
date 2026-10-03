@@ -169,6 +169,12 @@ export interface RuntimeAccountTradingConfig {
   stopLossUSDT?: number;
   stopLossPercent?: number;
   volatilityTargetStopLossPercent?: number;
+  /**
+   * Take profit once the post-entry volatility target zone is confirmed with
+   * positive net PnL. Default enabled; `false` holds positions through the
+   * zone and lets later exit rules decide.
+   */
+  volatilityTargetTakeProfitEnabled?: boolean;
   postAverageRescueExit?: PostAverageRescueExitConfig;
   postAverageStopLoss?: PostAverageStopLossConfig;
   levelBasedPctDriftStopLoss?: LevelBasedPctDriftStopLossConfig;

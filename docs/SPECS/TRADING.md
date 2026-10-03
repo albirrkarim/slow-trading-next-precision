@@ -732,6 +732,10 @@ If an open position has already hit the opposite volatility target zone after en
 
 When that target zone exists and the current fee-adjusted gain is still positive, SLOW should close the position as `TAKE_PROFIT` to secure the remaining profit.
 
+The rule is enabled by default. `volatilityTargetTakeProfitEnabled: false`
+disables it per account so positions pass through the zone for the remaining
+exit rules; the traditional TP fallback still requires the confirmed zone.
+
 The open-position level sequence marks the first target-zone hit as a red `L0`
 break and stops showing the unused averaging ladder after that point. It must
 still show every subsequently observed vPoint in chronological order through

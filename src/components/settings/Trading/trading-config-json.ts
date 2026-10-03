@@ -8,6 +8,7 @@ const BOOLEAN_KEYS = [
   "entrySpareBufferEnabled",
   "lateEntryVPointPriceDriftEnabled",
   "useStopLossPlus",
+  "volatilityTargetTakeProfitEnabled",
 ] as const satisfies ReadonlyArray<keyof RuntimeAccountTradingConfig>;
 
 const NUMBER_KEYS = [

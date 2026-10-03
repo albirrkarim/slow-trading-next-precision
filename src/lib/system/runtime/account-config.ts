@@ -54,6 +54,7 @@ export const ACCOUNT_STRATEGY_CONFIG_KEYS = [
   "takeProfitPercent",
   "useStopLossPlus",
   "volatilityTargetStopLossPercent",
+  "volatilityTargetTakeProfitEnabled",
 ] as const satisfies ReadonlyArray<keyof RuntimeAccountTradingConfig>;
 
 /** Strategy fields shared once under `management`, not per account. */

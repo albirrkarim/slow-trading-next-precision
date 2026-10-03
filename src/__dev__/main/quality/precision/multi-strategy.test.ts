@@ -1103,6 +1103,39 @@ describe("multi strategy exit", () => {
     expect(adjacentExecuted?.vPoints).toEqual([]);
   });
 
+  it("skips the volatility target-zone TP when the account toggle is off", async () => {
+    // BOTH:VOLATILITY_TARGET_TP — the flag suppresses the zone TP without
+    // touching the confirmed-zone requirement of the traditional fallback.
+    const position = makePosition();
+    const entryPoint: VolatilityPoint = {
+      ...makePoint(-1, 0),
+      id: "B_open",
+      p: 100,
+    };
+    const targetPoint: VolatilityPoint = {
+      ...makePoint(1, 100),
+      id: "T_target",
+      p: 110,
+    };
+    const context = makeContext(
+      ["a1"],
+      { SUI: [entryPoint, targetPoint] },
+      {
+        accountTrading: {
+          stopLossUSDT: 0,
+          volatilityTargetTakeProfitEnabled: false,
+        },
+        currentTime: 5_000,
+        markPriceMap: { SUI: { lastUpdated: 5_000, price: 110 } },
+      },
+    );
+
+    const decision = await strategy.decisions.findExit(context, position);
+
+    expect(decision).toBeNull();
+    expect(position.closed).toBeUndefined();
+  });
+
   it("stop loss plus exits once the recorded peak retraces past the trigger", async () => {
     // BOTH:SL_PLUS — the trailing peak is the persisted pnl.maxUpPct, which
     // updatePnl refreshes before every exit evaluation in every mode.

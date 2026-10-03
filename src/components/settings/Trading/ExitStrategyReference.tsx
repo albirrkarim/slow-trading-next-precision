@@ -324,9 +324,26 @@ export default function ExitStrategyReference({
             behavior="Exits with remaining positive fee-adjusted profit after the opposite volatility target zone appears following entry."
             name="Volatility target-zone TP"
             number={9}
-            status="Automatic"
+            status={
+              tradingConfig.volatilityTargetTakeProfitEnabled !== false
+                ? "Enabled"
+                : "Disabled"
+            }
             tc="BOTH:VOLATILITY_TARGET_TP"
-          />
+          >
+            <SettingsCheckbox
+              checked={
+                tradingConfig.volatilityTargetTakeProfitEnabled !== false
+              }
+              info="Take profit as soon as the post-entry volatility target zone is confirmed while net PnL is still positive. Disable to hold positions through the zone and let the remaining exit rules decide."
+              label="Use Volatility Target-Zone TP"
+              onChange={(checked) =>
+                updateTradingConfig({
+                  volatilityTargetTakeProfitEnabled: checked,
+                })
+              }
+            />
+          </SettingsRuleAccordion>
 
           <SettingsRuleAccordion
             behavior="Final fallback when StopLoss+ is off: TP must be reached and the opposite volatility target zone must be confirmed."
