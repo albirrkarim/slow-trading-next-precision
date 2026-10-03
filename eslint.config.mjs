@@ -159,6 +159,14 @@ const config = [
     },
   },
   {
+    // docs/TODO/folder_ui.md: component files above ~500 lines are a review
+    // trigger for extracting subcomponents, hooks, and pure helpers — warn only.
+    files: ["src/components/**/*.tsx"],
+    rules: {
+      "max-lines": [1, { max: 500 }],
+    },
+  },
+  {
     files: ["src/lib/trading/helper/log.ts"],
     rules: {
       "no-console": "off",
