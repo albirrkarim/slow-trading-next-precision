@@ -5,6 +5,7 @@ import { normalizeDashboardNotificationConfig } from "../notification/config";
 import blackSwan from "../trading/black-swan";
 import runtimeAccountConfig from "../runtime/account-config";
 import runtimeAccounts from "../runtime/accounts";
+import runtimeCredentials from "../runtime/credentials";
 import runtimeDefaults from "../runtime/defaults";
 import runtimeNormalize from "../runtime/normalize";
 import runtimeStages from "../runtime/stages";
@@ -202,6 +203,13 @@ async function load(): Promise<RuntimeStorageCatalog> {
       const migrated = runtimeAccounts.futuresPositionMode.migrate(account);
       return {
         ...migrated,
+        ...(migrated.credentials !== undefined
+          ? {
+              credentials: runtimeCredentials.decryptRecord(
+                migrated.credentials,
+              ),
+            }
+          : {}),
         trading: runtimeAccounts.trading.migrate(migrated.trading),
       };
     }),
@@ -259,7 +267,12 @@ async function saveAccounts(
     retiredSlugs: [...retiredSlugs],
   });
   const payload: RuntimeAccountsFileData = {
-    accounts: normalized,
+    // Credentials are encrypted only in the persisted payload — the returned
+    // (and in-memory) accounts keep plaintext fields.
+    accounts: normalized.map((account) => ({
+      ...account,
+      credentials: runtimeCredentials.encryptRecord(account.credentials),
+    })),
     retiredSlugs: [...retiredSlugs].sort(),
     updatedAt: Date.now(),
   };
@@ -286,7 +299,10 @@ async function listAccounts(): Promise<RuntimeAccountConfig[]> {
 async function save(config: RuntimeConfig): Promise<void> {
   await saveConfig(config);
   await jsonFile.write.atomic(storageFiles.prod.accounts, {
-    accounts: config.accounts,
+    accounts: config.accounts.map((account) => ({
+      ...account,
+      credentials: runtimeCredentials.encryptRecord(account.credentials),
+    })),
     updatedAt: Date.now(),
   } satisfies RuntimeAccountsFileData);
 }

@@ -5,12 +5,13 @@ storage, injection/XSS, dependency posture. Reviewed against the deployed
 threat model — a self-hosted single-operator trading bot holding live
 exchange API keys.
 
-**Overall score: 78 / 100**
+**Overall score: 85 / 100**
 
-Solid, thoughtful design for localhost/single-operator use. Two
-meaningful gaps (plaintext exchange credentials, unauthenticated coin
-metadata writes) plus a handful of minor hardening items. No critical
-remote compromise path found; production fails closed when
+Solid, thoughtful design for localhost/single-operator use. The previous
+high-severity gap (plaintext exchange credentials) is now resolved —
+credentials persist AES-256-GCM encrypted. Remaining items are one
+medium (unauthenticated coin metadata writes) plus minor hardening. No
+critical remote compromise path found; production fails closed when
 `DASHBOARD_PIN` is unset.
 
 ## Score breakdown
@@ -19,7 +20,7 @@ remote compromise path found; production fails closed when
 |---|---|---|
 | Dashboard authentication | 16/20 | HMAC session cookie, rate limit, timing-safe compare; rate-limit key is spoofable |
 | Route protection coverage | 13/15 | `/` + `/api/system/**` enforced; `coin/metadata` write ops left open |
-| Credential & secret handling | 10/20 | Mask/strip pipeline is good; exchange keys still plaintext at rest |
+| Credential & secret handling | 17/20 | AES-256-GCM at rest + mask/strip pipeline; key source is env-derived |
 | MCP token system | 14/15 | Hashed at rest, AES-256-GCM reveal, scoped permissions, timing-safe |
 | Injection / XSS / SSRF | 9/10 | No eval, no raw HTML sinks, file-based storage; authenticated SSRF only |
 | Secrets in repo / env hygiene | 8/10 | `.env` + `storage/` ignored, no tracked secrets; no dependency audit |
@@ -58,20 +59,40 @@ remote compromise path found; production fails closed when
 
 ## Findings
 
-### High
+### High — resolved
 
-**S1 — Exchange API credentials stored in plaintext** (score impact ~-8)
+**S1 — Exchange API credentials stored in plaintext** — **FIXED**
 
-`src/lib/system/runtime/accounts.ts` `normalizeCredentials()` persists
-`apiKey`/`apiSecret`/`passphrase` as plain fields in the on-disk config
-JSON. These keys can move real funds. The codebase already proves it can
-do better — MCP tokens encrypt secrets with AES-256-GCM keyed by
-`MCP_TOKEN_ENCRYPTION_SECRET`/PIN-derived material.
+Was: `accounts.json` persisted `apiKey`/`apiSecret`/`passphrase` in
+plaintext.
 
-Recommendation: encrypt `credentials.*` at rest with the same scheme
-(versioned `iv:tag:ct` envelope), decrypt only inside
-`getExchangeCredentials()`. Keep the env-var fallback path untouched —
-it already avoids disk entirely.
+Now: `src/lib/system/runtime/credentials.ts` encrypts each field
+AES-256-GCM into a `v1:<iv>:<tag>:<ct>` envelope at the disk boundary
+(`runtimeCatalog.save`/`accounts.save` in
+`src/lib/system/storage/catalog.ts`), and decrypts on `load()` and in
+`normalizeCredentials`. In-memory and API-visible values stay plaintext,
+so the settings reveal flow, `getExchangeCredentials`, and the env-var
+fallback are unchanged.
+
+Key derivation is domain-separated:
+`sha256("account-credentials:" + secret + ":" + DASHBOARD_PIN_SALT)`
+where `secret` = `ACCOUNT_CREDENTIALS_ENCRYPTION_SECRET` →
+`MCP_TOKEN_ENCRYPTION_SECRET` → `DASHBOARD_PIN` (first set wins).
+Operational notes:
+
+- Legacy plaintext files load unchanged and are encrypted on next save.
+- Envelopes that can't be decrypted resolve to `""` + one error log —
+  the account fails exchange auth visibly instead of booting with
+  garbage keys or crashing the catalog.
+- Synced storage bundles now carry ciphertext; the receiving instance
+  must share the same secret (or re-enter credentials).
+- Rotating `DASHBOARD_PIN` breaks PIN-derived envelopes — set the
+  dedicated env var to decouple (documented in `.env.example`).
+
+Covered by
+`src/__dev__/main/quality/unit/account-credentials-encryption.test.ts`
+(9 tests: round-trip, IV freshness, wrong-key, legacy passthrough,
+on-disk envelope + in-memory plaintext).
 
 ### Medium
 
@@ -156,14 +177,12 @@ optional allowlist check costs little.
 
 The score assumes the documented deployment: localhost or trusted LAN,
 single operator. If the instance is ever exposed to the public internet
-without a trusted TLS proxy, drop ~10 points: S2 and S3 become
-exploitable primitives, `x-forwarded-for` handling matters, and
-plaintext credentials (S1) sit one backup-sync mistake away from
-disclosure.
+without a trusted TLS proxy, drop ~8 points: S2 and S3 become
+exploitable primitives and `x-forwarded-for` handling matters.
 
 ## Prioritized actions
 
-1. Encrypt `credentials.*` at rest (reuse the MCP AES-256-GCM scheme). [S1]
+1. ~~Encrypt `credentials.*` at rest~~ — done (S1). [resolved]
 2. Move `coin/metadata` behind the session cookie; keep only `syncState` on the sync token. [S2]
 3. Make the PIN attempt key proxy-aware (`TRUST_PROXY` env) or ignore `x-forwarded-for` by default. [S3]
 4. `timingSafeEqual` for `x-sync-token` in `src/proxy.ts`. [S4]

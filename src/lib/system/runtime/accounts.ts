@@ -1,3 +1,4 @@
+import runtimeCredentials from "./credentials";
 import type { RuntimeAccountConfig } from "./types";
 import runtimeDefaults, {
   DEFAULT_SANDBOX_INITIAL_BALANCE_USDT,
@@ -44,13 +45,15 @@ function normalizeCredentials(
     credentials && typeof credentials === "object"
       ? (credentials as Record<string, unknown>)
       : {};
+  const passphrase = runtimeCredentials.decryptField(record.passphrase);
 
+  // Stored fields may carry the v1 encryption envelope; decryptField passes
+  // plaintext through so legacy files keep loading and get encrypted on the
+  // next save.
   return {
-    apiKey: getString(record.apiKey),
-    apiSecret: getString(record.apiSecret),
-    ...(getString(record.passphrase)
-      ? { passphrase: getString(record.passphrase) }
-      : {}),
+    apiKey: runtimeCredentials.decryptField(record.apiKey),
+    apiSecret: runtimeCredentials.decryptField(record.apiSecret),
+    ...(passphrase ? { passphrase } : {}),
   };
 }
 
