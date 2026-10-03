@@ -220,8 +220,22 @@ describe("guard.allows — shared environment approval gate", () => {
       guard.allows(entry({ manual: true }), contextFor(state)),
     ).toBe(false);
 
-    // Below the threshold the signal is still current.
-    const fresh = { ...stale, maxDownPct: VOLATILITY_THRESHOLD - 0.5 };
+    // The 0.9 forming margin: excursions at 90% of the threshold already
+    // veto — a near-forming counter slips under the raw threshold otherwise.
+    const nearForming = {
+      ...stale,
+      maxDownPct: VOLATILITY_THRESHOLD * 0.9,
+    };
+    const near = makeState({
+      vPointsMap: { SUI: [nearForming] as never[] },
+    });
+    expect(guard.allows(entry(), contextFor(near))).toBe(false);
+
+    // Below the forming margin the signal is still current.
+    const fresh = {
+      ...stale,
+      maxDownPct: VOLATILITY_THRESHOLD * 0.9 - 0.5,
+    };
     const ok = makeState({ vPointsMap: { SUI: [fresh] as never[] } });
     expect(guard.allows(entry(), contextFor(ok))).toBe(true);
 

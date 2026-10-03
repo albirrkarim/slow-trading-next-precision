@@ -8,6 +8,14 @@ import type {
   RuntimeEntryCandidate,
 } from "../types";
 
+/**
+ * Fraction of `VOLATILITY_THRESHOLD` at which a tracked vPoint excursion is
+ * treated as a forming counter-point for entry blocking. Settles the
+ * just-below-threshold slip: excursions are running maxima, so a point at
+ * 90% is likely to reach 100% on the next mark-price refresh.
+ */
+const FORMING_EXCURSION_RATIO = 0.9;
+
 /** Resolves today's accumulated closed-trade PnL, resetting on UTC rollover. */
 function resolveDailyPnlUsdt(state: RuntimeEngineState): number {
   const day = runtimeDailyPnlLimit.period.getCurrentUtc(
@@ -100,14 +108,18 @@ function policy(
   }
 
   // BOTH:BLOCK_ENTRY_VPOINT_MIGHT_FORMED — when the latest vPoint's tracked
-  // excursion reaches VOLATILITY_THRESHOLD, the detector's counter-sequence
-  // is already active: a new opposite point is forming but not yet emitted,
-  // so the signal this entry rests on is stale. Blocks forced entries too.
+  // excursion nears VOLATILITY_THRESHOLD, the detector's counter-sequence is
+  // about to activate: a new opposite point is forming but not yet emitted,
+  // so the signal this entry rests on is stale. Excursions are running
+  // maxima, so a point at 90% of the threshold is very likely to cross it on
+  // a later refresh — the guard blocks early instead of slipping an entry in
+  // right before the counter emits. Blocks forced entries too.
   const latestPoint = state.vPointsMap[symbol]?.at(-1);
   if (
     latestPoint &&
     Math.max(latestPoint.maxUpPct ?? 0, latestPoint.maxDownPct ?? 0) >=
-      resolveVolatilityThreshold(state.config.management)
+      resolveVolatilityThreshold(state.config.management) *
+        FORMING_EXCURSION_RATIO
   ) {
     return false;
   }

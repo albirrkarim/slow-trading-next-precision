@@ -633,9 +633,12 @@ Every retained vPoint tracks `maxUpPct`/`maxDownPct` — the largest upward and
 downward excursions of the tracked mark price relative to the point's own
 price `p`, updated on every `updateMarkPrice` pass (websocket marks in
 production, closed-candle marks in backtest). When either excursion on the
-symbol's latest vPoint reaches `VOLATILITY_THRESHOLD`, the detector's
-counter-sequence is already active — an opposite point is forming but not yet
-emitted — so the entry must be rejected.
+symbol's latest vPoint reaches `VOLATILITY_THRESHOLD * 0.9`, the detector's
+counter-sequence is about to activate — an opposite point is forming but not
+yet emitted — so the entry must be rejected. The 0.9 margin exists because
+excursions are running maxima: a point just below the threshold is very
+likely to cross it on the next refresh, so the guard blocks early rather than
+admitting an entry moments before the counter-point emits.
 
 The guard lives in the shared Precision guard (`src/lib/precision/guard`), so
 it applies identically to live, sandbox, and backtest entries, including

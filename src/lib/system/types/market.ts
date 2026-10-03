@@ -113,7 +113,9 @@ export interface VolatilityPointRuntime {
    * Largest upward excursion of the tracked price above `p` since the point
    * formed, in percent points, refreshed on every mark-price update.
    * `maxUpPct >= VOLATILITY_THRESHOLD` means the detector's UP sequence is
-   * active again — a new TOP is forming but not yet emitted.
+   * active again — a new TOP is forming but not yet emitted. The entry
+   * guard already treats `>= VOLATILITY_THRESHOLD * 0.9` as stale since
+   * excursions only grow, so near-threshold points block entries.
    */
   maxUpPct?: number;
 
@@ -121,7 +123,9 @@ export interface VolatilityPointRuntime {
    * Largest downward excursion of the tracked price below `p` since the
    * point formed, in percent points, refreshed on every mark-price update.
    * `maxDownPct >= VOLATILITY_THRESHOLD` means the detector's DOWN sequence
-   * is active — a new BOTTOM is forming but not yet emitted.
+   * is active — a new BOTTOM is forming but not yet emitted. The entry
+   * guard already treats `>= VOLATILITY_THRESHOLD * 0.9` as stale since
+   * excursions only grow, so near-threshold points block entries.
    */
   maxDownPct?: number;
 
