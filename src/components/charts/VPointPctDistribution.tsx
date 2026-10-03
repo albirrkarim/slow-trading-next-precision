@@ -40,6 +40,7 @@ function formatOccurrenceDetail(
     occurrence.t !== undefined
       ? formatOccurrenceDate(occurrence.t)
       : undefined,
+    occurrence.symbol?.replace(/_USDT$/, ""),
     occurrence.id,
     `L${occurrence.lvl}`,
     formatExactPct(occurrence.pct),
@@ -59,12 +60,18 @@ export default function VPointPctDistribution({
   const [intervalInput, setIntervalInput] = useState(
     String(vPointPctDistribution.interval.defaultValue),
   );
+  const [detailPctInput, setDetailPctInput] = useState(
+    String(vPointPctDistribution.detailPct.defaultValue),
+  );
   const interval = vPointPctDistribution.interval.normalize(
     Number(intervalInput),
   );
+  const detailPct = vPointPctDistribution.detailPct.normalize(
+    Number(detailPctInput),
+  );
   const buckets = useMemo(
-    () => vPointPctDistribution.compute(points, interval),
-    [interval, points],
+    () => vPointPctDistribution.compute(points, interval, detailPct),
+    [detailPct, interval, points],
   );
   const total = buckets.reduce((sum, bucket) => sum + bucket.count, 0);
 
@@ -87,24 +94,43 @@ export default function VPointPctDistribution({
           </Typography>
           <Typography color="text.secondary" variant="caption">
             Only percentage ranges containing at least one vPoint are listed.
+            Details are shown for points at or above the threshold.
           </Typography>
         </Box>
-        <TextField
-          label="Interval %"
-          onBlur={() => setIntervalInput(String(interval))}
-          onChange={(event) => setIntervalInput(event.target.value)}
-          size="small"
-          slotProps={{
-            htmlInput: {
-              inputMode: "decimal",
-              min: vPointPctDistribution.interval.minimum,
-              step: "0.1",
-            },
-          }}
-          sx={{ flex: "0 0 100px" }}
-          type="number"
-          value={intervalInput}
-        />
+        <Box sx={{ display: "flex", flex: "0 0 auto", gap: 1 }}>
+          <TextField
+            label="Interval %"
+            onBlur={() => setIntervalInput(String(interval))}
+            onChange={(event) => setIntervalInput(event.target.value)}
+            size="small"
+            slotProps={{
+              htmlInput: {
+                inputMode: "decimal",
+                min: vPointPctDistribution.interval.minimum,
+                step: "0.1",
+              },
+            }}
+            sx={{ flex: "0 0 100px" }}
+            type="number"
+            value={intervalInput}
+          />
+          <TextField
+            label="Threshold %"
+            onBlur={() => setDetailPctInput(String(detailPct))}
+            onChange={(event) => setDetailPctInput(event.target.value)}
+            size="small"
+            slotProps={{
+              htmlInput: {
+                inputMode: "decimal",
+                min: vPointPctDistribution.detailPct.minimum,
+                step: "0.1",
+              },
+            }}
+            sx={{ flex: "0 0 110px" }}
+            type="number"
+            value={detailPctInput}
+          />
+        </Box>
       </Box>
 
       <TableContainer component={Paper} sx={{ maxHeight: 480 }} variant="outlined">

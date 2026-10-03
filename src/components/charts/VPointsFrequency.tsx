@@ -332,7 +332,12 @@ function VPointsFrequencyContent({
         startTimeMs: startTime,
         volatilityMap,
       });
-      const rangedPoints = Object.values(rangedMap).flat();
+      const rangedPoints = Object.entries(rangedMap).flatMap(
+        ([symbol, symbolPoints]) =>
+          symbolPoints.map((point) =>
+            point.symbol ? point : { ...point, symbol },
+          ),
+      );
       const levelSymbolCounts = new Map<number, Map<string, number>>();
       let maxPct = Number.NEGATIVE_INFINITY;
       let minPct = Number.POSITIVE_INFINITY;
