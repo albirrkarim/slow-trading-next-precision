@@ -515,7 +515,12 @@ function applyFill(
     direction: plan.direction,
     opened: {
       t: fill.t,
-      vPoint: { id: plan.signal.id, lvl: plan.entryLevel },
+      vPoint: {
+        id: plan.signal.id,
+        lvl: plan.entryLevel,
+        maxDownPct: plan.signal.maxDownPct,
+        maxUpPct: plan.signal.maxUpPct,
+      },
       reason: "COMMON",
       source: context.state.config.runtime.entrySignalBypass
         ? "BYPASS"

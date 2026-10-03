@@ -14,6 +14,13 @@ export type PositionCloseSourceOverride = "MANUAL" | "EXCHANGE";
 export interface PositionVPointRef {
   id: string;
   lvl: number;
+  /**
+   * Debug snapshot: source point's largest upward excursion at the moment the
+   * ref was captured. Copied from the live `VolatilityPoint` runtime fields.
+   */
+  maxUpPct?: number;
+  /** Debug snapshot: source point's largest downward excursion at capture. */
+  maxDownPct?: number;
 }
 
 export interface PositionOpenEvent {
