@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTheme } from "@mui/material/styles";
 import type { IChartApi, ISeriesApi } from "lightweight-charts";
 import { createChart, ColorType, CandlestickSeries, createSeriesMarkers, HistogramSeries, LineSeries, LineStyle } from "lightweight-charts";
 import type { Marker } from "@/lib/system/utils/ui/chart-markers";
@@ -20,7 +21,11 @@ import {
     padDataWithFutureWhitespace,
 } from "./trajectory";
 
-export default function CurrencyChart({ data, markers, activePosition, aimPosition, dashedEntryPriceLine = false, tpPrice, slPrice, betterToCloseAt, entryOrders, height = 400, trajectory, trajectoryAnchor, trajectoryDirection }: ChartProps) {
+export default function CurrencyChart({ data, markers, activePosition, aimPosition, dashedEntryPriceLine = false, tpPrice, slPrice, betterToCloseAt, entryOrders, height = 400, trajectory, trajectoryAnchor, trajectoryDirection, initialVisibleRange }: ChartProps) {
+    const theme = useTheme();
+    const chartTextColor = theme.palette.text.secondary;
+    const chartGridColor = theme.palette.divider;
+    const chartEntryLineColor = theme.palette.text.primary;
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const chartRef = useRef<IChartApi | null>(null);
     const seriesRef = useRef<ISeriesApi<any> | null>(null);
@@ -51,13 +56,13 @@ export default function CurrencyChart({ data, markers, activePosition, aimPositi
         const chart = createChart(chartContainerRef.current, {
             layout: {
                 background: { type: ColorType.Solid, color: "transparent" },
-                textColor: "#DDD",
+                textColor: chartTextColor,
             },
             width: chartContainerRef.current.clientWidth,
             height,
             grid: {
-                vertLines: { color: "#333" },
-                horzLines: { color: "#333" },
+                vertLines: { color: chartGridColor },
+                horzLines: { color: chartGridColor },
             },
             timeScale: {
                 timeVisible: true,
@@ -232,6 +237,20 @@ export default function CurrencyChart({ data, markers, activePosition, aimPositi
         };
     }, [height]);
 
+    // Keep chart colors in sync with the MUI theme without recreating it.
+    useEffect(() => {
+        chartRef.current?.applyOptions({
+            layout: {
+                background: { type: ColorType.Solid, color: "transparent" },
+                textColor: chartTextColor,
+            },
+            grid: {
+                vertLines: { color: chartGridColor },
+                horzLines: { color: chartGridColor },
+            },
+        });
+    }, [chartGridColor, chartTextColor]);
+
     // Update data
     useEffect(() => {
         if (seriesRef.current && volumeSeriesRef.current && data.length > 0) {
@@ -254,6 +273,10 @@ export default function CurrencyChart({ data, markers, activePosition, aimPositi
             const visibleLogicalRange = shouldPreserveVisibleRange
                 ? chart?.timeScale().getVisibleLogicalRange() ?? null
                 : null;
+            const dataWindowChanged =
+                !previousDataWindow ||
+                previousDataWindow.firstTime !== firstTime ||
+                previousDataWindow.lastTime !== lastTime;
             const maxProjectedTime = getMaxProjectedTime({
                 markers,
                 trajectory,
@@ -296,6 +319,11 @@ export default function CurrencyChart({ data, markers, activePosition, aimPositi
 
             if (visibleLogicalRange && chart) {
                 chart.timeScale().setVisibleLogicalRange(visibleLogicalRange);
+            } else if (chart && initialVisibleRange && dataWindowChanged) {
+                chart.timeScale().setVisibleRange({
+                    from: initialVisibleRange.from as any,
+                    to: initialVisibleRange.to as any,
+                });
             } else if (chart && projectedTimeChanged) {
                 chart.timeScale().fitContent();
             }
@@ -333,7 +361,7 @@ export default function CurrencyChart({ data, markers, activePosition, aimPositi
             // We would need to track them. Ideally we would rebuild chart on position change or track strictly.
             // For now, let's proceed with adding it. If multiple lines heap up, we might need a ref to existingLine.
         }
-    }, [activePosition, betterToCloseAt, data, markers, resolvedAimPosition, trajectory, trajectoryAnchor]);
+    }, [activePosition, betterToCloseAt, data, initialVisibleRange, markers, resolvedAimPosition, trajectory, trajectoryAnchor]);
 
     useEffect(() => {
         const chart = chartRef.current;
@@ -505,7 +533,7 @@ export default function CurrencyChart({ data, markers, activePosition, aimPositi
 
             entryLineRef.current = seriesRef.current.createPriceLine({
                 price: activePosition.exposure.averageEntryPrice,
-                color: '#000000',
+                color: chartEntryLineColor,
                 lineWidth: 2,
                 // BTEST:BACKTEST_TRADE_CHART_AVERAGING
                 lineStyle: dashedEntryPriceLine
@@ -516,7 +544,7 @@ export default function CurrencyChart({ data, markers, activePosition, aimPositi
             });
         }
 
-    }, [activePosition, dashedEntryPriceLine]);
+    }, [activePosition, chartEntryLineColor, dashedEntryPriceLine]);
 
     useEffect(() => {
         if (!seriesRef.current) return;

@@ -66,6 +66,11 @@ export interface ChartProps {
     betterToCloseAt?: number;
     entryOrders: OpenOrder[];
     height?: number;
+    /**
+     * Time window (chart-time seconds) shown once when fresh data first
+     * arrives, instead of fitting the whole fetched range.
+     */
+    initialVisibleRange?: { from: number; to: number };
     trajectory?: TrajectoryPoint[][];
     trajectoryAnchor?: {
         price: number;

@@ -90,6 +90,7 @@ export default function TradeChartBase({
   includeTradeHistory = false,
   startTimeMs,
   endTimeMs,
+  initialVisibleRangeMs,
   volatilitySource = "storage",
   customVolatilityPoints,
 }: {
@@ -111,6 +112,8 @@ export default function TradeChartBase({
   includeTradeHistory?: boolean;
   startTimeMs?: number;
   endTimeMs?: number;
+  /** Trade window (ms) the chart scrolls to when data first loads. */
+  initialVisibleRangeMs?: { start: number; end: number };
   volatilitySource?: TradeChartVolatilitySource;
   customVolatilityPoints?: VolatilityPoint[];
 }) {
@@ -242,6 +245,19 @@ export default function TradeChartBase({
   }, [fetchKlines]);
 
   const allMarkers = useMemo(() => [...apiMarkers, ...(markers ?? [])], [apiMarkers, markers]);
+  const initialVisibleRange = useMemo(
+    () =>
+      initialVisibleRangeMs &&
+      Number.isFinite(initialVisibleRangeMs.start) &&
+      Number.isFinite(initialVisibleRangeMs.end) &&
+      initialVisibleRangeMs.end > initialVisibleRangeMs.start
+        ? {
+            from: Math.floor(initialVisibleRangeMs.start / 1000),
+            to: Math.ceil(initialVisibleRangeMs.end / 1000),
+          }
+        : undefined,
+    [initialVisibleRangeMs?.end, initialVisibleRangeMs?.start],
+  );
 
   if (loading) {
     return (
@@ -305,6 +321,7 @@ export default function TradeChartBase({
         dashedEntryPriceLine={dashedEntryPriceLine}
         entryOrders={[]}
         height={500}
+        initialVisibleRange={initialVisibleRange}
         trajectory={trajectory}
         trajectoryAnchor={trajectoryAnchor}
         trajectoryDirection={trajectoryDirection}

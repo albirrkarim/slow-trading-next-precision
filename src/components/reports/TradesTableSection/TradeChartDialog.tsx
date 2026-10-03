@@ -31,6 +31,10 @@ export default function TradeChartDialog({
   row: SlowTradingReportRow;
 }) {
   const tradeEndMs = row.closed?.t ?? row.opened.t;
+  const focusPadMs = Math.max(
+    (tradeEndMs - row.opened.t) * 0.5,
+    15 * 60_000,
+  );
   const legMeta = pair.meta.ofPosition(row);
   const legPrefix = legMeta ? `${legMeta.role} leg ` : "";
 
@@ -66,6 +70,10 @@ export default function TradeChartDialog({
             )}
             startTimeMs={row.opened.t - TRADE_CHART_CONTEXT_MS}
             endTimeMs={tradeEndMs + TRADE_CHART_CONTEXT_MS}
+            initialVisibleRangeMs={{
+              start: row.opened.t - focusPadMs,
+              end: tradeEndMs + focusPadMs,
+            }}
             volatilitySource="storage"
             customVolatilityPoints={getVolatilityPoints?.(row.symbol)}
             header={
