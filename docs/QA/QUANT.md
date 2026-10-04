@@ -160,3 +160,10 @@ Terms used above, defined in PRECISION's context:
 - **Regime** — a distinct market environment (bull, bear, chop). Edges are
   regime-dependent; a mean-reversion edge in chop can vanish in a trending
   market.
+- **Desk-level thinking** — evaluating positions the way an institutional
+  trading desk does: by capital and risk math rather than hope. Contrast
+  with retail averaging ("price dropped, buy more") — a desk asks whether
+  the projected position is profitable at the rescue target, whether the
+  margin ladder fits the budget, and what the worst-case loss is before
+  executing. PRECISION's rescue-projection gating, balance buckets, and
+  daily-PnL kill switch are this instinct implemented in code.
