@@ -114,3 +114,49 @@ answer that already exists; what is missing is the protocol.
 5. **Entry expectancy** — estimate per-vPoint-level expectancy from
    historical signal→outcome pairs; if a level has no positive expectancy,
    the execution layer cannot save it.
+
+## Terminology
+
+Terms used above, defined in PRECISION's context:
+
+- **Alpha** — profit caused by your *signal* rather than by the market
+  moving. If buying after every confirmed vPoint beats buying at random
+  times, the vPoint signal has alpha; if it doesn't, the strategy has no
+  edge and the execution layer is just dressing up coin flips. "Alpha
+  research" is the work of proving the signal predicts anything at all —
+  the part quant firms spend most of their effort on.
+- **Edge** — the measurable form of alpha: positive expected value per
+  trade after fees and funding. "No edge" = the rules lose money in
+  expectation no matter how well they execute.
+- **Expectancy** — average profit per trade: `(winRate × avgWin) −
+  (lossRate × avgLoss)`, net of costs. The single number that decides
+  whether a strategy should exist.
+- **Mean reversion** — betting that price returns toward where it came
+  from. PRECISION's core bet: a confirmed vPoint pivot is a local extreme
+  that partially retraces.
+- **Averaging / DCA / martingale-flavored** — adding to a losing position
+  to lower the break-even price. Improves win rate (most dips recover) at
+  the cost of rare catastrophic losses (the dip that keeps dipping).
+  "Martingale" is the extreme version where each add multiplies size.
+- **Short volatility / left tail** — the payoff shape of averaging: many
+  small steady wins, occasional very large losses. The "left tail" is the
+  rare bad outcome on the loss side of the distribution — for PRECISION,
+  the fully-averaged position that still hits stop loss.
+- **Payoff shape / convexity** — how profit distributes across outcomes:
+  win rate alone hides whether you win-small-lose-big (averaging) or
+  win-big-lose-small (trend following).
+- **Sharpe ratio** — mean return divided by its volatility; how much
+  return per unit of risk. The leaderboard computes it on monthly returns,
+  unannualized.
+- **% ADV / liquidity cap** — sizing entries as a small fraction of the
+  asset's daily volume so orders don't move the market.
+  `maxEntryBased24HourVolPct` is this rule.
+- **Out-of-sample / walk-forward** — testing a config on data it was never
+  tuned on. The only honest measurement of a strategy; performance on the
+  tuning window is inflated by definition.
+- **Selection bias** — picking the best of many configs on one window
+  means picking the one that best fit that window's luck. Fixed by
+  out-of-sample validation.
+- **Regime** — a distinct market environment (bull, bear, chop). Edges are
+  regime-dependent; a mean-reversion edge in chop can vanish in a trending
+  market.
