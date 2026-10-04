@@ -22,10 +22,10 @@ import { useMemo, useState } from "react";
 const LETTER_LABEL: Record<string, string> = { B: "BOTTOM", T: "TOP" };
 
 const MATRIX_TOOLTIPS = {
+  accuracy:
+    "Accuracy = (TP + TN) / resolved — the share of all decisions (entries and skips) that were correct. Pending entries are excluded.",
   fn: "False negative — the rule skipped this point but the predicted vPoint formed (a winning entry was missed).",
   fp: "False positive — the rule entered but the opposite vPoint formed (a losing entry).",
-  pending:
-    "The rule entered but the point is still its symbol's latest — no successor emitted yet.",
   tn: "True negative — the rule skipped this point and the opposite vPoint formed (a losing entry avoided).",
   tp: "True positive — the rule entered and the predicted vPoint formed (a winning entry).",
 } as const;
@@ -145,6 +145,20 @@ export default function VPointPrediction({
 
   const failedArms = result.arms.filter((arm) => arm.status === "failed");
   const missedArms = result.misses;
+  const totals = result.directions.reduce(
+    (acc, direction) => ({
+      fn: acc.fn + direction.fn,
+      fp: acc.fp + direction.fp,
+      tn: acc.tn + direction.tn,
+      tp: acc.tp + direction.tp,
+    }),
+    { fn: 0, fp: 0, tn: 0, tp: 0 },
+  );
+  const totalResolved = totals.tp + totals.fp + totals.tn + totals.fn;
+  const totalAccuracyPct =
+    totalResolved > 0
+      ? ((totals.tp + totals.tn) / totalResolved) * 100
+      : undefined;
 
   return (
     <HeaderMetrics
@@ -226,8 +240,10 @@ export default function VPointPrediction({
                     <MatrixCell label="FP" tip={MATRIX_TOOLTIPS.fp} />
                     <MatrixCell label="TN" tip={MATRIX_TOOLTIPS.tn} />
                     <MatrixCell label="FN" tip={MATRIX_TOOLTIPS.fn} />
-                    <MatrixCell label="Pending" tip={MATRIX_TOOLTIPS.pending} />
-                    <TableCell align="right">Accuracy</TableCell>
+                    <MatrixCell
+                      label="Accuracy"
+                      tip={MATRIX_TOOLTIPS.accuracy}
+                    />
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -252,9 +268,6 @@ export default function VPointPrediction({
                         {direction.fn.toLocaleString()}
                       </TableCell>
                       <TableCell align="right">
-                        {direction.pending.toLocaleString()}
-                      </TableCell>
-                      <TableCell align="right">
                         {direction.accuracyPct === undefined
                           ? "—"
                           : `${direction.accuracyPct.toFixed(1)}%`}
@@ -263,8 +276,30 @@ export default function VPointPrediction({
                   ))}
                   {result.directions.length === 0 && (
                     <TableRow>
-                      <TableCell align="center" colSpan={7}>
+                      <TableCell align="center" colSpan={6}>
                         No evaluated vPoints in this range.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {result.directions.length > 0 && (
+                    <TableRow sx={{ "& td": { fontWeight: 700 } }}>
+                      <TableCell>Total</TableCell>
+                      <TableCell align="right">
+                        {totals.tp.toLocaleString()}
+                      </TableCell>
+                      <TableCell align="right">
+                        {totals.fp.toLocaleString()}
+                      </TableCell>
+                      <TableCell align="right">
+                        {totals.tn.toLocaleString()}
+                      </TableCell>
+                      <TableCell align="right">
+                        {totals.fn.toLocaleString()}
+                      </TableCell>
+                      <TableCell align="right">
+                        {totalAccuracyPct === undefined
+                          ? "—"
+                          : `${totalAccuracyPct.toFixed(1)}%`}
                       </TableCell>
                     </TableRow>
                   )}
