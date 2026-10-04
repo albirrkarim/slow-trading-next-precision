@@ -45,6 +45,18 @@ function recordClosedPnlUsdt(
 }
 
 /**
+ * Whether the candidate is a forming-vPoint entry: a single entry when its
+ * signal carries `forming`, or a pair when every leg does. Such candidates
+ * are exempt from the might-formed staleness veto — entering a forming
+ * counter-point is the feature's intent (BOTH:FORMING_VPOINT_ENTRY).
+ */
+function isFormingEntry(decision: RuntimeEntryCandidate): boolean {
+  return decision.type === "pairEntry"
+    ? decision.legs.every((leg) => leg.entrySignal?.forming === true)
+    : decision.entrySignal?.forming === true;
+}
+
+/**
  * Per-attempt slot inventory — candidates execute one at a time and
  * `state.openPositions` mutates between attempts, so same-symbol dedupe and
  * max-open are re-verified inside the gate (before the manual bypass in
@@ -113,9 +125,12 @@ function policy(
   // so the signal this entry rests on is stale. Excursions are running
   // maxima, so a point at 90% of the threshold is very likely to cross it on
   // a later refresh — the guard blocks early instead of slipping an entry in
-  // right before the counter emits. Blocks forced entries too.
+  // right before the counter emits. Blocks forced entries too. Forming-vPoint
+  // signals are exempt — entering that forming counter-point is the feature's
+  // intent (BOTH:FORMING_VPOINT_ENTRY).
   const latestPoint = state.vPointsMap[symbol]?.at(-1);
   if (
+    !isFormingEntry(decision) &&
     latestPoint &&
     Math.max(latestPoint.maxUpPct ?? 0, latestPoint.maxDownPct ?? 0) >=
       resolveVolatilityThreshold(state.config.management) *

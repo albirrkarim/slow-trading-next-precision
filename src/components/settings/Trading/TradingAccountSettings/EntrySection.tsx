@@ -106,7 +106,7 @@ export function EntrySection({
                         checked={
                             tradingConfig.formingVPointEntryEnabled === true
                         }
-                        info="Replaces normal entries for this account: entry fires only when the latest vPoint's running excursions qualify a forming direction (↓ ≥ F & ↑ < A → SHORT, ↑ ≥ F & ↓ < A → LONG; if both qualify the larger favorable excursion wins, tie → no entry). Initial entries only; averaging and reserve are disabled for these positions; the late-entry drift guard is skipped; the 0.9 × volatility threshold &quot;might formed&quot; guard still blocks; exits unchanged. Applies to live, sandbox, and backtest."
+                        info="Replaces normal entries for this account: entry fires only when the latest vPoint's running excursions qualify a forming direction (↓ ≥ F & ↑ < A → SHORT, ↑ ≥ F & ↓ < A → LONG; if both qualify the larger favorable excursion wins, tie → no entry). Initial entries only; averaging and reserve are disabled for these positions; the late-entry drift guard and the 0.9 × volatility threshold &quot;might formed&quot; guard are skipped for these entries; exits unchanged. Applies to live, sandbox, and backtest."
                         infoTooltipMaxWidth={440}
                         label="Enable Entry Using Forming vPoint"
                         onChange={(checked) =>
@@ -151,7 +151,7 @@ export function EntrySection({
                                 step: "0.1",
                             },
                         }}
-                        info="Excursion percent the latest vPoint must reach in the entry direction (maxDownPct for SHORT, maxUpPct for LONG) before it may fire. Must stay below the &quot;might formed&quot; guard — 0.9 × volatility threshold (4.5 at threshold 5) — or no forming entry can fire."
+                        info="Excursion percent the latest vPoint must reach in the entry direction (maxDownPct for SHORT, maxUpPct for LONG) before it may fire."
                     />
                 </Grid>
 

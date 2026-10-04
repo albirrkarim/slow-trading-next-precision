@@ -485,7 +485,9 @@ function markUsage(point: VolatilityPoint, marker: string): void {
  * `VOLATILITY_THRESHOLD` the counter-sequence is active — an opposite vPoint
  * is forming but not yet emitted. BOTH:BLOCK_ENTRY_VPOINT_MIGHT_FORMED vets
  * entries early, at `VOLATILITY_THRESHOLD * 0.9`, because excursions are
- * running maxima that almost always cross once they come close.
+ * running maxima that almost always cross once they come close — except
+ * forming-vPoint signals, which enter exactly on that excursion
+ * (BOTH:FORMING_VPOINT_ENTRY).
  */
 function updateExcursion(point: VolatilityPoint, price: number): void {
   if (!Number.isFinite(price) || !Number.isFinite(point.p) || point.p <= 0) {

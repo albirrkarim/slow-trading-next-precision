@@ -645,7 +645,8 @@ admitting an entry moments before the counter-point emits.
 The guard lives in the shared Precision guard (`src/lib/precision/guard`), so
 it applies identically to live, sandbox, and backtest entries, including
 forced manual entries: the signal premise is broken regardless of who
-requested the entry.
+requested the entry. Forming-vPoint signals (B.3.10) are exempt — they
+trade exactly that forming counter-excursion.
 
 TC: `BOTH:BLOCK_ENTRY_VPOINT_MIGHT_FORMED`
 
@@ -675,8 +676,9 @@ Forming entries apply to initial entries only. Positions opened this way
 get no averaging and no reserve regardless of `enableWatchLogic`, and the
 late-entry drift guard (B.3.7) is skipped at decision, execution, and
 diagnostics — a qualifying signal has by definition drifted `F` percent.
-`BLOCK_ENTRY_VPOINT_MIGHT_FORMED` (B.3.9) still applies, so `F` must stay
-below `0.9 × VOLATILITY_THRESHOLD` (`4.5` at threshold `5`). All other
+Forming entries are exempt from `BLOCK_ENTRY_VPOINT_MIGHT_FORMED` (B.3.9):
+entering while a counter vPoint is forming is exactly this feature's
+intent, so `F` may be any positive value. All other
 source-vPoint guards are unchanged: absolute level limits, BTC skip,
 auto-remove checks, minimum price, configured symbols, one position per
 coin, max open positions, and usage markers — the source point receives

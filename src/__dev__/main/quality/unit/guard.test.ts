@@ -247,6 +247,56 @@ describe("guard.allows — shared environment approval gate", () => {
     expect(guard.allows(entry(), contextFor(twoPoints))).toBe(true);
   });
 
+  it("exempts forming-vPoint signals from the might-formed veto", () => {
+    // BOTH:FORMING_VPOINT_ENTRY — a forming signal enters exactly on the
+    // counter-excursion the staleness guard vets, so it must not block.
+    const stale = {
+      id: "B_stale",
+      t: NOW - 60_000,
+      l: "B",
+      p: 1.5,
+      pct: 4,
+      vb: 1,
+      vq: 1,
+      lvl: 1,
+      maxDownPct: VOLATILITY_THRESHOLD * 0.9,
+    };
+    const state = makeState({ vPointsMap: { SUI: [stale] as never[] } });
+
+    // The same excursion still vetoes a non-forming signal.
+    expect(guard.allows(entry(), contextFor(state))).toBe(false);
+
+    // A single forming signal passes.
+    expect(
+      guard.allows(
+        entry({ entrySignal: { forming: true } }),
+        contextFor(state),
+      ),
+    ).toBe(true);
+
+    // A pair entry passes only when every leg is a forming signal.
+    const pairEntry = (forming: boolean[]) =>
+      ({
+        type: "pairEntry",
+        accountSlug: "acc-1",
+        symbol: "SUI",
+        message: "test",
+        legs: forming.map((flag) => ({
+          type: "entry",
+          accountSlug: "acc-1",
+          symbol: "SUI",
+          message: "test",
+          entrySignal: { forming: flag },
+        })),
+      }) as never;
+    expect(
+      guard.allows(pairEntry([true, true]), contextFor(state)),
+    ).toBe(true);
+    expect(
+      guard.allows(pairEntry([true, false]), contextFor(state)),
+    ).toBe(false);
+  });
+
   it("resolves the staleness excursion against a management threshold override", () => {
     // BOTH:GLOBAL_VOLATILITY_THRESHOLD — `management.volatilityThreshold=8`
     // means a counter-excursion at the env default no longer makes the
