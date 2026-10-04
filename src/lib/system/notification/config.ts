@@ -1,5 +1,5 @@
 export type NotificationChannel = "telegram" | "email";
-export type NotificationDashboard = "SLOW";
+export type NotificationDashboard = "PRECISION";
 export interface NotificationTypeInfo {
   label: string;
   description: string;
@@ -9,7 +9,7 @@ export const DEFAULT_HIGH_VOLATILITY_MIN_ABSOLUTE_LEVEL = 3;
 export const DEFAULT_LONG_OPEN_POSITION_HOUR = 24;
 export const DEFAULT_STALE_POSITION_HOUR = 1;
 
-export const SLOW_NOTIFICATION_KEYS = [
+export const NOTIFICATION_KEYS = [
   "NOTIF_ENTRY",
   "NOTIF_ENTRY_FAILED",
   "NOTIF_EXIT",
@@ -28,11 +28,10 @@ export const SLOW_NOTIFICATION_KEYS = [
   "NOTIF_ERROR",
 ] as const;
 
-export type SlowNotificationKey = (typeof SLOW_NOTIFICATION_KEYS)[number];
-export type NotificationKey = SlowNotificationKey;
+export type NotificationKey = (typeof NOTIFICATION_KEYS)[number];
 
 export interface NotificationTypeConfig {
-  id: SlowNotificationKey;
+  id: NotificationKey;
   params?: {
     add?: boolean;
     hour?: number;
@@ -41,37 +40,37 @@ export interface NotificationTypeConfig {
   };
 }
 
-export const SLOW_NOTIFICATION_TYPE_INFO: Record<
-  SlowNotificationKey,
+export const NOTIFICATION_TYPE_INFO: Record<
+  NotificationKey,
   NotificationTypeInfo
 > = {
   NOTIF_ENTRY: {
     label: "Entry",
-    description: "Sent when SLOW successfully opens an entry position.",
+    description: "Sent when PRECISION successfully opens an entry position.",
   },
   NOTIF_ENTRY_FAILED: {
     label: "Entry Failed",
     description:
-      "Sent when SLOW wants to enter but order execution or validation fails.",
+      "Sent when PRECISION wants to enter but order execution or validation fails.",
   },
   NOTIF_EXIT: {
     label: "Exit",
-    description: "Sent when SLOW successfully closes a position.",
+    description: "Sent when PRECISION successfully closes a position.",
   },
   NOTIF_EXIT_FAILED: {
     label: "Exit Failed",
     description:
-      "Sent when SLOW tries to close a position but the exit execution fails.",
+      "Sent when PRECISION tries to close a position but the exit execution fails.",
   },
   NOTIF_AVERAGE: {
     label: "Average / Add Position",
     description:
-      "Sent when SLOW successfully averages or adds to an existing position via watch logic.",
+      "Sent when PRECISION successfully averages or adds to an existing position via watch logic.",
   },
   NOTIF_AVERAGE_FAILED: {
     label: "Average / Add Position Failed",
     description:
-      "Sent when SLOW tries to average or add to an existing position but fails.",
+      "Sent when PRECISION tries to average or add to an existing position but fails.",
   },
   NOTIF_HIGH_VOLATILITY: {
     label: "High Volatility",
@@ -91,7 +90,7 @@ export const SLOW_NOTIFICATION_TYPE_INFO: Record<
   NOTIF_MANAGEMENT_ACTION: {
     label: "Management Action",
     description:
-      "Sent when SLOW adds or removes a symbol from the configured Coin Management list. Add and Remove can be selected independently.",
+      "Sent when PRECISION adds or removes a symbol from the configured Coin Management list. Add and Remove can be selected independently.",
   },
   NOTIF_BLACK_SWAN_ACTION: {
     label: "Black Swan Action",
@@ -121,7 +120,7 @@ export const SLOW_NOTIFICATION_TYPE_INFO: Record<
   NOTIF_ERROR: {
     label: "Error",
     description:
-      "Sent for operational SLOW errors outside normal entry and exit flows.",
+      "Sent for operational PRECISION errors outside normal entry and exit flows.",
   },
 };
 
@@ -184,7 +183,7 @@ export function normalizeLongOpenPositionHour(value: unknown): number {
 
 /** Creates one notification type with its default parameter values. */
 export function createNotificationTypeConfig(
-  id: SlowNotificationKey,
+  id: NotificationKey,
 ): NotificationTypeConfig {
   if (id === "NOTIF_HIGH_VOLATILITY") {
     return {
@@ -225,11 +224,11 @@ function normalizeNotificationTypeConfig(
       ? String((value as { id?: unknown }).id ?? "")
       : "";
 
-  if (!SLOW_NOTIFICATION_KEYS.includes(id as SlowNotificationKey)) {
+  if (!NOTIFICATION_KEYS.includes(id as NotificationKey)) {
     return null;
   }
 
-  const normalizedId = id as SlowNotificationKey;
+  const normalizedId = id as NotificationKey;
   const rawParams =
     value && typeof value === "object"
       ? (value as { params?: unknown }).params
@@ -282,7 +281,7 @@ function normalizeNotificationTypeConfig(
 }
 
 function createDefaultNotificationTypes(): NotificationTypeConfig[] {
-  return SLOW_NOTIFICATION_KEYS.map(createNotificationTypeConfig);
+  return NOTIFICATION_KEYS.map(createNotificationTypeConfig);
 }
 
 export function createDefaultDashboardNotificationConfig(
@@ -308,7 +307,7 @@ export function normalizeNotificationTypes(
     return [];
   }
 
-  const normalized = new Map<SlowNotificationKey, NotificationTypeConfig>();
+  const normalized = new Map<NotificationKey, NotificationTypeConfig>();
 
   for (const item of types) {
     const typeConfig = normalizeNotificationTypeConfig(item);
@@ -401,7 +400,7 @@ export function getNotificationTypeInfo(
   key: string,
 ): NotificationTypeInfo {
   return (
-    SLOW_NOTIFICATION_TYPE_INFO[key as SlowNotificationKey] ?? {
+    NOTIFICATION_TYPE_INFO[key as NotificationKey] ?? {
       label: key,
       description: key,
     }

@@ -12,10 +12,10 @@ import pair from "@/lib/strategies/shared/pair";
 import { buildTradeMarkersFromHistory } from "@/lib/system/utils/ui/trade-markers";
 import type { ExchangeType } from "@/lib/exchange";
 import type { VolatilityPoint } from "@/lib/system/types";
-import type { SlowTradingReportRow } from "../types";
+import type { ReportRow } from "../types";
 import { TRADE_CHART_CONTEXT_MS } from "./format";
 
-function buildTradeChartPosition(row: SlowTradingReportRow) {
+function buildTradeChartPosition(row: ReportRow) {
   return row;
 }
 
@@ -27,8 +27,8 @@ export default function TradeChartDialog({
 }: {
   exchangeType: ExchangeType;
   getVolatilityPoints?: (symbol: string) => VolatilityPoint[] | undefined;
-  history: SlowTradingReportRow[];
-  row: SlowTradingReportRow;
+  history: ReportRow[];
+  row: ReportRow;
 }) {
   const tradeEndMs = row.closed?.t ?? row.opened.t;
   const focusPadMs = Math.max(
@@ -66,7 +66,7 @@ export default function TradeChartDialog({
               (exchangeType === "tokocrypto" ? "SPOT" : "FUTURES")
             }
             markers={buildTradeMarkersFromHistory(history, row.symbol, (trade) =>
-              pair.meta.ofPosition(trade as SlowTradingReportRow)?.role,
+              pair.meta.ofPosition(trade as ReportRow)?.role,
             )}
             startTimeMs={row.opened.t - TRADE_CHART_CONTEXT_MS}
             endTimeMs={tradeEndMs + TRADE_CHART_CONTEXT_MS}

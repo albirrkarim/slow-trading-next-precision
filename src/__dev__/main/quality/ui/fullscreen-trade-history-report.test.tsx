@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 
 import ButtonDialog from "@/components/ui/ButtonDialog";
 
-describe("slow-trading history report dialog", () => {
+describe("trading history report dialog", () => {
   it("configures the navbar history report as a closable fullscreen dialog", async () => {
     const source = await fs.readFile(
       path.join(

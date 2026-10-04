@@ -56,7 +56,7 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
     (account) => account.enabled,
   );
   if (enabledAccounts.length === 0) {
-    throw new Error("Enable at least one SLOW account before backtesting.");
+    throw new Error("Enable at least one PRECISION account before backtesting.");
   }
 
   // B. Reuse the saved result unless a freshness flag forces a recompute.

@@ -1,6 +1,6 @@
 # Trading Features
 
-This document defines the required SLOW trading features and behavior.
+This document defines the required PRECISION trading features and behavior.
 
 ## B.1 Watch Mechanism
 
@@ -30,7 +30,7 @@ Adaptive averaging is optional and controlled by
 
 When it is disabled, averaging uses the normal watch reserve multiplier, for example `watchReservePctAlloc = 2`.
 
-When it is enabled, SLOW should check whether the normal averaging multiplier is enough to make the averaged position profitable after a rescue move. The rescue target is aligned with `BOTH:POST_AVERAGE_RESCUE_EXIT`:
+When it is enabled, PRECISION should check whether the normal averaging multiplier is enough to make the averaged position profitable after a rescue move. The rescue target is aligned with `BOTH:POST_AVERAGE_RESCUE_EXIT`:
 
 - The projected target price is `VOLATILITY_THRESHOLD` percent away from the
   current trigger volatility point in the favorable direction.
@@ -66,7 +66,7 @@ Behavior expected:
 ### B.1.2 Averaging Stops After the Target vPoint
 
 Once an open position has reached its target volatility point after entry,
-SLOW must block every later averaging attempt for that position:
+PRECISION must block every later averaging attempt for that position:
 
 - For LONG, the target vPoint is the first `TOP` after entry.
 - For SHORT, the target vPoint is the first `BOTTOM` after entry.
@@ -186,7 +186,7 @@ Planned behavior:
   `BOTH:AVERAGING_STOPS_AFTER_TARGET_VPOINT`,
   `BOTH:VOLATILITY_TARGET_TP`, and
   `BOTH:VOLATILITY_TARGET_SL_VALUE` behavior remains authoritative.
-- A lock around the cycle is not the fix for this case because SLOW already
+- A lock around the cycle is not the fix for this case because PRECISION already
   serializes cycles; the missing state is the not-yet-confirmed market pivot.
 
 The guard must not block these existing valid cases:
@@ -434,9 +434,9 @@ Guard:
   preview/building and rejected or skipped executions must not consume the
   volatility point.
 - Production persists the usage marker through the per-symbol volatility cache
-  JSON, so the next SLOW cycle still knows the point has been consumed.
+  JSON, so the next PRECISION cycle still knows the point has been consumed.
   Backtest keeps the marker only in simulation memory and never writes it to
-  SLOW volatility storage.
+  PRECISION volatility storage.
 - Production must not use `item.model_memory.positionsSell` for this guard because `positionsSell` is deprecated for production closed-trade history. It may still exist for legacy/backtest flows only.
 
 TC: `BOTH:ENTRY_ONLY_IN_UNIQUE_VOLATILITY_POINT_ID`
@@ -731,9 +731,9 @@ TC: `BOTH:TRADITIONAL_TP_SL`
 
 ### B.4.5 Volatility target-zone TP
 
-If an open position has already hit the opposite volatility target zone after entry, SLOW should not keep averaging forever. For a LONG position, the target zone is a `TOP` point after entry. For a SHORT position, the target zone is a `BOTTOM` point after entry.
+If an open position has already hit the opposite volatility target zone after entry, PRECISION should not keep averaging forever. For a LONG position, the target zone is a `TOP` point after entry. For a SHORT position, the target zone is a `BOTTOM` point after entry.
 
-When that target zone exists and the current fee-adjusted gain is still positive, SLOW should close the position as `TAKE_PROFIT` to secure the remaining profit.
+When that target zone exists and the current fee-adjusted gain is still positive, PRECISION should close the position as `TAKE_PROFIT` to secure the remaining profit.
 
 The rule is enabled by default. `volatilityTargetTakeProfitEnabled: false`
 disables it per account so positions pass through the zone for the remaining
@@ -803,7 +803,7 @@ TC: `BOTH:AVERAGING_MONITORING_STATE_SNAPSHOT`
 
 ### B.4.6 Volatility target-zone stop loss
 
-After an open position has hit its opposite volatility target zone, SLOW can
+After an open position has hit its opposite volatility target zone, PRECISION can
 apply an additional, tighter stop loss. For a LONG position, the target zone is
 a `TOP` point after entry. For a SHORT position, the target zone is a `BOTTOM`
 point after entry.

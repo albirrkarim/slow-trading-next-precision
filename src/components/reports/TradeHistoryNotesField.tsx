@@ -6,7 +6,7 @@ import { TextField } from "@mui/material";
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { useSnackbar } from "notistack";
-import type { SlowTradingReportRow } from "./types";
+import type { ReportRow } from "./types";
 import type { RuntimeDashboardState } from "@/lib/system/dashboard";
 import type { RuntimeMode } from "@/lib/system/runtime";
 
@@ -19,7 +19,7 @@ export default function TradeHistoryNotesField({
   mode: RuntimeMode;
   onHistoryChange: (history: RuntimeDashboardState["history"]) => void;
   readOnly: boolean;
-  row: SlowTradingReportRow;
+  row: ReportRow;
 }) {
   const { enqueueSnackbar } = useSnackbar();
   const [draft, setDraft] = useState(row.notes ?? "");

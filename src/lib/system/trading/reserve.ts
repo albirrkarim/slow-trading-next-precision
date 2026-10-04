@@ -31,7 +31,7 @@ export interface AveragingRescueProjection {
   reason: AveragingRescueProjectionReason;
 }
 
-/** Rounds usdt to the SLOW USDT precision. */
+/** Rounds usdt to the PRECISION USDT precision. */
 function roundUsdt(value: number): number {
   return Number.isFinite(value) ? Number(value.toFixed(6)) : 0;
 }
@@ -233,7 +233,7 @@ function capSpendableByVolume24h(params: {
   return Math.min(spendableUsdt, volumeBudgetUsdt);
 }
 
-/** Adjusts the desired entry margin for the configured SLOW entry budgets. */
+/** Adjusts the desired entry margin for the configured PRECISION entry budgets. */
 function adjustEntryMarginForConfig(params: {
   desiredMarginUsdt: number;
   spendableUsdt: number;

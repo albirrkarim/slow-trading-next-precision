@@ -78,7 +78,7 @@ export function BailoutBufferPreview({
                 How the buffer is selected
               </Typography>
               <Typography color="text.secondary" variant="body2">
-                SLOW finds the largest UNRESERVED averaging step from
+                PRECISION finds the largest UNRESERVED averaging step from
                 every open position and the projected new worker. It
                 preserves only the largest candidate, not the sum of
                 every candidate.
@@ -90,7 +90,7 @@ export function BailoutBufferPreview({
                 How it blocks entries
               </Typography>
               <Typography color="text.secondary" variant="body2">
-                Before entry, SLOW subtracts the entry margin and its
+                Before entry, PRECISION subtracts the entry margin and its
                 reserved averaging steps from spendable balance. The
                 entry is allowed only when the amount left is at least
                 the shared bailout buffer.
@@ -130,7 +130,7 @@ export function BailoutBufferPreview({
               </Typography>
               <Typography color="text.secondary" variant="body2">
                 Any eligible open position can spend this balance when
-                its UNRESERVED averaging step triggers. Afterward, SLOW
+                its UNRESERVED averaging step triggers. Afterward, PRECISION
                 recalculates the shared buffer from the updated balance
                 and watch states.
               </Typography>

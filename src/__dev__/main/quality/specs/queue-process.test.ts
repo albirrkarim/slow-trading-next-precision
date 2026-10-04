@@ -86,7 +86,7 @@ function withdrawalItem(
     amountUSDT: 100,
     targetNetwork: "BSC",
     targetWalletAddress: "0xabc",
-    clientWithdrawId: "slow-w1-fixed",
+    clientWithdrawId: "w1-fixed",
     createdAt: NOW - 60_000,
     nextAttemptAt: NOW,
     lastMessage: "Queued.",
@@ -418,7 +418,7 @@ describe("runtime queue processor", () => {
     const applyCall = mocks.requestPrivate.mock.calls.find(
       ([endpoint]) => endpoint === "/sapi/v1/capital/withdraw/apply",
     );
-    expect(applyCall?.[1]?.withdrawOrderId).toBe("slow-w1-fixed");
+    expect(applyCall?.[1]?.withdrawOrderId).toBe("w1-fixed");
     expect((await readBalance("live")).safeHaven).toBe(400);
     expect((await readQueues()).withdrawals).toHaveLength(0);
     const catalog = await runtimeStorage.catalog.load();
@@ -486,7 +486,7 @@ describe("runtime queue processor", () => {
     );
     expect(applyCalls).toHaveLength(3);
     for (const call of applyCalls) {
-      expect(call[1].withdrawOrderId).toBe("slow-w1-fixed");
+      expect(call[1].withdrawOrderId).toBe("w1-fixed");
     }
     expect((await readQueues()).withdrawals).toHaveLength(0);
   });

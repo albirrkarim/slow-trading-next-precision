@@ -28,7 +28,7 @@ the optional `config.minEntryAbsLevel` and `config.maxEntryAbsLevel` bounds,
 which separately control which completed vPoint levels the Multi entry gate
 may treat as actionable.
 
-The SLOW navbar displays the server-resolved global value as `Vol: <value>%`.
+The PRECISION navbar displays the server-resolved global value as `Vol: <value>%`.
 The browser receives this value through the dashboard state and does not read
 the server environment directly.
 
@@ -40,7 +40,7 @@ The `/` browser-tab title is `<APP_NAME> | <current UTC-day net PnL USD>`.
 It uses the same closed-trade UTC-day calculation as the navbar and Daily PnL
 Calendar, formats positive and zero values with `+` and negative values with
 `-`, and refreshes whenever the dashboard state refreshes. Missing or blank
-`APP_NAME` falls back to `SLOW`.
+`APP_NAME` falls back to `PRECISION`.
 
 TC: `PROD:DAILY_PNL_META_TITLE`
 
@@ -242,7 +242,7 @@ semantics.
 
 TC: `BOTH:AUTO_ENTRY_DAILY_PNL_LIMIT_USDT`
 
-The production standalone server must bootstrap the SLOW runner when the Node
+The production standalone server must bootstrap the PRECISION runner when the Node
 process starts. Restarting or redeploying a Railway container must not require
 opening the website URL first to wake the cycle. Dashboard/API access may still
 call the runner singleton as a fallback, but it is not the primary startup path.
@@ -263,7 +263,7 @@ TC: `BOTH:MONITORING_OPEN_POSITION`
 Speedup and Standard Monitoring refresh their eligible open positions, evaluate
 exit, evaluate averaging for positions that remain open, and then persist the
 latest PnL reporting state. Exit has priority: when exit and averaging could
-both qualify on the same pass, SLOW evaluates exit first and must not average a
+both qualify on the same pass, PRECISION evaluates exit first and must not average a
 position that was just closed.
 
 Behavior expected:
@@ -358,16 +358,16 @@ If the exchange no longer has the position but local memory still does, the syst
 TC: `PROD:SYNC_ENTRY_POSITION_FROM_EXCHANGE`
 
 Live futures exit bookkeeping is transactional with exchange confirmation.
-Before evaluating an exit, SLOW snapshots the symbol's local model memory. The
+Before evaluating an exit, PRECISION snapshots the symbol's local model memory. The
 initial futures close order is `reduceOnly`, preventing an oversized or stale
-local quantity from opening a reverse position. After an accepted order, SLOW
+local quantity from opening a reverse position. After an accepted order, PRECISION
 waits five seconds and queries the exchange position for the same symbol and
-direction. If a residual position remains, SLOW submits one additional market
+direction. If a residual position remains, PRECISION submits one additional market
 close using the exchange-reported residual quantity with `reduceOnly`, waits
 five seconds again, and verifies the position is gone.
 
 Only an exchange-confirmed close remains in local closed history. When order
-submission, confirmation, or the residual close fails, SLOW restores the local
+submission, confirmation, or the residual close fails, PRECISION restores the local
 memory snapshot, leaves the position open, marks it for a forced exit on the
 next monitoring cycle, and emits the normal exit-failed notification. Sandbox
 and backtest exits do not query an exchange and retain their synchronous local
@@ -515,7 +515,7 @@ TC: `PROD:SAME_VOLATILITY_POINT`
 Each Latest Volatility Point card shows the coin's current 24-hour quote
 volume. The dashboard fetches one ticker batch from the configured exchange
 and explicit SPOT/FUTURES market, then persists a compact snapshot under the
-SLOW storage root. A failed refresh falls back to the last snapshot for that
+PRECISION storage root. A failed refresh falls back to the last snapshot for that
 same exchange and market.
 
 The card also shows a client-side maximum-entry estimate derived from 24-hour
@@ -527,7 +527,7 @@ TC: `PROD:LATEST_VOLATILITY_VOLUME_24H`
 ### A.5.1 Coin metadata sharing
 
 Coin tag CRUD, coin tag assignment, and coin descriptions are shared across
-configured SLOW deployments. After a local metadata mutation, the server sends
+configured PRECISION deployments. After a local metadata mutation, the server sends
 the full metadata snapshot to every URL in `COIN_METADATA_SYNC_PEERS` using
 `SYNC_TOKEN`. Incoming sync replaces the local coin metadata
 snapshot atomically and does not rebroadcast, preventing sync loops. This keeps
@@ -538,7 +538,7 @@ TC: `PROD:COIN_METADATA_SYNC`
 
 ### A.5.2 Runtime memory and history hydration
 
-SLOW production history is persisted in split per-symbol history files. Normal
+PRECISION production history is persisted in split per-symbol history files. Normal
 runtime storage loads must not hydrate those closed positions back into every
 symbol's `model_memory.positionsSell`, because the runner and idle server only
 need active positions, balances, config, and compact execution memory. Dashboard,
@@ -555,7 +555,7 @@ mode's per-symbol trade memory. The inactive mode stays on disk and is preserved
 when the active mode is saved, so switching live/sandbox later still keeps its
 previous memory without doubling runner-cycle RAM.
 
-TC: `PROD:SLOW_RUNTIME_MEMORY_LEAN`
+TC: `PROD:RUNTIME_MEMORY_LEAN`
 
 ### A.5.3 Sandbox account reset
 
@@ -579,7 +579,7 @@ TC: `PROD:SANDBOX_ACCOUNT_RESET`
 ### A.6 Worker capacity and historical entry sequences
 
 The dashboard shows how many equal-sized additional entry workers fit in the
-current spendable balance. It uses the shared SLOW entry-margin adjustment,
+current spendable balance. It uses the shared PRECISION entry-margin adjustment,
 watch reserve multiplier, fixed/percentage entry caps, minimum entry amount,
 and preserves the largest unreserved bailout step across active positions and
 the projected new worker.
@@ -758,8 +758,8 @@ TC: `PROD:WORKER_NEEDED_ESTIMATION`
 
 The `/` dashboard shows a demand-only "Quick Backtest" report below the
 Volatility Points chart. The simulation input is the currently visible/cropped
-volatility points plus the active SLOW trade config and user-entered starting
-USDT amount. It does not mutate live/sandbox SLOW memory and it does not run
+volatility points plus the active PRECISION trade config and user-entered starting
+USDT amount. It does not mutate live/sandbox PRECISION memory and it does not run
 when the UI is closed.
 
 The report shows entry count, Sharpe ratio, final gain percent/USDT, average
@@ -818,7 +818,7 @@ the latest persisted vPoint for each configured coin. Capture Entry or the
 position-monitoring stage that owns the coin remains responsible for refreshing
 that shared volatility memory; Management does not duplicate its market sync.
 If the latest vPoint has
-`abs(lvl) >= autoRemoveSymbolAbsLevel`, SLOW removes that coin from the
+`abs(lvl) >= autoRemoveSymbolAbsLevel`, PRECISION removes that coin from the
 configured symbol list and filters it out of new entry signals for that cycle.
 
 When `autoRemoveSymbolMinPrice > 0`, both live and sandbox block every new entry,
@@ -946,7 +946,7 @@ manually deleted.
 
 ### Queue processing
 
-- The SLOW runner attempts the active mode's due Safe Haven item before live
+- The PRECISION runner attempts the active mode's due Safe Haven item before live
   withdrawal items.
 - A pending item records:
   - when it was created;

@@ -69,7 +69,7 @@ async function run(args: Record<string, unknown>) {
     throw new Error('"config" must be a BacktestTestCase config object.');
   }
   if (!config.accounts.some((account) => account?.enabled)) {
-    throw new Error("Enable at least one SLOW account before backtesting.");
+    throw new Error("Enable at least one PRECISION account before backtesting.");
   }
 
   let { range, startTime, endTime } = params;

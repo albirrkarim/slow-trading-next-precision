@@ -112,7 +112,7 @@ function normalizeWithdrawalQueueItem(
     targetWalletAddress: String(raw.targetWalletAddress ?? "").trim(),
     clientWithdrawId:
       String(raw.clientWithdrawId ?? "").trim() ||
-      `slow-queue-${id}`.slice(0, 64),
+      `queue-${id}`.slice(0, 64),
     createdAt,
     nextAttemptAt: normalizeTime(raw.nextAttemptAt, createdAt),
     lastMessage:

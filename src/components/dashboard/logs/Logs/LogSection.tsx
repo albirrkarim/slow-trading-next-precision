@@ -17,7 +17,7 @@ import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import type { GenericLogKind, LogEntryByKind } from "./types";
 import { DELETE_ALL_ID } from "./utils";
 
-export default function SlowTradingLogSection<K extends GenericLogKind>(props: {
+export default function LogSection<K extends GenericLogKind>(props: {
   kind: K;
   renderTable: (params: {
     deletingId: string | null;
@@ -121,11 +121,11 @@ export default function SlowTradingLogSection<K extends GenericLogKind>(props: {
 
   return (
     <Box
-      data-testid={`slow-trading-log-section-${kind}`}
+      data-testid={`log-section-${kind}`}
     >
       <HeaderMetrics
         defaultExpanded={false}
-        rememberExpand={`slow-trading-logs:${kind}`}
+        rememberExpand={`logs:${kind}`}
         title={
           <Stack alignItems="center" direction="row" spacing={0.75}>
             <Typography
@@ -172,7 +172,7 @@ export default function SlowTradingLogSection<K extends GenericLogKind>(props: {
         }
       >
         {(expanded) => (
-          <SlowTradingLogSectionContent
+          <LogSectionContent
             error={error}
             deletingId={deletingId}
             expanded={expanded}
@@ -189,7 +189,7 @@ export default function SlowTradingLogSection<K extends GenericLogKind>(props: {
   );
 }
 
-function SlowTradingLogSectionContent<K extends GenericLogKind>(props: {
+function LogSectionContent<K extends GenericLogKind>(props: {
   deletingId: string | null;
   error: string | null;
   expanded: boolean;

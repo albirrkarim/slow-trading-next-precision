@@ -20,7 +20,7 @@ function getPortfolioValue(
 /**
  * Calculates risk-adjusted return from every Quick Backtest equity snapshot.
  * The generic leaderboard Sharpe is monthly, which returns 0 for short visible
- * dashboard ranges; this one is event-return based for `/slow` quick reports.
+ * dashboard ranges; this one is event-return based for dashboard quick reports.
  */
 function calculateQuickSharpeRatio(
   growthOvertime: RuntimeQuickBacktestGrowthPoint[],
@@ -472,7 +472,7 @@ function buildQuickPositionPnlHistory({
 }
 
 /**
- * Flattens closed simulated positions into the SLOW history table row shape.
+ * Flattens closed simulated positions into the PRECISION history table row shape.
  */
 function positionsToQuickTradeHistory(
   positionsBySymbol: Record<string, Position[]>,

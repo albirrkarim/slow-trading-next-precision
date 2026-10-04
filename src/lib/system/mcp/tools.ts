@@ -133,7 +133,7 @@ const toolDefinitions: RuntimeMcpToolDefinition[] = [
   {
     name: "monitoring_snapshot_read",
     description:
-      "Read a versioned, credential-free snapshot of SLOW profile configuration, all account identities and effective strategies, withdrawal and Safe Haven schedules, and optional bounded operational logs.",
+      "Read a versioned, credential-free snapshot of PRECISION profile configuration, all account identities and effective strategies, withdrawal and Safe Haven schedules, and optional bounded operational logs.",
     permission: "monitoring.read",
     readOnlyHint: true,
     inputSchema: jsonSchema({
@@ -156,7 +156,7 @@ const toolDefinitions: RuntimeMcpToolDefinition[] = [
   {
     name: "balance_read",
     description:
-      "Read the canonical SLOW USDT balance across all enabled exchange accounts, with an account breakdown. Returns available exchange-free balance, spendable capital, virtual reserve, Safe Haven, locked active-position margin, total asset, formulas, and a plain-language meaning for every field. totalAsset is available plus locked and is not floating equity or unrealized P&L.",
+      "Read the canonical PRECISION USDT balance across all enabled exchange accounts, with an account breakdown. Returns available exchange-free balance, spendable capital, virtual reserve, Safe Haven, locked active-position margin, total asset, formulas, and a plain-language meaning for every field. totalAsset is available plus locked and is not floating equity or unrealized P&L.",
     permission: "balance.read",
     readOnlyHint: true,
     inputSchema: jsonSchema({
@@ -195,7 +195,7 @@ const toolDefinitions: RuntimeMcpToolDefinition[] = [
   {
     name: "finance_summary",
     description:
-      "Summarize realized net USDT P&L across every enabled exchange account from closed SLOW trades inside one bounded UTC date range. Disabled accounts, balance changes, and open-position unrealized P&L are excluded.",
+      "Summarize realized net USDT P&L across every enabled exchange account from closed PRECISION trades inside one bounded UTC date range. Disabled accounts, balance changes, and open-position unrealized P&L are excluded.",
     permission: "trade_history.read",
     readOnlyHint: true,
     inputSchema: jsonSchema(
@@ -220,7 +220,7 @@ const toolDefinitions: RuntimeMcpToolDefinition[] = [
   {
     name: "trade_history_read",
     description:
-      "Read combined SLOW trade history and open positions across every enabled exchange account. Each position retains its account slug and disabled accounts are excluded.",
+      "Read combined PRECISION trade history and open positions across every enabled exchange account. Each position retains its account slug and disabled accounts are excluded.",
     permission: "trade_history.read",
     readOnlyHint: true,
     inputSchema: jsonSchema({
@@ -497,10 +497,10 @@ function getToolList(auth: RuntimeMcpAuthenticatedToken) {
   const appName = runtimeMcpIdentity.getAppName();
   return getAllowedTools(auth).map((tool) => ({
     name: tool.name,
-    description: `SLOW app "${appName}". ${tool.description}`,
+    description: `PRECISION app "${appName}". ${tool.description}`,
     inputSchema: tool.inputSchema,
     _meta: {
-      "slowTrading/appName": appName,
+      "precision/appName": appName,
     },
     annotations: {
       readOnlyHint: tool.readOnlyHint === true,

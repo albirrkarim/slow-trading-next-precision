@@ -70,7 +70,7 @@ async function check(): Promise<RuntimeInstanceIpSnapshot | null> {
     if (previous && previous.ip !== current.ip) {
       // PROD:NOTIF_IP_CHANGED
       await systemNotif.central({
-        dashboard: "SLOW",
+        dashboard: "PRECISION",
         key: "NOTIF_IP_CHANGED",
         dedupeKey: `instance-ip-change:${previous.ip}:${previous.t}:${current.ip}`,
         title: `[IP CHANGED] ${previous.ip} -> ${current.ip}`,

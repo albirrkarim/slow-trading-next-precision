@@ -3,7 +3,7 @@ import {
   DEFAULT_LONG_OPEN_POSITION_HOUR,
   DEFAULT_STALE_POSITION_HOUR,
   type NotificationTypeConfig,
-  type SlowNotificationKey,
+  type NotificationKey,
 } from "./config";
 
 export interface NotificationExample {
@@ -17,7 +17,7 @@ function json(value: unknown): string {
 
 /** Builds representative content using the notification type's current parameters. */
 function get(
-  type: SlowNotificationKey,
+  type: NotificationKey,
   params?: NotificationTypeConfig["params"],
 ): NotificationExample {
   switch (type) {

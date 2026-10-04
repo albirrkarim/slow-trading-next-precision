@@ -1,6 +1,6 @@
 "use client";
 
-import type { SlowTradingReportRow } from "./types";
+import type { ReportRow } from "./types";
 
 export type DailyStat = { day: string; trades: number; wins: number; losses: number };
 
@@ -70,7 +70,7 @@ function getDistributionBucketIndex(value: number, intervalPct: number): number 
 
 /** Counts closed trades by half-open Max Up percentage ranges. */
 export function computeMaxUpDistribution(
-  history: SlowTradingReportRow[],
+  history: ReportRow[],
   intervalPct: number,
 ): MaxUpDistributionBucket[] {
   const interval = normalizeMaxUpDistributionInterval(intervalPct);
@@ -108,11 +108,11 @@ export function computeMaxUpDistribution(
   return buckets;
 }
 
-function getDay(row: SlowTradingReportRow): string {
+function getDay(row: ReportRow): string {
   return new Date(row.closed?.t ?? row.opened.t).toISOString().slice(0, 10);
 }
 
-function sortByExitTime(history: SlowTradingReportRow[]): SlowTradingReportRow[] {
+function sortByExitTime(history: ReportRow[]): ReportRow[] {
   return [...history].sort(
     (a, b) => (a.closed?.t ?? 0) - (b.closed?.t ?? 0),
   );
@@ -131,7 +131,7 @@ export function formatHoldMs(ms: number | null | undefined): string {
   return `${minutes}m`;
 }
 
-export function computeDailyStats(history: SlowTradingReportRow[]): DailyStat[] {
+export function computeDailyStats(history: ReportRow[]): DailyStat[] {
   const map = new Map<string, DailyStat>();
 
   for (const item of sortByExitTime(history)) {
@@ -148,7 +148,7 @@ export function computeDailyStats(history: SlowTradingReportRow[]): DailyStat[] 
 }
 
 export function computeDailyHoldStats(
-  history: SlowTradingReportRow[],
+  history: ReportRow[],
 ): DailyHoldStat[] {
   const map = new Map<string, { min: number; max: number; sum: number; count: number }>();
 
@@ -182,7 +182,7 @@ export function computeDailyHoldStats(
 }
 
 export function computeDailyPnlPercentStats(
-  history: SlowTradingReportRow[],
+  history: ReportRow[],
 ): DailyPnlPercentStat[] {
   const map = new Map<string, { sum: number; winSum: number; lossSum: number }>();
 
@@ -208,7 +208,7 @@ export function computeDailyPnlPercentStats(
 }
 
 export function computeDailyPnlUsdtStats(
-  history: SlowTradingReportRow[],
+  history: ReportRow[],
 ): DailyPnlUsdtStat[] {
   const map = new Map<string, { sum: number; winSum: number; lossSum: number }>();
 
@@ -234,7 +234,7 @@ export function computeDailyPnlUsdtStats(
 }
 
 export function computeDailyDrawdownStats(
-  history: SlowTradingReportRow[],
+  history: ReportRow[],
 ): DailyDrawdownStat[] {
   const map = new Map<string, { min: number; max: number; sum: number; count: number }>();
 
@@ -276,7 +276,7 @@ export function computeDailyDrawdownStats(
 }
 
 export function computeBalanceSeries(params: {
-  history: SlowTradingReportRow[];
+  history: ReportRow[];
   startingBalanceUSDT: number;
 }) {
   const { history, startingBalanceUSDT } = params;

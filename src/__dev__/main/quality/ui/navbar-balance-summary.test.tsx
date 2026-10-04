@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import NavbarBalanceSummary from "@/components/dashboard/navigation/NavbarBalanceSummary";
 import type { BalanceSummary } from "@/components/settings/settings-types";
 
-const STORAGE_KEY = "slow-trading:navbar:balance-visible:v1";
+const STORAGE_KEY = "navbar:balance-visible:v1";
 
 const balanceSummary: BalanceSummary = {
   available: 153.44,

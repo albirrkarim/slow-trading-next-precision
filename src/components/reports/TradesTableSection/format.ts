@@ -1,5 +1,5 @@
 import moment from "moment";
-import type { SlowTradingReportRow } from "../types";
+import type { ReportRow } from "../types";
 
 export const DAY_MS = 24 * 60 * 60 * 1000;
 export const TRADE_CHART_CONTEXT_MS = 30 * DAY_MS;
@@ -39,7 +39,7 @@ export function formatUsdt(value: number | null | undefined) {
 }
 
 /** Gets the entry margin for display, with legacy fallbacks for old rows. */
-export function getEntryMarginUsdt(row: SlowTradingReportRow) {
+export function getEntryMarginUsdt(row: ReportRow) {
   if (typeof row.exposure.marginUsdt === "number" && Number.isFinite(row.exposure.marginUsdt)) {
     return row.exposure.marginUsdt;
   }

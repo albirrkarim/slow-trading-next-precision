@@ -17,7 +17,7 @@ export const DEFAULT_SANDBOX_INITIAL_BALANCE_USDT = 1000;
 /** Default shared management/strategy configuration. */
 function createManagement(): RuntimeManagementConfig {
   return {
-    name: "SLOW Trade",
+    name: "PRECISION Trade",
     description: "",
     symbols: ["SUI", "SOL", "HBAR"],
     decisionEngineVersion: "decision.v14",
@@ -98,7 +98,7 @@ function createRuntime(): RuntimeControlConfig {
       runtimeStages.interval.defaults.management,
     captureEntryStageIntervalMinutes:
       runtimeStages.interval.defaults["capture-entry"],
-    notification: createDefaultDashboardNotificationConfig("SLOW"),
+    notification: createDefaultDashboardNotificationConfig("PRECISION"),
     sandboxEnabled: false,
     withdrawal: { autoEnabled: false, schedules: [], walletBook: [] },
     safeHaven: { autoEnabled: false, schedules: [] },

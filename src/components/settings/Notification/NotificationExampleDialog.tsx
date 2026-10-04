@@ -1,14 +1,14 @@
 import { Button, Paper, Stack, Typography } from "@mui/material";
 import DialogBlur from "@/components/ui/DialogBlur";
-import type { SlowNotificationKey } from "@/lib/system/notification/config";
-import { SLOW_NOTIFICATION_TYPE_INFO } from "@/lib/system/notification/config";
+import type { NotificationKey } from "@/lib/system/notification/config";
+import { NOTIFICATION_TYPE_INFO } from "@/lib/system/notification/config";
 import notificationExamples from "@/lib/system/notification/examples";
 import type { NotificationChannel, NotificationTypeConfig } from "@/lib/system/notification";
 
 export interface NotificationExampleSelection {
   channel: NotificationChannel;
   params?: NotificationTypeConfig["params"];
-  type: SlowNotificationKey;
+  type: NotificationKey;
 }
 
 export default function NotificationExampleDialog(props: {
@@ -16,7 +16,7 @@ export default function NotificationExampleDialog(props: {
   selection: NotificationExampleSelection | null;
 }) {
   const { onClose, selection } = props;
-  const info = selection ? SLOW_NOTIFICATION_TYPE_INFO[selection.type] : null;
+  const info = selection ? NOTIFICATION_TYPE_INFO[selection.type] : null;
   const example = selection
     ? notificationExamples.get(selection.type, selection.params)
     : null;

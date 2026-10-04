@@ -90,7 +90,7 @@ When a leg reaches its target, `BOTH:VOLATILITY_TARGET_EXIT` closes only that
 favorable leg. The adverse leg remains open and independently evaluates
 averaging at the same confirmed vPoint.
 
-After the favorable leg closes, SLOW reopens its role in the direction opposite
+After the favorable leg closes, PRECISION reopens its role in the direction opposite
 the surviving leg. The reopened leg uses the target vPoint as its new anchor,
 starts again with the normal base entry margin, and resets its averaging ladder.
 The re-entry must still pass the normal entry guards, including
@@ -168,9 +168,9 @@ modify the stoploss, now it just close some leg that hit the stop loss, it doesn
 Example:
 
 1. LONG closes at confirmed TOP[1]-B.
-2. SLOW wants to reopen LONG using B as its anchor.
+2. PRECISION wants to reopen LONG using B as its anchor.
 3. The current market price is too far from B.price, so PROD:LATE_ENTRY_VPOINT_PRICE_DRIFT_PCT blocks entry.
-4. While SLOW is waiting, a newer TOP[2]-C becomes confirmed.
+4. While PRECISION is waiting, a newer TOP[2]-C becomes confirmed.
    The question is: should LONG still wait for the price to return near B.price, or discard B and use the newer C anchor?
 
 use the newest confirmed unused vPoint which is C
@@ -190,6 +190,6 @@ vpoint.usedByCounter = true;
 9. Should usedByMain or usedByCounter become true only after the entry order succeeds?
    mark only when success place order
 
-10. If both legs are separately closed by other exit rules, there is no surviving leg from which to derive the opposite direction. At the next eligible vPoint, should SLOW restart a fresh two-leg pair using the normal MAIN direction derived from that vPoint?
+10. If both legs are separately closed by other exit rules, there is no surviving leg from which to derive the opposite direction. At the next eligible vPoint, should PRECISION restart a fresh two-leg pair using the normal MAIN direction derived from that vPoint?
 
 yes

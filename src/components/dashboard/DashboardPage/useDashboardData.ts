@@ -72,7 +72,7 @@ export default function useDashboardData() {
       : undefined;
 
   useEffect(() => {
-    const stored = window.localStorage.getItem("slow-selected-account");
+    const stored = window.localStorage.getItem("selected-account");
     if (stored) setStoredAccountSlug(stored);
   }, []);
 
@@ -105,7 +105,7 @@ export default function useDashboardData() {
 
   const setSelectedAccountSlug = (slug: string) => {
     setStoredAccountSlug(slug);
-    window.localStorage.setItem("slow-selected-account", slug);
+    window.localStorage.setItem("selected-account", slug);
   };
   const [quickSimulationSeries, setQuickSimulationSeries] =
     useState<QuickBacktestSimulationSeries>({

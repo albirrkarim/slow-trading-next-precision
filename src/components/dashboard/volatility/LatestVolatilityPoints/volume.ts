@@ -75,7 +75,7 @@ export function buildMaxEntryVolumeTooltip(params: {
       ? `Formula: 24h volume × ${pctText} = estimated sizing budget.`
       : undefined,
     pct > 0 ? `This coin: ${volume} × ${pctText} = ${maxEntry}.` : undefined,
-    "SLOW uses this as the temporary budget for entry + reserve planning.",
+    "PRECISION uses this as the temporary budget for entry + reserve planning.",
     pct > 0 && params.workerCostUsdt !== undefined
       ? `Worker cost: ${workerCost}. Red when worker cost is above estimated max entry; orange when it is within 25%.`
       : undefined,

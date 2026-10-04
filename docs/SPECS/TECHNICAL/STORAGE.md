@@ -1,6 +1,6 @@
 # Storage
 
-This document defines the required SLOW storage behavior.
+This document defines the required PRECISION storage behavior.
 
 ## C.1 Single Storage Truth
 
@@ -98,7 +98,7 @@ truncated payload.
 Before a live futures entry, the system must successfully configure the
 exchange leverage and isolated margin mode. A rejected exchange configuration
 must abort the cycle so the production error boundary records it in
-`errors.json` and sends the configured SLOW error notification.
+`errors.json` and sends the configured PRECISION error notification.
 
 Sandbox futures entries use the same leverage calculation but must not call
 private exchange account-configuration endpoints.

@@ -161,7 +161,7 @@ export default function DynamicBacktestConfig({
                         size="small"
                         value={backtestConfig.name ?? ""}
                         onChange={(e) => updateBacktest({ name: e.target.value })}
-                        placeholder="e.g. 'SLOW Aggressive 2025'"
+                        placeholder="e.g. 'PRECISION Aggressive 2025'"
                     />
                 }
             >

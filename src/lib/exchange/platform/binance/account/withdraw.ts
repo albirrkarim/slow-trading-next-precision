@@ -48,7 +48,7 @@ interface BinanceCoinConfig {
   free: string;
 }
 
-/** Waits without blocking the SLOW process event loop. */
+/** Waits without blocking the PRECISION process event loop. */
 async function delay(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -229,7 +229,7 @@ export async function withdrawUSDT(
     amount: normalizeWithdrawalAmount(amountUSDT),
     network,
     withdrawOrderId:
-      params.withdrawOrderId ?? `slow-withdraw-${Date.now()}`.slice(0, 64),
+      params.withdrawOrderId ?? `withdraw-${Date.now()}`.slice(0, 64),
   };
 
   let withdrawal: BinanceWithdrawResponse;

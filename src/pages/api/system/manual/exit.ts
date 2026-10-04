@@ -85,13 +85,13 @@ export default async function handler(
       })
       .catch((logError) => {
         systemLog.error(
-          "[slow-trading] failed to write exit error log",
+          "[precision] failed to write exit error log",
           logError,
         );
       });
 
     res.status(500).json({
-      error: error?.message ?? "Failed to exit slow trading position",
+      error: error?.message ?? "Failed to exit trading position",
     });
   }
 }

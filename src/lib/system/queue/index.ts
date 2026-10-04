@@ -139,7 +139,7 @@ async function createManual(
       amountUSDT,
       targetNetwork,
       targetWalletAddress,
-      clientWithdrawId: `slow-${schedule.id}-${currentTimeMs}`.slice(0, 64),
+      clientWithdrawId: `${schedule.id}-${currentTimeMs}`.slice(0, 64),
       createdAt: currentTimeMs,
       nextAttemptAt: currentTimeMs,
       lastMessage: `Manually queued automatic withdrawal schedule "${schedule.name}" for ${amountUSDT} USDT.`,

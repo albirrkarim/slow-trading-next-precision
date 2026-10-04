@@ -25,7 +25,7 @@ import moment from "moment-timezone";
 
 import DisplayCoinSymbol from "@/components/coins/DisplayCoin";
 import ManualEntryDialog from "@/components/dashboard/entry/ManualEntryDialog";
-import { calculateSlowWorkerCapacity } from "@/components/dashboard/entry/worker-capacity";
+import { calculateWorkerCapacity } from "@/components/dashboard/entry/worker-capacity";
 import LatestVolatilityPointChartDialog from "./LatestVolatilityPointChartDialog";
 import type { VolatilityPointLabelFrequency } from "./types";
 import { simplifyId, VPOINT_LEVEL_COLOR_MAP } from "./utils";
@@ -156,7 +156,7 @@ export default function LatestVolatilityPointRow({
     maxEntryBased24HourVolPct,
     volume24h,
   });
-  const workerCostUsdt = calculateSlowWorkerCapacity(dashboardState).workerCostUsdt;
+  const workerCostUsdt = calculateWorkerCapacity(dashboardState).workerCostUsdt;
   const estimatedMaxEntryTooltip = buildMaxEntryVolumeTooltip({
     estimatedMaxEntry,
     maxEntryBased24HourVolPct,

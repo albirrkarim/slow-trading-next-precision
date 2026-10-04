@@ -30,7 +30,7 @@ export function AveragingSection({
             title={
                 <SettingsCheckbox
                     checked={averagingEnabled}
-                    info="Master switch for automatic watch/add-position averaging. When disabled, SLOW skips averaging and the settings in this section are inactive."
+                    info="Master switch for automatic watch/add-position averaging. When disabled, PRECISION skips averaging and the settings in this section are inactive."
                     label="Averaging"
                     labelFontWeight={700}
                     labelVariant="subtitle1"
@@ -134,7 +134,7 @@ export function AveragingSection({
                     <SettingsCheckbox
                         checked={tradingConfig.entrySpareBufferEnabled ?? true}
                         disabled={!averagingEnabled}
-                        info="When ON, entry sizing leaves one additional entry-margin unit spendable after paying for the entry and its reserved averaging steps. It is not locked or reserved. Example: with 210 USDT, one 2x reserve, and no other limit, SLOW fits floor(210 / (1x entry + 2x reserve + 1x spare)) = 52 USDT. Turn OFF to fit only the entry and reserved steps; the separate largest-UNRESERVED bailout guard still applies."
+                        info="When ON, entry sizing leaves one additional entry-margin unit spendable after paying for the entry and its reserved averaging steps. It is not locked or reserved. Example: with 210 USDT, one 2x reserve, and no other limit, PRECISION fits floor(210 / (1x entry + 2x reserve + 1x spare)) = 52 USDT. Turn OFF to fit only the entry and reserved steps; the separate largest-UNRESERVED bailout guard still applies."
                         label="Spare Entry-Margin Buffer"
                         onChange={(checked) =>
                             setTradingConfig((prev) =>
@@ -188,7 +188,7 @@ export function AveragingSection({
                     <SettingsCheckbox
                         checked={adaptiveConfig.enabled}
                         disabled={!averagingEnabled}
-                        info="When ON, SLOW can raise the averaging multiplier above the reserve multiplier when enough spendable balance exists and the configured projected-profit target can be reached."
+                        info="When ON, PRECISION can raise the averaging multiplier above the reserve multiplier when enough spendable balance exists and the configured projected-profit target can be reached."
                         label="Adaptive Averaging"
                         onChange={(checked) =>
                             setTradingConfig((prev) =>

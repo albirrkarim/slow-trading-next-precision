@@ -4,4 +4,4 @@ import type { RuntimeHistoryPosition } from "@/lib/system/trading";
 
 
 
-export type SlowTradingReportRow = RuntimeHistoryPosition;
+export type ReportRow = RuntimeHistoryPosition;

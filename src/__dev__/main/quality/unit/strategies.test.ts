@@ -1327,7 +1327,7 @@ describe("entryDiagnostics.build — streak empty-row reasons", () => {
     runnerOff.config.runtime.runnerEnabled = false;
     expect(await suiDiagnostic(runnerOff)).toMatchObject({
       code: "RUNNER_ENABLED",
-      reason: "The SLOW runner is disabled.",
+      reason: "The PRECISION runner is disabled.",
     });
 
     const autoEntryOff = makeState();

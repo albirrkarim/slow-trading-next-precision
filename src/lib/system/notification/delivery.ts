@@ -22,7 +22,7 @@ type NotifSendParam = {
 };
 
 type NotifCentralParam = {
-  dashboard: "SLOW";
+  dashboard: "PRECISION";
   key: string;
   channel?: NotificationChannel;
   title?: string;
@@ -115,17 +115,17 @@ function prefixEmailSubject(subject: string | undefined) {
 }
 
 async function loadDashboardNotificationConfig(
-  dashboard: "SLOW",
+  dashboard: "PRECISION",
 ): Promise<DashboardNotificationConfig> {
   try {
     if (!(await fs.pathExists(storageFiles.prod.config))) {
-      return createDefaultDashboardNotificationConfig("SLOW");
+      return createDefaultDashboardNotificationConfig("PRECISION");
     }
 
     const data = await fs.readJSON(storageFiles.prod.config);
     return normalizeDashboardNotificationConfig(
       data?.runtime?.notification,
-      "SLOW",
+      "PRECISION",
     );
   } catch (error) {
     systemLog.error(`Failed to load ${dashboard} notification config:`, error);
@@ -208,7 +208,7 @@ async function sendEmailViaN8nProxy(
     {
       appName: process.env.APP_NAME ?? "",
       body: payload.body,
-      source: "slow-trading",
+      source: "precision",
       subject: payload.subject,
       to: payload.to,
     },

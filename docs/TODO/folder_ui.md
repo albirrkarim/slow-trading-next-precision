@@ -62,7 +62,7 @@ have clear owners; do not rename it just for symmetry.
 
 Treat a React component file above roughly 500 lines as a prompt to review its
 responsibilities. Currently 18 component-area TypeScript files exceed that
-size; examples include `DailyPnlCalendarDialog.tsx`, `SlowTradingLogs.tsx`,
+size; examples include `DailyPnlCalendarDialog.tsx`, `Logs.tsx`,
 `LiveDashboardPage.tsx`, and `TradesTableSection.tsx`. For each, look for
 independent UI sections that can become small local components, reusable
 state/effects that belong in a focused hook, and pure calculations that belong
@@ -75,10 +75,10 @@ folder named after the component. Keep its main component, private
 subcomponents, hook, and local types together, for example:
 
 ```text
-SlowTradingLogs/
+Logs/
   index.tsx               # public component
   LogRow.tsx              # local subcomponent
-  useSlowTradingLogs.ts   # local state and effects
+  useLogs.ts              # local state and effects
   types.ts                # types used only by this feature
 ```
 

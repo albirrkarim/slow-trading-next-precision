@@ -2,13 +2,13 @@
 
 import { endpoints } from "@/components/endpoints";
 import PreviewOutlinedIcon from "@mui/icons-material/PreviewOutlined";
-import type { SlowNotificationKey } from "@/lib/system/notification/config";
+import type { NotificationKey } from "@/lib/system/notification/config";
 import {
   DEFAULT_HIGH_VOLATILITY_MIN_ABSOLUTE_LEVEL,
   DEFAULT_LONG_OPEN_POSITION_HOUR,
   DEFAULT_STALE_POSITION_HOUR,
-  SLOW_NOTIFICATION_KEYS,
-  SLOW_NOTIFICATION_TYPE_INFO,
+  NOTIFICATION_KEYS,
+  NOTIFICATION_TYPE_INFO,
   createNotificationTypeConfig,
 } from "@/lib/system/notification/config";
 import {
@@ -42,13 +42,13 @@ const CHANNELS: Array<{
       key: "telegram",
       label: "Telegram",
       description:
-        "Send SLOW dashboard execution notifications to the configured Telegram bot and chat.",
+        "Send PRECISION dashboard execution notifications to the configured Telegram bot and chat.",
     },
     {
       key: "email",
       label: "Email",
       description:
-        "Send the same SLOW dashboard execution notifications through the configured email sender.",
+        "Send the same PRECISION dashboard execution notifications through the configured email sender.",
     },
   ];
 
@@ -102,7 +102,7 @@ export default function SettingsDialogNotificationTab(props: {
 
   const updateTypeParams = (
     channel: NotificationChannel,
-    id: SlowNotificationKey,
+    id: NotificationKey,
     params: NotificationTypeConfig["params"],
   ) => {
     updateNotification((current) => ({
@@ -189,12 +189,12 @@ export default function SettingsDialogNotificationTab(props: {
                     Types
                   </Typography>
 
-                  {SLOW_NOTIFICATION_KEYS.map((type) => {
+                  {NOTIFICATION_KEYS.map((type) => {
                     const typeConfig = route.types.find(
                       (item) => item.id === type,
                     );
                     const checked = Boolean(typeConfig);
-                    const info = SLOW_NOTIFICATION_TYPE_INFO[type];
+                    const info = NOTIFICATION_TYPE_INFO[type];
                     const hourDefault =
                       type === "NOTIF_STALE_POSITION"
                         ? DEFAULT_STALE_POSITION_HOUR

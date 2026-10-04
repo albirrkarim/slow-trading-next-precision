@@ -37,7 +37,7 @@ type TradeChartPosition = Pick<
   "exposure" | "opened" | "strategy"
 >;
 
-type SlowKlinesResponse = {
+type KlinesResponse = {
   klines: any[];
   markers?: Marker[];
   priceSeries?: MultiLinePair;
@@ -137,7 +137,7 @@ export default function TradeChartBase({
     setLoading(true);
     setError(null);
     try {
-      const res = await axios.get<SlowKlinesResponse>(
+      const res = await axios.get<KlinesResponse>(
         endpoints.market.klines,
         {
           params: {

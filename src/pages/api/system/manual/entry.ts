@@ -101,13 +101,13 @@ export default async function handler(
       })
       .catch((logError) => {
         systemLog.error(
-          "[slow-trading] failed to write entry error log",
+          "[precision] failed to write entry error log",
           logError,
         );
       });
 
     res.status(500).json({
-      error: error?.message ?? "Failed to entry slow trading position",
+      error: error?.message ?? "Failed to entry trading position",
     });
   }
 }

@@ -236,11 +236,11 @@ export default function SettingsDialogMcpTab() {
             />
             <McpUsageSnippet
               label="Codex"
-              value={`export SLOW_MCP_TOKEN="<token>"\ncodex mcp add slow-mcp --url ${mcpBaseUrl} --bearer-token-env-var SLOW_MCP_TOKEN`}
+              value={`export MCP_TOKEN="<token>"\ncodex mcp add precision-mcp --url ${mcpBaseUrl} --bearer-token-env-var MCP_TOKEN`}
             />
             <McpUsageSnippet
               label="mcporter"
-              value={`mcporter config add slow-mcp --scope home --url ${mcpBaseUrl} --transport http --header "Authorization=Bearer <token>"`}
+              value={`mcporter config add precision-mcp --scope home --url ${mcpBaseUrl} --transport http --header "Authorization=Bearer <token>"`}
             />
           </Box>
 

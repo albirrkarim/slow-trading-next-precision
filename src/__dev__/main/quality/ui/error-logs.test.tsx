@@ -7,7 +7,7 @@ import userEvent from "@testing-library/user-event";
 import { SnackbarProvider } from "notistack";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { SlowTradingErrorLogs } from "@/components/dashboard/logs/SlowTradingLogs";
+import { ErrorLogs } from "@/components/dashboard/logs/Logs";
 
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
@@ -25,12 +25,12 @@ vi.mock("axios", () => ({
 function renderLogs() {
   return render(
     <SnackbarProvider>
-      <SlowTradingErrorLogs />
+      <ErrorLogs />
     </SnackbarProvider>,
   );
 }
 
-describe("SlowTradingErrorLogs", () => {
+describe("ErrorLogs", () => {
   afterEach(() => {
     cleanup();
     mocks.get.mockReset();
@@ -54,7 +54,7 @@ describe("SlowTradingErrorLogs", () => {
 
     renderLogs();
 
-    const section = screen.getByTestId("slow-trading-log-section-errors");
+    const section = screen.getByTestId("log-section-errors");
     // PROD:ERROR_LOG_HIGHLIGHT
     await waitFor(() => {
       expect(section.getAttribute("data-has-records")).toBe("true");
@@ -68,7 +68,7 @@ describe("SlowTradingErrorLogs", () => {
 
     renderLogs();
 
-    const section = screen.getByTestId("slow-trading-log-section-errors");
+    const section = screen.getByTestId("log-section-errors");
     await waitFor(() => {
       expect(screen.getByText("0 new / 0 total")).toBeDefined();
     });
@@ -86,7 +86,7 @@ describe("SlowTradingErrorLogs", () => {
 
     renderLogs();
 
-    const section = screen.getByTestId("slow-trading-log-section-errors");
+    const section = screen.getByTestId("log-section-errors");
     await waitFor(() => {
       expect(section.getAttribute("data-has-records")).toBe("false");
     });

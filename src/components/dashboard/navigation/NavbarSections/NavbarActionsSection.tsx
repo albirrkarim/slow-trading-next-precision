@@ -14,7 +14,7 @@ import ButtonLogout from "@/components/ui/ButtonLogout";
 import DarkToggle from "@/components/ui/DarkToggle";
 
 import UtcClock from "../UtcClock";
-import SlowTradingReporting from "@/components/reports";
+import Reporting from "@/components/reports";
 import SettingsDialog from "@/components/settings/SettingsDialog";
 import type {
   ConfigDraft,
@@ -96,7 +96,7 @@ export function NavbarActionsSection({
             customButton={(handleOpen) => (
               <IconButton
                 onClick={handleOpen}
-                title="Open slow-trading history report"
+                title="Open trading history report"
                 color="inherit"
               >
                 <HistoryIcon />
@@ -105,7 +105,7 @@ export function NavbarActionsSection({
           >
             {() =>
               dashboardState ? (
-                <SlowTradingReporting
+                <Reporting
                   dashboardState={dashboardState}
                   onRefresh={onRefresh}
                 />

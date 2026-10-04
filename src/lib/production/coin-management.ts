@@ -240,7 +240,7 @@ function buildActions(params: {
       action: "remove" as const,
       reason: reasons.join(" "),
       source:
-        `slow-trading.${params.mode}-cycle.coin-management:` +
+        `${params.mode}-cycle.coin-management:` +
         sources.join("+"),
       symbol,
       t: params.t,
@@ -371,7 +371,7 @@ async function run(params: {
   });
 
   if (committed.removedSymbols.length > 0) {
-    systemLog.info("[slow-trading] auto removed configured symbols", {
+    systemLog.info("[precision] auto removed configured symbols", {
       removedSymbols: committed.removedSymbols,
     });
 
@@ -387,7 +387,7 @@ async function run(params: {
       ),
     ).catch((error) => {
       systemLog.error(
-        "[slow-trading] failed to persist management-action log",
+        "[precision] failed to persist management-action log",
         error,
       );
     });
@@ -400,7 +400,7 @@ async function run(params: {
         })
         .catch((error) => {
           systemLog.error(
-            "[slow-trading] failed to send management-action notification",
+            "[precision] failed to send management-action notification",
             error,
           );
         });

@@ -34,7 +34,7 @@ async function resolve(params: {
 
   if (accounts.length === 0) {
     throw new Error(
-      "SLOW has no enabled exchange accounts to include in MCP data.",
+      "PRECISION has no enabled exchange accounts to include in MCP data.",
     );
   }
 

@@ -109,9 +109,9 @@ TC: `PROD:AUTOMATIC_WITHDRAWAL_AMOUNT`
 
 TC: `PROD:FUTURES_WITHDRAWAL_TRANSFER`
 
-- After a Futures-to-Spot transfer, SLOW waits until Binance's withdrawal
+- After a Futures-to-Spot transfer, PRECISION waits until Binance's withdrawal
   wallet reports the requested USDT as free before submitting the withdrawal.
-  If Binance still returns transient currency-ownership error `-4024`, SLOW
+  If Binance still returns transient currency-ownership error `-4024`, PRECISION
   retries once with the same client withdrawal id.
 
 TC: `PROD:FUTURES_WITHDRAWAL_SETTLEMENT`

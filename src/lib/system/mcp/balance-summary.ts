@@ -89,7 +89,7 @@ function createBalanceSummary(params: {
     instanceName: params.instanceName,
     meanings: {
       available:
-        "Free quote balance before SLOW's virtual reserve subtraction. In live mode this is the exchange free USDT balance, so active-position margin is already excluded.",
+        "Free quote balance before PRECISION's virtual reserve subtraction. In live mode this is the exchange free USDT balance, so active-position margin is already excluded.",
       currency: "Unit used by every numeric field in balance.",
       locked:
         "Margin currently committed to active open positions. Do not subtract it from available again.",
@@ -109,7 +109,7 @@ function createBalanceSummary(params: {
         : "sandbox_simulation",
     sourceMeaning:
       params.mode === "live"
-        ? "Each call attempts to refresh available from the live exchange; if that read fails, SLOW retains the latest persisted balance while logging the exchange error. Reserved, Safe Haven, and locked values come from SLOW state."
+        ? "Each call attempts to refresh available from the live exchange; if that read fails, PRECISION retains the latest persisted balance while logging the exchange error. Reserved, Safe Haven, and locked values come from PRECISION state."
         : "All fields come from the selected sandbox simulation state; no exchange balance is queried.",
   };
 }

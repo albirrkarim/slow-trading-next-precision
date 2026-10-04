@@ -18,7 +18,7 @@ import { EXCHANGE_COLOR_MAP } from "@/components/charts/constants";
 import type { ExchangeType } from "@/lib/exchange";
 
 import RangedValueText from "../RangedValueText";
-import type { SlowTradingReportRow } from "../types";
+import type { ReportRow } from "../types";
 import { formatHoldMs } from "../utils";
 import { positionData } from "@/lib/system/trading";
 import pair from "@/lib/strategies/shared/pair";
@@ -61,15 +61,15 @@ export function TradeTableRow({
   deletingKey: string | null;
   exchangeType: ExchangeType;
   getVolatilityPoints?: (symbol: string) => VolatilityPoint[] | undefined;
-  history: SlowTradingReportRow[];
+  history: ReportRow[];
   mode: RuntimeMode;
-  onDeleteRow: (row: SlowTradingReportRow, rowKey: string) => void;
+  onDeleteRow: (row: ReportRow, rowKey: string) => void;
   onHistoryChange: (
     nextHistory: RuntimeDashboardState["history"],
     refreshDashboard?: boolean,
   ) => void;
   readOnly: boolean;
-  row: SlowTradingReportRow;
+  row: ReportRow;
   rowKey: string;
 }) {
   const holdMs =

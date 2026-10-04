@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { TradeAuditMessage } from "@/components/reports/TradesTableSection";
 
-describe("slow trading history messages", () => {
+describe("trading history messages", () => {
   it("renders persisted entry and close audit text", () => {
     const html = renderToStaticMarkup(
       <>

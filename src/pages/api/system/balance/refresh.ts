@@ -31,13 +31,13 @@ export default async function handler(
     if (!rateLimited) {
       await runtimeLogs
         .appendError({
-          source: "slow-trading.dashboard.manual-balance-refresh",
+          source: "dashboard.manual-balance-refresh",
           error,
           details: { account },
         })
         .catch((logError) => {
           systemLog.error(
-            "[slow-trading] failed to write manual balance refresh error log",
+            "[precision] failed to write manual balance refresh error log",
             logError,
           );
         });

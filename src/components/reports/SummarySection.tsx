@@ -3,7 +3,7 @@
 import { Box, Grid, Typography } from "@mui/material";
 import { useMemo } from "react";
 import { RangedValueChip, type RangedValueColorRange } from "./RangedValueText";
-import type { SlowTradingReportRow } from "./types";
+import type { ReportRow } from "./types";
 import { formatHoldMs } from "./utils";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -40,7 +40,7 @@ export function SummarySection({
   history,
   startingBalanceUSDT,
 }: {
-  history: SlowTradingReportRow[];
+  history: ReportRow[];
   startingBalanceUSDT: number;
 }) {
   const summary = useMemo(() => {

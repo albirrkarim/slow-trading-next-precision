@@ -225,7 +225,7 @@ async function executeSchedule(params: {
   }
 
   if (activeMode !== "live") {
-    await failWithdrawal("Real withdrawal is blocked while SLOW is in sandbox mode.");
+    await failWithdrawal("Real withdrawal is blocked while PRECISION is in sandbox mode.");
   }
 
   if (effective.exchangeType !== "binance") {
@@ -264,7 +264,7 @@ async function executeSchedule(params: {
           network: targetNetwork,
           clientWithdrawId:
             params.clientWithdrawId ??
-            `slow-${schedule.id}-${Date.now()}`.slice(0, 64),
+            `${schedule.id}-${Date.now()}`.slice(0, 64),
         });
       },
     );

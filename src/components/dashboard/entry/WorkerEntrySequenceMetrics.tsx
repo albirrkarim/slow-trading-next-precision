@@ -4,7 +4,7 @@ import HeaderMetrics from "@/components/ui/HeaderMetrics";
 
 import { Box, Paper, Typography } from "@mui/material";
 import { useMemo } from "react";
-import { calculateSlowWorkerCapacity } from "./worker-capacity";
+import { calculateWorkerCapacity } from "./worker-capacity";
 import pair from "@/lib/strategies/shared/pair";
 import type { RuntimeDashboardState } from "@/lib/system/dashboard";
 
@@ -49,7 +49,7 @@ function WorkerEntrySequenceMetricsContent({
   dashboardState: RuntimeDashboardState;
 }) {
   const capacity = useMemo(
-    () => calculateSlowWorkerCapacity(dashboardState),
+    () => calculateWorkerCapacity(dashboardState),
     [dashboardState],
   );
   const pairMode = pair.legsPerWorker(dashboardState.config) === 2;

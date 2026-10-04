@@ -70,7 +70,7 @@ export type * from "./types";
 
 ## Testing Scope
 
-- Add or update tests when a change affects documented SLOW behavior, business logic, calculations, conditional flows, persistence or storage compatibility, API contracts, or a known regression.
+- Add or update tests when a change affects documented PRECISION behavior, business logic, calculations, conditional flows, persistence or storage compatibility, API contracts, or a known regression.
 - Do not add dedicated tests for trivial static or cosmetic edits, such as moving a fixed sidebar item, changing copy, or reordering non-functional markup, unless the change is tied to a documented requirement or known regression.
 - Do not change production code solely to make an unnecessary test possible.
 - Even when a new test is not warranted, run the existing post-implementation quality gate.

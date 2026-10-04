@@ -52,7 +52,7 @@ function isProfitableTrade(
   );
 }
 
-export default function SlowTradingReporting({
+export default function Reporting({
   dashboardState,
   onRefresh,
 }: {

@@ -583,7 +583,7 @@ async function update(
   if (input.notification !== undefined) {
     runtime.notification = normalizeDashboardNotificationConfig(
       input.notification,
-      "SLOW",
+      "PRECISION",
     );
   }
 

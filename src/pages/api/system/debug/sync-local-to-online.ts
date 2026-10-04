@@ -39,7 +39,7 @@ export default async function handler(
       })
       .catch((logError) => {
         systemLog.error(
-          "[slow-trading] failed to write debug push error log",
+          "[precision] failed to write debug push error log",
           logError,
         );
       });

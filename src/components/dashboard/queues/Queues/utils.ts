@@ -4,7 +4,7 @@ import type { RuntimeSafeHavenQueueItem, RuntimeWithdrawalQueueItem } from "@/li
 export const QUEUE_POLL_INTERVAL_MS = 30_000;
 export const QUEUE_ATTEMPT_INTERVAL_MS = 5 * 60 * 1000;
 
-export type SlowTradingQueueRow =
+export type QueueRow =
   | RuntimeSafeHavenQueueItem
   | RuntimeWithdrawalQueueItem;
 
@@ -36,7 +36,7 @@ export function maskWalletAddress(address: string) {
   return `${normalized.slice(0, 6)}…${normalized.slice(-6)}`;
 }
 
-export function getQueueAction(row: SlowTradingQueueRow): string {
+export function getQueueAction(row: QueueRow): string {
   if (row.kind === "safe_haven") {
     return `Move ${formatUSDT(row.remainingUSDT)} of ${formatUSDT(row.requestedUSDT)} from spendable balance into Safe Haven for ${row.period}.`;
   }

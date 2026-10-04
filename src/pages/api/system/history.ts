@@ -114,10 +114,10 @@ export default async function handler(
         },
       })
       .catch((logError) => {
-        systemLog.error("[slow-trading] failed to write history error log", logError);
+        systemLog.error("[precision] failed to write history error log", logError);
       });
     res.status(500).json({
-      error: error?.message ?? "Failed to update slow trading history",
+      error: error?.message ?? "Failed to update trading history",
     });
   }
 }

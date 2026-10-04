@@ -2,7 +2,7 @@ import type { SortDirection, SortKey } from "./columns";
 import { SORT_DIRECTIONS, SORT_KEYS } from "./columns";
 
 export const ROWS_PER_PAGE_OPTIONS = [25, 50, 100] as const;
-const STORAGE_KEY = "slow-trading:latest-volatility-points:controls:v1";
+const STORAGE_KEY = "latest-volatility-points:controls:v1";
 const ROWS_PER_PAGE_VALUES = new Set<number>(ROWS_PER_PAGE_OPTIONS);
 export const SYMBOL_SEARCH_MAX_LENGTH = 1_000;
 

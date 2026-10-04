@@ -6,7 +6,7 @@ import pair from "@/lib/strategies/shared/pair";
 export type { RuntimeWorkerCapacity } from "@/lib/system/trading";
 
 /** Calculates equal-sized additional entry workers using live entry constraints. */
-export function calculateSlowWorkerCapacity(
+export function calculateWorkerCapacity(
   dashboardState: RuntimeDashboardState,
 ): ReturnType<typeof runtimeWorkerCapacity.calculate> {
   const spendableUsdt = Math.max(

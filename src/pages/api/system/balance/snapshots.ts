@@ -29,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.status(200).json(snapshots);
   } catch (error: any) {
-    systemLog.error("[slow-trading] Failed to read balance snapshots", error);
+    systemLog.error("[precision] Failed to read balance snapshots", error);
     await runtimeLogs
       .appendError({
         source: "api.system.balance-snapshots",
@@ -41,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       })
       .catch((logError) => {
         systemLog.error(
-          "[slow-trading] failed to write balance snapshots error log",
+          "[precision] failed to write balance snapshots error log",
           logError,
         );
       });

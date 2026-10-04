@@ -342,7 +342,7 @@ describe("coinManagement.run", () => {
       expect.objectContaining({
         action: "remove",
         source:
-          "slow-trading.sandbox-cycle.coin-management:auto-remove-abs-level",
+          "sandbox-cycle.coin-management:auto-remove-abs-level",
         symbol: "SUI",
       }),
     );
@@ -374,7 +374,7 @@ describe("coinManagement.run", () => {
     expect(mocks.appendManagement).toHaveBeenCalledWith(
       expect.objectContaining({
         source:
-          "slow-trading.sandbox-cycle.coin-management:auto-remove-min-price",
+          "sandbox-cycle.coin-management:auto-remove-min-price",
         symbol: "SUI",
       }),
     );
@@ -399,7 +399,7 @@ describe("coinManagement.run", () => {
     expect(mocks.appendManagement).toHaveBeenCalledWith(
       expect.objectContaining({
         source:
-          "slow-trading.sandbox-cycle.coin-management:auto-remove-market-cap",
+          "sandbox-cycle.coin-management:auto-remove-market-cap",
       }),
     );
   });
@@ -426,7 +426,7 @@ describe("coinManagement.run", () => {
       expect.objectContaining({
         reason: expect.stringContaining("old-spike"),
         source:
-          "slow-trading.sandbox-cycle.coin-management:auto-remove-vpoint-pct",
+          "sandbox-cycle.coin-management:auto-remove-vpoint-pct",
       }),
     );
   });
@@ -538,7 +538,7 @@ describe("coinManagement.run", () => {
     expect(mocks.appendManagement).toHaveBeenCalledWith(
       expect.objectContaining({
         source:
-          "slow-trading.sandbox-cycle.coin-management:" +
+          "sandbox-cycle.coin-management:" +
           "auto-remove-min-price+auto-remove-market-cap",
         symbol: "SUI",
       }),

@@ -3,17 +3,17 @@
 import { Stack } from "@mui/material";
 
 import ConfigLogTable from "./ConfigLogTable";
-import { SlowTradingErrorLogs } from "./ErrorLogs";
-import SlowTradingLogSection from "./LogSection";
+import { ErrorLogs } from "./ErrorLogs";
+import LogSection from "./LogSection";
 import ManagementLogTable from "./ManagementLogTable";
 import SafeHavenLogTable from "./SafeHavenLogTable";
 import WithdrawalLogTable from "./WithdrawalLogTable";
 
-export { SlowTradingErrorLogs } from "./ErrorLogs";
+export { ErrorLogs } from "./ErrorLogs";
 
-export function SlowTradingSafeHavenLogs() {
+export function SafeHavenLogs() {
   return (
-    <SlowTradingLogSection
+    <LogSection
       kind="safe_haven"
       title="Safe Haven Logs"
       renderTable={(params) => <SafeHavenLogTable {...params} />}
@@ -21,9 +21,9 @@ export function SlowTradingSafeHavenLogs() {
   );
 }
 
-export function SlowTradingManagementLogs() {
+export function ManagementLogs() {
   return (
-    <SlowTradingLogSection
+    <LogSection
       kind="management"
       title="Coin Management Logs"
       renderTable={(params) => <ManagementLogTable {...params} />}
@@ -31,9 +31,9 @@ export function SlowTradingManagementLogs() {
   );
 }
 
-export function SlowTradingConfigLogs() {
+export function ConfigLogs() {
   return (
-    <SlowTradingLogSection
+    <LogSection
       kind="config"
       title="Config Change Logs"
       renderTable={(params) => <ConfigLogTable {...params} />}
@@ -41,9 +41,9 @@ export function SlowTradingConfigLogs() {
   );
 }
 
-export function SlowTradingWithdrawalLogs() {
+export function WithdrawalLogs() {
   return (
-    <SlowTradingLogSection
+    <LogSection
       kind="withdrawals"
       title="Withdrawal Logs"
       renderTable={(params) => <WithdrawalLogTable {...params} />}
@@ -51,14 +51,14 @@ export function SlowTradingWithdrawalLogs() {
   );
 }
 
-export default function SlowTradingLogsPanel() {
+export default function LogsPanel() {
   return (
     <Stack spacing={2}>
-      <SlowTradingErrorLogs />
-      <SlowTradingManagementLogs />
-      <SlowTradingConfigLogs />
-      <SlowTradingSafeHavenLogs />
-      <SlowTradingWithdrawalLogs />
+      <ErrorLogs />
+      <ManagementLogs />
+      <ConfigLogs />
+      <SafeHavenLogs />
+      <WithdrawalLogs />
     </Stack>
   );
 }

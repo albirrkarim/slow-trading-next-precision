@@ -259,7 +259,7 @@ async function queueDueWithdrawalSchedules(
         amountUSDT,
         targetNetwork,
         targetWalletAddress,
-        clientWithdrawId: `slow-${schedule.id}-${now}`.slice(0, 64),
+        clientWithdrawId: `${schedule.id}-${now}`.slice(0, 64),
         createdAt: now,
         nextAttemptAt: now,
         lastMessage: `Auto-queued withdrawal schedule "${schedule.name}" for ${amountUSDT} USDT.`,

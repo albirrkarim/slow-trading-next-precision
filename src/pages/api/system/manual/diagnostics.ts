@@ -102,7 +102,7 @@ export default async function handler(
       })
       .catch((logError) => {
         systemLog.error(
-          "[slow-trading] failed to write entry diagnostics error log",
+          "[precision] failed to write entry diagnostics error log",
           logError,
         );
       });

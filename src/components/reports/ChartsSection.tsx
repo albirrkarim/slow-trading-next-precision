@@ -14,7 +14,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { SlowTradingReportRow } from "./types";
+import type { ReportRow } from "./types";
 import {
   computeBalanceSeries,
   computeDailyDrawdownStats,
@@ -128,7 +128,7 @@ export function ChartsSection({
   history,
   startingBalanceUSDT,
 }: {
-  history: SlowTradingReportRow[];
+  history: ReportRow[];
   startingBalanceUSDT: number;
 }) {
   const trades = useMemo(() => computeDailyStats(history), [history]);

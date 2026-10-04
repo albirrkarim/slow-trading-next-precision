@@ -50,7 +50,7 @@ export default async function handler(
       })
       .catch((logError) => {
         systemLog.error(
-          "[slow-trading] failed to write coin metadata broadcast error log",
+          "[precision] failed to write coin metadata broadcast error log",
           logError,
         );
       });

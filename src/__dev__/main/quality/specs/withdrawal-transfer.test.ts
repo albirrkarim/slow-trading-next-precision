@@ -13,7 +13,7 @@ import {
   withdrawUSDT,
 } from "@/lib/exchange/platform/binance/account/withdraw";
 
-describe("slow specs Binance Futures withdrawal transfer", () => {
+describe("specs Binance Futures withdrawal transfer", () => {
   beforeEach(() => {
     mocks.requestPrivate.mockReset();
     vi.useFakeTimers({ now: 1_750_000_000_000 });

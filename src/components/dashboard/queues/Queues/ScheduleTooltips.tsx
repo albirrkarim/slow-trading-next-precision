@@ -67,7 +67,7 @@ export function SafeHavenScheduleTooltip(props: {
       })}
       {!dashboardState.runtime.runnerEnabled && (
         <Typography variant="caption">
-          Blocked: the SLOW runner is disabled.
+          Blocked: the PRECISION runner is disabled.
         </Typography>
       )}
       <Typography variant="caption">
@@ -136,7 +136,7 @@ export function WithdrawalScheduleTooltip(props: {
       })}
       {dashboardState.activeMode !== "live" && (
         <Typography variant="caption">
-          Blocked: SLOW is currently in sandbox mode.
+          Blocked: PRECISION is currently in sandbox mode.
         </Typography>
       )}
       {!dashboardState.runtime.runnerEnabled && (

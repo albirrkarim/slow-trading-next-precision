@@ -1,6 +1,6 @@
 /**
  * Strategy-neutral market primitives shared by every runtime environment.
- * These types intentionally carry no exchange, brain, or SLOW dependencies.
+ * These types intentionally carry no exchange, brain, or PRECISION dependencies.
  */
 export type ExchangeType = "okx" | "tokocrypto" | "binance";
 export type TradingMode =

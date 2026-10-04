@@ -29,7 +29,7 @@ export default function DateSelectionDialog(props: {
   return (
     <ButtonDialog
       title="Date"
-      titleLong="Slow Trading Date Selection"
+      titleLong="Trading Date Selection"
       maxWidth="xs"
       customButton={(handleOpen) => (
         <IconButton

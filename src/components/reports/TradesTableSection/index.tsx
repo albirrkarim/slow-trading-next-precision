@@ -19,7 +19,7 @@ import { useSnackbar } from "notistack";
 import format from "@/lib/system/utils/format";
 import type { ExchangeType } from "@/lib/exchange";
 
-import type { SlowTradingReportRow } from "../types";
+import type { ReportRow } from "../types";
 import type { RuntimeMode } from "@/lib/system/runtime";
 import type { RuntimeDashboardState } from "@/lib/system/dashboard";
 import type { VolatilityPoint } from "@/lib/system/types";
@@ -43,7 +43,7 @@ export function TradesTableSection({
   accounts?: TradeHistoryAccount[];
   exchangeType: ExchangeType;
   getVolatilityPoints?: (symbol: string) => VolatilityPoint[] | undefined;
-  history: SlowTradingReportRow[];
+  history: ReportRow[];
   mode: RuntimeMode;
   onHistoryChange: (
     nextHistory: RuntimeDashboardState["history"],
@@ -69,7 +69,7 @@ export function TradesTableSection({
 
   const sortedHistory = useMemo(() => {
     const dir = sortDirection === "asc" ? 1 : -1;
-    const getSortValue = (row: SlowTradingReportRow): string | number => {
+    const getSortValue = (row: ReportRow): string | number => {
       switch (sortKey) {
         case "symbol":
           return `${row.symbol ?? ""}`.toLowerCase();
@@ -128,10 +128,10 @@ export function TradesTableSection({
     setPage(0);
   };
 
-  const buildRowKey = (row: SlowTradingReportRow, index: number) =>
+  const buildRowKey = (row: ReportRow, index: number) =>
     `${row.symbol}-${row.opened.t}-${row.closed?.t}-${index}`;
 
-  const handleDeleteRow = async (row: SlowTradingReportRow, rowKey: string) => {
+  const handleDeleteRow = async (row: ReportRow, rowKey: string) => {
     if (readOnly) return;
 
     if (
@@ -322,7 +322,7 @@ export function TradesTableSection({
                     color="text.secondary"
                     sx={{ py: 4 }}
                   >
-                    No slow-trading history available yet.
+                    No trading history available yet.
                   </Typography>
                 </TableCell>
               </TableRow>

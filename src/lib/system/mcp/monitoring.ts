@@ -111,7 +111,7 @@ function boundedLogs(
   };
 }
 
-/** Builds the credential-free monitoring snapshot shared by all SLOW instances. */
+/** Builds the credential-free monitoring snapshot shared by all PRECISION instances. */
 async function read(
   input: RuntimeMonitoringSnapshotInput,
   instanceName: string,

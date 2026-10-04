@@ -5,7 +5,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { Box, IconButton, type SxProps } from "@mui/material";
 import { useMemo, useState } from "react";
 
-const STORAGE_KEY_PREFIX = "slow-trading:header-metrics:expanded:";
+const STORAGE_KEY_PREFIX = "header-metrics:expanded:";
 
 interface HeaderMetricsProps {
     defaultExpanded?: boolean;

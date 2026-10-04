@@ -11,28 +11,28 @@ import { endpoints } from "@/components/endpoints";
 import TypographyTooltip from "@/components/ui/TypographyTooltip";
 
 import {
-  SlowTradingConfigLogs,
-  SlowTradingErrorLogs,
-  SlowTradingManagementLogs,
-  SlowTradingSafeHavenLogs,
-  SlowTradingWithdrawalLogs,
-} from "../../logs/SlowTradingLogs";
+  ConfigLogs,
+  ErrorLogs,
+  ManagementLogs,
+  SafeHavenLogs,
+  WithdrawalLogs,
+} from "../../logs/Logs";
 import {
   SafeHavenQueueCreateDialog,
   WithdrawalQueueCreateDialog,
-} from "../SlowTradingQueueDialogs";
+} from "../QueueDialogs";
 import type { RuntimeDashboardState } from "@/lib/system/dashboard";
 import type { RuntimeManualQueueCreateInput, RuntimeQueues } from "@/lib/system/queue";
 
 import { QueueSection } from "./QueueSection";
 import { SafeHavenScheduleTooltip, WithdrawalScheduleTooltip } from "./ScheduleTooltips";
-import type { SlowTradingQueueRow } from "./utils";
+import type { QueueRow } from "./utils";
 import {
   getSuggestedSafeHavenAmountUSDT,
   QUEUE_POLL_INTERVAL_MS,
 } from "./utils";
 
-export default function SlowTradingQueuesPanel(props: {
+export default function QueuesPanel(props: {
   dashboardState: RuntimeDashboardState | null;
 }) {
   const { dashboardState } = props;
@@ -89,7 +89,7 @@ export default function SlowTradingQueuesPanel(props: {
     return () => window.clearInterval(intervalId);
   }, [loadQueues]);
 
-  const deleteQueue = useCallback(async (row: SlowTradingQueueRow) => {
+  const deleteQueue = useCallback(async (row: QueueRow) => {
     if (
       !confirm(
         "Delete this pending queue item? Its scheduler will wait until the next normal scheduled time.",
@@ -179,10 +179,10 @@ export default function SlowTradingQueuesPanel(props: {
               error={error}
               loading={loading}
               onDelete={deleteQueue}
-              rememberExpand="slow-trading-queue:safe-haven"
+              rememberExpand="queue:safe-haven"
               rows={activeSafeHavenQueues}
             />
-            <SlowTradingSafeHavenLogs />
+            <SafeHavenLogs />
           </Stack>
         </Grid>
 
@@ -224,17 +224,17 @@ export default function SlowTradingQueuesPanel(props: {
               error={error}
               loading={loading}
               onDelete={deleteQueue}
-              rememberExpand="slow-trading-queue:withdrawal"
+              rememberExpand="queue:withdrawal"
               rows={queues.withdrawals}
             />
-            <SlowTradingWithdrawalLogs />
+            <WithdrawalLogs />
           </Stack>
         </Grid>
       </Grid>
 
-      <SlowTradingErrorLogs />
-      <SlowTradingManagementLogs />
-      <SlowTradingConfigLogs />
+      <ErrorLogs />
+      <ManagementLogs />
+      <ConfigLogs />
     </Stack>
   );
 }

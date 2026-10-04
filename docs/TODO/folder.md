@@ -235,7 +235,7 @@ Contains the shared foundation: the persisted config contract
 (`system/trading`), generic market utilities (`system/utils`), storage,
 logging, time, and domain types. Every module stays small, reusable, and
 strategy-neutral — `system` must not know about production, sandbox,
-backtest, dashboard pages, or SLOW runtime orchestration.
+backtest, dashboard pages, or PRECISION runtime orchestration.
 
 Examples:
 

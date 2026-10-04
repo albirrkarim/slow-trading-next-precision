@@ -1,7 +1,7 @@
 # Binance REST Runtime Budget and Health
 
 This document is the source of truth for Binance REST activity produced by the
-SLOW live runtime. It covers scheduled stages, dashboard reads, execution, the
+PRECISION live runtime. It covers scheduled stages, dashboard reads, execution, the
 request coordinator, and cooldown health. All cadences below are defaults;
 positive whole-minute runtime settings can override stage intervals.
 
@@ -12,7 +12,7 @@ distributed as follows:
 
 | Source | Count |
 | --- | ---: |
-| `slow-trading.dashboard.live-balance` | 49 |
+| `dashboard.live-balance` | 49 |
 | `runner.tick.speedup` | 7 |
 | `runner.tick.risk-sentinel` | 7 |
 | `cycle.account.1` | 2 |

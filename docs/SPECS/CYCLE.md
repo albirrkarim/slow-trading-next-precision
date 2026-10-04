@@ -2,7 +2,7 @@
 
 Status: implemented production architecture.
 
-This document defines how SLOW production stages should share public market
+This document defines how PRECISION production stages should share public market
 work across accounts while preserving account isolation for balances,
 positions, orders, notifications, and persistence. It applies to production
 live and sandbox execution. Backtest remains candle-driven and keeps its
@@ -10,7 +10,7 @@ existing execution flow.
 
 ## Architecture Summary
 
-SLOW uses one Binance Futures market, one configured coin list, one strategy
+PRECISION uses one Binance Futures market, one configured coin list, one strategy
 configuration, and multiple private trading accounts.
 
 ```text
@@ -87,7 +87,7 @@ TC: `BOTH:MULTI_ACCOUNT_SEQUENTIAL_ACCOUNT_EXECUTION`
 
 ## 2. One Shared Market Context
 
-SLOW has one shared market context:
+PRECISION has one shared market context:
 
 - Exchange: Binance.
 - Trading mode: Futures.
@@ -294,7 +294,7 @@ current request-weight window approaches its limit. Its process state uses one
 `globalThis` key so separately bundled server routes cannot create independent
 queues in the same Node.js process.
 
-The coordinator is below SLOW orchestration so independent cycle stages,
+The coordinator is below PRECISION orchestration so independent cycle stages,
 entry diagnostics, dashboard data, volatility refresh, and private account
 execution cannot create separate uncoordinated Binance queues.
 
@@ -376,7 +376,7 @@ For each account, the required order remains:
 7. Persist notification transition state.
 8. Record the balance snapshot.
 
-Manual mutations and scheduled stages must continue using the SLOW mutation
+Manual mutations and scheduled stages must continue using the PRECISION mutation
 queue so stale cycle state cannot overwrite a newer balance or position.
 
 ## 11. Performance Observability

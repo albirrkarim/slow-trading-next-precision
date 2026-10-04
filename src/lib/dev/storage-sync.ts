@@ -126,7 +126,7 @@ export function isLocalCoinMetadataManualSyncAllowed(host?: string | null) {
 export function getOnlinePersistentStorageExportUrl(baseUrl?: string) {
   const source =
     baseUrl?.trim() ||
-    process.env.SLOW_SYNC_ONLINE_BASE_URL?.trim() ||
+    process.env.SYNC_ONLINE_BASE_URL?.trim() ||
     DEFAULT_ONLINE_BASE_URL;
   return new URL("/api/system/debug/export", source).toString();
 }
@@ -134,7 +134,7 @@ export function getOnlinePersistentStorageExportUrl(baseUrl?: string) {
 export function getOnlinePersistentStorageImportUrl(baseUrl?: string) {
   const source =
     baseUrl?.trim() ||
-    process.env.SLOW_SYNC_ONLINE_BASE_URL?.trim() ||
+    process.env.SYNC_ONLINE_BASE_URL?.trim() ||
     DEFAULT_ONLINE_BASE_URL;
   return new URL("/api/system/debug/import", source).toString();
 }

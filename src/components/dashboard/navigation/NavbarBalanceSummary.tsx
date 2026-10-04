@@ -7,7 +7,7 @@ import { useEffect, useState, type ReactElement, type ReactNode } from "react";
 
 import type { BalanceSummary } from "./navbar-types";
 
-const STORAGE_KEY = "slow-trading:navbar:balance-visible:v1";
+const STORAGE_KEY = "navbar:balance-visible:v1";
 const MASKED_VALUE = "*****";
 
 const balanceTooltipSlotProps = {
@@ -186,7 +186,7 @@ export default function NavbarBalanceSummary({
   const items: BalanceItem[] = [
     {
       description:
-        "Available is the actual live USDT on the exchange. Inside SLOW it is virtually divided into spendable, reserved, and safe haven.",
+        "Available is the actual live USDT on the exchange. Inside PRECISION it is virtually divided into spendable, reserved, and safe haven.",
       formula: "balance.available = spendable + reserved + safeHaven",
       label: "A",
       resolvedFormula:

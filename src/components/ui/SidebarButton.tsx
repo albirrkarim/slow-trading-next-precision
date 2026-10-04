@@ -31,7 +31,7 @@ const sidebarSections = [
                 text: "Precision Trade",
                 href: "/",
                 icon: <DashboardIcon />,
-                description: "Live dashboard for the standalone slow trading workflow.",
+                description: "Live dashboard for the standalone trading workflow.",
             },
         ],
     },

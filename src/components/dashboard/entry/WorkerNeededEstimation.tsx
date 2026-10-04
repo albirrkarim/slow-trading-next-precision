@@ -120,7 +120,7 @@ function buildEffectiveBalanceTooltip({
       : []),
     spareDescription,
     `Entry margin is fitted with 24h volume × ${formatPercent(maxEntryPct)}, max entry %, fixed max entry, and watch reserve settings.`,
-    "At every timestamp SLOW sums active sequence capital. This card shows the maximum sum.",
+    "At every timestamp PRECISION sums active sequence capital. This card shows the maximum sum.",
     `Current result: ${formatFullUsdt(
       estimate.metrics.maxEffectiveCapitalUsdt,
     )}.`,
@@ -192,7 +192,7 @@ function buildCapitalNeededChartTooltip(
 
   return tooltipContent([
     "Shows the effective capital needed over time to support the active workers.",
-    `For each sequence, SLOW starts from 24h quote volume × ${formatPercent(maxEntryPct)}.`,
+    `For each sequence, PRECISION starts from 24h quote volume × ${formatPercent(maxEntryPct)}.`,
     "Then it runs the same entry sizing logic used by trading: reserve ladder, max entry %, fixed max entry, trading mode, and leverage config.",
     "Per active sequence capital: fitted entry margin + reserved averaging ladder, plus the optional spare when enabled.",
     ...(pairMode

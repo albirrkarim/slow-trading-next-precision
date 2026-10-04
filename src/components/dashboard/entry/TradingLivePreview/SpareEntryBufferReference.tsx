@@ -39,7 +39,7 @@ export function SpareEntryBufferReference({
             What it does
           </Typography>
           <Typography color="text.secondary" variant="body2">
-            When enabled, SLOW includes one extra entry-sized unit while fitting
+            When enabled, PRECISION includes one extra entry-sized unit while fitting
             the entry margin. The money stays in spendable balance; it is not
             locked and is not moved into the averaging reserve.
           </Typography>
@@ -50,7 +50,7 @@ export function SpareEntryBufferReference({
             What it does not do
           </Typography>
           <Typography color="text.secondary" variant="body2">
-            It does not replace the bailout buffer. SLOW separately preserves
+            It does not replace the bailout buffer. PRECISION separately preserves
             the largest actual UNRESERVED averaging step. Turning this spare off
             leaves that bailout protection active. Both protections remain in
             the same spendable balance, so they can overlap rather than creating

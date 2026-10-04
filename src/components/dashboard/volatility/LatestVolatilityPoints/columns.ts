@@ -46,7 +46,7 @@ export const COLUMNS: LatestVolatilityPointColumn[] = [
   {
     help: {
       meaning:
-        "The coin symbol currently included in this SLOW configuration. Removing it prevents new entries but does not stop management of an open position.",
+        "The coin symbol currently included in this PRECISION configuration. Removing it prevents new entries but does not stop management of an open position.",
       source: "Coin Management → Symbols and locally stored coin metadata.",
     },
     key: "symbol",
@@ -116,7 +116,7 @@ export const COLUMNS: LatestVolatilityPointColumn[] = [
       meaning:
         "The coin's 24-hour quote volume and a capacity estimate based on the configured maximum-entry percentage. The estimate is not guaranteed fill liquidity.",
       source:
-        "The active exchange's 24-hour ticker data, combined with Max Entry Based on 24-Hour Volume % from the SLOW configuration.",
+        "The active exchange's 24-hour ticker data, combined with Max Entry Based on 24-Hour Volume % from the PRECISION configuration.",
     },
     key: "volume",
     label: "24h volume & estimated max entry",
@@ -134,7 +134,7 @@ export const COLUMNS: LatestVolatilityPointColumn[] = [
     help: {
       meaning:
         "Manual controls to open an entry, inspect the chart or JSON, and remove the coin from new-entry configuration.",
-      source: "Dashboard actions backed by the SLOW runtime and configuration APIs.",
+      source: "Dashboard actions backed by the PRECISION runtime and configuration APIs.",
     },
     key: "time",
     label: "Action",

@@ -12,7 +12,7 @@ import {
   Tooltip,
 } from "recharts";
 
-import type { SlowTradingReportRow } from "./types";
+import type { ReportRow } from "./types";
 
 const CHART_COLORS = [
   "#d32f2f",
@@ -33,8 +33,8 @@ type TradeOutcome = "loss" | "profit";
 
 /** Aggregates evaluated trade counts by a normalized label. */
 function buildEvaluationCounts(
-  history: SlowTradingReportRow[],
-  getLabel: (trade: SlowTradingReportRow) => string,
+  history: ReportRow[],
+  getLabel: (trade: ReportRow) => string,
 ): EvaluationCountDatum[] {
   const counts = new Map<string, number>();
 
@@ -52,7 +52,7 @@ function buildEvaluationCounts(
 }
 
 /** Concatenates non-empty position notes with their coin symbols. */
-function buildEvaluationNotes(history: SlowTradingReportRow[]): string {
+function buildEvaluationNotes(history: ReportRow[]): string {
   return history
     .flatMap((trade) => {
       const note = trade.notes?.trim();
@@ -187,7 +187,7 @@ export default function TradeOutcomeEvaluationSection({
   history,
   outcome,
 }: {
-  history: SlowTradingReportRow[];
+  history: ReportRow[];
   outcome: TradeOutcome;
 }) {
   const outcomeLabel = outcome === "loss" ? "Loss" : "Profit";

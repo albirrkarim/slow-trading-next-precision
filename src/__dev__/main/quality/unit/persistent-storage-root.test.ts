@@ -8,6 +8,6 @@ describe("test persistent storage isolation", () => {
     expect(normalizedRoot).not.toContain(
       path.normalize("storage/persistent/instances/3010"),
     );
-    expect(normalizedRoot).toContain("slow-trading-next-vitest-");
+    expect(normalizedRoot).toContain("next-vitest-");
   });
 });

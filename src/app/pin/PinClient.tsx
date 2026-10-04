@@ -10,7 +10,7 @@ export default function PinClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const nextPath = useMemo(
-    () => searchParams?.get("next") || "/slow",
+    () => searchParams?.get("next") || "/",
     [searchParams],
   );
 

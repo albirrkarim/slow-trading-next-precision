@@ -97,7 +97,7 @@ export default function SettingsDialogRuntimeTab({
       <Grid size={{ xs: 12, md: 6 }}>
         <SettingsDialogSection
           title="Automation"
-          description="Controls whether the slow engine loops on its own and whether entries and exits can happen automatically."
+          description="Controls whether the trading engine loops on its own and whether entries and exits can happen automatically."
         >
           <Stack spacing={2}>
             <RuntimeToggle
@@ -312,7 +312,7 @@ export default function SettingsDialogRuntimeTab({
                 color="text.secondary"
                 sx={{ display: "block", mt: 1 }}
               >
-                Removes cached SLOW volatility files and the price-normalization
+                Removes cached PRECISION volatility files and the price-normalization
                 map, then reloads storage, refreshes 24h volume and market cap
                 snapshots, regenerates volatility data for configured coins,
                 rebuilds price normalization, and refreshes the chart/table

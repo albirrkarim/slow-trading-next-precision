@@ -1,13 +1,13 @@
 import {
-  SLOW_NOTIFICATION_KEYS,
-  type SlowNotificationKey,
+  NOTIFICATION_KEYS,
+  type NotificationKey,
 } from "@/lib/system/notification/config";
 import notificationExamples from "@/lib/system/notification/examples";
 import { describe, expect, it } from "vitest";
 
 describe("notification examples", () => {
-  it.each(SLOW_NOTIFICATION_KEYS)("provides content for %s", (type) => {
-    const example = notificationExamples.get(type as SlowNotificationKey);
+  it.each(NOTIFICATION_KEYS)("provides content for %s", (type) => {
+    const example = notificationExamples.get(type as NotificationKey);
 
     expect(example.title.trim()).not.toBe("");
     expect(example.message.trim()).not.toBe("");

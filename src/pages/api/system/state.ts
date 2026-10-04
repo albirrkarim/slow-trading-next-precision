@@ -54,7 +54,7 @@ export default async function handler(
           })
           .catch((logError) => {
             systemLog.error(
-              "[slow-trading] failed to persist config-change log",
+              "[precision] failed to persist config-change log",
               logError,
             );
           });
@@ -79,7 +79,7 @@ export default async function handler(
           ),
         ).catch((logError) => {
           systemLog.error(
-            "[slow-trading] failed to persist management-action log",
+            "[precision] failed to persist management-action log",
             logError,
           );
         });
@@ -93,7 +93,7 @@ export default async function handler(
             })
             .catch((notificationError) => {
               systemLog.error(
-                "[slow-trading] failed to send management-action notification",
+                "[precision] failed to send management-action notification",
                 notificationError,
               );
             });
@@ -122,10 +122,10 @@ export default async function handler(
         },
       })
       .catch((logError) => {
-        systemLog.error("[slow-trading] failed to write storage error log", logError);
+        systemLog.error("[precision] failed to write storage error log", logError);
       });
     res.status(500).json({
-      error: error?.message ?? "Failed to handle slow trading storage",
+      error: error?.message ?? "Failed to handle trading storage",
     });
   }
 }

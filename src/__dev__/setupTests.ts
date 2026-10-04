@@ -4,7 +4,7 @@ import path from "path";
 import { afterAll } from "vitest";
 
 const testStorageRoot = fs.mkdtempSync(
-  path.join(os.tmpdir(), "slow-trading-next-vitest-"),
+  path.join(os.tmpdir(), "next-vitest-"),
 );
 
 // This runs before test modules and hoisted mock factories are evaluated.

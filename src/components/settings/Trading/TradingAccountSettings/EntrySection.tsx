@@ -213,7 +213,7 @@ export function EntrySection({
                                     : prev,
                             )
                         }
-                        info="Liquidity cap for entry sizing. Example: 24h quote volume 1,000,000 and value 0.2 means SLOW sizes entry + reserves inside a temporary 2,000 USDT budget. The real spendable balance above that stays untouched. Set 0 to disable."
+                        info="Liquidity cap for entry sizing. Example: 24h quote volume 1,000,000 and value 0.2 means PRECISION sizes entry + reserves inside a temporary 2,000 USDT budget. The real spendable balance above that stays untouched. Set 0 to disable."
                     />
                 </Grid>
 
@@ -255,7 +255,7 @@ export function EntrySection({
                                     : prev,
                             )
                         }
-                        info="Hard USDT cap for one entry margin. Example: engine wants 80 USDT but this is 50, so SLOW uses at most 50. Set 0 to use engine calculation."
+                        info="Hard USDT cap for one entry margin. Example: engine wants 80 USDT but this is 50, so PRECISION uses at most 50. Set 0 to use engine calculation."
                     />
                 </Grid>
 

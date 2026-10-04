@@ -8,7 +8,7 @@ const DEFAULT_LOCAL_STORAGE_ROOT =
   `storage/persistent/instances/${DEFAULT_INSTANCE_ID}`;
 const DEFAULT_TEST_STORAGE_ROOT = path.join(
   os.tmpdir(),
-  `slow-trading-next-vitest-${process.pid}`,
+  `next-vitest-${process.pid}`,
 );
 
 function resolveLocalProjectRoot() {

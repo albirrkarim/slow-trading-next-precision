@@ -105,7 +105,7 @@ function applyGroupedTagLabels(
   });
 }
 
-/** Counts tag assignments for the configured SLOW coin universe. */
+/** Counts tag assignments for the configured PRECISION coin universe. */
 export function buildConfiguredCoinTagComposition({
   coinTags,
   configuredSymbols,

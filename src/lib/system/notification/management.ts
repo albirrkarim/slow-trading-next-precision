@@ -100,12 +100,12 @@ async function notify(params: {
       }
 
       await systemNotif.central({
-        dashboard: "SLOW",
+        dashboard: "PRECISION",
         channel,
         // PROD:NOTIF_MANAGEMENT_ACTION
         key: "NOTIF_MANAGEMENT_ACTION",
         dedupeKey: [
-          "slow-management-action",
+          "management-action",
           channel,
           action.action,
           symbol,

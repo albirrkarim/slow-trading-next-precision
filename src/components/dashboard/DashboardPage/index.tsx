@@ -25,7 +25,7 @@ import EntrySequenceMetrics from "../entry/EntrySequences";
 import LatestVolatilityPoints from "../volatility/LatestVolatilityPoints";
 import OpenPositions from "../positions/OpenPositions";
 import QuickBacktest from "../entry/QuickBacktest";
-import SlowTradingQueuesPanel from "../queues/SlowTradingQueues";
+import QueuesPanel from "../queues/Queues";
 import WorkerEntrySequenceMetrics from "../entry/WorkerEntrySequenceMetrics";
 import WorkerNeededEstimation from "../entry/WorkerNeededEstimation";
 import LiveDashboardNavbar from "../navigation";
@@ -349,7 +349,7 @@ export default function DynamicTradeHistoryPage({
         )}
 
         <Box sx={{ my: 4 }}>
-          <SlowTradingQueuesPanel dashboardState={dashboardState} />
+          <QueuesPanel dashboardState={dashboardState} />
         </Box>
 
         {volatilityMap && dashboardState && (

@@ -63,7 +63,7 @@ export default async function handler(
       })
       .catch((logError) => {
         systemLog.error(
-          "[slow-trading] failed to write storage error log",
+          "[precision] failed to write storage error log",
           logError,
         );
       });

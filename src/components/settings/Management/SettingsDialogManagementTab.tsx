@@ -106,7 +106,7 @@ export default function SettingsDialogManagementTab({
             <Stack gap={1}>
               <SettingsInfoField
                 fullWidth
-                info="Display name for this slow-trading profile in the dashboard and stored config."
+                info="Display name for this trading profile in the dashboard and stored config."
                 label="Name"
                 onChange={(event) =>
                   updateManagement({ name: event.target.value })
@@ -157,7 +157,7 @@ export default function SettingsDialogManagementTab({
 
               <SettingsInfoField
                 fullWidth
-                info="Defines which adapter and market data source slow trading will use."
+                info="Defines which adapter and market data source trading will use."
                 label="Exchange Type"
                 size="small"
                 value="Binance"
@@ -186,7 +186,7 @@ export default function SettingsDialogManagementTab({
 
               <SettingsInfoField
                 fullWidth
-                info="This controls the recommendation engine used when slow trading generates entry signals."
+                info="This controls the recommendation engine used when trading generates entry signals."
                 label="Decision Engine"
                 onChange={(event) =>
                   updateManagement({
@@ -294,7 +294,7 @@ export default function SettingsDialogManagementTab({
       </SettingsGroup>
 
       <SettingsGroup
-        description="Choose which coins SLOW may trade and when a coin should be retired from new entries. Removing a coin from Symbols does not interrupt management of an existing position."
+        description="Choose which coins PRECISION may trade and when a coin should be retired from new entries. Removing a coin from Symbols does not interrupt management of an existing position."
         title="Coin Management"
       >
         <CoinMultiSelect
@@ -434,7 +434,7 @@ export default function SettingsDialogManagementTab({
       </SettingsGroup>
 
       <SettingsGroup
-        info="Safe Haven is SLOW's virtual protected USDT reserve. Each enabled schedule can create one queue item per UTC month, allowing several reserve dates in the same month. Due occurrences are picked up on the next active runner pass."
+        info="Safe Haven is PRECISION's virtual protected USDT reserve. Each enabled schedule can create one queue item per UTC month, allowing several reserve dates in the same month. Due occurrences are picked up on the next active runner pass."
         title="Safe Haven"
       >
         <SafeHavenScheduleSettings
@@ -446,7 +446,7 @@ export default function SettingsDialogManagementTab({
           <Grid size={{ xs: 12, md: 6 }}>
             <SettingsInfoField
               fullWidth
-              info="Minimum capital that should remain available for trading. Example: value 600 means SLOW avoids moving extra funds into Safe Haven when trading capital would fall below 600 USDT."
+              info="Minimum capital that should remain available for trading. Example: value 600 means PRECISION avoids moving extra funds into Safe Haven when trading capital would fall below 600 USDT."
               label="Minimal Asset On Trade"
               onChange={(event) =>
                 updateManagement({

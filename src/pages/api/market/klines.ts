@@ -91,7 +91,7 @@ export function filterVolatilityPointsForKlines(
 }
 
 /**
- * Reads dashboard volatility points from the SLOW persistent storage source.
+ * Reads dashboard volatility points from the PRECISION persistent storage source.
  */
 export async function getStoredDashboardVolatilityPoints({
   exchange,

@@ -195,9 +195,9 @@ async function notifyBlackSwanTransition(params: {
   )) {
     await systemNotif.central({
       channel,
-      dashboard: "SLOW",
+      dashboard: "PRECISION",
       dedupeKey: [
-        "slow-black-swan",
+        "black-swan",
         channel,
         params.mode,
         params.next.status,
@@ -420,9 +420,9 @@ async function notifyDailyPnlLimit(params: {
     try {
       const sent = await systemNotif.central({
         channel,
-        dashboard: "SLOW",
+        dashboard: "PRECISION",
         dedupeKey: [
-          "slow-daily-pnl-limit",
+          "daily-pnl-limit",
           channel,
           params.mode,
           params.evaluation.day,
@@ -452,7 +452,7 @@ async function notifyDailyPnlLimit(params: {
       });
     } catch (error) {
       systemLog.error(
-        `[slow-trading] failed to send ${channel} daily PnL entry-stop notification`,
+        `[precision] failed to send ${channel} daily PnL entry-stop notification`,
         error,
       );
     }
@@ -600,9 +600,9 @@ async function runManagement(
     for (const channel of pendingChannels) {
       const sent = await systemNotif.central({
         channel,
-        dashboard: "SLOW",
+        dashboard: "PRECISION",
         dedupeKey: [
-          "slow-daily-performance",
+          "daily-performance",
           channel,
           mode,
           day,

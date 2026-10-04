@@ -107,9 +107,9 @@ async function notifyHighVolatilityLevels(params: {
       const label = latestPoint?.l ?? "UNKNOWN";
       await systemNotif.central({
         channel,
-        dashboard: "SLOW",
+        dashboard: "PRECISION",
         dedupeKey: [
-          "slow-high-volatility",
+          "high-volatility",
           channel,
           exchangeType,
           minAbsoluteLevel,
@@ -199,9 +199,9 @@ async function notifyStalePositions(params: {
 
       await systemNotif.central({
         channel,
-        dashboard: "SLOW",
+        dashboard: "PRECISION",
         dedupeKey: [
-          "slow-stale-position",
+          "stale-position",
           channel,
           mode,
           exchangeType,
@@ -274,9 +274,9 @@ async function notifyLongOpenPositions(params: {
 
       await systemNotif.central({
         channel,
-        dashboard: "SLOW",
+        dashboard: "PRECISION",
         dedupeKey: [
-          "slow-long-open-position",
+          "long-open-position",
           channel,
           mode,
           exchangeType,

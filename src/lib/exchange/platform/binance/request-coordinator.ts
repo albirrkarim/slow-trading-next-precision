@@ -108,7 +108,7 @@ interface BinanceCoordinatorRuntimeState {
 }
 
 const GLOBAL_STATE_KEY = Symbol.for(
-  "slow-trading.binance-request-coordinator.state",
+  "binance-request-coordinator.state",
 );
 
 /** Shares Binance coordination across server bundles loaded in one process. */
@@ -441,7 +441,7 @@ function notifyCooldownActivated(
   // PROD:NOTIF_BINANCE_COOLDOWN
   void systemNotif
     .central({
-      dashboard: "SLOW",
+      dashboard: "PRECISION",
       dedupeKey: `binance-cooldown:${state.retryAt}`,
       key: "NOTIF_BINANCE_COOLDOWN",
       message: [

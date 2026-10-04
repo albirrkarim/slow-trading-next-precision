@@ -87,9 +87,9 @@ describe("notification dedupe", () => {
     });
 
     const payload = {
-      dashboard: "SLOW" as const,
+      dashboard: "PRECISION" as const,
       key: "NOTIF_HIGH_VOLATILITY",
-      dedupeKey: "slow-high-volatility:binance:BTC:point-1:-2:BOTTOM",
+      dedupeKey: "high-volatility:binance:BTC:point-1:-2:BOTTOM",
       title: "[VOL] BTC level -2 BOTTOM",
       message: "same volatility point",
     };
@@ -119,7 +119,7 @@ describe("notification dedupe", () => {
       expect.objectContaining({
         appName: "wealth.reinventwp.com",
         body: "body text",
-        source: "slow-trading",
+        source: "precision",
         subject: "[wealth.reinventwp.com] [DAILY] report",
         to: "receiver@example.com",
       }),
@@ -201,7 +201,7 @@ describe("notification dedupe", () => {
     });
 
     const delivery = systemNotifDelivery.central({
-      dashboard: "SLOW",
+      dashboard: "PRECISION",
       key: "NOTIF_ERROR",
       dedupeKey: "failed-delivery",
       title: "Failed notification",

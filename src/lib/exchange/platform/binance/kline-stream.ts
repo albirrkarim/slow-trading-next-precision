@@ -65,7 +65,7 @@ const KLINE_INTERVAL_MS: Record<string, number> = {
   "5m": 5 * 60_000,
 };
 
-const SHARED_KEY = Symbol.for("slow-trading.binance-kline-stream.instances");
+const SHARED_KEY = Symbol.for("binance-kline-stream.instances");
 
 const WS_HOSTS: Record<BinanceKlineStreamMarket, string[]> = {
   // USDⓈ-M futures klines stream only from the documented market-data

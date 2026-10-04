@@ -340,7 +340,7 @@ function explainSharedGate(
   if (!runtime.runnerEnabled) {
     return {
       code: "RUNNER_ENABLED",
-      reason: "The SLOW runner is disabled.",
+      reason: "The PRECISION runner is disabled.",
     };
   }
   if (!runtime.autoEntryEnabled) {
@@ -415,8 +415,8 @@ async function build(
     {
       code: "RUNNER_ENABLED",
       reason: runtime.runnerEnabled
-        ? "The SLOW runner is enabled."
-        : "The SLOW runner is disabled.",
+        ? "The PRECISION runner is enabled."
+        : "The PRECISION runner is disabled.",
       status: runtime.runnerEnabled ? "ready" : "blocked",
     },
     {

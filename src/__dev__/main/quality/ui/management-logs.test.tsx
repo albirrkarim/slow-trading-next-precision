@@ -6,7 +6,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { SlowTradingManagementLogs } from "@/components/dashboard/logs/SlowTradingLogs";
+import { ManagementLogs } from "@/components/dashboard/logs/Logs";
 
 const mocks = vi.hoisted(() => ({
   delete: vi.fn(),
@@ -20,7 +20,7 @@ vi.mock("axios", () => ({
   },
 }));
 
-describe("SlowTradingManagementLogs", () => {
+describe("ManagementLogs", () => {
   afterEach(() => {
     cleanup();
     mocks.delete.mockReset();
@@ -39,7 +39,7 @@ describe("SlowTradingManagementLogs", () => {
           id: "management-1",
           reason: "Latest price 0.09 USDT fell below minimum 0.1 USDT.",
           source:
-            "slow-trading.live-cycle.coin-management:auto-remove-min-price",
+            "live-cycle.coin-management:auto-remove-min-price",
           symbol: "IOTX",
         },
       ],
@@ -49,7 +49,7 @@ describe("SlowTradingManagementLogs", () => {
     });
     vi.spyOn(window, "confirm").mockReturnValue(true);
 
-    render(<SlowTradingManagementLogs />);
+    render(<ManagementLogs />);
 
     // PROD:MANAGEMENT_LOG_UI
     expect(mocks.get).not.toHaveBeenCalled();

@@ -132,7 +132,7 @@ export default function DynamicTradeAnalytics() {
             );
 
             if (!usedConfig.settings) {
-                throw new Error("SLOW settings are still loading.");
+                throw new Error("PRECISION settings are still loading.");
             }
 
             // derive start/end time in ms based on selected range

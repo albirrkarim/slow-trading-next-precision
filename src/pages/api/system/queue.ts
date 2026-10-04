@@ -95,7 +95,7 @@ export default async function handler(
       })
       .catch((logError) => {
         systemLog.error(
-          "[slow-trading] failed to write queue API error log",
+          "[precision] failed to write queue API error log",
           logError,
         );
       });
@@ -103,7 +103,7 @@ export default async function handler(
       error:
         error instanceof Error
           ? error.message
-          : "Failed to handle slow trading queue.",
+          : "Failed to handle trading queue.",
     });
   }
 }

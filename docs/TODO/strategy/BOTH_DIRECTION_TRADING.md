@@ -338,7 +338,7 @@ when one way so it just open the `main leg`
 
 ## Order fail handling
 
-Binance pair entry requires two sequential orders. If the first leg fills but the second fails, should SLOW immediately close the filled leg and report the pair entry as failed?
+Binance pair entry requires two sequential orders. If the first leg fills but the second fails, should PRECISION immediately close the filled leg and report the pair entry as failed?
 
 yes, so it never intentionally leaves an accidental unpaired position.
 

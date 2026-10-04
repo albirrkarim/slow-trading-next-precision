@@ -212,7 +212,7 @@ export function formatDailyPnlMetaTitle(
   appName: string,
   dailyUsdtProfit: number,
 ): string {
-  const normalizedAppName = appName.trim() || "SLOW";
+  const normalizedAppName = appName.trim() || "PRECISION";
   const normalizedPnl = Number.isFinite(dailyUsdtProfit) ? dailyUsdtProfit : 0;
   const sign = normalizedPnl >= 0 ? "+" : "-";
 

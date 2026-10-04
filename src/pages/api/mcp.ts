@@ -228,7 +228,7 @@ export default async function mcpHandler(
   if (req.method === "GET") {
     const appName = runtimeMcp.identity.getAppName();
     res.status(200).json({
-      name: `slow-trading-next MCP (${appName})`,
+      name: `PRECISION MCP (${appName})`,
       appName,
       endpoint: req.query.token ? "/api/mcp/[token]" : "/api/mcp",
       transport: "streamable-http-json-rpc",
@@ -287,7 +287,7 @@ export default async function mcpHandler(
         },
       })
       .catch((logError) => {
-        systemLog.error("[slow-trading] failed to write MCP error log", logError);
+        systemLog.error("[precision] failed to write MCP error log", logError);
       });
     res.status(500).json({
       error: error?.message ?? "Failed to handle MCP request",

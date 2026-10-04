@@ -95,7 +95,7 @@ export default async function handler(
           })
           .catch((logError) => {
             systemLog.error(
-              "[slow-trading] failed to persist config-change log",
+              "[precision] failed to persist config-change log",
               logError,
             );
           });
@@ -118,7 +118,7 @@ export default async function handler(
       })
       .catch((logError) => {
         systemLog.error(
-          "[slow-trading] failed to write exchange account error log",
+          "[precision] failed to write exchange account error log",
           logError,
         );
       });

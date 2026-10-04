@@ -23,7 +23,7 @@ Information:
 
 - Prefix `BTEST:` is behavior that must be exist in backtest only
 
-- Prefix `PROD:` is behavior that must exist in the production/runtime SLOW flow,
+- Prefix `PROD:` is behavior that must exist in the production/runtime PRECISION flow,
   not in the backtest flow.
   It may apply to live mode, sandbox mode, or both, depending on the TC name.
   For example, `PROD:*_SANDBOX` means the production/runtime sandbox mode.

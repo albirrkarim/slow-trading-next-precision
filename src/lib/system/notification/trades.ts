@@ -108,7 +108,7 @@ function buildExecutedDedupeKey(params: {
 }): string {
   const { decision, mode, position } = params;
   const base = [
-    "slow-trade",
+    "trade",
     decision.type,
     mode,
     decision.accountSlug,
@@ -152,7 +152,7 @@ function buildFailedDedupeKey(params: {
 }): string {
   const { decision, error, mode } = params;
   const base = [
-    "slow-trade-failed",
+    "trade-failed",
     decision.type,
     mode,
     decision.accountSlug,
@@ -190,7 +190,7 @@ async function executed(params: {
   const { decision, mode, position } = params;
   const sandbox = mode === "sandbox";
   await systemNotif.central({
-    dashboard: "SLOW",
+    dashboard: "PRECISION",
     dedupeKey: buildExecutedDedupeKey({ decision, mode, position }),
     key: SUCCESS_KEYS[decision.type],
     message: JSON.stringify(
@@ -241,7 +241,7 @@ async function failed(params: {
   const { decision, mode } = params;
   const sandbox = mode === "sandbox";
   await systemNotif.central({
-    dashboard: "SLOW",
+    dashboard: "PRECISION",
     dedupeKey: buildFailedDedupeKey({
       decision,
       error: params.error,

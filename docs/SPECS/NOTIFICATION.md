@@ -1,4 +1,4 @@
-- Entry: Sent when SLOW successfully opens an entry position.
+- Entry: Sent when PRECISION successfully opens an entry position.
 
 Sandbox entry must also send this notification, with the notification subject prefixed by `[SANDBOX]`.
 
@@ -16,23 +16,23 @@ TC: `PROD:NOTIF_ENTRY`
 TC: `PROD:NOTIF_ENTRY_FAILED`
 TC: `BOTH:ENTRY_GATE_SKIP_NO_NOTIF`
 
-- Exit: Sent when SLOW successfully closes a position.
+- Exit: Sent when PRECISION successfully closes a position.
 
 Sandbox exit must also send this notification, with the notification subject prefixed by `[SANDBOX]`.
 
 TC: `PROD:NOTIF_EXIT`
 
-- Exit Failed: Sent when SLOW tries to close a position but the exit execution fails.
+- Exit Failed: Sent when PRECISION tries to close a position but the exit execution fails.
 
 TC: `PROD:NOTIF_EXIT_FAILED`
 
-- Average / Add Position: Sent when SLOW successfully averages or adds to an existing position via watch logic.
+- Average / Add Position: Sent when PRECISION successfully averages or adds to an existing position via watch logic.
 
 Sandbox averaging must also send this notification, with the notification subject prefixed by `[SANDBOX]`.
 
 TC: `PROD:NOTIF_AVG`
 
-- Average / Add Position Failed: Sent when SLOW tries to average or add to an existing position but fails.
+- Average / Add Position Failed: Sent when PRECISION tries to average or add to an existing position but fails.
 
 TC: `PROD:NOTIF_AVG_FAILED`
 
@@ -124,7 +124,7 @@ TC: `PROD:NOTIF_LONG_OPEN_POSITION`
 
 TC: `PROD:NOTIF_MANAGEMENT_ACTION`
 
-- Daily Trade Performance: Sent on the first successful SLOW cycle after a UTC
+- Daily Trade Performance: Sent on the first successful PRECISION cycle after a UTC
   day closes. It reports the immediately previous completed UTC day once per
   enabled channel and mode, including days with zero closed trades. Each mode's
   report aggregates trade history, balance snapshots, and starting balances
@@ -151,13 +151,13 @@ TC: `PROD:NOTIF_DAILY_PERFORMANCE`
 
 TC: `PROD:NOTIF_DAILY_PNL_LIMIT`
 
-- Error: Sent for operational SLOW errors outside normal entry and exit flows.
+- Error: Sent for operational PRECISION errors outside normal entry and exit flows.
 
 TC: `PROD:NOTIF_ERROR`
 
-- Instance IP Changed: On server process startup, SLOW checks its public IP once
+- Instance IP Changed: On server process startup, PRECISION checks its public IP once
   through `https://api.ipify.org`. If it differs from the last successfully
-  stored IP, SLOW sends this notification through the configured channels. The
+  stored IP, PRECISION sends this notification through the configured channels. The
   first successful check establishes the baseline and does not notify. Trading
   cycles do not perform this check.
 
@@ -187,7 +187,7 @@ TC: `PROD:NOTIF_APP_NAME_PREFIX`
 
 - Email CRM delivery
 
-SLOW sends email exclusively through the dedicated n8n CRM email webhook. It
+PRECISION sends email exclusively through the dedicated n8n CRM email webhook. It
 does not open direct SMTP connections. The webhook receives the same
 `APP_NAME`-prefixed subject, body, and recipient payload. If CRM delivery fails,
 notification failure remains non-fatal to the trading cycle.
@@ -199,7 +199,7 @@ TC: `PROD:NOTIF_EMAIL_CRM_PROXY`
 Email and Telegram delivery make one initial request and retry a failed request
 up to three times. Each retry waits five seconds. After the fourth failed
 attempt, delivery remains non-fatal and the failure is appended to the
-persistent SLOW `errors.json` log with the channel, attempt count, retry delay,
+persistent PRECISION `errors.json` log with the channel, attempt count, retry delay,
 and notification subject. A failed delivery is not stored as a successful
 notification dedupe record. Non-transient configuration errors, such as missing
 Telegram credentials, skip retries and are logged immediately.

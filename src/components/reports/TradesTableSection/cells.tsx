@@ -4,7 +4,7 @@ import type { ReactElement } from "react";
 import { Box, Tooltip, Typography } from "@mui/material";
 import ButtonDialog from "@/components/ui/ButtonDialog";
 import JsonTreeViewer from "@/components/ui/JsonTreeViewer";
-import type { SlowTradingReportRow } from "../types";
+import type { ReportRow } from "../types";
 
 const metricTooltipSlotProps = {
   tooltip: {
@@ -60,7 +60,7 @@ export function TradeAuditMessage({ message }: { message?: string }) {
   );
 }
 
-export function FeatureCell({ row }: { row: SlowTradingReportRow }) {
+export function FeatureCell({ row }: { row: ReportRow }) {
   const entryFeature = row.strategy.entry.feature;
   // const decisionMessage =
   //   typeof entryFeature?.decision?.message === "string"

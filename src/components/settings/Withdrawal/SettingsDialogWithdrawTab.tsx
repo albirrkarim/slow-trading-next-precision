@@ -141,12 +141,12 @@ export default function SettingsDialogWithdrawTab({
               onChange={(event) =>
                 setSafeHavenUSDT(Math.max(0, Number(event.target.value) || 0))
               }
-              info="This updates the active mode Safe Haven value used by SLOW balance math. It does not send funds on-chain."
+              info="This updates the active mode Safe Haven value used by PRECISION balance math. It does not send funds on-chain."
             />
 
             <Alert severity="info">
               Safe Haven is an internal reserve number. If you move funds
-              manually on the exchange, update this value so SLOW keeps the
+              manually on the exchange, update this value so PRECISION keeps the
               available balance correct.
             </Alert>
           </Stack>
@@ -215,7 +215,7 @@ export default function SettingsDialogWithdrawTab({
                   color="text.secondary"
                   sx={{ display: "block", ml: { xs: 0, sm: 6 }, mt: -0.5 }}
                 >
-                  The production SLOW runner creates due queue items
+                  The production PRECISION runner creates due queue items
                   automatically. Schedule changes are persisted with the main
                   Save button.
                 </Typography>

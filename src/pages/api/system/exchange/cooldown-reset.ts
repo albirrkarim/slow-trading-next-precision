@@ -25,7 +25,7 @@ export default async function handler(
       })
       .catch((logError) => {
         systemLog.error(
-          "[slow-trading] failed to write Binance cooldown reset error log",
+          "[precision] failed to write Binance cooldown reset error log",
           logError,
         );
       });

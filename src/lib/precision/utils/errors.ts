@@ -22,8 +22,8 @@ async function recordRuntimeError(
   const hourBucket = Math.floor(Date.now() / 3_600_000);
   await systemNotif
     .central({
-      dashboard: "SLOW",
-      dedupeKey: `slow-operational-error:${source}:${message}:${hourBucket}`,
+      dashboard: "PRECISION",
+      dedupeKey: `operational-error:${source}:${message}:${hourBucket}`,
       // PROD:NOTIF_ERROR
       key: "NOTIF_ERROR",
       message: JSON.stringify(

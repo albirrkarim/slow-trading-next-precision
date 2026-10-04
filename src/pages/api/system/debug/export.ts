@@ -32,7 +32,7 @@ export default async function handler(
         method: req.method,
       },
     }).catch((logError) => {
-      systemLog.error("[slow-trading] failed to write debug export error log", logError);
+      systemLog.error("[precision] failed to write debug export error log", logError);
     });
 
     res.status(500).json({

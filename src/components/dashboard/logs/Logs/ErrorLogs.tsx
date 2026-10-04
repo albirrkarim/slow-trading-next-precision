@@ -33,7 +33,7 @@ import { DELETE_ALL_ID } from "./utils";
 const ERROR_LOG_POLL_INTERVAL_MS = 30_000;
 type ErrorLogFilter = RuntimeErrorStatus | "all";
 
-export function SlowTradingErrorLogs() {
+export function ErrorLogs() {
   const { enqueueSnackbar } = useSnackbar();
   const loadedRef = useRef(false);
   const requestInFlightRef = useRef(false);
@@ -218,7 +218,7 @@ export function SlowTradingErrorLogs() {
   return (
     <Box
       data-has-records={hasNewErrors ? "true" : "false"}
-      data-testid="slow-trading-log-section-errors"
+      data-testid="log-section-errors"
       sx={(theme) => ({
         ...(hasNewErrors && {
           backgroundColor: alpha(theme.palette.error.main, 0.12),
@@ -231,7 +231,7 @@ export function SlowTradingErrorLogs() {
     >
       <HeaderMetrics
         defaultExpanded={false}
-        rememberExpand="slow-trading-logs:errors"
+        rememberExpand="logs:errors"
         title={
           <Stack alignItems="center" direction="row" spacing={0.75}>
             {hasNewErrors && <ErrorOutlineIcon color="error" fontSize="small" />}

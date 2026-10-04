@@ -13,7 +13,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { SlowTradingReportRow } from "./types";
+import type { ReportRow } from "./types";
 import {
   computeMaxUpDistribution,
   DEFAULT_MAX_UP_DISTRIBUTION_INTERVAL_PCT,
@@ -43,7 +43,7 @@ export default function MaxUpDistributionChart({
   history,
   takeProfitPct,
 }: {
-  history: SlowTradingReportRow[];
+  history: ReportRow[];
   takeProfitPct: number;
 }) {
   const [intervalInput, setIntervalInput] = useState(

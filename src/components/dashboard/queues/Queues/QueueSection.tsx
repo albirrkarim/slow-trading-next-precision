@@ -17,15 +17,15 @@ import {
 
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
 
-import type { SlowTradingQueueRow } from "./utils";
+import type { QueueRow } from "./utils";
 import { formatTime, getQueueAction } from "./utils";
 
 function QueueTable(props: {
   deletingId: string | null;
   error: string | null;
   loading: boolean;
-  onDelete: (row: SlowTradingQueueRow) => void;
-  rows: SlowTradingQueueRow[];
+  onDelete: (row: QueueRow) => void;
+  rows: QueueRow[];
 }) {
   const { deletingId, error, loading, onDelete, rows } = props;
 
@@ -112,9 +112,9 @@ export function QueueSection(props: {
   deletingId: string | null;
   error: string | null;
   loading: boolean;
-  onDelete: (row: SlowTradingQueueRow) => void;
+  onDelete: (row: QueueRow) => void;
   rememberExpand: string;
-  rows: SlowTradingQueueRow[];
+  rows: QueueRow[];
 }) {
   const {
     deletingId,

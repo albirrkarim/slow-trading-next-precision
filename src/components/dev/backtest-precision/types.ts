@@ -19,6 +19,6 @@ export interface BacktestConfig {
   description?: string;
 
   // Config
-  /** Grouped SLOW settings passed unchanged to the backtest backend. */
+  /** Grouped PRECISION settings passed unchanged to the backtest backend. */
   settings?: ConfigDraft;
 }

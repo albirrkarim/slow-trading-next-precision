@@ -19,7 +19,7 @@ function createTokenId() {
 }
 
 function createRawToken() {
-  return `slow_mcp_${crypto.randomBytes(32).toString("base64url")}`;
+  return `mcp_${crypto.randomBytes(32).toString("base64url")}`;
 }
 
 function hashToken(token: string) {
@@ -41,7 +41,7 @@ function getTokenSecretEncryptionKey() {
   return crypto
     .createHash("sha256")
     .update(
-      `slow-trading-mcp-token:${secret}:${process.env.DASHBOARD_PIN_SALT ?? ""}`,
+      `mcp-token:${secret}:${process.env.DASHBOARD_PIN_SALT ?? ""}`,
     )
     .digest();
 }

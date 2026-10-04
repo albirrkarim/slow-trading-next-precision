@@ -95,7 +95,7 @@ describe("tradeNotif", () => {
     // PROD:NOTIF_ENTRY
     expect(central).toHaveBeenCalledWith(
       expect.objectContaining({
-        dashboard: "SLOW",
+        dashboard: "PRECISION",
         key: "NOTIF_ENTRY",
         title:
           "[ENTRY] | SOL LONG | USDT: $40.00 @ Price: $145.25000 | " +

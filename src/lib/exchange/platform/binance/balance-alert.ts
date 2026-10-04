@@ -44,7 +44,7 @@ export function notifyBinanceBalanceFailure(params: {
 
   void systemNotif
     .central({
-      dashboard: "SLOW",
+      dashboard: "PRECISION",
       key: "NOTIF_ERROR",
       dedupeKey: `binance-balance-failure:${key}`,
       title: "Binance balance check failed",

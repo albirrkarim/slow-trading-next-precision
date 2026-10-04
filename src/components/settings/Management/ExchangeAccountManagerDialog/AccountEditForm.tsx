@@ -74,7 +74,7 @@ export function AccountEditForm({
           fullWidth
           value="Binance"
           slotProps={{ input: { readOnly: true } }}
-          info="All SLOW accounts use the shared Binance exchange adapter."
+          info="All PRECISION accounts use the shared Binance exchange adapter."
         />
       </Grid>
 
@@ -105,7 +105,7 @@ export function AccountEditForm({
               ? "Pair strategy needs Hedge mode — the runtime refuses to start while this account is enabled."
               : undefined
           }
-          info="Binance futures position mode of this exchange account. Pair strategies (both / streak with entryLegs BOTH) require Hedge. SLOW never changes it on the exchange — switch it in Binance first, then match it here; live trading verifies it against Binance before every pair entry."
+          info="Binance futures position mode of this exchange account. Pair strategies (both / streak with entryLegs BOTH) require Hedge. PRECISION never changes it on the exchange — switch it in Binance first, then match it here; live trading verifies it against Binance before every pair entry."
         >
           {FUTURES_POSITION_MODE_OPTIONS.map((option) => (
             <MenuItem key={option.value} value={option.value}>
@@ -212,7 +212,7 @@ export function AccountEditForm({
               }),
             )
           }
-          info="Private API secret saved into the local SLOW config JSON."
+          info="Private API secret saved into the local PRECISION config JSON."
         />
       </Grid>
       )}

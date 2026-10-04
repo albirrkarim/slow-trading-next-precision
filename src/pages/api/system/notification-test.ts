@@ -25,7 +25,7 @@ export default async function handler(
   }
 
   try {
-    const appName = String(process.env.APP_NAME ?? "SLOW").trim() || "SLOW";
+    const appName = String(process.env.APP_NAME ?? "PRECISION").trim() || "PRECISION";
     await systemNotifDelivery.send(
       {
         subject: "[TEST] Notification test",

@@ -4,7 +4,7 @@ import {
   computeMaxUpDistribution,
   normalizeMaxUpDistributionInterval,
 } from "@/components/reports/utils";
-import type { SlowTradingReportRow } from "@/components/reports/types";
+import type { ReportRow } from "@/components/reports/types";
 import { createTestPosition } from "../fixtures/position";
 
 function makeHistory(maxUpValues: Array<number | undefined>) {
@@ -13,7 +13,7 @@ function makeHistory(maxUpValues: Array<number | undefined>) {
       pnl: { maxUpPct },
       symbol: `COIN_${index}`,
     }),
-  ) as SlowTradingReportRow[];
+  ) as ReportRow[];
 }
 
 describe("Max Up distribution", () => {

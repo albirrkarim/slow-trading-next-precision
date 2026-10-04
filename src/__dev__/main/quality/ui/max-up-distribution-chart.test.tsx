@@ -6,7 +6,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import MaxUpDistributionChart from "@/components/reports/MaxUpDistributionChart";
-import type { SlowTradingReportRow } from "@/components/reports/types";
+import type { ReportRow } from "@/components/reports/types";
 import { createTestPosition } from "../fixtures/position";
 
 describe("Max Up distribution chart", () => {
@@ -16,7 +16,7 @@ describe("Max Up distribution chart", () => {
     const history = [
       createTestPosition({ pnl: { maxUpPct: 0.4 } }),
       createTestPosition({ pnl: { maxUpPct: 1.2 } }),
-    ] as SlowTradingReportRow[];
+    ] as ReportRow[];
 
     render(<MaxUpDistributionChart history={history} takeProfitPct={2} />);
 

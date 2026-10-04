@@ -21,7 +21,7 @@ import type {
   LiveDashboardNavbarProps,
 } from "./navbar-types";
 
-interface SlowTradingWithdrawTryResponse {
+interface WithdrawTryResponse {
   message: string;
 }
 
@@ -182,7 +182,7 @@ export function useLiveDashboardNavbar({
         withdrawal: buildWithdrawalPayload(configDraft, selectedAccountSlug),
       });
 
-      const response = await axios.post<SlowTradingWithdrawTryResponse>(
+      const response = await axios.post<WithdrawTryResponse>(
         endpoints.system.withdraw,
         { scheduleId },
       );

@@ -1,4 +1,4 @@
-# Slow Trading
+# PRECISION
 
 see [docs/PRECISION/_PRECISION.md](./docs/PRECISION/_PRECISION.md) for the
 architecture backbone and [docs/SPECS/_SPECS.md](./docs/SPECS/_SPECS.md) for
