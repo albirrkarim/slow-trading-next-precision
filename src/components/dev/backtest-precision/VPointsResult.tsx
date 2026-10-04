@@ -20,6 +20,7 @@ import BacktestResultSummary from "./ResultSummary";
 import TradesOverTime from "./TradesOverTime";
 import type { useBacktestArtifacts } from "./use-backtest-artifacts";
 import VolatilityRails from "./VolatilityRails";
+import VPointPrediction from "./VPointPrediction";
 
 type Artifacts = ReturnType<typeof useBacktestArtifacts>;
 
@@ -83,7 +84,7 @@ export default function VPointsResult({
         positions={positions}
       />
       <Grid container spacing={2}>
-        <Grid size={{ xs: 12, md: 8, lg: 9 }}>
+        <Grid size={{ xs: 12, md: 6, lg: 6, xl: 9 }}>
           <BacktestTradeHistory
             accounts={accounts}
             closedCount={counts.closedPositions}
@@ -93,13 +94,14 @@ export default function VPointsResult({
           />
         </Grid>
 
-        <Grid size={{ xs: 12, md: 4, lg: 3 }}>
+        <Grid size={{ xs: 12, md: 6, lg: 6, xl: 3 }}>
           <BacktestResultSummary
             accounts={accounts}
             settings={settings}
             summary={summary}
           />
           <VPointsFrequency volatilityMap={vpoints.data ?? {}} />
+          <VPointPrediction volatilityMap={vpoints.data ?? {}} />
         </Grid>
       </Grid>
     </Box>
