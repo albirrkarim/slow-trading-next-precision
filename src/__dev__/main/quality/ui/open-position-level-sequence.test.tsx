@@ -114,7 +114,7 @@ describe("OpenPositionLevelSequence", () => {
     ]);
 
     render(<OpenPositionLevelSequence {...params} />);
-    expect(screen.getByText("L0 AVG 3x")).toBeTruthy();
+    expect(screen.getByText("L0 B AVG 3x")).toBeTruthy();
     expect(screen.getByText("L-1")).toBeTruthy();
     expect(screen.getAllByText("L1")).toHaveLength(1);
   });
@@ -333,12 +333,12 @@ describe("OpenPositionLevelSequence", () => {
     expect(screen.queryByText("L3")).toBeNull();
     expect(screen.queryByText("L4")).toBeNull();
     expect(screen.getAllByText("L1")).toHaveLength(2);
-    expect(screen.getAllByText("L0")).toHaveLength(2);
+    expect(screen.getAllByText("L0 B")).toHaveLength(2);
     expect(
-      screen.getByLabelText("Level 0, Target vPoint hit").className,
+      screen.getByLabelText("Level 0 BOTTOM, Target vPoint hit").className,
     ).toContain("MuiChip-colorError");
     expect(
-      screen.getByLabelText("Level 0, Current").className,
+      screen.getByLabelText("Level 0 BOTTOM, Current").className,
     ).toContain("MuiChip-colorPrimary");
     expect(screen.getByLabelText("Averaging sequence stopped").textContent).toContain(
       "Target vPoint hit; remaining averaging steps stopped",

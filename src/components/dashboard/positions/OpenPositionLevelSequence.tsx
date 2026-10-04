@@ -133,6 +133,7 @@ function getTargetHitSequence({
     isAveraged: false,
     isEntry: false,
     level: point.lvl,
+    side: point.l,
     state:
       index === postTargetPoints.length - 1
         ? ("current" as const)
@@ -145,6 +146,7 @@ function getTargetHitSequence({
       isAveraged: false,
       isEntry: true,
       level: entryLevel,
+      side: adverseLabel,
       state: "passed",
     },
     ...reachedAdverseLevels.map((point) => {
@@ -166,6 +168,7 @@ function getTargetHitSequence({
         marginUsdt: step?.marginUsdt,
         monitoringState: execution?.monitoringState,
         reserveStatus: step?.status,
+        side: point.l,
         state: isAveraged ? ("passed" as const) : ("skipped" as const),
       };
     }),
@@ -174,6 +177,7 @@ function getTargetHitSequence({
       isAveraged: false,
       isEntry: false,
       level: 0,
+      side: targetLabel,
       state: "target",
     },
     ...postTargetItems,
@@ -317,6 +321,15 @@ export function buildOpenPositionLevelSequence({
 
   let remainingSpendableQuoteAsset = normalizedSpendableQuoteAsset ?? 0;
 
+  // Averaging steps sit on the adverse side; entry chips share it too —
+  // level 0 carries no sign so the stored side letter disambiguates.
+  const adverseSide =
+    direction === "SHORT"
+      ? ("T" as const)
+      : direction === "LONG"
+        ? ("B" as const)
+        : undefined;
+
   return sequence.map((item, index) => {
     const isAveraged =
       item.reserveStatus === "USED" ||
@@ -367,6 +380,14 @@ export function buildOpenPositionLevelSequence({
       driftPct: index === currentIndex ? currentDriftPct : undefined,
       isAveraged,
       monitoringState: execution?.monitoringState,
+      side:
+        item.side ??
+        (item.level !== 0
+          ? item.level > 0
+            ? ("T" as const)
+            : ("B" as const)
+          : (index === currentIndex ? currentVPoint?.l : undefined) ??
+            adverseSide),
       state,
       unreservedCoverage,
     };

@@ -1,5 +1,6 @@
 import type { Position } from "@/lib/system/trading";
 
+import { vPointSide } from "./items";
 import type { PositionLevelSequenceItem } from "./types";
 
 /** Whether the close reason marks a post-entry volatility-target exit. */
@@ -28,6 +29,8 @@ export function buildHistoryPositionLevelSequence(
 ): PositionLevelSequenceItem[] {
   // BOTH:REUSABLE_LEVEL_SEQUENCE
   const entryLevel = Number(position.opened.vPoint.lvl);
+  // Averaging steps sit on the adverse side of the entry direction.
+  const adverseSide = position.direction === "LONG" ? ("B" as const) : ("T" as const);
   const executions = [...(position.strategy.averaging.executions ?? [])].sort(
     (left, right) => left.t - right.t,
   );
@@ -58,6 +61,7 @@ export function buildHistoryPositionLevelSequence(
         isAveraged: false,
         isEntry: true,
         level: entryLevel,
+        side: vPointSide(position.opened.vPoint),
         state: "passed",
       },
     ];
@@ -82,6 +86,7 @@ export function buildHistoryPositionLevelSequence(
         marginUsdt: execution?.marginUsdt ?? step?.marginUsdt,
         monitoringState: execution?.monitoringState,
         reserveStatus: isAveraged ? "USED" : step?.status,
+        side: vPointSide(point),
         state:
           !isAveraged && isAdverseLevel && isDeeperThanEntry
             ? "skipped"
@@ -102,6 +107,7 @@ export function buildHistoryPositionLevelSequence(
           isEntry: false,
           level: step.level,
           reserveStatus: step.status,
+          side: adverseSide,
           state: "skipped",
         });
       }
@@ -111,34 +117,26 @@ export function buildHistoryPositionLevelSequence(
     if (Number.isFinite(exitLevel)) {
       const execution = executionByLevel.get(exitLevel);
       const step = stepByLevel.get(exitLevel);
-      const matchingItem = items.find(
-        (item) =>
-          !item.isEntry && !item.isExit && item.level === exitLevel,
-      );
-      if (matchingItem) {
-        matchingItem.exitMonitoringState = position.lastMonitoringStage;
-        matchingItem.isExit = true;
-        matchingItem.state = isTargetExitReason(position)
-          ? "target"
-          : "exit";
-      } else {
-        items.push({
-          adaptiveMultiplier: execution?.adaptiveMultiplier,
-          attemptMessage: step?.attemptMessage,
-          attemptedAt: step?.attemptedAt,
-          averagingMultiplier: execution?.allocationPct,
-          coveredMarginUsdt: 0,
-          exitMonitoringState: position.lastMonitoringStage,
-          isAveraged: execution !== undefined,
-          isEntry: false,
-          isExit: true,
-          level: exitLevel,
-          marginUsdt: execution?.marginUsdt,
-          monitoringState: execution?.monitoringState,
-          reserveStatus: execution ? "USED" : step?.status,
-          state: isTargetExitReason(position) ? "target" : "exit",
-        });
-      }
+      // The persisted path excludes the exit vPoint itself, so no
+      // intermediate item can be its anchor — the exit chip belongs at
+      // the chronologically last slot, not on the first same-level point.
+      items.push({
+        adaptiveMultiplier: execution?.adaptiveMultiplier,
+        attemptMessage: step?.attemptMessage,
+        attemptedAt: step?.attemptedAt,
+        averagingMultiplier: execution?.allocationPct,
+        coveredMarginUsdt: 0,
+        exitMonitoringState: position.lastMonitoringStage,
+        isAveraged: execution !== undefined,
+        isEntry: false,
+        isExit: true,
+        level: exitLevel,
+        marginUsdt: execution?.marginUsdt,
+        monitoringState: execution?.monitoringState,
+        reserveStatus: execution ? "USED" : step?.status,
+        side: vPointSide(position.closed?.vPoint ?? {}),
+        state: isTargetExitReason(position) ? "target" : "exit",
+      });
     }
 
     return items;
@@ -151,6 +149,7 @@ export function buildHistoryPositionLevelSequence(
           isAveraged: false,
           isEntry: true,
           level: entryLevel,
+          side: vPointSide(position.opened.vPoint),
           state: "passed",
         },
       ]
@@ -170,6 +169,7 @@ export function buildHistoryPositionLevelSequence(
       marginUsdt: execution.marginUsdt,
       monitoringState: execution.monitoringState,
       reserveStatus: "USED",
+      side: adverseSide,
       state: "passed",
     });
   }
@@ -187,6 +187,7 @@ export function buildHistoryPositionLevelSequence(
         isEntry: false,
         level: step.level,
         reserveStatus: step.status,
+        side: adverseSide,
         state: "skipped",
       });
     }
@@ -194,29 +195,20 @@ export function buildHistoryPositionLevelSequence(
 
   const exitLevel = Number(position.closed?.vPoint?.lvl);
   if (Number.isFinite(exitLevel)) {
-    const matchingItem = items.find(
-      (item) =>
-        !item.isEntry && !item.isExit && item.level === exitLevel,
-    );
-    if (matchingItem) {
-      matchingItem.exitMonitoringState = position.lastMonitoringStage;
-      matchingItem.isExit = true;
-      matchingItem.state = isTargetExitReason(position) ? "target" : "exit";
-    } else {
-      const step = stepByLevel.get(exitLevel);
-      items.push({
-        attemptMessage: step?.attemptMessage,
-        attemptedAt: step?.attemptedAt,
-        coveredMarginUsdt: 0,
-        exitMonitoringState: position.lastMonitoringStage,
-        isAveraged: false,
-        isEntry: false,
-        isExit: true,
-        level: exitLevel,
-        reserveStatus: step?.status,
-        state: isTargetExitReason(position) ? "target" : "exit",
-      });
-    }
+    const step = stepByLevel.get(exitLevel);
+    items.push({
+      attemptMessage: step?.attemptMessage,
+      attemptedAt: step?.attemptedAt,
+      coveredMarginUsdt: 0,
+      exitMonitoringState: position.lastMonitoringStage,
+      isAveraged: false,
+      isEntry: false,
+      isExit: true,
+      level: exitLevel,
+      reserveStatus: step?.status,
+      side: vPointSide(position.closed?.vPoint ?? {}),
+      state: isTargetExitReason(position) ? "target" : "exit",
+    });
   }
 
   for (const step of steps) {

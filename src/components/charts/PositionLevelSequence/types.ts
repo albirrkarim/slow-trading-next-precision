@@ -78,6 +78,11 @@ export interface PositionLevelSequenceItem {
   monitoringState?: PositionLastMonitoringStage;
   /** Reserve status of the watch step backing this level, when applicable. */
   reserveStatus?: PositionLevelSequenceReserveStatus;
+  /**
+   * vPoint side (`"T"` top, `"B"` bottom). Rendered only for level-0 chips
+   * — the signed level already carries the side for every other level.
+   */
+  side?: "T" | "B";
   /** Visual state of this chip. */
   state: PositionLevelSequenceState;
   /** Coverage classification for `unreserved` chips. */

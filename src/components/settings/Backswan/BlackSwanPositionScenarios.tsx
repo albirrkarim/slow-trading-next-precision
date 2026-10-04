@@ -79,12 +79,14 @@ function buildLevelSequence(
   position: BlackSwanSavingsPositionResult,
 ): PositionLevelSequenceItem[] {
   const hasAveraging = position.averagingExecutions.length > 0;
+  const adverseSide = position.direction === "SHORT" ? ("T" as const) : ("B" as const);
   return [
     {
       coveredMarginUsdt: 0,
       isAveraged: false,
       isEntry: true,
       level: position.entryLevel,
+      side: adverseSide,
       state: hasAveraging ? "passed" : "current",
     },
     ...position.averagingExecutions.map((execution, index) => ({
@@ -96,6 +98,7 @@ function buildLevelSequence(
       level: execution.level,
       marginUsdt: execution.marginUsdt,
       reserveStatus: "USED" as const,
+      side: adverseSide,
       state:
         index === position.averagingExecutions.length - 1
           ? ("current" as const)

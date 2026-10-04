@@ -37,6 +37,36 @@ export function formatDriftPct(driftPct?: number) {
   return `${driftPct > 0 ? "+" : ""}${driftPct.toFixed(2)}%`;
 }
 
+/**
+ * Resolves a vPoint's side — prefers the explicit `l`, falls back to the id
+ * prefix (`T_...`/`B_...`), then the level sign. Level-0 points carry no
+ * sign, so they rely on `l`/id.
+ */
+export function vPointSide(params: {
+  id?: string;
+  l?: "T" | "B";
+  lvl?: number;
+}): "T" | "B" | undefined {
+  if (params.l === "T" || params.l === "B") return params.l;
+  if (params.id?.startsWith("T")) return "T";
+  if (params.id?.startsWith("B")) return "B";
+  if (params.lvl !== undefined && params.lvl > 0) return "T";
+  if (params.lvl !== undefined && params.lvl < 0) return "B";
+  return undefined;
+}
+
+/**
+ * Formats the item's level for aria labels and tooltips, naming the side
+ * only when level 0 makes it ambiguous (e.g. `Level 0 TOP`).
+ */
+export function formatLevelLabel(
+  item: Pick<PositionLevelSequenceItem, "level" | "side">,
+): string {
+  return item.level === 0 && item.side
+    ? `Level 0 ${item.side === "T" ? "TOP" : "BOTTOM"}`
+    : `Level ${item.level}`;
+}
+
 /** Formats the actual multiplier persisted for an averaging execution. */
 export function formatAveragingMultiplier(multiplier?: number) {
   if (
@@ -119,7 +149,7 @@ export function buildTooltip(
   averagingStopped: boolean,
 ): string {
   const details = [
-    `Level ${item.level}`,
+    formatLevelLabel(item),
     stateLabels[item.state],
     item.isEntry ? "Entry" : null,
     item.isAveraged ? "Averaged" : null,

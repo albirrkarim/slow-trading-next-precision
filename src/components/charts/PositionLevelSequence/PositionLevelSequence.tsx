@@ -9,6 +9,7 @@ import {
   buildTooltip,
   formatAveragingMultiplier,
   formatDriftPct,
+  formatLevelLabel,
   getChipProps,
   isReachedWithoutAveraging,
   stateLabels,
@@ -71,7 +72,7 @@ export default function PositionLevelSequence({
               : "Standard monitoring stage"
             : null;
           const statusLabel = [
-            `Level ${item.level}`,
+            formatLevelLabel(item),
             stateLabels[item.state],
             item.isEntry ? "Entry" : null,
             item.isExit && item.state !== "exit" ? "Exit" : null,
@@ -104,7 +105,11 @@ export default function PositionLevelSequence({
               ? ` drift ${driftLabel}`
               : "",
           ].join("");
-          const chipLabel = `L${item.level}${chipSuffix}`;
+          // Level-0 chips carry no sign, so the side letter names the
+          // pivot kind (`L0 T` / `L0 B`); signed levels keep `L±n`.
+          const sideSuffix =
+            item.level === 0 && item.side ? ` ${item.side}` : "";
+          const chipLabel = `L${item.level}${sideSuffix}${chipSuffix}`;
           const chip = (
             <Chip
               {...chipProps}

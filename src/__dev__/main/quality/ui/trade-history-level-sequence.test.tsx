@@ -307,6 +307,47 @@ describe("trade-history level sequence", () => {
       within(sequence)
         .getAllByText(/^L/)
         .map((chip) => chip.textContent),
-    ).toEqual(["L-2", "L-3 NOT AVG", "L-4 AVG 2x", "L0 EXIT"]);
+    ).toEqual(["L-2", "L-3 NOT AVG", "L-4 AVG 2x", "L0 T EXIT"]);
+  });
+
+  it("keeps the exit chip last when an earlier path point shares its level", () => {
+    const position = createTestPosition({
+      closed: {
+        feeUsdt: 0,
+        price: 11,
+        reason: "STOP_LOSS",
+        t: 300,
+        vPoint: { id: "T_EXIT", lvl: 1 },
+      },
+      direction: "SHORT",
+      entryId: "T_ENTRY",
+      entryLevel: 0,
+      symbol: "AAVE",
+      vPoints: [
+        { id: "T_EARLY", lvl: 1 },
+        { id: "B_TARGET", lvl: 0 },
+      ],
+    });
+
+    render(
+      <SnackbarProvider>
+        <TradesTableSection
+          exchangeType="binance"
+          history={[{ ...position, mode: "sandbox" }]}
+          mode="sandbox"
+          onHistoryChange={vi.fn()}
+          readOnly
+        />
+      </SnackbarProvider>,
+    );
+
+    // Regression: the persisted path excludes the exit vPoint, so tagging
+    // the first same-level intermediate misplaced EXIT ~the whole run early.
+    const sequence = screen.getByLabelText("Position level sequence");
+    expect(
+      within(sequence)
+        .getAllByText(/^L/)
+        .map((chip) => chip.textContent),
+    ).toEqual(["L0 T", "L1 NOT AVG", "L0 B", "L1 EXIT"]);
   });
 });
