@@ -17,7 +17,7 @@ export const FEATURES_VPOINT_WINDOW_MS = 2 * 30 * 24 * 60 * 60 * 1000;
  * Rolling window for per-coin feature history trails (e.g.
  * `priceNormalizedHistory`) — keeps roughly the recent decision horizon.
  */
-export const FEATURES_HISTORY_WINDOW_MS = 10 * 24 * 60 * 60 * 1000;
+export const FEATURES_HISTORY_WINDOW_MS = 20 * 24 * 60 * 60 * 1000;
 
 /** Compact feature-history sample: the value `p` observed at time `t` (ms). */
 export interface FeatureHistoryPoint {

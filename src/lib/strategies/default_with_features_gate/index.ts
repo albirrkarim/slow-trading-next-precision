@@ -31,7 +31,7 @@ import type { StrategyAPI } from "../types";
 export const FEATURE_GATE_BOUNDS: Required<FeatureGateBounds> = {
   btcMaxPriceNormalized: 0.8,
   btcMinPriceNormalized: 0.3,
-  historyWindowDays: 10,
+  historyWindowDays: 20,
   maxPriceNormalized: 0.8,
   minPriceNormalized: 0.3,
 };
