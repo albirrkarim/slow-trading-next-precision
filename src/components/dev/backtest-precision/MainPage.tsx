@@ -274,7 +274,6 @@ export default function DynamicTradeAnalytics() {
                     }}
                 >
                     <SidebarButton />
-                    Backtest Precision · Klines
                 </Typography>
 
                 <PrecisionBTestConfig

@@ -126,7 +126,7 @@ function gateReason(
     bounds.btcMaxPriceNormalized,
     cutoff,
   );
-  if (btcViolation) {
+  if (btcViolation && Math.abs(signal?.lvl ?? 0) < 3) {
     return (
       `BTC priceNormalized ${btcViolation.p.toFixed(3)}` +
       `${formatDayTag(btcViolation.t)} is outside the BTC gate zone ` +
@@ -140,7 +140,8 @@ function gateReason(
     bounds.maxPriceNormalized,
     cutoff,
   );
-  if (coinViolation) {
+  
+  if (coinViolation&& Math.abs(signal?.lvl ?? 0) < 3) {
     return (
       `priceNormalized ${coinViolation.p.toFixed(3)}` +
       `${formatDayTag(coinViolation.t)} is outside the gate zone ` +
@@ -148,22 +149,6 @@ function gateReason(
     );
   }
 
-  if (signal && Math.abs(signal.lvl) === 1) {
-    const points = context.state.vPointsMap[symbol.toUpperCase()];
-    const upto =
-      points?.at(-1)?.id === signal.id
-        ? points.length - 1
-        : (points?.findIndex((p) => p.id === signal.id) ?? -1);
-    const prevDepth =
-      upto >= 0 ? prevSameSideRunDepth(points, signal.l, upto) : undefined;
-    if (prevDepth !== undefined && prevDepth >= PREV_RUN_DEPTH_LIMIT) {
-      return (
-        `the previous ${signal.l} run already reached level ` +
-        `${prevDepth} — repeat level-1 entries after deep runs escalate ` +
-        `disproportionately (mined limit ${PREV_RUN_DEPTH_LIMIT})`
-      );
-    }
-  }
   return undefined;
 }
 
