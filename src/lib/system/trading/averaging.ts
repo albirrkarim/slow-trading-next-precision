@@ -25,7 +25,7 @@ function generateRecommendations(params: {
   reservedQuoteAsset?: number;
   /**
    * BOTH:LOW_LEVEL_NEXT_ADVERSE_AVERAGING — pair strategies opt in to relax
-   * the `|lvl| > 1` observation gate:
+   * the entry-depth observation gate (`|lvl| > |entry lvl|`):
    *
    * - `"lowLevel"` admits the exact next adverse watch step at level ±1 —
    *   the `both` spec's relaxation.
@@ -85,7 +85,7 @@ function generateRecommendations(params: {
     const direction = position.direction || "LONG";
     const levelGate = params.levelGate;
     const isActionable =
-      reserve.vpoints.isActionableAveragingLevel(lastPoint) ||
+      reserve.vpoints.isActionableAveragingLevel(lastPoint, entryLevel) ||
       (levelGate === "lowLevel" && Math.abs(lastPoint.lvl) === 1) ||
       (levelGate === "adverse" &&
         lastPoint.l === (direction === "LONG" ? "B" : "T"));
@@ -140,8 +140,9 @@ function generateRecommendations(params: {
 
 /**
  * Finds the averaging decision for one open position, matching the legacy
- * scan. `options.levelGate` relaxes the `|lvl| > 1` observation gate for
- * verified pair legs — `"lowLevel"` admits the exact next adverse ±1 step
+ * scan. `options.levelGate` relaxes the entry-depth observation gate
+ * (`|lvl| > |entry lvl|`) for verified pair legs — `"lowLevel"` admits the
+ * exact next adverse ±1 step
  * (`both`), `"adverse"` admits any adverse-side point including level 0
  * (`streak` rail averaging). Ordinary one-way behavior stays unchanged.
  */

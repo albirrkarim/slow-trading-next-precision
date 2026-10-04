@@ -597,7 +597,11 @@ TC: `BOTH:LATE_ENTRY_VPOINT_PRICE_DRIFT_PCT`
 
 ### B.3.8 Averaging not allowed in low level
 
-Averaging should not run on absolute level `1` or `0`. Entry uses optional,
+Averaging fires only on adverse vPoints whose absolute level exceeds the
+position's entry absolute level. A level-0 entry may therefore average on
+the first adverse `±1` point; for every other entry the check is equivalent
+to the legacy `abs(lvl) > 1` floor because adverse points always form
+strictly deeper than the entry level. Entry uses optional,
 inclusive `config.minEntryAbsLevel` and `config.maxEntryAbsLevel` bounds.
 Setting the minimum to `1` allows entry on absolute level `1`; clearing it
 disables the minimum. Setting the maximum to `0` restricts entry to absolute

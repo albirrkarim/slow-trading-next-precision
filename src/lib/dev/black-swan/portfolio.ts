@@ -237,7 +237,14 @@ function shouldAverageAtPoint(params: {
   point: VolatilityPoint;
   position: Position;
 }): boolean {
-  if (!reserve.vpoints.isActionableAveragingLevel(params.point)) return false;
+  if (
+    !reserve.vpoints.isActionableAveragingLevel(
+      params.point,
+      params.entryLevel,
+    )
+  ) {
+    return false;
+  }
   const distance = Math.abs(params.point.lvl - params.entryLevel);
   if (distance > params.maxNextLevels) return false;
   return params.position.direction === "LONG"

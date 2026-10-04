@@ -37,15 +37,27 @@ function roundUsdt(value: number): number {
 }
 
 
-/** Checks whether a volatility point level can trigger averaging. */
+/**
+ * Checks whether a volatility point level can trigger averaging. The adverse
+ * point must sit deeper in absolute terms than the position's own entry
+ * level, so a level-0 entry averages from the first ±1 adverse point while
+ * every deeper entry keeps the previous ±2 minimum — adverse points always
+ * form strictly deeper than the entry. An unknown entry level falls back to
+ * the legacy `> 1` floor.
+ */
 function isActionableAveragingVolatilityLevel(
   volatilityPoint: Pick<VolatilityPoint, "lvl">,
+  entryLevel?: number,
 ): boolean {
   // BOTH:LOW_LEVEL_NO_ACTION_AVERAGING
+  const entryAbsLevel =
+    typeof entryLevel === "number" && Number.isFinite(entryLevel)
+      ? Math.abs(Math.floor(entryLevel))
+      : 1;
   return (
     typeof volatilityPoint.lvl === "number" &&
     Number.isFinite(volatilityPoint.lvl) &&
-    Math.abs(volatilityPoint.lvl) > 1
+    Math.abs(volatilityPoint.lvl) > entryAbsLevel
   );
 }
 
