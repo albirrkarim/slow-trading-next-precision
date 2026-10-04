@@ -102,9 +102,23 @@ function explainMissingDecision(
     };
   }
 
+  // BOTH:FORMING_VPOINT_ENTRY — a forming-enabled account resolves the
+  // entry direction from excursions, not the point's own label.
+  const forming = tradingEntry.forming.settings(account?.trading ?? {});
+  const formingDirection =
+    forming.enabled && lastPoint
+      ? tradingEntry.forming.direction(
+          lastPoint,
+          forming.favorablePct,
+          forming.adversePct,
+        )
+      : null;
+
   if (
     context.state.config.management.tradingMode === TradingMode.SPOT &&
-    lastPoint?.l === "T"
+    (forming.enabled
+      ? formingDirection === "SHORT"
+      : lastPoint?.l === "T")
   ) {
     return {
       code: "SPOT_SHORT_BLOCKED",
@@ -156,26 +170,46 @@ function explainMissingDecision(
     };
   }
 
-  // BOTH:LATE_ENTRY_VPOINT_PRICE_DRIFT_PCT — mirrors the decision-time gate
-  // so the dashboard explains the same block the pipeline applied.
-  const drift = lateEntryVPointDrift.evaluate(
-    {
-      currentPrice: context.state.markPriceMap[symbol]?.price,
-      direction: lastPoint?.l === "B" ? "LONG" : "SHORT",
-      enabled: account?.trading.lateEntryVPointPriceDriftEnabled,
-      limitPct: account?.trading.lateEntryVPointPriceDriftPct,
-      vPointPrice: Number(lastPoint?.p),
-    },
-    resolveVolatilityThreshold(context.state.config.management),
-  );
-  if (drift.blocked) {
-    return {
-      code: "LATE_ENTRY_VPOINT_PRICE_DRIFT",
-      reason:
-        drift.reason ??
-        "Blocked because the current price already drifted too far " +
-          "in the profit direction from the signal vPoint.",
-    };
+  // BOTH:FORMING_VPOINT_ENTRY — forming accounts replace the normal
+  // entry: the drift mirror does not apply (a qualifying signal drifted
+  // by definition), and an unqualified latest point waits for excursions.
+  if (forming.enabled) {
+    if (formingDirection === null) {
+      const down = Number(lastPoint?.maxDownPct) || 0;
+      const up = Number(lastPoint?.maxUpPct) || 0;
+      return {
+        code: "FORMING_VPOINT_WAITING",
+        reason:
+          `Waiting for a forming vPoint entry on ${symbol}: the latest ` +
+          `point's excursions ↓${down.toFixed(2)}% / ↑${up.toFixed(2)}% ` +
+          `do not meet the rule (↓ ≥ ${forming.favorablePct}% and ` +
+          `↑ < ${forming.adversePct}% → SHORT, ` +
+          `↑ ≥ ${forming.favorablePct}% and ↓ < ${forming.adversePct}% ` +
+          `→ LONG).`,
+      };
+    }
+  } else {
+    // BOTH:LATE_ENTRY_VPOINT_PRICE_DRIFT_PCT — mirrors the decision-time gate
+    // so the dashboard explains the same block the pipeline applied.
+    const drift = lateEntryVPointDrift.evaluate(
+      {
+        currentPrice: context.state.markPriceMap[symbol]?.price,
+        direction: lastPoint?.l === "B" ? "LONG" : "SHORT",
+        enabled: account?.trading.lateEntryVPointPriceDriftEnabled,
+        limitPct: account?.trading.lateEntryVPointPriceDriftPct,
+        vPointPrice: Number(lastPoint?.p),
+      },
+      resolveVolatilityThreshold(context.state.config.management),
+    );
+    if (drift.blocked) {
+      return {
+        code: "LATE_ENTRY_VPOINT_PRICE_DRIFT",
+        reason:
+          drift.reason ??
+          "Blocked because the current price already drifted too far " +
+            "in the profit direction from the signal vPoint.",
+      };
+    }
   }
 
   const maxOpenPositions = Math.max(
@@ -244,8 +278,9 @@ function explainRejectedPlan(
   }
 
   // BOTH:LATE_ENTRY_VPOINT_PRICE_DRIFT_PCT — mirrors the plan-time gate;
-  // manual entries skip it exactly like the shared executor does.
-  if (!decision.manual) {
+  // manual entries skip it exactly like the shared executor does, and
+  // forming-vPoint signals are exempt like the executor (BOTH:FORMING_VPOINT_ENTRY).
+  if (!decision.manual && !decision.entrySignal.forming) {
     const accountTrading = context.helper.getAccountConfig(
       decision.accountSlug,
     );

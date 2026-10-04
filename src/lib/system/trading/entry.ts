@@ -4,12 +4,16 @@ import type {
 } from "@/lib/precision/types";
 import { TradingMode } from "@/lib/exchange/types";
 import { resolveVolatilityThreshold } from "../constants";
-import type { RuntimeConfig } from "../runtime";
+import type { RuntimeAccountTradingConfig, RuntimeConfig } from "../runtime";
 import type { VolatilityPoint } from "../types";
 import vpoints from "../utils/vpoints";
 import autoRemove from "./auto-remove";
 import lateEntryVPointDrift from "./late-entry-vpoint-drift";
-import type { EntryRecommendation, Position } from "./types";
+import type {
+  EntryRecommendation,
+  Position,
+  PositionDirection,
+} from "./types";
 
 /**
  * Normalizes an optional inclusive absolute entry-level bound.
@@ -117,16 +121,75 @@ function makeEntryRecommendation(
   };
 }
 
+/**
+ * Resolves the account's forming-vPoint entry settings: enabled flag and
+ * normalized percents — favorable must be finite `> 0` (default 3),
+ * adverse finite `>= 0` (default 2).
+ */
+function resolveFormingSettings(
+  trading: Pick<
+    RuntimeAccountTradingConfig,
+    | "formingVPointEntryEnabled"
+    | "formingVPointEntryFavorablePct"
+    | "formingVPointEntryAdversePct"
+  >,
+): { adversePct: number; enabled: boolean; favorablePct: number } {
+  const favorable = Number(trading.formingVPointEntryFavorablePct);
+  const adverse = Number(trading.formingVPointEntryAdversePct);
+  return {
+    adversePct: Number.isFinite(adverse) && adverse >= 0 ? adverse : 2,
+    enabled: trading.formingVPointEntryEnabled === true,
+    favorablePct:
+      Number.isFinite(favorable) && favorable > 0 ? favorable : 3,
+  };
+}
+
+/**
+ * BOTH:FORMING_VPOINT_ENTRY — resolves the forming direction from the
+ * latest point's running excursions: `maxDownPct >= F && maxUpPct < A`
+ * means a BOTTOM is still forming (SHORT), `maxUpPct >= F && maxDownPct <
+ * A` means a TOP is still forming (LONG). Missing excursions read as 0;
+ * the adverse comparison is strict. When both qualify (only possible
+ * when `A > F`) the larger favorable excursion wins; a tie yields null.
+ */
+function resolveFormingDirection(
+  point: Pick<VolatilityPoint, "maxDownPct" | "maxUpPct">,
+  favorablePct: number,
+  adversePct: number,
+): PositionDirection | null {
+  const down = Number(point.maxDownPct) || 0;
+  const up = Number(point.maxUpPct) || 0;
+  const short = down >= favorablePct && up < adversePct;
+  const long = up >= favorablePct && down < adversePct;
+  if (short && long) {
+    if (down === up) return null;
+    return down > up ? "SHORT" : "LONG";
+  }
+  if (short) return "SHORT";
+  if (long) return "LONG";
+  return null;
+}
+
 /** Evaluates direct level-based v20 entry recommendations for one account. */
 function evaluateRecommendations(
   context: RuntimeContext,
   accountSlug: string,
-  minEntryAbsLevel?: number,
-  maxEntryAbsLevel?: number,
-): EntryRecommendation[] {
-  const recommendations: EntryRecommendation[] = [];
-  const resolvedMinEntryAbsLevel = resolveEntryAbsLevel(minEntryAbsLevel);
-  const resolvedMaxEntryAbsLevel = resolveEntryAbsLevel(maxEntryAbsLevel);
+  trading: RuntimeAccountTradingConfig,
+): Array<{
+  direction: PositionDirection;
+  entrySignal: EntryRecommendation;
+}> {
+  const recommendations: Array<{
+    direction: PositionDirection;
+    entrySignal: EntryRecommendation;
+  }> = [];
+  const resolvedMinEntryAbsLevel = resolveEntryAbsLevel(
+    trading.minEntryAbsLevel,
+  );
+  const resolvedMaxEntryAbsLevel = resolveEntryAbsLevel(
+    trading.maxEntryAbsLevel,
+  );
+  const forming = resolveFormingSettings(trading);
   const autoRemoveAbsLevel = Math.max(
     0,
     Math.floor(
@@ -179,7 +242,36 @@ function evaluateRecommendations(
       resolvedMaxEntryAbsLevel,
     );
     recommendation.symbol = symbol;
-    recommendations.push(recommendation);
+
+    // BOTH:FORMING_VPOINT_ENTRY — when enabled the forming rule replaces
+    // the normal entry entirely: a point whose excursions do not qualify
+    // produces no signal at all.
+    if (forming.enabled) {
+      const direction = resolveFormingDirection(
+        currentPoint,
+        forming.favorablePct,
+        forming.adversePct,
+      );
+      if (direction === null) continue;
+      recommendation.forming = true;
+      const down = Number(currentPoint.maxDownPct) || 0;
+      const up = Number(currentPoint.maxUpPct) || 0;
+      recommendation.message =
+        direction === "SHORT"
+          ? `forming-vpoint SHORT: ${currentPoint.l} ${currentPoint.id} ` +
+            `↓${down.toFixed(2)}% ≥ ${forming.favorablePct}% ` +
+            `and ↑${up.toFixed(2)}% < ${forming.adversePct}%`
+          : `forming-vpoint LONG: ${currentPoint.l} ${currentPoint.id} ` +
+            `↑${up.toFixed(2)}% ≥ ${forming.favorablePct}% ` +
+            `and ↓${down.toFixed(2)}% < ${forming.adversePct}%`;
+      recommendations.push({ direction, entrySignal: recommendation });
+      continue;
+    }
+
+    recommendations.push({
+      direction: currentPoint.l === "B" ? "LONG" : "SHORT",
+      entrySignal: recommendation,
+    });
   }
 
   return recommendations;
@@ -220,11 +312,10 @@ async function findDecisions(
     const recommendations = evaluateRecommendations(
       context,
       account.slug,
-      account.trading.minEntryAbsLevel,
-      account.trading.maxEntryAbsLevel,
+      account.trading,
     );
 
-    for (const entrySignal of recommendations) {
+    for (const { direction, entrySignal } of recommendations) {
       const symbol = autoRemove.symbol.normalize(entrySignal.symbol);
       if (!symbol) continue;
       // BOTH:AUTO_REMOVE_CONFIGURED_SYMBOL_GUARD — a coin the management
@@ -232,7 +323,7 @@ async function findDecisions(
       if (!configuredSymbols.has(symbol)) continue;
       if (
         config.management.tradingMode === TradingMode.SPOT &&
-        entrySignal.l !== "B"
+        direction !== "LONG"
       ) {
         continue;
       }
@@ -269,21 +360,25 @@ async function findDecisions(
       // signal whose current mark already drifted past the profitable-move
       // cap is skipped; the execution-time check in entryAction re-runs it
       // on the freshest mark before the fill. Blocked points stay unused.
-      const drift = lateEntryVPointDrift.evaluate(
-        {
-          currentPrice: context.state.markPriceMap[symbol]?.price,
-          direction: entrySignal.l === "B" ? "LONG" : "SHORT",
-          enabled: account.trading.lateEntryVPointPriceDriftEnabled,
-          limitPct: account.trading.lateEntryVPointPriceDriftPct,
-          vPointPrice: entrySignal.p,
-        },
-        resolveVolatilityThreshold(context.state.config.management),
-      );
-      if (drift.blocked) continue;
+      // Forming-vPoint signals are exempt — they by definition drifted the
+      // favorable percent that qualified them (BOTH:FORMING_VPOINT_ENTRY).
+      if (!entrySignal.forming) {
+        const drift = lateEntryVPointDrift.evaluate(
+          {
+            currentPrice: context.state.markPriceMap[symbol]?.price,
+            direction,
+            enabled: account.trading.lateEntryVPointPriceDriftEnabled,
+            limitPct: account.trading.lateEntryVPointPriceDriftPct,
+            vPointPrice: entrySignal.p,
+          },
+          resolveVolatilityThreshold(context.state.config.management),
+        );
+        if (drift.blocked) continue;
+      }
 
       decisions.push({
         accountSlug: account.slug,
-        direction: entrySignal.l === "B" ? "LONG" : "SHORT",
+        direction,
         entrySignal,
         message: entrySignal.message,
         symbol,
@@ -322,6 +417,10 @@ function getSymbols(
 
 const entry = {
   findDecisions,
+  forming: {
+    direction: resolveFormingDirection,
+    settings: resolveFormingSettings,
+  },
   getSymbols,
   recommendation: {
     /**

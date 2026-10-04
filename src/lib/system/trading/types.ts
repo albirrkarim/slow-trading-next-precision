@@ -467,6 +467,14 @@ export interface EntryRecommendation extends TradeRecommendationBase {
    * the budget separately and still sizes by amountProbab.
    */
   investAmount?: number;
+
+  /**
+   * BOTH:FORMING_VPOINT_ENTRY — set only on forming-vPoint signals: the
+   * source point's own `l` no longer decides direction (resolved on the
+   * decision), the late-entry drift guard is skipped, and the position
+   * gets no averaging/reserve.
+   */
+  forming?: boolean;
 }
 
 /**

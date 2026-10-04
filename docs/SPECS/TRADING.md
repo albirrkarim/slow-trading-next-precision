@@ -592,6 +592,8 @@ entry diagnostics; `0` blocks any profitable drift. Unset keeps the
 volatility-derived limit.
 
 The boundary itself remains allowed. Adverse drift does not trigger this guard.
+Forming-vPoint entries (B.3.10) are exempt: a qualifying signal has by
+definition already drifted its favorable excursion.
 
 TC: `BOTH:LATE_ENTRY_VPOINT_PRICE_DRIFT_PCT`
 
@@ -646,6 +648,43 @@ forced manual entries: the signal premise is broken regardless of who
 requested the entry.
 
 TC: `BOTH:BLOCK_ENTRY_VPOINT_MIGHT_FORMED`
+
+### B.3.10 Forming vPoint entry
+
+Per-account opt-in (`trading.formingVPointEntryEnabled`, default `false`)
+that replaces the account's normal entries on freshly emitted vPoints.
+When enabled, the account enters only when the symbol's latest vPoint's
+running excursions qualify a forming direction:
+
+- `maxDownPct >= F` and `maxUpPct < A` → `SHORT` (a BOTTOM is forming and
+  price continues down)
+- `maxUpPct >= F` and `maxDownPct < A` → `LONG` (a TOP is forming)
+
+Missing excursions read as `0`; the adverse comparison is strict. When both
+directions qualify — only possible with `A > F` — the larger favorable
+excursion wins and a tie produces no entry. `F` and `A` come from
+`trading.formingVPointEntryFavorablePct` (default `3`, normalized to the
+default unless finite and `> 0`) and `trading.formingVPointEntryAdversePct`
+(default `2`, normalized to the default unless finite and `>= 0`).
+
+A latest point whose excursions do not qualify produces no signal at all —
+the normal `B → LONG` / `T → SHORT` entry is not emitted. When disabled,
+entry direction is unchanged.
+
+Forming entries apply to initial entries only. Positions opened this way
+get no averaging and no reserve regardless of `enableWatchLogic`, and the
+late-entry drift guard (B.3.7) is skipped at decision, execution, and
+diagnostics — a qualifying signal has by definition drifted `F` percent.
+`BLOCK_ENTRY_VPOINT_MIGHT_FORMED` (B.3.9) still applies, so `F` must stay
+below `0.9 × VOLATILITY_THRESHOLD` (`4.5` at threshold `5`). All other
+source-vPoint guards are unchanged: absolute level limits, BTC skip,
+auto-remove checks, minimum price, configured symbols, one position per
+coin, max open positions, and usage markers — the source point receives
+the usual usage marker, so it fires at most once per account. Spot mode
+suppresses forming `SHORT` entries. Exits are unchanged and stay anchored
+to the source vPoint. Such positions are labeled `FORMING_VPOINT`.
+
+TC: `BOTH:FORMING_VPOINT_ENTRY`
 
 ## B.4 Exit (`src/lib/system/trading/exit.ts`)
 
