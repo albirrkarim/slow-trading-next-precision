@@ -111,6 +111,7 @@ function explainMissingDecision(
           lastPoint,
           forming.favorablePct,
           forming.adversePct,
+          forming.maxFavorablePct,
         )
       : null;
 
@@ -177,15 +178,28 @@ function explainMissingDecision(
     if (formingDirection === null) {
       const down = Number(lastPoint?.maxDownPct) || 0;
       const up = Number(lastPoint?.maxUpPct) || 0;
+      const capped = Number.isFinite(forming.maxFavorablePct);
+      const windowText = capped
+        ? `in [${forming.favorablePct}%, ${forming.maxFavorablePct}%]`
+        : `≥ ${forming.favorablePct}%`;
+      const deadDirections = [
+        down > forming.maxFavorablePct ? "SHORT" : null,
+        up > forming.maxFavorablePct ? "LONG" : null,
+      ].filter((item): item is string => item !== null);
       return {
         code: "FORMING_VPOINT_WAITING",
         reason:
           `Waiting for a forming vPoint entry on ${symbol}: the latest ` +
           `point's excursions ↓${down.toFixed(2)}% / ↑${up.toFixed(2)}% ` +
-          `do not meet the rule (↓ ≥ ${forming.favorablePct}% and ` +
+          `do not meet the rule (↓ ${windowText} and ` +
           `↑ < ${forming.adversePct}% → SHORT, ` +
-          `↑ ≥ ${forming.favorablePct}% and ↓ < ${forming.adversePct}% ` +
-          `→ LONG).`,
+          `↑ ${windowText} and ↓ < ${forming.adversePct}% ` +
+          `→ LONG).` +
+          (deadDirections.length > 0
+            ? ` The favorable excursion for ${deadDirections.join(" and ")} ` +
+              `already passed max favorable ${forming.maxFavorablePct}% — ` +
+              "that direction can no longer fire on this point."
+            : ""),
       };
     }
   } else {

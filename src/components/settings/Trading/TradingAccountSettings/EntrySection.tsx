@@ -1,7 +1,6 @@
 "use client";
 
 import {
-    Alert,
     Grid,
     MenuItem,
     Typography
@@ -13,6 +12,7 @@ import SettingsInfoField from "../../Components/SettingsInfoField";
 import type { Dispatch, SetStateAction } from "react";
 import type { RuntimeAccountTradingConfig } from "@/lib/system/runtime";
 
+import { FormingVPointEntrySection } from "./FormingVPointEntrySection";
 import { ENTRY_LEGS_OPTIONS } from "./options";
 
 export function EntrySection({
@@ -88,117 +88,10 @@ export function EntrySection({
                     />
                 </Grid>
 
-                <Grid size={{ xs: 12 }}>
-                    <Typography
-                        color="text.secondary"
-                        sx={{ pt: 1 }}
-                        variant="overline"
-                    >
-                        Forming vPoint Entry
-                    </Typography>
-                </Grid>
-
-                <Grid
-                    size={{ xs: 12, md: 6 }}
-                    sx={{ alignItems: "center", display: "flex" }}
-                >
-                    <SettingsCheckbox
-                        checked={
-                            tradingConfig.formingVPointEntryEnabled === true
-                        }
-                        info="Replaces normal entries for this account: entry fires only when the latest vPoint's running excursions qualify a forming direction (↓ ≥ F & ↑ < A → SHORT, ↑ ≥ F & ↓ < A → LONG; if both qualify the larger favorable excursion wins, tie → no entry). Initial entries only; averaging and reserve are disabled for these positions; the late-entry drift guard and the 0.9 × volatility threshold &quot;might formed&quot; guard are skipped for these entries; exits unchanged. Applies to live, sandbox, and backtest."
-                        infoTooltipMaxWidth={440}
-                        label="Enable Entry Using Forming vPoint"
-                        onChange={(checked) =>
-                            setTradingConfig((prev) =>
-                                prev
-                                    ? {
-                                        ...prev,
-                                        formingVPointEntryEnabled: checked,
-                                    }
-                                    : prev,
-                            )
-                        }
-                    />
-                </Grid>
-
-                <Grid size={{ xs: 12, md: 3 }}>
-                    <SettingsInfoField
-                        label="Favorable %"
-                        type="number"
-                        size="small"
-                        fullWidth
-                        value={tradingConfig.formingVPointEntryFavorablePct ?? 3}
-                        onChange={(event) =>
-                            setTradingConfig((prev) =>
-                                prev
-                                    ? {
-                                        ...prev,
-                                        formingVPointEntryFavorablePct:
-                                            event.target.value === ""
-                                                ? undefined
-                                                : Math.max(
-                                                    0,
-                                                    Number(event.target.value),
-                                                ),
-                                    }
-                                    : prev,
-                            )
-                        }
-                        slotProps={{
-                            htmlInput: {
-                                min: 0,
-                                step: "0.1",
-                            },
-                        }}
-                        info="Excursion percent the latest vPoint must reach in the entry direction (maxDownPct for SHORT, maxUpPct for LONG) before it may fire."
-                    />
-                </Grid>
-
-                <Grid size={{ xs: 12, md: 3 }}>
-                    <SettingsInfoField
-                        label="Adverse %"
-                        type="number"
-                        size="small"
-                        fullWidth
-                        value={tradingConfig.formingVPointEntryAdversePct ?? 2}
-                        onChange={(event) =>
-                            setTradingConfig((prev) =>
-                                prev
-                                    ? {
-                                        ...prev,
-                                        formingVPointEntryAdversePct:
-                                            event.target.value === ""
-                                                ? undefined
-                                                : Math.max(
-                                                    0,
-                                                    Number(event.target.value),
-                                                ),
-                                    }
-                                    : prev,
-                            )
-                        }
-                        slotProps={{
-                            htmlInput: {
-                                min: 0,
-                                step: "0.1",
-                            },
-                        }}
-                        info="Excursion in the opposite direction must stay strictly below this value, otherwise the direction no longer qualifies. Set it above Favorable % to allow the ambiguity rule where the larger favorable excursion wins."
-                    />
-                </Grid>
-
-                {tradingConfig.formingVPointEntryEnabled === true && (
-                    <Grid size={{ xs: 12 }}>
-                        <Alert severity="warning">
-                            {
-                                "Averaging and reserve are off for forming-vPoint " +
-                                "entries on this account, even if Watch Logic is " +
-                                "enabled in the account settings."
-                            }
-                        </Alert>
-                    </Grid>
-                )}
+                <FormingVPointEntrySection
+                    tradingConfig={tradingConfig}
+                    setTradingConfig={setTradingConfig}
+                />
 
                 <Grid size={{ xs: 12 }}>
                     <Typography

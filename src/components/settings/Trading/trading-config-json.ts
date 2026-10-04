@@ -21,6 +21,7 @@ const NUMBER_KEYS = [
   "exitOnVPointAbsLevel",
   "formingVPointEntryAdversePct",
   "formingVPointEntryFavorablePct",
+  "formingVPointEntryMaxFavorablePct",
   "lateEntryVPointPriceDriftPct",
   "maxEntryBased24HourVolPct",
   "maxEntryAbsLevel",

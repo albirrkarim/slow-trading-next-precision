@@ -657,16 +657,23 @@ that replaces the account's normal entries on freshly emitted vPoints.
 When enabled, the account enters only when the symbol's latest vPoint's
 running excursions qualify a forming direction:
 
-- `maxDownPct >= F` and `maxUpPct < A` → `SHORT` (a BOTTOM is forming and
-  price continues down)
-- `maxUpPct >= F` and `maxDownPct < A` → `LONG` (a TOP is forming)
+- `minF <= maxDownPct <= maxF` and `maxUpPct < A` → `SHORT` (a BOTTOM is
+  forming and price continues down)
+- `minF <= maxUpPct <= maxF` and `maxDownPct < A` → `LONG` (a TOP is
+  forming)
 
-Missing excursions read as `0`; the adverse comparison is strict. When both
-directions qualify — only possible with `A > F` — the larger favorable
-excursion wins and a tie produces no entry. `F` and `A` come from
-`trading.formingVPointEntryFavorablePct` (default `3`, normalized to the
-default unless finite and `> 0`) and `trading.formingVPointEntryAdversePct`
-(default `2`, normalized to the default unless finite and `>= 0`).
+Missing excursions read as `0`; the adverse comparison is strict and the
+favorable cap is inclusive. When both directions qualify the larger
+favorable excursion wins and a tie produces no entry. The bounds come from
+`trading.formingVPointEntryFavorablePct` (`minF`, default `3`, normalized
+to the default unless finite and `> 0`),
+`trading.formingVPointEntryMaxFavorablePct` (`maxF`, optional — unset or
+non-positive means no cap), and `trading.formingVPointEntryAdversePct`
+(`A`, default `2`, normalized to the default unless finite and `>= 0`). A
+point whose favorable excursion already exceeds `maxF` can no longer fire:
+excursions are running maxima, so late moves are skipped rather than
+chased. A `maxF` below `minF` can never fire — the settings UI warns
+instead of auto-correcting.
 
 A latest point whose excursions do not qualify produces no signal at all —
 the normal `B → LONG` / `T → SHORT` entry is not emitted. When disabled,

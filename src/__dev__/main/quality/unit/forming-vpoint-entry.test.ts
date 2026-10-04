@@ -159,6 +159,25 @@ describe("entry.forming.direction", () => {
   it("rejects a point with no excursions", () => {
     expect(entry.forming.direction({}, 3, 1)).toBeNull();
   });
+
+  it("honors the inclusive max-favorable cap", () => {
+    // ↓5 at [3, 5] qualifies — the cap is inclusive.
+    expect(
+      entry.forming.direction({ maxDownPct: 5, maxUpPct: 0 }, 3, 2, 5),
+    ).toBe("SHORT");
+    // ↓5.01 exceeds the cap — excursions only grow, so it never fires.
+    expect(
+      entry.forming.direction({ maxDownPct: 5.01, maxUpPct: 0 }, 3, 2, 5),
+    ).toBeNull();
+    // ↑4 at [3, 5] qualifies LONG.
+    expect(
+      entry.forming.direction({ maxDownPct: 0, maxUpPct: 4 }, 3, 2, 5),
+    ).toBe("LONG");
+    // Without the cap argument behavior is unchanged (uncapped).
+    expect(
+      entry.forming.direction({ maxDownPct: 9, maxUpPct: 0 }, 3, 2),
+    ).toBe("SHORT");
+  });
 });
 
 describe("entry.forming.settings", () => {
@@ -169,12 +188,36 @@ describe("entry.forming.settings", () => {
         formingVPointEntryEnabled: true,
         formingVPointEntryFavorablePct: 0,
       }),
-    ).toEqual({ adversePct: 2, enabled: true, favorablePct: 3 });
+    ).toEqual({
+      adversePct: 2,
+      enabled: true,
+      favorablePct: 3,
+      maxFavorablePct: Number.POSITIVE_INFINITY,
+    });
     expect(entry.forming.settings({})).toEqual({
       adversePct: 2,
       enabled: false,
       favorablePct: 3,
+      maxFavorablePct: Number.POSITIVE_INFINITY,
     });
+  });
+
+  it("treats missing or non-positive max favorable as uncapped", () => {
+    for (const formingVPointEntryMaxFavorablePct of [
+      undefined,
+      0,
+      -1,
+      Number.NaN,
+    ]) {
+      expect(
+        entry.forming.settings({ formingVPointEntryMaxFavorablePct })
+          .maxFavorablePct,
+      ).toBe(Number.POSITIVE_INFINITY);
+    }
+    expect(
+      entry.forming.settings({ formingVPointEntryMaxFavorablePct: 6 })
+        .maxFavorablePct,
+    ).toBe(6);
   });
 });
 
@@ -206,6 +249,20 @@ describe("entry.findDecisions forming-vPoint", () => {
       trading: formingTrading,
       vPointsMap: {
         SUI: [vpoint({ maxDownPct: 1, maxUpPct: 0 })],
+      },
+    });
+
+    expect(await entry.findDecisions(context)).toEqual([]);
+  });
+
+  it("emits no decision when the favorable excursion is already past the cap", async () => {
+    const context = entryContext({
+      trading: {
+        ...formingTrading,
+        formingVPointEntryMaxFavorablePct: 5,
+      },
+      vPointsMap: {
+        SUI: [vpoint({ maxDownPct: 6, maxUpPct: 0 })],
       },
     });
 
@@ -305,6 +362,7 @@ describe("forming-vPoint account config", () => {
       "formingVPointEntryAdversePct",
       "formingVPointEntryEnabled",
       "formingVPointEntryFavorablePct",
+      "formingVPointEntryMaxFavorablePct",
     ]) {
       expect(runtimeAccountConfig.trading.keys.dynamic).toContain(key);
     }
@@ -316,6 +374,7 @@ describe("forming-vPoint account config", () => {
           formingVPointEntryAdversePct: 1.5,
           formingVPointEntryEnabled: true,
           formingVPointEntryFavorablePct: 2.5,
+          formingVPointEntryMaxFavorablePct: 4,
           notes: "",
           takeProfitPercent: 5,
         },
@@ -325,6 +384,7 @@ describe("forming-vPoint account config", () => {
     const split = runtimeAccountConfig.trading.fromEffective(flat);
     expect(split.formingVPointEntryEnabled).toBe(true);
     expect(split.formingVPointEntryFavorablePct).toBe(2.5);
+    expect(split.formingVPointEntryMaxFavorablePct).toBe(4);
     expect(split.formingVPointEntryAdversePct).toBe(1.5);
 
     expect(

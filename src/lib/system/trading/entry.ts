@@ -123,7 +123,8 @@ function makeEntryRecommendation(
 
 /**
  * Resolves the account's forming-vPoint entry settings: enabled flag and
- * normalized percents — favorable must be finite `> 0` (default 3),
+ * normalized percents — minimum favorable must be finite `> 0` (default
+ * 3), maximum favorable finite `> 0` else uncapped (Infinity), maximum
  * adverse finite `>= 0` (default 2).
  */
 function resolveFormingSettings(
@@ -131,36 +132,50 @@ function resolveFormingSettings(
     RuntimeAccountTradingConfig,
     | "formingVPointEntryEnabled"
     | "formingVPointEntryFavorablePct"
+    | "formingVPointEntryMaxFavorablePct"
     | "formingVPointEntryAdversePct"
   >,
-): { adversePct: number; enabled: boolean; favorablePct: number } {
+): {
+  adversePct: number;
+  enabled: boolean;
+  favorablePct: number;
+  maxFavorablePct: number;
+} {
   const favorable = Number(trading.formingVPointEntryFavorablePct);
+  const maxFavorable = Number(trading.formingVPointEntryMaxFavorablePct);
   const adverse = Number(trading.formingVPointEntryAdversePct);
   return {
     adversePct: Number.isFinite(adverse) && adverse >= 0 ? adverse : 2,
     enabled: trading.formingVPointEntryEnabled === true,
     favorablePct:
       Number.isFinite(favorable) && favorable > 0 ? favorable : 3,
+    maxFavorablePct:
+      Number.isFinite(maxFavorable) && maxFavorable > 0
+        ? maxFavorable
+        : Number.POSITIVE_INFINITY,
   };
 }
 
 /**
  * BOTH:FORMING_VPOINT_ENTRY — resolves the forming direction from the
- * latest point's running excursions: `maxDownPct >= F && maxUpPct < A`
- * means a BOTTOM is still forming (SHORT), `maxUpPct >= F && maxDownPct <
- * A` means a TOP is still forming (LONG). Missing excursions read as 0;
- * the adverse comparison is strict. When both qualify (only possible
- * when `A > F`) the larger favorable excursion wins; a tie yields null.
+ * latest point's running excursions: `minF <= maxDownPct <= maxF` and
+ * `maxUpPct < A` means a BOTTOM is still forming (SHORT), mirrored for a
+ * forming TOP (LONG). Missing excursions read as 0; the adverse
+ * comparison is strict. When both qualify the larger favorable excursion
+ * wins; a tie yields null.
  */
 function resolveFormingDirection(
   point: Pick<VolatilityPoint, "maxDownPct" | "maxUpPct">,
   favorablePct: number,
   adversePct: number,
+  maxFavorablePct = Number.POSITIVE_INFINITY,
 ): PositionDirection | null {
   const down = Number(point.maxDownPct) || 0;
   const up = Number(point.maxUpPct) || 0;
-  const short = down >= favorablePct && up < adversePct;
-  const long = up >= favorablePct && down < adversePct;
+  const short =
+    down >= favorablePct && down <= maxFavorablePct && up < adversePct;
+  const long =
+    up >= favorablePct && up <= maxFavorablePct && down < adversePct;
   if (short && long) {
     if (down === up) return null;
     return down > up ? "SHORT" : "LONG";
@@ -251,19 +266,25 @@ function evaluateRecommendations(
         currentPoint,
         forming.favorablePct,
         forming.adversePct,
+        forming.maxFavorablePct,
       );
       if (direction === null) continue;
       recommendation.forming = true;
       const down = Number(currentPoint.maxDownPct) || 0;
       const up = Number(currentPoint.maxUpPct) || 0;
+      const favorableText = (value: number): string =>
+        Number.isFinite(forming.maxFavorablePct)
+          ? `${value.toFixed(2)}% in [${forming.favorablePct}%, ` +
+            `${forming.maxFavorablePct}%]`
+          : `${value.toFixed(2)}% ≥ ${forming.favorablePct}%`;
       recommendation.message =
         direction === "SHORT"
           ? `forming-vpoint SHORT: ${currentPoint.l} ${currentPoint.id} ` +
-            `↓${down.toFixed(2)}% ≥ ${forming.favorablePct}% ` +
-            `and ↑${up.toFixed(2)}% < ${forming.adversePct}%`
+            `↓${favorableText(down)} and ↑${up.toFixed(2)}% ` +
+            `< ${forming.adversePct}%`
           : `forming-vpoint LONG: ${currentPoint.l} ${currentPoint.id} ` +
-            `↑${up.toFixed(2)}% ≥ ${forming.favorablePct}% ` +
-            `and ↓${down.toFixed(2)}% < ${forming.adversePct}%`;
+            `↑${favorableText(up)} and ↓${down.toFixed(2)}% ` +
+            `< ${forming.adversePct}%`;
       recommendations.push({ direction, entrySignal: recommendation });
       continue;
     }

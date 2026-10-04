@@ -21,6 +21,7 @@ export const ACCOUNT_TRADING_CONFIG_KEYS = [
   "formingVPointEntryAdversePct",
   "formingVPointEntryEnabled",
   "formingVPointEntryFavorablePct",
+  "formingVPointEntryMaxFavorablePct",
   "lateEntryVPointPriceDriftEnabled",
   "lateEntryVPointPriceDriftPct",
   "maxEntryBased24HourVolPct",

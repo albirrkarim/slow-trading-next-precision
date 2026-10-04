@@ -203,14 +203,22 @@ export interface RuntimeAccountTradingConfig {
    */
   formingVPointEntryEnabled?: boolean;
   /**
-   * Favorable excursion percent the latest vPoint must reach for a forming
-   * entry (down for SHORT, up for LONG). Non-positive values normalize to
-   * the default 3.
+   * Minimum favorable excursion percent the latest vPoint must reach for a
+   * forming entry (down for SHORT, up for LONG). Non-positive values
+   * normalize to the default 3.
    */
   formingVPointEntryFavorablePct?: number;
   /**
-   * Adverse excursion percent that must stay strictly below for a forming
-   * entry. Negative values normalize to the default 2.
+   * Optional inclusive upper cap on the favorable excursion for a forming
+   * entry. Unset or non-positive means no cap; a point whose favorable
+   * excursion already exceeds it can no longer fire because excursions are
+   * running maxima.
+   */
+  formingVPointEntryMaxFavorablePct?: number;
+  /**
+   * Maximum adverse excursion percent — the opposite excursion must stay
+   * strictly below for a forming entry. Negative values normalize to the
+   * default 2.
    */
   formingVPointEntryAdversePct?: number;
   /** User-authored reminder describing this account's trading strategy. */
