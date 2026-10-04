@@ -10,6 +10,7 @@ import { makeConfigDraft } from "@/components/settings/helpers";
 import sanitize from "@/lib/system/storage/sanitize";
 import { endpoints } from "@/components/endpoints";
 import { TIME_RANGE } from "@/lib/system/app-constants";
+import { localInputToMs, msToLocalInput } from "@/lib/system/utils/ui/time-range";
 import {
     Box,
     Checkbox,
@@ -204,6 +205,37 @@ export default function DynamicBacktestConfig({
                     ))}
                 </Select>
             </FormControl>
+
+            {backtestConfig.range === "custom" && (
+                <>
+                    <TextField
+                        label="Start"
+                        type="datetime-local"
+                        size="small"
+                        sx={{ width: 200 }}
+                        value={msToLocalInput(backtestConfig.startTime)}
+                        onChange={(e) =>
+                            updateBacktest({
+                                startTime: localInputToMs(e.target.value),
+                            })
+                        }
+                        slotProps={{ inputLabel: { shrink: true } }}
+                    />
+                    <TextField
+                        label="End"
+                        type="datetime-local"
+                        size="small"
+                        sx={{ width: 200 }}
+                        value={msToLocalInput(backtestConfig.endTime)}
+                        onChange={(e) =>
+                            updateBacktest({
+                                endTime: localInputToMs(e.target.value),
+                            })
+                        }
+                        slotProps={{ inputLabel: { shrink: true } }}
+                    />
+                </>
+            )}
 
             <FormControlLabel
                 control={
