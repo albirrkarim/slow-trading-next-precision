@@ -32,8 +32,12 @@ export const FEATURE_GATE_BOUNDS: Required<FeatureGateBounds> = {
   btcMaxPriceNormalized: 0.8,
   btcMinPriceNormalized: 0.3,
   historyWindowDays: 20,
+  // coin
   maxPriceNormalized: 0.8,
   minPriceNormalized: 0.3,
+
+  maxPriceNormalizedExtreme: 1.3,
+  minPriceNormalizedExtreme: 0,
 };
 
 /**
@@ -140,13 +144,34 @@ function gateReason(
     bounds.maxPriceNormalized,
     cutoff,
   );
-  
-  if (coinViolation&& Math.abs(signal?.lvl ?? 0) < 3) {
-    return (
-      `priceNormalized ${coinViolation.p.toFixed(3)}` +
-      `${formatDayTag(coinViolation.t)} is outside the gate zone ` +
-      `${bounds.minPriceNormalized}–${bounds.maxPriceNormalized}`
-    );
+
+  if (coinViolation) {
+    if (Math.abs(signal?.lvl ?? 0) < 3) {
+      return (
+        `priceNormalized ${coinViolation.p.toFixed(3)}` +
+        `${formatDayTag(coinViolation.t)} is outside the gate zone ` +
+        `${bounds.minPriceNormalized}–${bounds.maxPriceNormalized}`
+      );
+    } else {
+
+      const cutoffExtreme =
+        context.state.currentTime - 1 * DAY_MS;
+
+      const coinViolationExtreme = outsideBounds(
+        context.state.features?.coins[symbol.toUpperCase()],
+        bounds.minPriceNormalizedExtreme,
+        bounds.maxPriceNormalizedExtreme,
+        cutoffExtreme,
+      );
+
+      if (coinViolationExtreme) {
+        return (
+          `priceNormalized ${coinViolationExtreme.p.toFixed(3)}` +
+          `${formatDayTag(coinViolationExtreme.t)} is outside the extreme gate zone ` +
+          `${bounds.minPriceNormalizedExtreme}–${bounds.maxPriceNormalizedExtreme}`
+        );
+      }
+    }
   }
 
   return undefined;

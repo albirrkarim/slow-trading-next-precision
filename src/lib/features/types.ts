@@ -66,8 +66,7 @@ export interface RuntimeFeatures {
  * values never block — absence is "no opinion".
  */
 export interface FeatureGateBounds {
-  minPriceNormalized?: number;
-  maxPriceNormalized?: number;
+
   btcMinPriceNormalized?: number;
   btcMaxPriceNormalized?: number;
   /**
@@ -77,4 +76,12 @@ export interface FeatureGateBounds {
    * newer than `now - historyWindowDays` count as violations.
    */
   historyWindowDays?: number;
+
+
+  minPriceNormalized?: number;
+  maxPriceNormalized?: number;
+
+
+  minPriceNormalizedExtreme?: number;
+  maxPriceNormalizedExtreme?: number;
 }
