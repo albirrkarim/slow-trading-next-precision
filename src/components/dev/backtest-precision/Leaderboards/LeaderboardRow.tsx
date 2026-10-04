@@ -20,7 +20,7 @@ import type { BacktestConfig } from "../types";
 
 import type { HeaderGroup } from "./columns";
 import { formatCell, formatCoinSymbols, INVERT_FIELDS, TEXT_FIELDS } from "./fields";
-import { formatMinEquity, formatNumber, formatTime, getGradientColor } from "./format";
+import { formatMinEquity, formatNumber, formatRangeWindow, formatTime, getGradientColor } from "./format";
 
 export function LeaderboardRow(props: {
     columnRanges: Map<string, { min: number; max: number }>;
@@ -65,6 +65,7 @@ export function LeaderboardRow(props: {
             (entryRow.backtestConfig as BacktestConfig)?.settings?.management
                 ?.symbols,
         );
+        const rangeWindow = formatRangeWindow(entryRow.backtestConfig);
         return (
             <TableCell key={fieldId} sx={{ backgroundColor: background }}>
                 {fieldId === "profileScore"
@@ -88,8 +89,24 @@ export function LeaderboardRow(props: {
                       )
                     : fieldId === "t"
                       ? formatTime(entryRow.t)
-                      : TEXT_FIELDS.get(fieldId)?.(value) ??
-                        formatCell(fieldId, value)}
+                      : fieldId === "backtestConfig.range"
+                        ? (
+                            <Box>
+                                {TEXT_FIELDS.get(fieldId)?.(value) ??
+                                    formatCell(fieldId, value)}
+                                {rangeWindow && (
+                                    <Typography
+                                        color="text.secondary"
+                                        component="div"
+                                        variant="caption"
+                                    >
+                                        {rangeWindow}
+                                    </Typography>
+                                )}
+                            </Box>
+                        )
+                        : TEXT_FIELDS.get(fieldId)?.(value) ??
+                          formatCell(fieldId, value)}
             </TableCell>
         );
     };

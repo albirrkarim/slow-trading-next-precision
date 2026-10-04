@@ -66,6 +66,36 @@ export function formatTime(t?: number) {
     return `${day} ${month}${yearSuffix} ${hour}:${minute}`;
 }
 
+const JAKARTA_DATE_FORMATTER = new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    timeZone: "Asia/Jakarta",
+    year: "2-digit",
+});
+
+/**
+ * Resolved window of a saved config — "01 Jan 24 → 04 Dec 24" (WIB dates)
+ * when explicit startTime/endTime are persisted, else undefined. Explicit
+ * bounds override the named `range`, so the window is shown under any label.
+ */
+export function formatRangeWindow(config: unknown): string | undefined {
+    const c = config as
+        | { endTime?: number; startTime?: number }
+        | undefined;
+    if (
+        typeof c?.startTime !== "number" ||
+        typeof c?.endTime !== "number" ||
+        !Number.isFinite(c.startTime) ||
+        !Number.isFinite(c.endTime) ||
+        c.endTime <= c.startTime
+    ) {
+        return undefined;
+    }
+    const start = JAKARTA_DATE_FORMATTER.format(new Date(c.startTime));
+    const end = JAKARTA_DATE_FORMATTER.format(new Date(c.endTime));
+    return `${start} → ${end}`;
+}
+
 /** Min-equity cell: "[name $x] + [name $y] = $total" over enabled accounts. */
 export function formatMinEquity(
     entry: Pick<BacktestLeaderboardEntry, "backtestConfig">,
