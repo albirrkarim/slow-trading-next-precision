@@ -16,95 +16,18 @@ import {
   Typography,
 } from "@mui/material";
 
+import {
+  filterBacktestTradeHistory,
+  readStoredFilters,
+  TRADE_METRICS,
+  TRADE_OPERATORS,
+  writeStoredFilters,
+} from "./trade-filters";
+import type {
+  BacktestTradeMetric,
+  BacktestTradeOperator,
+} from "./trade-filters";
 import type { LazyArtifact } from "./use-backtest-artifacts";
-
-const FILTER_STORAGE_KEY = "precision-backtest-trade-history-filters";
-
-interface StoredTradeFilters {
-  account?: string;
-  exitLevel?: string;
-  from?: string;
-  to?: string;
-}
-
-/** Reads the last used filter values; `{}` when storage is unavailable. */
-function readStoredFilters(): StoredTradeFilters {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = window.localStorage.getItem(FILTER_STORAGE_KEY);
-    const parsed: unknown = raw ? JSON.parse(raw) : undefined;
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-      ? (parsed as StoredTradeFilters)
-      : {};
-  } catch {
-    // Local storage can be unavailable in private or restricted contexts.
-    return {};
-  }
-}
-
-/** Persists the current filter values; removes the key once all are empty. */
-function writeStoredFilters(filters: StoredTradeFilters): void {
-  if (typeof window === "undefined") return;
-  try {
-    if (filters.account || filters.exitLevel || filters.from || filters.to) {
-      window.localStorage.setItem(
-        FILTER_STORAGE_KEY,
-        JSON.stringify(filters),
-      );
-    } else {
-      window.localStorage.removeItem(FILTER_STORAGE_KEY);
-    }
-  } catch {
-    // Local storage can be unavailable in private or restricted contexts.
-  }
-}
-
-export interface BacktestTradeFilters {
-  /** Account slug; undefined matches every account. */
-  account?: string;
-  /**
-   * Exclusive exit-level floor on `Math.abs(closed.vPoint.lvl)` — `3` keeps
-   * trades that exited at level 4 or deeper on either side. Trades without
-   * an exit vPoint never match a set bound.
-   */
-  exitLevelGt?: number;
-  /** Inclusive entry-time lower bound; undefined matches from the start. */
-  fromMs?: number;
-  /** Inclusive entry-time upper bound; undefined matches to the end. */
-  toMs?: number;
-}
-
-/**
- * Filters backtest trades by account slug, entry-time bounds, and exit
- * vPoint level. All set filters apply with AND semantics; unset filters
- * match everything.
- */
-export function filterBacktestTradeHistory<
-  T extends {
-    account: string;
-    closed?: { vPoint?: { lvl: number } };
-    opened: { t: number };
-  },
->(history: T[], filters: BacktestTradeFilters): T[] {
-  const { account, exitLevelGt, fromMs, toMs } = filters;
-  if (
-    !account &&
-    exitLevelGt === undefined &&
-    fromMs === undefined &&
-    toMs === undefined
-  ) {
-    return history;
-  }
-  return history.filter(
-    (trade) =>
-      (!account || trade.account === account) &&
-      (fromMs === undefined || trade.opened.t >= fromMs) &&
-      (toMs === undefined || trade.opened.t <= toMs) &&
-      (exitLevelGt === undefined ||
-        (trade.closed?.vPoint?.lvl !== undefined &&
-          Math.abs(trade.closed.vPoint.lvl) > exitLevelGt)),
-  );
-}
 
 export default function BacktestTradeHistory({
   accounts,
@@ -174,8 +97,9 @@ function TradeHistoryBody({
     void ensure();
   }, [ensure]);
 
-  // Trade filters AND-combined: account slug, entry-date bounds, exit level.
-  // Values persist in localStorage so collapse/unmount and reloads keep them.
+  // Trade filters AND-combined: account slug, entry-date bounds, and one
+  // composable `metric operator value` condition. Values persist in
+  // localStorage so collapse/unmount and reloads keep them.
   const [storedFilters] = useState(readStoredFilters);
   const [filterAccount, setFilterAccount] = useState(
     storedFilters.account ?? "",
@@ -184,11 +108,22 @@ function TradeHistoryBody({
     storedFilters.from ?? "",
   );
   const [filterToDate, setFilterToDate] = useState(storedFilters.to ?? "");
-  const [filterExitLevel, setFilterExitLevel] = useState(
-    storedFilters.exitLevel ?? "",
+  const [filterMetric, setFilterMetric] = useState<BacktestTradeMetric>(
+    storedFilters.metric &&
+      storedFilters.metric in TRADE_METRICS
+      ? (storedFilters.metric as BacktestTradeMetric)
+      : "entryLevel",
   );
+  const [filterOperator, setFilterOperator] =
+    useState<BacktestTradeOperator>(
+      storedFilters.operator &&
+        storedFilters.operator in TRADE_OPERATORS
+        ? (storedFilters.operator as BacktestTradeOperator)
+        : "lt",
+    );
+  const [filterValue, setFilterValue] = useState(storedFilters.value ?? "");
   const hasFilters = Boolean(
-    filterAccount || filterFromDate || filterToDate || filterExitLevel,
+    filterAccount || filterFromDate || filterToDate || filterValue,
   );
   const effectiveFilterAccount = (accounts ?? []).some(
     (account) => account.slug === filterAccount,
@@ -201,34 +136,51 @@ function TradeHistoryBody({
   const filterToMs = filterToDate
     ? new Date(`${filterToDate}T23:59:59.999`).getTime()
     : undefined;
-  const filterExitLevelN =
-    filterExitLevel === "" || !Number.isFinite(Number(filterExitLevel))
+  const filterValueN =
+    filterValue === "" || !Number.isFinite(Number(filterValue))
       ? undefined
-      : Number(filterExitLevel);
+      : Number(filterValue);
   const filteredTradeHistory = useMemo(
     () =>
       filterBacktestTradeHistory(tradeHistory, {
         account: effectiveFilterAccount || undefined,
-        exitLevelGt: filterExitLevelN,
         fromMs: filterFromMs,
+        metric: filterMetric,
+        operator: filterOperator,
         toMs: filterToMs,
+        value: filterValueN,
       }),
     [
       tradeHistory,
       effectiveFilterAccount,
-      filterExitLevelN,
+      filterMetric,
+      filterOperator,
       filterFromMs,
       filterToMs,
+      filterValueN,
     ],
   );
   useEffect(() => {
     writeStoredFilters({
       account: filterAccount,
-      exitLevel: filterExitLevel,
       from: filterFromDate,
       to: filterToDate,
+      ...(filterValue !== ""
+        ? {
+            metric: filterMetric,
+            operator: filterOperator,
+            value: filterValue,
+          }
+        : {}),
     });
-  }, [filterAccount, filterExitLevel, filterFromDate, filterToDate]);
+  }, [
+    filterAccount,
+    filterFromDate,
+    filterMetric,
+    filterOperator,
+    filterToDate,
+    filterValue,
+  ]);
 
   const tradeCountByAccount = useMemo(() => {
     const perAccount = new Map<string, number>();
@@ -304,22 +256,58 @@ function TradeHistoryBody({
               onChange={(event) => setFilterToDate(event.target.value)}
             />
             <TextField
-              label="Exit level >"
+              label="Metric"
+              select
+              size="small"
+              sx={{ minWidth: { xs: "100%", sm: 130 } }}
+              value={filterMetric}
+              onChange={(event) =>
+                setFilterMetric(event.target.value as BacktestTradeMetric)
+              }
+            >
+              {Object.entries(TRADE_METRICS).map(([key, metric]) => (
+                <MenuItem key={key} value={key}>
+                  {metric.label}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              label="Op"
+              select
+              size="small"
+              sx={{ width: { xs: "100%", sm: 80 } }}
+              value={filterOperator}
+              onChange={(event) =>
+                setFilterOperator(
+                  event.target.value as BacktestTradeOperator,
+                )
+              }
+            >
+              {Object.entries(TRADE_OPERATORS).map(([key, operator]) => (
+                <MenuItem key={key} value={key}>
+                  {operator.label}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              label="Value"
               size="small"
               slotProps={{ inputLabel: { shrink: true } }}
-              sx={{ width: { xs: "100%", sm: 110 } }}
+              sx={{ width: { xs: "100%", sm: 100 } }}
               type="number"
-              value={filterExitLevel}
-              onChange={(event) => setFilterExitLevel(event.target.value)}
+              value={filterValue}
+              onChange={(event) => setFilterValue(event.target.value)}
             />
             {hasFilters && (
               <Button
                 size="small"
                 onClick={() => {
                   setFilterAccount("");
-                  setFilterExitLevel("");
                   setFilterFromDate("");
                   setFilterToDate("");
+                  setFilterMetric("entryLevel");
+                  setFilterOperator("lt");
+                  setFilterValue("");
                 }}
               >
                 Clear
