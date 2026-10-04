@@ -15,6 +15,7 @@ import { Box, Grid } from "@mui/material";
 import type { ConfigDraft } from "@/components/settings/settings-types";
 
 import BacktestTradeHistory from "./BacktestTradeHistory";
+import BtcCorrelation from "./BtcCorrelation";
 import PriceNormalized from "./PriceNormalized";
 import BacktestResultSummary from "./ResultSummary";
 import TradesOverTime from "./TradesOverTime";
@@ -74,6 +75,11 @@ export default function VPointsResult({
       <PriceNormalized
         datasetEndTimeMs={datasetEndTimeMs}
         datasetStartTimeMs={datasetStartTimeMs}
+        features={artifacts.features}
+        symbolOrder={Object.keys(vpoints.data ?? {})}
+      />
+      <BtcCorrelation
+        datasetEndTimeMs={datasetEndTimeMs}
         features={artifacts.features}
         symbolOrder={Object.keys(vpoints.data ?? {})}
       />
