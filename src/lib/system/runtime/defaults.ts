@@ -55,9 +55,6 @@ function createTrading(): RuntimeAccountTradingConfig {
     useStopLossPlus: false,
     stopLossPlusTrigger: 1,
     lateEntryVPointPriceDriftEnabled: true,
-    formingVPointEntryEnabled: false,
-    formingVPointEntryFavorablePct: 3,
-    formingVPointEntryAdversePct: 2,
     entrySpareBufferEnabled: true,
     adaptiveAveraging: {
       enabled: true,

@@ -127,11 +127,6 @@ function calculateEntryFundingPlan(params: {
   activePositions: Array<Pick<Position, "strategy">>;
   config: RuntimeAccountTradingConfig;
   direction: "LONG" | "SHORT";
-  /**
-   * Forming-vPoint entries take the watch-off path — no reserve budget —
-   * as if `enableWatchLogic` were false for this entry.
-   */
-  forming?: boolean;
   entryLevel: number;
   feeRate: number;
   leverage: number;
@@ -152,8 +147,7 @@ function calculateEntryFundingPlan(params: {
     0,
     params.spendableQuoteAsset - params.reservedQuoteAsset,
   );
-  const watchEnabled =
-    params.config.enableWatchLogic !== false && !params.forming;
+  const watchEnabled = params.config.enableWatchLogic !== false;
   const reserveLevels = params.config.watchReserveLevels ?? 2;
   const pctAlloc = params.config.watchReservePctAlloc ?? 2;
   const marginRate =
@@ -355,9 +349,7 @@ function planAttempt(
   // BOTH:LATE_ENTRY_VPOINT_PRICE_DRIFT_PCT — final execution check on the
   // freshest mark, after the decision-time gate in entry.findDecisions.
   // Operator-forced manual entries are exempt: the request is explicit.
-  // Forming-vPoint signals are exempt too — they drifted the favorable
-  // percent that qualified them (BOTH:FORMING_VPOINT_ENTRY).
-  if (!decision.manual && !signal.forming) {
+  if (!decision.manual) {
     const drift = lateEntryVPointDrift.evaluate(
       {
         currentPrice: mark.price,
@@ -400,7 +392,6 @@ function planAttempt(
     config,
     direction,
     entryLevel: signal.lvl ?? 0,
-    forming: signal.forming,
     feeRate,
     leverage,
     requestedMarginUsdt,
@@ -459,7 +450,7 @@ function planAttempt(
       preferredQuantity: fundingPlan.availableNotionalUsdt / mark.price,
       signal,
       watch: {
-        enabled: config.enableWatchLogic !== false && !signal.forming,
+        enabled: config.enableWatchLogic !== false,
         maxNextLevels: config.watchMaxNextAveragingLevels ?? reserveLevels,
         pctAlloc: config.watchReservePctAlloc ?? 2,
         reserveLevels,
@@ -551,9 +542,6 @@ function applyFill(
     strategy: {
       entry: {
         engine: plan.config.decisionEngineVersion,
-        ...(plan.signal.forming === true
-          ? { label: "FORMING_VPOINT" }
-          : {}),
       },
       averaging,
     },

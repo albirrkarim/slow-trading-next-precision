@@ -195,32 +195,6 @@ export interface RuntimeAccountTradingConfig {
    * auto-derived limit (0.5% below volatility threshold 5, else 1%).
    */
   lateEntryVPointPriceDriftPct?: number;
-  /**
-   * Replaces this account's normal entries on freshly emitted vPoints:
-   * entry fires only when the latest point's running excursions qualify a
-   * forming direction. Positions opened this way get no averaging and no
-   * reserve, and the late-entry drift guard is skipped.
-   */
-  formingVPointEntryEnabled?: boolean;
-  /**
-   * Minimum favorable excursion percent the latest vPoint must reach for a
-   * forming entry (down for SHORT, up for LONG). Non-positive values
-   * normalize to the default 3.
-   */
-  formingVPointEntryFavorablePct?: number;
-  /**
-   * Optional inclusive upper cap on the favorable excursion for a forming
-   * entry. Unset or non-positive means no cap; a point whose favorable
-   * excursion already exceeds it can no longer fire because excursions are
-   * running maxima.
-   */
-  formingVPointEntryMaxFavorablePct?: number;
-  /**
-   * Maximum adverse excursion percent — the opposite excursion must stay
-   * strictly below for a forming entry. Negative values normalize to the
-   * default 2.
-   */
-  formingVPointEntryAdversePct?: number;
   /** User-authored reminder describing this account's trading strategy. */
   notes: string;
 }

@@ -115,9 +115,7 @@ export interface VolatilityPointRuntime {
    * `maxUpPct >= VOLATILITY_THRESHOLD` means the detector's UP sequence is
    * active again — a new TOP is forming but not yet emitted. The entry
    * guard already treats `>= VOLATILITY_THRESHOLD * 0.9` as stale since
-   * excursions only grow, so near-threshold points block entries —
-   * except forming-vPoint signals, which trade exactly that excursion
-   * (BOTH:FORMING_VPOINT_ENTRY).
+   * excursions only grow, so near-threshold points block entries.
    */
   maxUpPct?: number;
 
@@ -127,9 +125,7 @@ export interface VolatilityPointRuntime {
    * `maxDownPct >= VOLATILITY_THRESHOLD` means the detector's DOWN sequence
    * is active — a new BOTTOM is forming but not yet emitted. The entry
    * guard already treats `>= VOLATILITY_THRESHOLD * 0.9` as stale since
-   * excursions only grow, so near-threshold points block entries —
-   * except forming-vPoint signals, which trade exactly that excursion
-   * (BOTH:FORMING_VPOINT_ENTRY).
+   * excursions only grow, so near-threshold points block entries.
    */
   maxDownPct?: number;
 

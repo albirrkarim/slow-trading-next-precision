@@ -12,7 +12,6 @@ import SettingsInfoField from "../../Components/SettingsInfoField";
 import type { Dispatch, SetStateAction } from "react";
 import type { RuntimeAccountTradingConfig } from "@/lib/system/runtime";
 
-import { FormingVPointEntrySection } from "./FormingVPointEntrySection";
 import { ENTRY_LEGS_OPTIONS } from "./options";
 
 export function EntrySection({
@@ -87,11 +86,6 @@ export function EntrySection({
                         info="Optional override of the late-entry price drift cap in percent. Empty keeps the automatic limit (0.5% when the volatility threshold is below 5%, otherwise 1%); 0 blocks any profitable drift. Applies to automatic entries only and is checked when a signal is selected and again before execution."
                     />
                 </Grid>
-
-                <FormingVPointEntrySection
-                    tradingConfig={tradingConfig}
-                    setTradingConfig={setTradingConfig}
-                />
 
                 <Grid size={{ xs: 12 }}>
                     <Typography
