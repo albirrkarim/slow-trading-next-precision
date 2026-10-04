@@ -1,4 +1,7 @@
-import type { Position } from "@/lib/system/trading";
+import type {
+  Position,
+  PositionReserveStep,
+} from "@/lib/system/trading";
 
 import { vPointSide } from "./items";
 import type { PositionLevelSequenceItem } from "./types";
@@ -55,6 +58,31 @@ export function buildHistoryPositionLevelSequence(
         .filter((execution) => Number.isFinite(execution.level))
         .map((execution) => [execution.level, execution]),
     );
+    // Averaging events claim points one-to-one: same-level points repeat in
+    // a path (e.g. lvl +1 before and after a lvl-0 side switch), so an
+    // attempt or fill tags only the first unclaimed point at its level —
+    // attempts always precede their level's execution.
+    const eventsByLevel = new Map<
+      number,
+      Array<
+        | { kind: "attempt"; step: PositionReserveStep }
+        | { kind: "execution"; execution: (typeof executions)[number] }
+      >
+    >();
+    for (const step of steps) {
+      if (step.attemptMessage === undefined || !Number.isFinite(step.level)) {
+        continue;
+      }
+      const queue = eventsByLevel.get(step.level) ?? [];
+      queue.push({ kind: "attempt", step });
+      eventsByLevel.set(step.level, queue);
+    }
+    for (const execution of executions) {
+      if (!Number.isFinite(execution.level)) continue;
+      const queue = eventsByLevel.get(execution.level) ?? [];
+      queue.push({ kind: "execution", execution });
+      eventsByLevel.set(execution.level, queue);
+    }
     const items: PositionLevelSequenceItem[] = [
       {
         coveredMarginUsdt: 0,
@@ -67,7 +95,11 @@ export function buildHistoryPositionLevelSequence(
     ];
 
     for (const point of intermediatePoints) {
-      const execution = executionByLevel.get(point.lvl);
+      const event = eventsByLevel.get(point.lvl)?.shift();
+      const execution =
+        event?.kind === "execution" ? event.execution : undefined;
+      const attemptStep =
+        event?.kind === "attempt" ? event.step : undefined;
       const step = stepByLevel.get(point.lvl);
       const isAveraged = execution !== undefined;
       const isAdverseLevel =
@@ -76,8 +108,8 @@ export function buildHistoryPositionLevelSequence(
 
       items.push({
         adaptiveMultiplier: execution?.adaptiveMultiplier,
-        attemptMessage: isAveraged ? undefined : step?.attemptMessage,
-        attemptedAt: isAveraged ? undefined : step?.attemptedAt,
+        attemptMessage: attemptStep?.attemptMessage,
+        attemptedAt: attemptStep?.attemptedAt,
         averagingMultiplier: execution?.allocationPct,
         coveredMarginUsdt: 0,
         isAveraged,

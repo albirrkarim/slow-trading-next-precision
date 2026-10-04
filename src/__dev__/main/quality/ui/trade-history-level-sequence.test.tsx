@@ -350,4 +350,75 @@ describe("trade-history level sequence", () => {
         .map((chip) => chip.textContent),
     ).toEqual(["L0 T", "L1 NOT AVG", "L0 B", "L1 EXIT"]);
   });
+
+  it("tags only the first same-level path point with one averaging execution", () => {
+    const position = createTestPosition({
+      averaging: {
+        entryLevel: 0,
+        executions: [
+          {
+            allocationPct: 2,
+            level: 1,
+            marginUsdt: 20,
+            price: 0.57,
+            t: 200,
+          },
+        ],
+        lastHandledLevel: 1,
+        reserveBaseMarginUsdt: 10,
+        reservedRemainingMarginUsdt: 0,
+        steps: [
+          {
+            allocationPct: 2,
+            level: 1,
+            marginUsdt: 20,
+            status: "USED",
+          },
+        ],
+      },
+      closed: {
+        feeUsdt: 0,
+        price: 0.6,
+        reason: "STOP_LOSS",
+        t: 300,
+        vPoint: { id: "T_EXIT", lvl: 2 },
+      },
+      direction: "SHORT",
+      entryId: "T_ENTRY",
+      entryLevel: 0,
+      symbol: "XRP",
+      vPoints: [
+        { id: "T_AVERAGED", lvl: 1 },
+        { id: "B_TARGET", lvl: 0 },
+        { id: "T_AFTER_TARGET", lvl: 1 },
+      ],
+    });
+
+    render(
+      <SnackbarProvider>
+        <TradesTableSection
+          exchangeType="binance"
+          history={[{ ...position, mode: "sandbox" }]}
+          mode="sandbox"
+          onHistoryChange={vi.fn()}
+          readOnly
+        />
+      </SnackbarProvider>,
+    );
+
+    // Regression: level-keyed matching tagged every lvl-1 point with the
+    // single fill — the post-target T point must stay NOT AVG.
+    const sequence = screen.getByLabelText("Position level sequence");
+    expect(
+      within(sequence)
+        .getAllByText(/^L/)
+        .map((chip) => chip.textContent),
+    ).toEqual([
+      "L0 T",
+      "L1 AVG 2x",
+      "L0 B",
+      "L1 NOT AVG",
+      "L2 EXIT",
+    ]);
+  });
 });
