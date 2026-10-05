@@ -60,17 +60,24 @@ function stableStringify(value: unknown): string {
     .join("")}}`;
 }
 
-/** Short deterministic id — same config + cache key overwrites its entry. */
+/**
+ * Short deterministic id. Identity is the run itself: when a `cacheKey`
+ * exists it alone is hashed — config-only knobs (like
+ * `upToDateDecisionBacktest`) may differ between saves of the same cached
+ * result without minting a duplicate. Saves with no cacheKey fall back to
+ * hashing the config.
+ */
 function entryId(input: {
   backtestConfig: unknown;
   cacheKey?: string;
 }): string {
   return createHash("sha256")
     .update(
-      stableStringify({
-        backtestConfig: input.backtestConfig,
-        cacheKey: input.cacheKey,
-      }),
+      stableStringify(
+        input.cacheKey
+          ? { cacheKey: input.cacheKey }
+          : { backtestConfig: input.backtestConfig },
+      ),
     )
     .digest("hex")
     .slice(0, 12);
@@ -116,10 +123,27 @@ async function save(input: {
   label?: string;
   leaderboard: BacktestLeaderboardMetrics;
 }): Promise<BacktestLeaderboardEntry> {
-  const id = entryId({
+  let id = entryId({
     backtestConfig: input.backtestConfig,
     cacheKey: input.cacheKey,
   });
+  let favorite: boolean | undefined;
+  if (input.cacheKey) {
+    // Merge earlier saves of this run (hashed under the old
+    // config+cacheKey scheme) into one entry — keep the favorited id, else
+    // the newest, and drop the rest.
+    const sameRun = (await list()).filter(
+      (entry) => entry.cacheKey === input.cacheKey,
+    );
+    const keep = sameRun.find((entry) => entry.favorite) ?? sameRun[0];
+    if (keep) {
+      id = keep.id;
+      favorite = keep.favorite;
+    }
+    for (const entry of sameRun) {
+      if (entry.id !== id) await remove(entry.id);
+    }
+  }
   const entry: BacktestLeaderboardEntry = {
     id,
     t: Date.now(),
@@ -127,6 +151,7 @@ async function save(input: {
     cacheKey: input.cacheKey,
     label: input.label,
     leaderboard: input.leaderboard,
+    ...(favorite ? { favorite } : {}),
   };
   await jsonFile.write.atomic(
     path.join(resultsDir(), `${id}.json`),

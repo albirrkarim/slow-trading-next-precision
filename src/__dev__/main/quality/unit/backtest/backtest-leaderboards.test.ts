@@ -288,6 +288,66 @@ describe("backtest leaderboards store", () => {
         expect(await leaderboardsStore.remove(entry.id)).toBe(false);
     });
 
+    it("overwrites a same-run save even when config-only fields differ", async () => {
+        const metrics = computeLeaderboardMetrics({
+            balanceSnapshots: { acc1: [snapshot(T0, 1000), snapshot(T0 + DAY, 1010)] },
+            positions: [],
+        });
+        const cacheKey = "f".repeat(64);
+        const first = await leaderboardsStore.save({
+            backtestConfig: { range: "6month", settings: { marker: 3, flag: false } },
+            cacheKey,
+            leaderboard: metrics,
+        });
+        // Same cached run, config knob flipped → same entry id, label updated.
+        const second = await leaderboardsStore.save({
+            backtestConfig: { range: "6month", settings: { marker: 3, flag: true } },
+            cacheKey,
+            label: "renamed",
+            leaderboard: metrics,
+        });
+        expect(second.id).toBe(first.id);
+        expect(
+            (await leaderboardsStore.list()).filter((e) => e.id === first.id),
+        ).toHaveLength(1);
+        expect(second.label).toBe("renamed");
+        await leaderboardsStore.remove(first.id);
+    });
+
+    it("merges legacy duplicates saved under the same cacheKey", async () => {
+        const metrics = computeLeaderboardMetrics({
+            balanceSnapshots: { acc1: [snapshot(T0, 1000), snapshot(T0 + DAY, 1010)] },
+            positions: [],
+        });
+        const cacheKey = "e".repeat(64);
+        // Two entries minted under the old config-sensitive hash.
+        const a = await leaderboardsStore.save({
+            backtestConfig: { range: "6month", settings: { flag: false } },
+            cacheKey,
+            leaderboard: metrics,
+        });
+        const legacy = { ...a, id: "aaaa11112222" };
+        await leaderboardsStore.save({
+            backtestConfig: { range: "6month", settings: { flag: true } },
+            cacheKey,
+            leaderboard: metrics,
+        });
+        // Forge a second id for the same run, then save again → merged.
+        const dir = leaderboardsStore.resultsDir();
+        await fs.outputJson(path.join(dir, `${legacy.id}.json`), legacy);
+        const merged = await leaderboardsStore.save({
+            backtestConfig: { range: "6month", settings: { flag: true } },
+            cacheKey,
+            leaderboard: metrics,
+        });
+        const sameRun = (await leaderboardsStore.list()).filter(
+            (e) => e.cacheKey === cacheKey,
+        );
+        expect(sameRun).toHaveLength(1);
+        expect(sameRun[0].id).toBe(merged.id);
+        await leaderboardsStore.remove(merged.id);
+    });
+
     it("toggles the favorite flag on the stored entry file", async () => {
         const metrics = computeLeaderboardMetrics({
             balanceSnapshots: { acc1: [snapshot(T0, 1000), snapshot(T0 + DAY, 1010)] },
