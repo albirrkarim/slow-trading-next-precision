@@ -8,7 +8,7 @@ import {
   toDailyPnlCalendarTrade,
 } from "@/components/reports/DailyPnlCalendarDialog";
 import { selectEnabledAccountCalendarInputs } from "@/components/dashboard/positions/DailyPnlCalendarWrapper";
-import { createTestPosition } from "../fixtures/position";
+import { createTestPosition } from "../../fixtures/position";
 
 describe("daily pnl calendar", () => {
   it("uses history and starting balances from enabled accounts only", () => {

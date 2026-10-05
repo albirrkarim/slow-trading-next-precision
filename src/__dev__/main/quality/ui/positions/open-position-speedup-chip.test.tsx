@@ -6,7 +6,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import OpenPositionItem from "@/components/dashboard/positions/OpenPositionItem";
-import { createTestPosition } from "../fixtures/position";
+import { createTestPosition } from "../../fixtures/position";
 
 vi.mock("@/components/ui/HeaderMetrics", () => ({
   default: ({ title }: { title: React.ReactNode }) => <div>{title}</div>,

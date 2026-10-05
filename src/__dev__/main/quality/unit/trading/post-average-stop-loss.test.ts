@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createTestPosition } from "../fixtures/position";
+import { createTestPosition } from "../../fixtures/position";
 import postAverageStopLoss from "@/lib/system/trading/post-average-stop-loss";
 import type { VolatilityPoint } from "@/lib/system/types";
 

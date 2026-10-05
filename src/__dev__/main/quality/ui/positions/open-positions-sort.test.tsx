@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import OpenPositions from "@/components/dashboard/positions/OpenPositions";
 import openPositionPnlContribution from "@/components/dashboard/positions/open-position-pnl-contribution";
-import { createTestPosition } from "../fixtures/position";
+import { createTestPosition } from "../../fixtures/position";
 
 vi.mock("@/components/dashboard/positions/OpenPositionItem", () => ({
   default: ({

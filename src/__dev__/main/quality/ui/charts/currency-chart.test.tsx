@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import CurrencyChart from "@/components/charts/CurrencyChart";
 import { TradingMode } from "@/lib/exchange";
-import { createTestPosition } from "../fixtures/position";
+import { createTestPosition } from "../../fixtures/position";
 
 const chartMocks = vi.hoisted(() => {
   const candlestickSeries = {

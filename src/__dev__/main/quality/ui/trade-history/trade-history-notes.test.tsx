@@ -9,7 +9,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import TradeHistoryNotesField from "@/components/reports/TradeHistoryNotesField";
 import { endpoints } from "@/components/endpoints";
-import { createTestPosition } from "../fixtures/position";
+import { createTestPosition } from "../../fixtures/position";
 
 vi.mock("axios");
 

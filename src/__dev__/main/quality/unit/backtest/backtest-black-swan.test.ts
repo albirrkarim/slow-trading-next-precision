@@ -62,8 +62,8 @@ import blackSwan, {
   type BlackSwanState,
 } from "@/lib/system/trading/black-swan";
 import type { Kline } from "@/lib/system/types";
-import { createTestPosition } from "../fixtures/position";
-import oct11Fixture from "../fixtures/black-swan-oct11.json";
+import { createTestPosition } from "../../fixtures/position";
+import oct11Fixture from "../../fixtures/black-swan-oct11.json";
 
 const NOW = Date.UTC(2026, 8, 3, 10, 4);
 const DATASET_START = Date.UTC(2024, 0, 1);

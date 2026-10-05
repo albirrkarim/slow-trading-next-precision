@@ -3,7 +3,7 @@ import path from "path";
 import fs from "fs-extra";
 import { afterAll, describe, expect, it } from "vitest";
 
-import { createTestPosition } from "../fixtures/position";
+import { createTestPosition } from "../../fixtures/position";
 import { computeLeaderboardMetrics } from "@/lib/dev/backtestPrecision/leaderboards/metrics";
 import leaderboardsStore from "@/lib/dev/backtestPrecision/leaderboards/store";
 import type { BacktestBalanceSnapshot } from "@/lib/dev/backtestPrecision/backtest/backtest-precision-types";

@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import MaxUpDistributionChart from "@/components/reports/MaxUpDistributionChart";
 import type { ReportRow } from "@/components/reports/types";
-import { createTestPosition } from "../fixtures/position";
+import { createTestPosition } from "../../fixtures/position";
 
 describe("Max Up distribution chart", () => {
   beforeEach(() => window.localStorage.clear());

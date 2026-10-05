@@ -5,7 +5,7 @@ import {
   normalizeMaxUpDistributionInterval,
 } from "@/components/reports/utils";
 import type { ReportRow } from "@/components/reports/types";
-import { createTestPosition } from "../fixtures/position";
+import { createTestPosition } from "../../fixtures/position";
 
 function makeHistory(maxUpValues: Array<number | undefined>) {
   return maxUpValues.map((maxUpPct, index) =>

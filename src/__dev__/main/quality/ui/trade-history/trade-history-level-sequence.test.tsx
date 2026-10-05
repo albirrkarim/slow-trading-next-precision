@@ -7,7 +7,7 @@ import { SnackbarProvider } from "notistack";
 import { describe, expect, it, vi } from "vitest";
 
 import { TradesTableSection } from "@/components/reports/TradesTableSection";
-import { createTestPosition } from "../fixtures/position";
+import { createTestPosition } from "../../fixtures/position";
 
 vi.mock(
   "@/components/charts/NetProfitPercentHistorySparkline",
