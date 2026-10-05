@@ -43,14 +43,16 @@ export function createProgressLogger(
 /**
  * Logs kline-dataset preparation: one line per symbol start, then a progress
  * line each time the prepared-day count crosses a whole percent of the total
- * symbol-days, plus a final 100% line.
+ * symbol-days, plus a per-symbol summary distinguishing cached days from days
+ * that actually hit the network.
  */
 export function createPrepareLogger(
   symbols: string[],
   startTime: number,
   endTime: number,
 ): {
-  dayPrepared: (symbol: string, dayStart: number) => void;
+  dayPrepared: (symbol: string, dayStart: number, downloaded: boolean) => void;
+  symbolDone: (symbol: string) => void;
   symbolStart: (symbol: string, index: number) => void;
 } {
   const daysPerSymbol = Math.max(
@@ -60,10 +62,16 @@ export function createPrepareLogger(
   const totalDays = Math.max(1, symbols.length * daysPerSymbol);
   let preparedDays = 0;
   let lastLoggedPercent = -1;
+  let symbolDays = 0;
+  let fetchedDays: string[] = [];
 
   return {
-    dayPrepared(symbol, dayStart) {
+    dayPrepared(symbol, dayStart, downloaded) {
       preparedDays += 1;
+      symbolDays += 1;
+      if (downloaded) {
+        fetchedDays.push(new Date(dayStart).toISOString().slice(0, 10));
+      }
       const percent = Math.min(100, (preparedDays / totalDays) * 100);
       if (preparedDays < totalDays && percent - lastLoggedPercent < 1) {
         return;
@@ -72,8 +80,21 @@ export function createPrepareLogger(
       const day = new Date(dayStart).toISOString().slice(0, 10);
       console.log(
         `[Precision Backtest] Prepare klines | ${percent.toFixed(1)}% | ` +
-          `${symbol} ${day}`,
+          `${symbol} ${day}${downloaded ? " (fetch)" : ""}`,
       );
+    },
+    symbolDone(symbol) {
+      const cached = symbolDays - fetchedDays.length;
+      const detail =
+        fetchedDays.length > 0 && fetchedDays.length <= 10
+          ? ` (${fetchedDays.join(", ")})`
+          : "";
+      console.log(
+        `[Precision Backtest] Prepare klines | ${symbol} done | ` +
+          `${cached} cached | ${fetchedDays.length} fetched${detail}`,
+      );
+      symbolDays = 0;
+      fetchedDays = [];
     },
     symbolStart(symbol, index) {
       console.log(

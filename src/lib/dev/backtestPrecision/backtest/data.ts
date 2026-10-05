@@ -49,7 +49,7 @@ async function prepareSymbolDays(
   symbol: string,
   startTime: number,
   endTime: number,
-  onDayPrepared?: (dayStart: number) => void,
+  onDayPrepared?: (dayStart: number, downloaded: boolean) => void,
 ): Promise<{ endTime: number; startTime: number }> {
   const marketType = resolveMarketType(params);
   let firstOpenTime = Number.POSITIVE_INFINITY;
@@ -98,7 +98,7 @@ async function prepareSymbolDays(
     const last = klines.at(-1);
     if (first) firstOpenTime = Math.min(firstOpenTime, first[0]);
     if (last) lastCloseTime = Math.max(lastCloseTime, last[6]);
-    onDayPrepared?.(dayStart);
+    onDayPrepared?.(dayStart, needsDownload);
   }
 
   if (!Number.isFinite(firstOpenTime) || !Number.isFinite(lastCloseTime)) {
@@ -319,8 +319,10 @@ export async function preparePrecisionDataset(
       symbol,
       preparationStartTime,
       requestedRange.endTime,
-      (dayStart) => prepareLog.dayPrepared(symbol, dayStart),
+      (dayStart, downloaded) =>
+        prepareLog.dayPrepared(symbol, dayStart, downloaded),
     );
+    prepareLog.symbolDone(symbol);
     startTime = Math.max(startTime, bounds.startTime);
     endTime = Math.min(endTime, bounds.endTime);
   }
