@@ -288,63 +288,100 @@ describe("backtest leaderboards store", () => {
         expect(await leaderboardsStore.remove(entry.id)).toBe(false);
     });
 
-    it("overwrites a same-run save even when config-only fields differ", async () => {
+    it("overwrites a same-config save across reruns and flag changes", async () => {
         const metrics = computeLeaderboardMetrics({
             balanceSnapshots: { acc1: [snapshot(T0, 1000), snapshot(T0 + DAY, 1010)] },
             positions: [],
         });
-        const cacheKey = "f".repeat(64);
         const first = await leaderboardsStore.save({
-            backtestConfig: { range: "6month", settings: { marker: 3, flag: false } },
-            cacheKey,
+            backtestConfig: {
+                range: "6month",
+                settings: { marker: 3 },
+                upToDateKlines: false,
+            },
+            cacheKey: "f".repeat(64),
             leaderboard: metrics,
         });
-        // Same cached run, config knob flipped → same entry id, label updated.
+        // Rerun: shifted window → new cacheKey; rerun flags + description
+        // changed — but the same settings resolve to the same entry id and
+        // the latest cacheKey/label/metrics overwrite in place.
         const second = await leaderboardsStore.save({
-            backtestConfig: { range: "6month", settings: { marker: 3, flag: true } },
-            cacheKey,
+            backtestConfig: {
+                description: "rerun",
+                range: "6month",
+                settings: { marker: 3 },
+                upToDateDecisionBacktest: true,
+                upToDateKlines: true,
+            },
+            cacheKey: "e".repeat(64),
             label: "renamed",
             leaderboard: metrics,
         });
         expect(second.id).toBe(first.id);
+        expect(second.cacheKey).toBe("e".repeat(64));
+        expect(second.label).toBe("renamed");
         expect(
             (await leaderboardsStore.list()).filter((e) => e.id === first.id),
         ).toHaveLength(1);
-        expect(second.label).toBe("renamed");
         await leaderboardsStore.remove(first.id);
     });
 
-    it("merges legacy duplicates saved under the same cacheKey", async () => {
+    it("keeps entries with different settings distinct", async () => {
         const metrics = computeLeaderboardMetrics({
             balanceSnapshots: { acc1: [snapshot(T0, 1000), snapshot(T0 + DAY, 1010)] },
             positions: [],
         });
-        const cacheKey = "e".repeat(64);
-        // Two entries minted under the old config-sensitive hash.
         const a = await leaderboardsStore.save({
-            backtestConfig: { range: "6month", settings: { flag: false } },
-            cacheKey,
+            backtestConfig: { range: "6month", settings: { marker: 4 } },
             leaderboard: metrics,
         });
-        const legacy = { ...a, id: "aaaa11112222" };
-        await leaderboardsStore.save({
-            backtestConfig: { range: "6month", settings: { flag: true } },
-            cacheKey,
+        const b = await leaderboardsStore.save({
+            backtestConfig: { range: "6month", settings: { marker: 5 } },
             leaderboard: metrics,
         });
-        // Forge a second id for the same run, then save again → merged.
+        expect(a.id).not.toBe(b.id);
+        await leaderboardsStore.remove(a.id);
+        await leaderboardsStore.remove(b.id);
+    });
+
+    it("merges legacy-scheme entries whose configs share one identity", async () => {
+        const metrics = computeLeaderboardMetrics({
+            balanceSnapshots: { acc1: [snapshot(T0, 1000), snapshot(T0 + DAY, 1010)] },
+            positions: [],
+        });
+        // Forge an entry minted under an old run-scoped id (cacheKey-hash or
+        // config+cacheKey-hash): same normalized config, foreign id. It also
+        // carries the removed legacy `mode` field — it must still match a
+        // save that no longer sends it.
         const dir = leaderboardsStore.resultsDir();
-        await fs.outputJson(path.join(dir, `${legacy.id}.json`), legacy);
+        await fs.outputJson(path.join(dir, "aaaa11112222.json"), {
+            id: "aaaa11112222",
+            t: 1,
+            backtestConfig: {
+                mode: "volatility_point",
+                range: "6month",
+                settings: { marker: 6 },
+                upToDateKlines: true,
+            },
+            cacheKey: "d".repeat(64),
+            label: "legacy",
+            leaderboard: metrics,
+            favorite: true,
+        });
         const merged = await leaderboardsStore.save({
-            backtestConfig: { range: "6month", settings: { flag: true } },
-            cacheKey,
+            backtestConfig: { range: "6month", settings: { marker: 6 } },
             leaderboard: metrics,
         });
-        const sameRun = (await leaderboardsStore.list()).filter(
-            (e) => e.cacheKey === cacheKey,
+        // The foreign id's file is gone; the canonical id carries the entry
+        // and inherits the favorite flag.
+        expect(
+            await fs.pathExists(path.join(dir, "aaaa11112222.json")),
+        ).toBe(false);
+        const entries = (await leaderboardsStore.list()).filter(
+            (e) => e.id === merged.id,
         );
-        expect(sameRun).toHaveLength(1);
-        expect(sameRun[0].id).toBe(merged.id);
+        expect(entries).toHaveLength(1);
+        expect(entries[0].favorite).toBe(true);
         await leaderboardsStore.remove(merged.id);
     });
 

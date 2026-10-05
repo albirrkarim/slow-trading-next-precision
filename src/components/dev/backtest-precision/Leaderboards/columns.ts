@@ -10,7 +10,7 @@ export const HEADER_GROUPS: HeaderGroup[] = [
     {
         id: "label",
         label: "Label",
-        tooltip: "Name of this saved run.\nFalls back to the backtest name or date range when no label was set.\nThe entry id is a content hash — re-saving the same config + range overwrites it.\nSource: entry.label → backtestConfig.name → range → id (storage/leaderboards/[hash].json).",
+        tooltip: "Name of this saved run.\nFalls back to the backtest name or date range when no label was set.\nThe entry id is a content hash of the config — re-saving the same config overwrites it, so reruns update metrics in place.\nSource: entry.label → backtestConfig.name → range → id (storage/leaderboards/[hash].json).",
     },
     {
         id: "t",

@@ -1,8 +1,6 @@
 import { type ConfigDraft } from "@/components/settings/settings-types";
 
 export interface BacktestConfig {
-  mode: "kline" | "volatility_point";
-
   // Data
   range: string;
   // Optional override: when provided, these will be sent to server

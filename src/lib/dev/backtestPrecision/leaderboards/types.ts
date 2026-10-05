@@ -83,7 +83,10 @@ export interface LeaderboardProfile {
 
 /** One saved leaderboard record persisted at storage/leaderboards/results/<id>.json. */
 export interface BacktestLeaderboardEntry {
-  /** Short content hash — re-saving the same config+range overwrites. */
+  /**
+   * Short content hash of the normalized BacktestConfig — re-saving the
+   * same config overwrites the entry (reruns update metrics in place).
+   */
   id: string;
   /** Creation timestamp in ms. */
   t: number;

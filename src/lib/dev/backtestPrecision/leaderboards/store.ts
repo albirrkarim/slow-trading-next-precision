@@ -61,24 +61,38 @@ function stableStringify(value: unknown): string {
 }
 
 /**
- * Short deterministic id. Identity is the run itself: when a `cacheKey`
- * exists it alone is hashed — config-only knobs (like
- * `upToDateDecisionBacktest`) may differ between saves of the same cached
- * result without minting a duplicate. Saves with no cacheKey fall back to
- * hashing the config.
+ * Config fields excluded from entry identity — rerun/freshness flags that
+ * re-execute a run without changing its settings, free-text annotations,
+ * and removed legacy fields still present on old saves. Everything else
+ * (`settings`, `range`, explicit bounds, `name`) identifies the entry.
  */
-function entryId(input: {
-  backtestConfig: unknown;
-  cacheKey?: string;
-}): string {
+const CONFIG_IDENTITY_EXCLUDE = new Set([
+  "description",
+  "mode", // legacy engine selector — removed from BacktestConfig
+  "upToDateDecisionBacktest",
+  "upToDateKlines",
+]);
+
+/** The config minus identity-excluded fields — the object the id hashes. */
+function configIdentity(config: unknown): unknown {
+  if (typeof config !== "object" || config === null || Array.isArray(config)) {
+    return config;
+  }
+  return Object.fromEntries(
+    Object.entries(config as Record<string, unknown>).filter(
+      ([key]) => !CONFIG_IDENTITY_EXCLUDE.has(key),
+    ),
+  );
+}
+
+/**
+ * Short deterministic id — the saved config is the identity, so re-saving
+ * after a rerun (new cacheKey, shifted window) or a flag toggle overwrites
+ * the entry in place instead of minting a second row.
+ */
+function entryId(backtestConfig: unknown): string {
   return createHash("sha256")
-    .update(
-      stableStringify(
-        input.cacheKey
-          ? { cacheKey: input.cacheKey }
-          : { backtestConfig: input.backtestConfig },
-      ),
-    )
+    .update(stableStringify(configIdentity(backtestConfig)))
     .digest("hex")
     .slice(0, 12);
 }
@@ -123,26 +137,16 @@ async function save(input: {
   label?: string;
   leaderboard: BacktestLeaderboardMetrics;
 }): Promise<BacktestLeaderboardEntry> {
-  let id = entryId({
-    backtestConfig: input.backtestConfig,
-    cacheKey: input.cacheKey,
-  });
-  let favorite: boolean | undefined;
-  if (input.cacheKey) {
-    // Merge earlier saves of this run (hashed under the old
-    // config+cacheKey scheme) into one entry — keep the favorited id, else
-    // the newest, and drop the rest.
-    const sameRun = (await list()).filter(
-      (entry) => entry.cacheKey === input.cacheKey,
-    );
-    const keep = sameRun.find((entry) => entry.favorite) ?? sameRun[0];
-    if (keep) {
-      id = keep.id;
-      favorite = keep.favorite;
-    }
-    for (const entry of sameRun) {
-      if (entry.id !== id) await remove(entry.id);
-    }
+  const id = entryId(input.backtestConfig);
+  // Collapse earlier saves of this same config — including entries minted
+  // under the old run-scoped hash schemes — into this canonical id. The
+  // favorite flag survives the merge.
+  const sameConfig = (await list()).filter(
+    (entry) => entryId(entry.backtestConfig) === id,
+  );
+  const favorite = sameConfig.some((entry) => entry.favorite) || undefined;
+  for (const entry of sameConfig) {
+    if (entry.id !== id) await remove(entry.id);
   }
   const entry: BacktestLeaderboardEntry = {
     id,
@@ -151,7 +155,7 @@ async function save(input: {
     cacheKey: input.cacheKey,
     label: input.label,
     leaderboard: input.leaderboard,
-    ...(favorite ? { favorite } : {}),
+    ...(favorite ? { favorite: true } : {}),
   };
   await jsonFile.write.atomic(
     path.join(resultsDir(), `${id}.json`),

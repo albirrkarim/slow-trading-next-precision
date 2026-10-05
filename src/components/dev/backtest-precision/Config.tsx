@@ -29,8 +29,6 @@ import backtestBlackSwanConfig from "./black-swan-config";
 import type { BacktestConfig } from "./types";
 
 export const DEFAULT_BACKTEST_CONFIG: BacktestConfig = {
-    mode: "volatility_point",
-
     // Data
     range: "1year",
     startTime: undefined,
