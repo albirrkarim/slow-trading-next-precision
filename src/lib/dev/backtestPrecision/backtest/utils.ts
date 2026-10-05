@@ -6,6 +6,7 @@ import {
 } from "@/lib/system/constants";
 import type { FetchKlines } from "@/lib/system/types";
 import vpoints from "@/lib/system/utils/vpoints";
+import { DAY_MS, getDayStart } from "../../klines";
 import type { BacktestPrecisionParams } from "../api/precision-api-types";
 import type { BacktestBalanceSnapshot } from "./backtest-precision-types";
 
@@ -36,6 +37,50 @@ export function createProgressLogger(
 
     lastDay = day;
     completed = finished;
+  };
+}
+
+/**
+ * Logs kline-dataset preparation: one line per symbol start, then a progress
+ * line each time the prepared-day count crosses a whole percent of the total
+ * symbol-days, plus a final 100% line.
+ */
+export function createPrepareLogger(
+  symbols: string[],
+  startTime: number,
+  endTime: number,
+): {
+  dayPrepared: (symbol: string, dayStart: number) => void;
+  symbolStart: (symbol: string, index: number) => void;
+} {
+  const daysPerSymbol = Math.max(
+    1,
+    Math.ceil((endTime - getDayStart(startTime)) / DAY_MS),
+  );
+  const totalDays = Math.max(1, symbols.length * daysPerSymbol);
+  let preparedDays = 0;
+  let lastLoggedPercent = -1;
+
+  return {
+    dayPrepared(symbol, dayStart) {
+      preparedDays += 1;
+      const percent = Math.min(100, (preparedDays / totalDays) * 100);
+      if (preparedDays < totalDays && percent - lastLoggedPercent < 1) {
+        return;
+      }
+      lastLoggedPercent = percent;
+      const day = new Date(dayStart).toISOString().slice(0, 10);
+      console.log(
+        `[Precision Backtest] Prepare klines | ${percent.toFixed(1)}% | ` +
+          `${symbol} ${day}`,
+      );
+    },
+    symbolStart(symbol, index) {
+      console.log(
+        `\n[Precision Backtest] Prepare klines | ${symbol} ` +
+          `(${index + 1}/${symbols.length})`,
+      );
+    },
   };
 }
 

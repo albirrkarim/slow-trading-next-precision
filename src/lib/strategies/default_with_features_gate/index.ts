@@ -36,7 +36,7 @@ export const FEATURE_GATE_BOUNDS: Required<FeatureGateBounds> = {
   maxPriceNormalized: 0.8,
   minPriceNormalized: 0.3,
 
-  maxPriceNormalizedExtreme: 1.3,
+  maxPriceNormalizedExtreme: 2,
   minPriceNormalizedExtreme: 0,
 };
 
@@ -84,26 +84,6 @@ function outsideBounds(
     if (p < min || p > max) return { p, t };
   }
   return undefined;
-}
-
-/**
- * Returns the deepest `|lvl|` the previous completed same-side run
- * reached before the candidate pivot, walking `points` backwards past the
- * current run (same `l`, ending at the candidate) and the intervening
- * opposite-side run. `|lvl|` deepens monotonically inside a run, so the
- * first same-side point found below the opposite block is the deepest.
- * Undefined when no earlier same-side run exists — "no opinion".
- */
-function prevSameSideRunDepth(
-  points: VolatilityPoint[] | undefined,
-  side: "T" | "B",
-  upto: number,
-): number | undefined {
-  if (!points) return undefined;
-  let i = upto - 1;
-  while (i >= 0 && points[i].l === side) i--;
-  while (i >= 0 && points[i].l !== side) i--;
-  return i >= 0 && points[i].l === side ? Math.abs(points[i].lvl) : undefined;
 }
 
 /**
@@ -155,7 +135,7 @@ function gateReason(
     } else {
 
       const cutoffExtreme =
-        context.state.currentTime - 1 * DAY_MS;
+        context.state.currentTime - 5 * DAY_MS;
 
       const coinViolationExtreme = outsideBounds(
         context.state.features?.coins[symbol.toUpperCase()],
@@ -164,7 +144,7 @@ function gateReason(
         cutoffExtreme,
       );
 
-      if (coinViolationExtreme) {
+      if (coinViolationExtreme && Math.abs(signal?.lvl ?? 0) < 5) {
         return (
           `priceNormalized ${coinViolationExtreme.p.toFixed(3)}` +
           `${formatDayTag(coinViolationExtreme.t)} is outside the extreme gate zone ` +

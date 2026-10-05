@@ -17,6 +17,7 @@ import {
   normalizeDatasetSymbol,
   sliceClosedKlines,
 } from "../../klines";
+import { createPrepareLogger } from "./utils";
 
 const DATASET_FOLDER = "storage/datasets/PRECISION_BACKTEST/1m";
 
@@ -48,6 +49,7 @@ async function prepareSymbolDays(
   symbol: string,
   startTime: number,
   endTime: number,
+  onDayPrepared?: (dayStart: number) => void,
 ): Promise<{ endTime: number; startTime: number }> {
   const marketType = resolveMarketType(params);
   let firstOpenTime = Number.POSITIVE_INFINITY;
@@ -96,6 +98,7 @@ async function prepareSymbolDays(
     const last = klines.at(-1);
     if (first) firstOpenTime = Math.min(firstOpenTime, first[0]);
     if (last) lastCloseTime = Math.max(lastCloseTime, last[6]);
+    onDayPrepared?.(dayStart);
   }
 
   if (!Number.isFinite(firstOpenTime) || !Number.isFinite(lastCloseTime)) {
@@ -304,12 +307,19 @@ export async function preparePrecisionDataset(
   let startTime = requestedRange.startTime;
   let endTime = requestedRange.endTime;
 
-  for (const symbol of symbols) {
+  const prepareLog = createPrepareLogger(
+    symbols,
+    preparationStartTime,
+    requestedRange.endTime,
+  );
+  for (const [index, symbol] of symbols.entries()) {
+    prepareLog.symbolStart(symbol, index);
     const bounds = await prepareSymbolDays(
       params,
       symbol,
       preparationStartTime,
       requestedRange.endTime,
+      (dayStart) => prepareLog.dayPrepared(symbol, dayStart),
     );
     startTime = Math.max(startTime, bounds.startTime);
     endTime = Math.min(endTime, bounds.endTime);
