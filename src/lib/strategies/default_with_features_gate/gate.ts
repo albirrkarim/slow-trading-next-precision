@@ -1,10 +1,16 @@
 import type { RuntimeContext } from "@/lib/precision/types";
+import { windowsMs } from "@/lib/system/constants";
 import type { VolatilityPoint } from "@/lib/system/types/market";
 import { FEATURE_GATE_BOUNDS } from "./constants";
 import {
     mapRange,
 } from "./utils";
 
+
+const recentValues = (cutoff: number, history: { p: number; t: number }[] | undefined) =>
+    (history ?? [])
+        .filter((point) => point.t >= cutoff)
+        .map((point) => point.p);
 
 
 /**
@@ -25,8 +31,19 @@ export function gateReason(
 
     const currentLevel = Math.abs(signal?.lvl ?? 0);
 
-    const historiesBTC = context.state.features?.coins["BTC"]?.priceNormalizedHistory?.map((point) => point.p) ?? [];
-    const historiesSymbol = context.state.features?.coins[symbol.toUpperCase()]?.priceNormalizedHistory?.map((point) => point.p) ?? [];
+    // Extremes judge only the freshest ~10 days of the trail — the record
+    // itself keeps the full ~20-day window for display.
+    const cutoff = context.state.currentTime - 10 * windowsMs["1d"];
+
+
+    const historiesBTC = recentValues(cutoff,
+        context.state.features?.coins["BTC"]?.priceNormalizedHistory,
+    );
+    
+    const historiesSymbol = recentValues(cutoff,
+        context.state.features?.coins[symbol.toUpperCase()]
+            ?.priceNormalizedHistory,
+    );
 
     if (historiesBTC.length < 2 || historiesSymbol.length < 2) {
         return "reject entry - no price normalized history";
@@ -51,7 +68,9 @@ export function gateReason(
         return `PriceNormalized ${min.toFixed(3)} is below the min gate zone ${bounds.minPriceNormalized.toFixed(3)} with level ${currentLevel}`;
     }
 
-
+    if (min < 0) {
+        return `PriceNormalized ${min.toFixed(3)} is negative`;
+    }
 
     return undefined;
 }
