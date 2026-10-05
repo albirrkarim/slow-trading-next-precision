@@ -31,15 +31,15 @@ export function gateReason(
 
     const currentLevel = Math.abs(signal?.lvl ?? 0);
 
-    // Extremes judge only the freshest ~10 days of the trail — the record
+    // Extremes judge only the freshest ~15 days of the trail — the record
     // itself keeps the full ~20-day window for display.
-    const cutoff = context.state.currentTime - 10 * windowsMs["1d"];
+    const cutoff = context.state.currentTime - 15 * windowsMs["1d"];
 
 
     const historiesBTC = recentValues(cutoff,
         context.state.features?.coins["BTC"]?.priceNormalizedHistory,
     );
-    
+
     const historiesSymbol = recentValues(cutoff,
         context.state.features?.coins[symbol.toUpperCase()]
             ?.priceNormalizedHistory,

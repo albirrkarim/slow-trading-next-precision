@@ -202,6 +202,7 @@ export function TradeTableRow({
             showTargetAlert={false}
           />
           <TradeFeaturePreview
+            entryTimeMs={row.opened.t}
             feature={row.strategy.entry.feature}
             symbol={row.symbol}
           />

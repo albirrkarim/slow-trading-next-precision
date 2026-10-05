@@ -3,6 +3,7 @@
 import { Box, Typography } from "@mui/material";
 import moment from "moment";
 
+import { PriceNormalizedHistorySparkline } from "@/components/charts/PriceNormalizedHistorySparkline";
 import type { CoinFeatures, RuntimeFeatures } from "@/lib/features/types";
 
 export interface FeaturePreviewRow {
@@ -88,9 +89,11 @@ function normColor(value: number): string {
  * entries or non-feature strategies).
  */
 export default function TradeFeaturePreview({
+  entryTimeMs,
   feature,
   symbol,
 }: {
+  entryTimeMs?: number;
   feature: unknown;
   symbol: string;
 }) {
@@ -120,41 +123,51 @@ export default function TradeFeaturePreview({
         return (
           <Box
             key={row.key}
-            sx={{ alignItems: "baseline", display: "flex", gap: 0.75 }}
             title={
               trail
                 ? `${row.key} priceNormalized min/max over ${trail}`
                 : `${row.key} has no recorded priceNormalized trail`
             }
           >
-            <Typography
-              color="text.secondary"
-              component="span"
-              sx={{ minWidth: 32 }}
-              variant="caption"
-            >
-              {row.key}
-            </Typography>
-            <Typography
-              color={
-                row.coin?.priceNormalized !== undefined
-                  ? normColor(row.coin.priceNormalized)
-                  : "text.secondary"
-              }
-              component="span"
-              fontWeight={600}
-              variant="caption"
-            >
-              {row.coin?.priceNormalized !== undefined
-                ? row.coin.priceNormalized.toFixed(3)
-                : "—"}
-            </Typography>
-            {bounds && (
-              <Typography color="text.secondary" component="span" variant="caption">
-                [{bounds.min.toFixed(2)}…{bounds.max.toFixed(2)}] ×
-                {bounds.samples}
+            <Box sx={{ alignItems: "baseline", display: "flex", gap: 0.75 }}>
+              <Typography
+                color="text.secondary"
+                component="span"
+                sx={{ minWidth: 32 }}
+                variant="caption"
+              >
+                {row.key}
               </Typography>
-            )}
+              <Typography
+                color={
+                  row.coin?.priceNormalized !== undefined
+                    ? normColor(row.coin.priceNormalized)
+                    : "text.secondary"
+                }
+                component="span"
+                fontWeight={600}
+                variant="caption"
+              >
+                {row.coin?.priceNormalized !== undefined
+                  ? row.coin.priceNormalized.toFixed(3)
+                  : "—"}
+              </Typography>
+              {bounds && (
+                <Typography
+                  color="text.secondary"
+                  component="span"
+                  variant="caption"
+                >
+                  [{bounds.min.toFixed(2)}…{bounds.max.toFixed(2)}] ×
+                  {bounds.samples}
+                </Typography>
+              )}
+            </Box>
+            <PriceNormalizedHistorySparkline
+              current={row.coin?.priceNormalized}
+              entryTimeMs={entryTimeMs}
+              history={row.coin?.priceNormalizedHistory}
+            />
           </Box>
         );
       })}
