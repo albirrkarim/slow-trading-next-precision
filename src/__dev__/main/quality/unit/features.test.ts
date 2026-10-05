@@ -12,9 +12,8 @@ import type {
   RuntimeContext,
   RuntimeEntryDecision,
 } from "@/lib/precision/types";
-import strategy, {
-  FEATURE_GATE_BOUNDS,
-} from "@/lib/strategies/default_with_features_gate";
+import strategy from "@/lib/strategies/default_with_features_gate";
+import { FEATURE_GATE_BOUNDS } from "@/lib/strategies/default_with_features_gate/constants";
 import defaultDecision from "@/lib/precision/defaultDecision";
 import vpoints from "@/lib/system/utils/vpoints";
 import type { Position } from "@/lib/system/trading";

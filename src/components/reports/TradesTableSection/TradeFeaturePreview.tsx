@@ -151,7 +151,8 @@ export default function TradeFeaturePreview({
             </Typography>
             {bounds && (
               <Typography color="text.secondary" component="span" variant="caption">
-                [{bounds.min.toFixed(2)}…{bounds.max.toFixed(2)}]
+                [{bounds.min.toFixed(2)}…{bounds.max.toFixed(2)}] ×
+                {bounds.samples}
               </Typography>
             )}
           </Box>

@@ -57,8 +57,8 @@ export const FEATURE_GATE_BOUNDS: Required<FeatureGateBounds> = {
   btcMaxPriceNormalized: 0.8,
   btcMinPriceNormalized: 0.3,
 
-  maxPriceNormalizedExtreme: 2,
-  minPriceNormalizedExtreme: 0,
+  maxPriceNormalizedExtreme: 1,
+  minPriceNormalizedExtreme: 0.1,
 };
 
 /**

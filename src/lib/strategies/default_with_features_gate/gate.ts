@@ -1,8 +1,11 @@
 import type { RuntimeContext } from "@/lib/precision/types";
-import { windowsMs } from "@/lib/system/constants";
 import type { VolatilityPoint } from "@/lib/system/types/market";
 import { FEATURE_GATE_BOUNDS } from "./constants";
-import { formatDayTag, outsideBounds } from "./utils";
+import {
+    mapRange,
+} from "./utils";
+
+
 
 /**
  * Returns the feature-gate refusal for one symbol at the current tick, or
@@ -14,63 +17,41 @@ import { formatDayTag, outsideBounds } from "./utils";
  * never a block.
  */
 export function gateReason(
-  context: RuntimeContext,
-  symbol: string,
-  signal?: VolatilityPoint,
+    context: RuntimeContext,
+    symbol: string,
+    signal?: VolatilityPoint,
 ): string | undefined {
-  const bounds = FEATURE_GATE_BOUNDS;
-  const cutoff =
-    context.state.currentTime - bounds.historyWindowDays * windowsMs["1d"];
+    const bounds = FEATURE_GATE_BOUNDS;
 
-  const btcViolation = outsideBounds(
-    context.state.features?.coins.BTC,
-    bounds.btcMinPriceNormalized,
-    bounds.btcMaxPriceNormalized,
-    cutoff,
-  );
-  if (btcViolation && Math.abs(signal?.lvl ?? 0) < 3) {
-    return (
-      `BTC priceNormalized ${btcViolation.p.toFixed(3)}` +
-      `${formatDayTag(btcViolation.t)} is outside the BTC gate zone ` +
-      `${bounds.btcMinPriceNormalized}–${bounds.btcMaxPriceNormalized}`
-    );
-  }
+    const currentLevel = Math.abs(signal?.lvl ?? 0);
 
-  const coinViolation = outsideBounds(
-    context.state.features?.coins[symbol.toUpperCase()],
-    bounds.minPriceNormalized,
-    bounds.maxPriceNormalized,
-    cutoff,
-  );
+    const historiesBTC = context.state.features?.coins["BTC"]?.priceNormalizedHistory?.map((point) => point.p) ?? [];
+    const historiesSymbol = context.state.features?.coins[symbol.toUpperCase()]?.priceNormalizedHistory?.map((point) => point.p) ?? [];
 
-  if (coinViolation) {
-    if (Math.abs(signal?.lvl ?? 0) < 3) {
-      return (
-        `priceNormalized ${coinViolation.p.toFixed(3)}` +
-        `${formatDayTag(coinViolation.t)} is outside the gate zone ` +
-        `${bounds.minPriceNormalized}–${bounds.maxPriceNormalized}`
-      );
-    } else {
-
-      const cutoffExtreme =
-        context.state.currentTime - 5 * windowsMs["1d"];
-
-      const coinViolationExtreme = outsideBounds(
-        context.state.features?.coins[symbol.toUpperCase()],
-        bounds.minPriceNormalizedExtreme,
-        bounds.maxPriceNormalizedExtreme,
-        cutoffExtreme,
-      );
-
-      if (coinViolationExtreme && Math.abs(signal?.lvl ?? 0) < 5) {
-        return (
-          `priceNormalized ${coinViolationExtreme.p.toFixed(3)}` +
-          `${formatDayTag(coinViolationExtreme.t)} is outside the extreme gate zone ` +
-          `${bounds.minPriceNormalizedExtreme}–${bounds.maxPriceNormalizedExtreme}`
-        );
-      }
+    if (historiesBTC.length < 2 || historiesSymbol.length < 2) {
+        return "reject entry - no price normalized history";
     }
-  }
 
-  return undefined;
+    const minBTC = Math.min(...historiesBTC);
+    const maxBTC = Math.max(...historiesBTC);
+    const minSymbol = Math.min(...historiesSymbol);
+    const maxSymbol = Math.max(...historiesSymbol);
+
+    const min = Math.min(minBTC, minSymbol);
+    const max = Math.max(maxBTC, maxSymbol);
+
+    const minLevelTop = Math.abs(mapRange(max, bounds.maxPriceNormalized, 2, 3, 6));
+    const minLevelBottom = Math.abs(mapRange(min, bounds.minPriceNormalized, -2, 3, 6));
+
+    if (max > bounds.maxPriceNormalized && currentLevel < minLevelTop) {
+        return `PriceNormalized ${max.toFixed(3)} is above the max gate zone ${bounds.maxPriceNormalized.toFixed(3)} with level ${currentLevel}`;
+    }
+
+    if (min < bounds.minPriceNormalized && currentLevel < minLevelBottom) {
+        return `PriceNormalized ${min.toFixed(3)} is below the min gate zone ${bounds.minPriceNormalized.toFixed(3)} with level ${currentLevel}`;
+    }
+
+
+
+    return undefined;
 }
