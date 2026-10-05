@@ -31,26 +31,28 @@ export function gateReason(
 
     const currentLevel = Math.abs(signal?.lvl ?? 0);
 
-    // Extremes judge only the freshest ~15 days of the trail — the record
+    // Extremes judge only the freshest ~10 days of the trail — the record
     // itself keeps the full ~20-day window for display.
-    const cutoff = context.state.currentTime - 15 * windowsMs["1d"];
+    const cutoff = context.state.currentTime - 10 * windowsMs["1d"];
 
+    const historiesBTCRaw = context.state.features?.coins["BTC"]?.priceNormalizedHistory ?? []
+    const historiesSymbolRaw = context.state.features?.coins[symbol.toUpperCase()]?.priceNormalizedHistory ?? [];
 
-    const historiesBTC = recentValues(cutoff,
-        context.state.features?.coins["BTC"]?.priceNormalizedHistory,
-    );
-
-    const historiesSymbol = recentValues(cutoff,
-        context.state.features?.coins[symbol.toUpperCase()]
-            ?.priceNormalizedHistory,
-    );
-
-    if (historiesBTC.length < 2 || historiesSymbol.length < 2) {
+    if (historiesBTCRaw.length < 2 || historiesSymbolRaw.length < 2) {
         return "reject entry - no price normalized history";
     }
 
+    const historiesBTC = recentValues(cutoff,
+        historiesBTCRaw,
+    );
+
+    const historiesSymbol = recentValues(cutoff,
+        historiesSymbolRaw,
+    );
+
     const minBTC = Math.min(...historiesBTC);
     const maxBTC = Math.max(...historiesBTC);
+
     const minSymbol = Math.min(...historiesSymbol);
     const maxSymbol = Math.max(...historiesSymbol);
 
@@ -68,8 +70,21 @@ export function gateReason(
         return `PriceNormalized ${min.toFixed(3)} is below the min gate zone ${bounds.minPriceNormalized.toFixed(3)} with level ${currentLevel}`;
     }
 
-    if (min < 0) {
-        return `PriceNormalized ${min.toFixed(3)} is negative`;
+    const arrBTC = historiesBTCRaw.map(p => p.p);
+    const arrSymbol = historiesSymbolRaw.map(p => p.p);
+
+    const minBTCRaw = Math.min(...arrBTC);
+    const maxBTCRaw = Math.max(...arrBTC);
+
+    const minSymbolRaw = Math.min(...arrSymbol);
+    const maxSymbolRaw = Math.max(...arrSymbol);
+
+    if (maxBTCRaw > 0.95 || minBTCRaw < 0) {
+        return `BTC PriceNormalized ${maxBTCRaw.toFixed(3)} is above 1.0 or below 0.0`;
+    }
+
+    if (maxSymbolRaw > 1 || minSymbolRaw < 0) {
+        return `Symbol PriceNormalized ${maxSymbolRaw.toFixed(3)} is above 1.0 or below 0.0`;
     }
 
     return undefined;
