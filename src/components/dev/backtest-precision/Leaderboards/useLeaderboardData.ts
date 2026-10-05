@@ -15,6 +15,11 @@ import {
 } from "@/lib/dev/backtestPrecision/leaderboards/leaves";
 import type { BacktestConfig } from "../types";
 
+import {
+    applyColumnVisibility,
+    readHiddenColumns,
+    writeHiddenColumns,
+} from "./column-visibility";
 import type { HeaderGroup } from "./columns";
 import { HEADER_GROUPS } from "./columns";
 import { PROFILE_STORAGE_KEY, readStoredProfileName } from "./profile-storage";
@@ -31,6 +36,14 @@ export function useLeaderboardData() {
     const [error, setError] = useState<string | null>(null);
     const [orderBy, setOrderBy] = useState("leaderboard.gainPct");
     const [order, setOrder] = useState<Order>("desc");
+    const [hiddenColumns, setHiddenColumnsState] =
+        useState<ReadonlySet<string>>(readHiddenColumns);
+
+    /** Updates the hidden leaf columns and persists them to localStorage. */
+    const setHiddenColumns = useCallback((next: Set<string>) => {
+        setHiddenColumnsState(next);
+        writeHiddenColumns(next);
+    }, []);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -150,6 +163,12 @@ export function useLeaderboardData() {
         [profile],
     );
 
+    /** Header groups filtered to the persisted visible columns. */
+    const visibleHeaderGroups = useMemo(
+        () => applyColumnVisibility(headerGroups, hiddenColumns),
+        [headerGroups, hiddenColumns],
+    );
+
     /** Leaf reader with the profile score pseudo-column overlaid. */
     const leafValue = useCallback(
         (entry: BacktestLeaderboardEntry, fieldId: string): unknown =>
@@ -223,6 +242,7 @@ export function useLeaderboardData() {
         gradientValue,
         handleSort,
         headerGroups,
+        hiddenColumns,
         leafValue,
         load,
         loading,
@@ -231,7 +251,9 @@ export function useLeaderboardData() {
         profiles,
         remove,
         selectProfile,
+        setHiddenColumns,
         sortedEntries,
         toggleFavorite,
+        visibleHeaderGroups,
     };
 }

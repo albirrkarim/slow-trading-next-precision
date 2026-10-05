@@ -90,6 +90,7 @@ function LeaderboardsContent({
         gradientValue,
         handleSort,
         headerGroups,
+        hiddenColumns,
         leafValue,
         load,
         loading,
@@ -98,8 +99,10 @@ function LeaderboardsContent({
         profiles,
         remove,
         selectProfile,
+        setHiddenColumns,
         sortedEntries,
         toggleFavorite,
+        visibleHeaderGroups,
     } = useLeaderboardData();
 
     const runEntry = (entry: BacktestLeaderboardEntry) => {
@@ -113,7 +116,10 @@ function LeaderboardsContent({
             <LeaderboardToolbar
                 activeProfileName={activeProfileName}
                 entries={entries}
+                headerGroups={headerGroups}
+                hiddenColumns={hiddenColumns}
                 loading={loading}
+                onHiddenColumnsChange={setHiddenColumns}
                 onProfilesChanged={() => void load()}
                 onRefresh={() => void load()}
                 onSelectProfile={selectProfile}
@@ -133,7 +139,7 @@ function LeaderboardsContent({
                         <Table size="small" sx={TABLE_GRID_SX}
                         >
                             <LeaderboardTableHead
-                                headerGroups={headerGroups}
+                                headerGroups={visibleHeaderGroups}
                                 onSort={handleSort}
                                 order={order}
                                 orderBy={orderBy}
@@ -144,7 +150,7 @@ function LeaderboardsContent({
                                         columnRanges={columnRanges}
                                         entry={entry}
                                         gradientValue={gradientValue}
-                                        headerGroups={headerGroups}
+                                        headerGroups={visibleHeaderGroups}
                                         key={entry.id}
                                         leafValue={leafValue}
                                         onApplyConfig={onApplyConfig}
@@ -156,7 +162,7 @@ function LeaderboardsContent({
                                 ))}
                                 {sortedEntries.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={tableColspan(headerGroups)}>
+                                        <TableCell colSpan={tableColspan(visibleHeaderGroups)}>
                                             <Typography
                                                 color="text.secondary"
                                                 sx={{ py: 3 }}

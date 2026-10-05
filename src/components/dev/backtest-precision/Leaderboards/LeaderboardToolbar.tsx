@@ -14,10 +14,16 @@ import type {
 } from "@/lib/dev/backtestPrecision/leaderboards";
 import LeaderboardProfilesManager from "../LeaderboardProfilesManager";
 
+import type { HeaderGroup } from "./columns";
+import { ColumnVisibilityButton } from "./ColumnVisibilityButton";
+
 export function LeaderboardToolbar(props: {
     activeProfileName: string;
     entries: BacktestLeaderboardEntry[];
+    headerGroups: HeaderGroup[];
+    hiddenColumns: ReadonlySet<string>;
     loading: boolean;
+    onHiddenColumnsChange: (next: Set<string>) => void;
     onProfilesChanged: () => void;
     onRefresh: () => void;
     onSelectProfile: (name: string) => void;
@@ -26,7 +32,10 @@ export function LeaderboardToolbar(props: {
     const {
         activeProfileName,
         entries,
+        headerGroups,
+        hiddenColumns,
         loading,
+        onHiddenColumnsChange,
         onProfilesChanged,
         onRefresh,
         onSelectProfile,
@@ -78,9 +87,16 @@ export function LeaderboardToolbar(props: {
                     profiles={profiles}
                 />
             </Box>
-            <Button disabled={loading} onClick={onRefresh} size="small">
-                {loading ? "Refreshing..." : "Refresh"}
-            </Button>
+            <Box sx={{ alignItems: "center", display: "flex", gap: 0.5 }}>
+                <ColumnVisibilityButton
+                    headerGroups={headerGroups}
+                    hiddenColumns={hiddenColumns}
+                    onHiddenColumnsChange={onHiddenColumnsChange}
+                />
+                <Button disabled={loading} onClick={onRefresh} size="small">
+                    {loading ? "Refreshing..." : "Refresh"}
+                </Button>
+            </Box>
         </Box>
     );
 }
