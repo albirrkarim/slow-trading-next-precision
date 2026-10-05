@@ -43,6 +43,7 @@ import {
 } from "./colors";
 import { FeatureCell, MetricTooltip, TradeAuditMessage } from "./cells";
 import TradeChartDialog from "./TradeChartDialog";
+import TradeFeaturePreview from "./TradeFeaturePreview";
 
 export function TradeTableRow({
   accountBySlug,
@@ -199,6 +200,10 @@ export function TradeTableRow({
           <PositionLevelSequence
             items={buildHistoryPositionLevelSequence(row)}
             showTargetAlert={false}
+          />
+          <TradeFeaturePreview
+            feature={row.strategy.entry.feature}
+            symbol={row.symbol}
           />
         </Box>
       </TableCell>
