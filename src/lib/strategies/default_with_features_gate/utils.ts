@@ -14,8 +14,11 @@
  * `-1` down to `-5`, landing 25% of the way from `1` up to `5`. An inverted
  * target range mirrors the input the same way.
  *
- * Values outside the source range extrapolate proportionally (no clamping —
- * `mapRange(1.3, 0.3, -2, 3, 5)` returns ≈`2.6`). A degenerate source range
+ * Values outside the source range saturate at the nearest target bound —
+ * the result is always clamped inside `[min(targetMin, targetMax),
+ * max(targetMin, targetMax)]`: `mapRange(-3, 0.3, -2, 3, 5)` returns `5`
+ * (deeper than `-2` can't demand more than the max level) and
+ * `mapRange(1.3, 0.3, -2, 3, 5)` returns `3`. A degenerate source range
  * (`sourceMin === sourceMax`) returns `targetMin`.
  */
 export function mapRange(
@@ -27,5 +30,9 @@ export function mapRange(
 ): number {
   if (sourceMax === sourceMin) return targetMin;
   const ratio = (value - sourceMin) / (sourceMax - sourceMin);
-  return targetMin + ratio * (targetMax - targetMin);
+  const mapped = targetMin + ratio * (targetMax - targetMin);
+  return Math.min(
+    Math.max(targetMin, targetMax),
+    Math.max(Math.min(targetMin, targetMax), mapped),
+  );
 }
