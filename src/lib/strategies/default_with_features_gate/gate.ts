@@ -33,12 +33,13 @@ export function gateReason(
 
     // Extremes judge only the freshest ~10 days of the trail — the record
     // itself keeps the full ~20-day window for display.
-    const cutoff = context.state.currentTime - 10 * windowsMs["1d"];
+    const cutoff = context.state.currentTime - 5 * windowsMs["1d"];
+
 
     const historiesBTCRaw = context.state.features?.coins["BTC"]?.priceNormalizedHistory ?? []
     const historiesSymbolRaw = context.state.features?.coins[symbol.toUpperCase()]?.priceNormalizedHistory ?? [];
 
-    if (historiesBTCRaw.length < 3 || historiesSymbolRaw.length < 2) {
+    if ((historiesBTCRaw.length < 3 || historiesSymbolRaw.length < 2) && currentLevel < 3) {
         return "reject entry - no price normalized history";
     }
 
@@ -95,7 +96,7 @@ export function gateReason(
         btcNow !== undefined &&
         btcNow > bounds.minPriceNormalized;
 
-    if (btcRecovering && signal?.id.startsWith("T")) {
+    if (btcRecovering && signal?.id.startsWith("T") && currentLevel < 3) {
         return (
             `BTC priceNormalized recovered from ${minBTCRaw.toFixed(3)} ` +
             `to ${btcNow.toFixed(3)} (above the min gate zone ` +
@@ -110,6 +111,10 @@ export function gateReason(
 
     if (btcNow && btcNow > 1 && currentLevel < 6) {
         return `BTC PriceNormalized ${btcNow.toFixed(3)} is above 1.0`;
+    }
+
+    if ((minBTCRaw < 0) && currentLevel < 5) {
+        return `BTC PriceNormalized ${minBTCRaw.toFixed(3)} is below 0.0 with level ${currentLevel}`;
     }
 
     const symbolPriceNormalized = context.state.features?.coins[symbol.toUpperCase()]?.priceNormalized;

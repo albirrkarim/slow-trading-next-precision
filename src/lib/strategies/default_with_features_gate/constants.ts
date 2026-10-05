@@ -9,21 +9,9 @@ export interface FeatureGateBounds {
 
   btcMinPriceNormalized?: number;
   btcMaxPriceNormalized?: number;
-  /**
-   * How many recent days of the `priceNormalizedHistory` trail the gate
-   * judges. The record itself keeps the full
-   * `FEATURES_HISTORY_WINDOW_MS` (~20 days) for display; only samples
-   * newer than `now - historyWindowDays` count as violations.
-   */
-  historyWindowDays?: number;
-
 
   minPriceNormalized?: number;
   maxPriceNormalized?: number;
-
-
-  minPriceNormalizedExtreme?: number;
-  maxPriceNormalizedExtreme?: number;
 }
 
 /**
@@ -47,8 +35,6 @@ export interface FeatureGateBounds {
  * (`FEATURES_HISTORY_WINDOW_MS`); the gate only judges its freshest days.
  */
 export const FEATURE_GATE_BOUNDS: Required<FeatureGateBounds> = {
-  historyWindowDays: 20,
-  
   // coin
   maxPriceNormalized: 0.8,
   minPriceNormalized: 0.3,
@@ -56,9 +42,6 @@ export const FEATURE_GATE_BOUNDS: Required<FeatureGateBounds> = {
   // btc
   btcMaxPriceNormalized: 0.8,
   btcMinPriceNormalized: 0.3,
-
-  maxPriceNormalizedExtreme: 1,
-  minPriceNormalizedExtreme: 0.1,
 };
 
 /**
