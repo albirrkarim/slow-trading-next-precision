@@ -211,6 +211,42 @@ describe("backtest leaderboards metrics", () => {
         expect(metrics.bearMarketProofRatio).toBeGreaterThan(0);
         expect(metrics.bearMarketProofRatio).toBeLessThanOrEqual(100);
     });
+
+    it("annualizes the run's return into CAGR over the snapshot span", () => {
+        // Exact year, balance doubled → +100%/yr.
+        const year = computeLeaderboardMetrics({
+            balanceSnapshots: {
+                acc1: [
+                    snapshot(T0, 1000),
+                    snapshot(T0 + 365.25 * DAY, 2000),
+                ],
+            },
+            positions: [],
+        });
+        expect(year.cagrPct).toBeCloseTo(100, 6);
+
+        // 30 days, 1500 → 1600 (+6.67%) → compounds to ~(1.0667)^12.175 - 1.
+        const month = computeLeaderboardMetrics({
+            balanceSnapshots: {
+                acc1: [snapshot(T0, 1000), snapshot(T0 + 30 * DAY, 1066.67)],
+            },
+            positions: [],
+        });
+        expect(month.cagrPct).toBeCloseTo(
+            (Math.pow(1066.67 / 1000, 365.25 / 30) - 1) * 100,
+            6,
+        );
+        expect(month.cagrPct).toBeGreaterThan(month.gainPct);
+
+        // Account wiped out → -100%.
+        const ruin = computeLeaderboardMetrics({
+            balanceSnapshots: {
+                acc1: [snapshot(T0, 1000), snapshot(T0 + 30 * DAY, 0)],
+            },
+            positions: [],
+        });
+        expect(ruin.cagrPct).toBe(-100);
+    });
 });
 
 describe("backtest leaderboards store", () => {

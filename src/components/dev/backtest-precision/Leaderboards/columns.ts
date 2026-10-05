@@ -57,6 +57,12 @@ export const HEADER_GROUPS: HeaderGroup[] = [
         tooltip: "Total realized return over the whole run.\n(final total − starting balance) / starting balance × 100%.\nStarting balance = sum of every account's initial balance.\nFinal total = last combined balance snapshot — open-position PnL is excluded.\nHigher is better.\nSource: backtest result → balanceSnapshots (each account's startingBalance + last timeline total), computed at save time.",
     },
     {
+        id: "leaderboard.cagrPct",
+        label: "CAGR",
+        align: "right",
+        tooltip: "Compound annual growth rate — the run's total return annualized.\n(final total / starting balance)^(365.25 / trading days) − 1, in %.\nTrading days = balance-snapshot span, so the ~2-month vPoint warm-up is excluded.\nSub-year runs extrapolate steeply — a strong month reads as a huge annual figure; compare across similar spans only.\nHigher is better. Entries saved before this metric existed derive it from stored Gain over the config range minus the same warm-up.\nSource: balanceSnapshots starting balance + last timeline total.",
+    },
+    {
         id: "leaderboard.winRate",
         label: "Win Rate",
         align: "right",

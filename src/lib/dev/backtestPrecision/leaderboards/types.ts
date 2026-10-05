@@ -20,6 +20,14 @@ export interface BacktestLeaderboardMetrics {
    * 100 = no floating drag; higher is better; 0 when no bear window exists.
    */
   bearMarketProofRatio: number;
+  /**
+   * Compound annual growth rate, percent per year:
+   * (finalTotal / startingBalance)^(365.25 / spanDays) − 1, where spanDays is
+   * the balance-timeline span (vPoint warm-up already excluded). −100 when
+   * the final total reaches 0. Sub-year runs extrapolate steeply — compare
+   * only across similar spans.
+   */
+  cagrPct?: number;
   capitalEfficiency: {
     /** 1 - time-weighted locked/total ratio; higher = less stuck capital. */
     hrScore: number;

@@ -97,6 +97,26 @@ function tradesPerDayOf(entry: BacktestLeaderboardEntry): number | undefined {
   return closed / tradingDays;
 }
 
+/**
+ * Compound annual growth rate, percent. Prefers the stored metric — whose
+ * span is the balance-snapshot timeline (vPoint warm-up already excluded) —
+ * else compounds the stored gainPct over the config's range days minus that
+ * same warm-up, for entries saved before the field existed.
+ */
+function cagrPctOf(entry: BacktestLeaderboardEntry): number | undefined {
+  const stored = entry.leaderboard?.cagrPct;
+  if (typeof stored === "number" && Number.isFinite(stored)) return stored;
+  const gain = entry.leaderboard?.gainPct;
+  const days = rangeDaysOf(entry.backtestConfig);
+  if (typeof gain !== "number" || !Number.isFinite(gain) || !days) {
+    return undefined;
+  }
+  const tradingDays = Math.max(1, days - VPOINT_WARMUP_MS / DAY_MS);
+  const ratio = 1 + gain / 100;
+  if (ratio <= 0) return -100;
+  return (Math.pow(ratio, 365.25 / tradingDays) - 1) * 100;
+}
+
 /** Virtual leaf resolvers — values derived per entry, not stored fields. */
 const VIRTUAL_LEAVES = new Map<
   string,
@@ -104,6 +124,7 @@ const VIRTUAL_LEAVES = new Map<
 >([
   ["minEquity", minEquityOf],
   ["leaderboard.tradesPerDay", tradesPerDayOf],
+  ["leaderboard.cagrPct", cagrPctOf],
 ]);
 
 /** Reads one leaf column value — virtual leaves first, then nested metric. */
@@ -134,6 +155,7 @@ export const LOWER_IS_BETTER: ReadonlySet<string> = new Set([
 export const PROFILE_METRICS: ReadonlyArray<{ id: string; label: string }> = [
   { id: "minEquity", label: "Min Equity" },
   { id: "leaderboard.gainPct", label: "Gain" },
+  { id: "leaderboard.cagrPct", label: "CAGR" },
   { id: "leaderboard.winRate", label: "Win Rate" },
   { id: "leaderboard.positionsClosed", label: "Trades" },
   { id: "leaderboard.tradesPerDay", label: "Trades/Day" },

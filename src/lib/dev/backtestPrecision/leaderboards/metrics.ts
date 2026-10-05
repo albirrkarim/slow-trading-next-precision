@@ -472,6 +472,12 @@ export function computeLeaderboardMetrics(input: {
     1,
     timeline.length >= 2 ? (timeline.at(-1)!.t - timeline[0].t) / MS_PER_DAY : 1,
   );
+  const cagrPct =
+    startingBalance > 0
+      ? finalTotal <= 0
+        ? -100
+        : (Math.pow(finalTotal / startingBalance, 365.25 / spanDays) - 1) * 100
+      : 0;
 
   return {
     avgMonthlyProfitPct:
@@ -480,6 +486,7 @@ export function computeLeaderboardMetrics(input: {
         : 0,
     balanceTradesScore: tradeBalanceScore(positions),
     bearMarketProofRatio: bearMarketProofRatio(timeline, positions, vPointsMap),
+    cagrPct,
     capitalEfficiency: capitalEfficiency(timeline),
     emptyBalance: emptyBalanceDurations(timeline),
     dailyFloatingDrawdownUsdt: dailyFloatingDrawdownUsdt(positions),

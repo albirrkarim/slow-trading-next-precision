@@ -1,3 +1,13 @@
+import { windowsMs } from "@/lib/system/constants";
+
+/**
+ * Judge window shared by the gate and its tests: only
+ * `priceNormalizedHistory` samples newer than `now - GATE_JUDGE_WINDOW_MS`
+ * count toward the level-floor and BTC checks. The recorded trail itself
+ * keeps the full `FEATURES_HISTORY_WINDOW_MS` (~20 days) for display.
+ */
+export const GATE_JUDGE_WINDOW_MS = 5 * windowsMs["1d"];
+
 /**
  * Entry-gate bounds on `priceNormalized`. Bounds are strategy-owned
  * constants (see `default_with_features_gate`), not settings — a candidate
@@ -30,7 +40,7 @@ export interface FeatureGateBounds {
  *
  * Both bounds apply to the recent portion of `priceNormalizedHistory`,
  * not just the current value — a coin that touched outside its zone
- * within `historyWindowDays` is rejected even when it has since moved
+ * within `GATE_JUDGE_WINDOW_MS` is rejected even when it has since moved
  * back inside. The recorded trail itself keeps the full 20-day window
  * (`FEATURES_HISTORY_WINDOW_MS`); the gate only judges its freshest days.
  */

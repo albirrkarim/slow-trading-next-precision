@@ -1,7 +1,6 @@
 import type { RuntimeContext } from "@/lib/precision/types";
-import { windowsMs } from "@/lib/system/constants";
 import type { VolatilityPoint } from "@/lib/system/types/market";
-import { FEATURE_GATE_BOUNDS } from "./constants";
+import { FEATURE_GATE_BOUNDS, GATE_JUDGE_WINDOW_MS } from "./constants";
 import {
     mapRange,
 } from "./utils";
@@ -31,9 +30,9 @@ export function gateReason(
 
     const currentLevel = Math.abs(signal?.lvl ?? 0);
 
-    // Extremes judge only the freshest ~10 days of the trail — the record
+    // Extremes judge only the freshest days of the trail — the record
     // itself keeps the full ~20-day window for display.
-    const cutoff = context.state.currentTime - 5 * windowsMs["1d"];
+    const cutoff = context.state.currentTime - GATE_JUDGE_WINDOW_MS;
 
 
     const historiesBTCRaw = context.state.features?.coins["BTC"]?.priceNormalizedHistory ?? []
