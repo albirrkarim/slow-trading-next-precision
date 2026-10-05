@@ -4,6 +4,7 @@ import {
 } from "@/lib/dev/backtestPrecision/leaderboards/leaves";
 import type { BacktestLeaderboardEntry } from "@/lib/dev/backtestPrecision/leaderboards";
 
+
 /** ms -> compact human string. */
 export function msToHuman(ms?: number) {
     if (!ms || ms <= 0) return "0s";
@@ -107,6 +108,20 @@ export function formatMinEquity(
             `[${account.name || account.slug}]$${Math.round(Number(account.sandbox?.initialBalanceUSDT) || 0)}`,
     );
     return `${parts.join(" + ")} = $${Math.round(minEquityOf(entry) ?? 0)}`;
+}
+
+/**
+ * Deterministic label → color so same-label rows share a category color
+ * regardless of sort order or filtering: the string hashes straight into a
+ * hue, and fixed saturation/lightness keep every category readable against
+ * the table surface.
+ */
+export function labelGroupColor(label: string): string {
+    let hue = 0;
+    for (const char of label) {
+        hue = (hue * 31 + (char.codePointAt(0) ?? 0)) % 360;
+    }
+    return `hsl(${hue}, 70%, 55%)`;
 }
 
 /** Red-green translucent gradient for cell shading relative to a column range. */

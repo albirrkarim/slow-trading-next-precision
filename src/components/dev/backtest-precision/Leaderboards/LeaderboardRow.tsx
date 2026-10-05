@@ -20,7 +20,7 @@ import type { BacktestConfig } from "../types";
 
 import type { HeaderGroup } from "./columns";
 import { formatCell, formatCoinSymbols, INVERT_FIELDS, TEXT_FIELDS } from "./fields";
-import { formatMinEquity, formatNumber, formatRangeWindow, formatTime, getGradientColor } from "./format";
+import { formatMinEquity, formatNumber, formatRangeWindow, formatTime, getGradientColor, labelGroupColor } from "./format";
 
 export function LeaderboardRow(props: {
     columnRanges: Map<string, { min: number; max: number }>;
@@ -67,7 +67,16 @@ export function LeaderboardRow(props: {
         );
         const rangeWindow = formatRangeWindow(entryRow.backtestConfig);
         return (
-            <TableCell key={fieldId} sx={{ backgroundColor: background }}>
+            <TableCell
+                key={fieldId}
+                sx={{
+                    backgroundColor: background,
+                    // Same-label rows share a palette category color.
+                    ...(fieldId === "label"
+                        ? { borderLeft: `10px solid ${labelGroupColor(labelText)}` }
+                        : {}),
+                }}
+            >
                 {fieldId === "profileScore"
                     ? formatNumber(numeric)
                     : fieldId === "minEquity"
