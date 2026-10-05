@@ -57,31 +57,3 @@ export interface RuntimeFeatures {
   /** Per-symbol features keyed by base symbol (same keys as vPointsMap). */
   coins: Record<string, CoinFeatures>;
 }
-
-/**
- * Entry-gate bounds on `priceNormalized`. Bounds are strategy-owned
- * constants (see `default_with_features_gate`), not settings — a candidate
- * is rejected when its coin's value falls outside `[min, max]` or when the
- * BTC market anchor sits outside `[btcMin, btcMax]`. Undefined feature
- * values never block — absence is "no opinion".
- */
-export interface FeatureGateBounds {
-
-  btcMinPriceNormalized?: number;
-  btcMaxPriceNormalized?: number;
-  /**
-   * How many recent days of the `priceNormalizedHistory` trail the gate
-   * judges. The record itself keeps the full
-   * `FEATURES_HISTORY_WINDOW_MS` (~20 days) for display; only samples
-   * newer than `now - historyWindowDays` count as violations.
-   */
-  historyWindowDays?: number;
-
-
-  minPriceNormalized?: number;
-  maxPriceNormalized?: number;
-
-
-  minPriceNormalizedExtreme?: number;
-  maxPriceNormalizedExtreme?: number;
-}
