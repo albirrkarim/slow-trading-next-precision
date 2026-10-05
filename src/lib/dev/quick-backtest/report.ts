@@ -421,6 +421,9 @@ function buildQuickPositionPnlHistory({
 }): NonNullable<RuntimeHistoryPosition["pnl"]["history"]> {
   const entryTime = Number(openPosition.opened.t ?? 0);
   const exitTime = Number(openPosition.closed?.t ?? entryTime);
+  const notional = Number(openPosition.exposure.notionalUsdt) || 0;
+  const toUsdt = (pct: number) =>
+    Number(((notional * pct) / 100).toFixed(6));
   const points = volatilityPoints
     .filter((point) => point.t >= entryTime && point.t <= exitTime)
     .map((point) => ({
@@ -430,23 +433,26 @@ function buildQuickPositionPnlHistory({
     .filter(
       (point): point is { t: number; pct: number } =>
         Number.isFinite(point.t) && point.pct !== null,
-    );
+    )
+    .map((point) => ({ ...point, usdt: toUsdt(point.pct) }));
 
   const entryPct = calculateQuickPositionPnlPct(
     openPosition,
     openPosition.exposure.averageEntryPrice,
   );
   if (Number.isFinite(entryTime) && entryPct !== null) {
-    points.push({ t: entryTime, pct: entryPct });
+    points.push({ t: entryTime, pct: entryPct, usdt: toUsdt(entryPct) });
   }
 
   if (
     Number.isFinite(exitTime) &&
     Number.isFinite(Number(openPosition.pnl.netPct))
   ) {
+    const exitPct = Number(Number(openPosition.pnl.netPct).toFixed(3));
     points.push({
       t: exitTime,
-      pct: Number(Number(openPosition.pnl.netPct).toFixed(3)),
+      pct: exitPct,
+      usdt: toUsdt(exitPct),
     });
   } else if (
     Number.isFinite(exitTime) &&
@@ -457,18 +463,18 @@ function buildQuickPositionPnlHistory({
       Number(openPosition.closed?.price),
     );
     if (exitPct !== null) {
-      points.push({ t: exitTime, pct: exitPct });
+      points.push({ t: exitTime, pct: exitPct, usdt: toUsdt(exitPct) });
     }
   }
 
-  const byTime = new Map<number, number>();
+  const byTime = new Map<number, { pct: number; usdt: number }>();
   for (const point of points) {
-    byTime.set(point.t, point.pct);
+    byTime.set(point.t, { pct: point.pct, usdt: point.usdt });
   }
 
   return Array.from(byTime.entries())
     .sort((left, right) => left[0] - right[0])
-    .map(([t, pct]) => ({ t, pct }));
+    .map(([t, point]) => ({ t, pct: point.pct, usdt: point.usdt }));
 }
 
 /**

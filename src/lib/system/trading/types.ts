@@ -193,6 +193,8 @@ export interface PositionStrategyState<TFeature = unknown> {
 export interface PositionPnlPoint {
   t: number;
   pct: number;
+  /** Fee-aware net floating PnL in USDT at this sample; 0 on points normalized from older storage. */
+  usdt: number;
 }
 
 /**
@@ -226,7 +228,7 @@ export interface PositionPnl {
   /** Worst observed fee-aware net PnL in USDT. */
   maxDownUsdt?: number;
   /**
-   * Bounded `{t, pct}` series sampled each monitoring pass, bucketed by
+   * Bounded `{t, pct, usdt}` series sampled each monitoring pass, bucketed by
    * `runtime.pnlHistoryBucketMinutes` and capped to the most recent points.
    * Used by charts and diagnostics; not a decision input.
    */

@@ -25,7 +25,7 @@ import type { StrategyAPI } from "../types";
  * Both bounds apply to the recent portion of `priceNormalizedHistory`,
  * not just the current value — a coin that touched outside its zone
  * within `historyWindowDays` is rejected even when it has since moved
- * back inside. The recorded trail itself keeps the full 10-day window
+ * back inside. The recorded trail itself keeps the full 20-day window
  * (`FEATURES_HISTORY_WINDOW_MS`); the gate only judges its freshest days.
  */
 export const FEATURE_GATE_BOUNDS: Required<FeatureGateBounds> = {

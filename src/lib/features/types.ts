@@ -41,7 +41,7 @@ export interface CoinFeatures {
 
   /**
    * Rolling trail of `priceNormalized` change points within the last
-   * `FEATURES_HISTORY_WINDOW_MS` (~10 days). Appends only when the value
+   * `FEATURES_HISTORY_WINDOW_MS` (~20 days). Appends only when the value
    * changes (it is a step function); the last surviving point is kept even
    * when older than the window so "unchanged since t" stays readable.
    */
@@ -72,7 +72,7 @@ export interface FeatureGateBounds {
   /**
    * How many recent days of the `priceNormalizedHistory` trail the gate
    * judges. The record itself keeps the full
-   * `FEATURES_HISTORY_WINDOW_MS` (~10 days) for display; only samples
+   * `FEATURES_HISTORY_WINDOW_MS` (~20 days) for display; only samples
    * newer than `now - historyWindowDays` count as violations.
    */
   historyWindowDays?: number;

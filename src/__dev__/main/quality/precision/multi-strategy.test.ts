@@ -581,7 +581,9 @@ describe("multi strategy positions", () => {
     expect(position.pnl.markPrice).toBe(110);
     expect(position.fees.entryUsdt).toBe(0);
     expect(position.fees.estimatedExitUsdt).toBe(0.2);
-    expect(position.pnl.history).toEqual([{ t: 5_000, pct: 9.8 }]);
+    expect(position.pnl.history).toEqual([
+      { t: 5_000, pct: 9.8, usdt: 9.8 },
+    ]);
     expect(position.pnl.maxUpPct).toBe(9.8);
     expect(position.pnl.maxDownPct).toBe(9.8);
     expect(position.pnl.maxUpUsdt).toBe(9.8);
@@ -843,7 +845,7 @@ describe("multi strategy entry action", () => {
     expect(position.strategy.entry.engine).toBe("decision.v20");
     expect(position.pnl).toEqual({
       currentValueUsdt: 10,
-      history: [{ t: 5_000, pct: 0 }],
+      history: [{ t: 5_000, pct: 0, usdt: 0 }],
       markPrice: 100,
       maxDownPct: 0,
       maxDownUsdt: 0,

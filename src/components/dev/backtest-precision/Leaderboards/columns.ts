@@ -127,6 +127,24 @@ export const HEADER_GROUPS: HeaderGroup[] = [
         ],
     },
     {
+        id: "leaderboard.dailyFloatingDrawdownUsdt",
+        label: "Daily Float DD",
+        align: "center",
+        tooltip: "Portfolio floating loss aggregated per UTC day.\nEach day sums every open position's worst pnl.history sample that day (losses only — a winning day contributes 0), shown as a positive $ dip. Two positions floating −$30 and −$50 in a day count as an $80 dip.\nBounded by pnl.history retention (~2160 most-recent buckets × runtime.pnlHistoryBucketMinutes) — dips aged out of the series are not counted.\nLower is better. Entries saved before this metric existed show '-'.\nSource: positions[].pnl.history usdt; pct × notional-at-t fallback on older pct-only points.",
+        children: [
+            {
+                id: "leaderboard.dailyFloatingDrawdownUsdt.avg",
+                label: "avg",
+                tooltip: "Mean daily aggregate floating dip — the typical worst-case day.\nSource: same daily series as Daily Float DD.",
+            },
+            {
+                id: "leaderboard.dailyFloatingDrawdownUsdt.max",
+                label: "max",
+                tooltip: "Worst single day — the deepest one-day aggregate floating loss.\nSource: same daily series as Daily Float DD.",
+            },
+        ],
+    },
+    {
         id: "leaderboard.bearMarketProofRatio",
         label: "Bear Proof",
         align: "right",

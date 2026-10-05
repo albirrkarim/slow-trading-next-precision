@@ -36,6 +36,12 @@ export interface BacktestLeaderboardMetrics {
   maxFloatingDrawdown: LeaderboardRange;
   /** Per-position worst USDT dip, un-normalized: -pnl.maxDownUsdt. */
   maxFloatingDrawdownUsdt: LeaderboardRange;
+  /**
+   * Per-UTC-day aggregate floating loss, in USDT. Each day sums every open
+   * position's worst `pnl.history` usdt sample that day (losses only), negated
+   * to a loss magnitude; the range runs over days that had samples.
+   */
+  dailyFloatingDrawdownUsdt?: LeaderboardRange;
   /** Per-position worst USDT dip / mean total balance: -pnl.maxDownUsdt / avgTotal. */
   maxPortfolioDrawdown: LeaderboardRange;
   /** Realized monthly profit / month-start total, in percent. */

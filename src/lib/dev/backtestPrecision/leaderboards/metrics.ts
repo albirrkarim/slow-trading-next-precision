@@ -75,13 +75,7 @@ function positionStateAt(
     return { floatingPnl: 0, openBase: 0 };
   }
 
-  const executions = position.strategy.averaging.executions ?? [];
-  const laterMargin = executions.reduce(
-    (sum, execution) => sum + (execution.t > t ? execution.marginUsdt : 0),
-    0,
-  );
-  const marginAt = (position.exposure.marginUsdt ?? 0) - laterMargin;
-  const openBase = Math.max(0, marginAt) * (position.exposure.leverage ?? 1);
+  const openBase = openBaseAt(position, t);
 
   let pct = 0;
   for (const point of position.pnl.history ?? []) {
@@ -90,6 +84,20 @@ function positionStateAt(
   }
 
   return { floatingPnl: (openBase * pct) / 100, openBase };
+}
+
+/**
+ * Deployed notional (open base) of one position at t — the final margin minus
+ * averaging fills that happened after t, times leverage.
+ */
+function openBaseAt(position: Position, t: number): number {
+  const executions = position.strategy.averaging.executions ?? [];
+  const laterMargin = executions.reduce(
+    (sum, execution) => sum + (execution.t > t ? execution.marginUsdt : 0),
+    0,
+  );
+  const marginAt = (position.exposure.marginUsdt ?? 0) - laterMargin;
+  return Math.max(0, marginAt) * (position.exposure.leverage ?? 1);
 }
 
 function rangeOf(values: number[]): LeaderboardRange {
@@ -156,6 +164,33 @@ function floatingDrawdownUsdt(positions: Position[]): LeaderboardRange {
     (position) => position.pnl.maxDownUsdt,
     (usdt) => -usdt,
   );
+}
+
+/**
+ * Daily aggregate floating drawdown in USDT. Each UTC day sums every open
+ * position's worst `pnl.history` sample that day (losses only — a position
+ * floating positive contributes 0), negated to a loss magnitude; the range
+ * runs over days that had samples. Reads the stored `usdt` field, falling back
+ * to pct × notional-at-t for older pct-only points. Bounded by `pnl.history`
+ * retention — dips aged out of the series are not counted, so this reads best
+ * beside the exact `maxFloatingDrawdownUsdt` extrema.
+ */
+function dailyFloatingDrawdownUsdt(positions: Position[]): LeaderboardRange {
+  const daily = new Map<number, number>();
+  for (const position of positions) {
+    const worstByDay = new Map<number, number>();
+    for (const point of position.pnl.history ?? []) {
+      const usdt = Number.isFinite(point.usdt)
+        ? point.usdt
+        : (openBaseAt(position, point.t) * point.pct) / 100;
+      const day = Math.floor(point.t / MS_PER_DAY);
+      worstByDay.set(day, Math.min(worstByDay.get(day) ?? 0, usdt));
+    }
+    for (const [day, worst] of worstByDay) {
+      daily.set(day, (daily.get(day) ?? 0) + worst);
+    }
+  }
+  return rangeOf([...daily.values()].map((value) => -value));
 }
 
 /** Durations the combined spendable balance stayed below the trading minimum. */
@@ -447,6 +482,7 @@ export function computeLeaderboardMetrics(input: {
     bearMarketProofRatio: bearMarketProofRatio(timeline, positions, vPointsMap),
     capitalEfficiency: capitalEfficiency(timeline),
     emptyBalance: emptyBalanceDurations(timeline),
+    dailyFloatingDrawdownUsdt: dailyFloatingDrawdownUsdt(positions),
     gainPct,
     maxFloatingDrawdown: floatingDrawdown(positions),
     maxFloatingDrawdownUsdt: floatingDrawdownUsdt(positions),

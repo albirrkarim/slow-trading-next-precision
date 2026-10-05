@@ -77,6 +77,7 @@ function normalizeHistoryPoints(raw: unknown): PositionPnlPoint[] {
         return {
           t: item.t,
           pct: roundPct(item.pct),
+          usdt: isFiniteNumber(item.usdt) ? roundUsdt(item.usdt) : 0,
         };
       }
 
@@ -84,6 +85,7 @@ function normalizeHistoryPoints(raw: unknown): PositionPnlPoint[] {
         return {
           t: item.timeMs,
           pct: roundPct(item.percent),
+          usdt: 0,
         };
       }
 
@@ -100,7 +102,11 @@ function upsertHistoryPoint(
   replaceWithinBucket: boolean,
   bucketMs = resolveBucketMs(undefined),
 ): PositionPnlPoint[] {
-  if (!isFiniteNumber(point.t) || !isFiniteNumber(point.pct)) {
+  if (
+    !isFiniteNumber(point.t) ||
+    !isFiniteNumber(point.pct) ||
+    !isFiniteNumber(point.usdt)
+  ) {
     return history;
   }
 
@@ -197,6 +203,7 @@ function updatePnl(context: RuntimeContext, position: Position): void {
     {
       t: context.state.currentTime,
       pct: roundPct(observationPct),
+      usdt: roundUsdt(metrics.netProfitUSDT),
     },
     true,
     resolveBucketMs(context.state.config.runtime.pnlHistoryBucketMinutes),

@@ -124,6 +124,69 @@ describe("backtest leaderboards metrics", () => {
         expect(metrics.balanceTradesScore).toBeCloseTo(Math.exp(-1 / 3), 2);
     });
 
+    it("aggregates each day's worst floating USD across open positions", () => {
+        const metrics = computeLeaderboardMetrics({
+            balanceSnapshots: {
+                acc1: [snapshot(T0, 1000), snapshot(T0 + 3 * DAY, 1000)],
+            },
+            positions: [
+                createTestPosition({
+                    entryTime: T0,
+                    closed: { feeUsdt: 0, price: 10, reason: "FINAL", t: T0 + 2 * DAY },
+                    pnl: {
+                        history: [
+                            { t: T0 + 3600_000, pct: -3, usdt: -30 },
+                            { t: T0 + 2 * 3600_000, pct: -1, usdt: -10 },
+                            { t: T0 + DAY + 3600_000, pct: -1, usdt: -10 },
+                        ],
+                    },
+                }),
+                // Same day as the first position's -30 dip → day0 sums to -80.
+                createTestPosition({
+                    entryTime: T0,
+                    closed: { feeUsdt: 0, price: 10, reason: "FINAL", t: T0 + DAY },
+                    pnl: { history: [{ t: T0 + 3 * 3600_000, pct: -5, usdt: -50 }] },
+                }),
+                // Winning day-0 position contributes 0 (losses-only clamp).
+                createTestPosition({
+                    entryTime: T0,
+                    closed: { feeUsdt: 0, price: 10, reason: "FINAL", t: T0 + DAY },
+                    pnl: { history: [{ t: T0 + 3600_000, pct: 1, usdt: 5 }] },
+                }),
+            ],
+        });
+
+        // day0: -30 + -50 + 0 → 80 ; day1: -10 → 10
+        expect(metrics.dailyFloatingDrawdownUsdt?.avg).toBeCloseTo(45, 6);
+        expect(metrics.dailyFloatingDrawdownUsdt?.max).toBeCloseTo(80, 6);
+        expect(metrics.dailyFloatingDrawdownUsdt?.min).toBeCloseTo(10, 6);
+    });
+
+    it("reconstructs floating USD from pct x notional for older pct-only points", () => {
+        const metrics = computeLeaderboardMetrics({
+            balanceSnapshots: {
+                acc1: [snapshot(T0, 1000), snapshot(T0 + DAY, 1000)],
+            },
+            positions: [
+                createTestPosition({
+                    entryTime: T0,
+                    marginUsdt: 100,
+                    leverage: 2,
+                    closed: { feeUsdt: 0, price: 10, reason: "FINAL", t: T0 + DAY },
+                    // Non-finite usdt (legacy/pct-only point) — falls back to
+                    // openBase x pct: 200 x -5%.
+                    pnl: {
+                        history: [
+                            { t: T0 + 3600_000, pct: -5, usdt: Number.NaN },
+                        ],
+                    },
+                }),
+            ],
+        });
+
+        expect(metrics.dailyFloatingDrawdownUsdt?.avg).toBeCloseTo(10, 6);
+    });
+
     it("scores bear-window resilience from vPoint price series", () => {
         const metrics = computeLeaderboardMetrics({
             balanceSnapshots: {

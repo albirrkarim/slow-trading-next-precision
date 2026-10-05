@@ -64,6 +64,7 @@ function normalizeHistoryPoints(raw: unknown): ReportHistoryPoint[] {
         return {
           t: item.t,
           pct: roundPct(item.pct),
+          usdt: isFiniteNumber(item.usdt) ? roundUsdt(item.usdt) : 0,
         };
       }
 
@@ -71,6 +72,7 @@ function normalizeHistoryPoints(raw: unknown): ReportHistoryPoint[] {
         return {
           t: item.timeMs,
           pct: roundPct(item.percent),
+          usdt: 0,
         };
       }
 
@@ -109,7 +111,11 @@ function upsertHistoryPoint(
   replaceWithinBucket: boolean,
   bucketMs = resolveBucketMs(undefined),
 ): ReportHistoryPoint[] {
-  if (!isFiniteNumber(point.t) || !isFiniteNumber(point.pct)) {
+  if (
+    !isFiniteNumber(point.t) ||
+    !isFiniteNumber(point.pct) ||
+    !isFiniteNumber(point.usdt)
+  ) {
     return history;
   }
 
@@ -259,7 +265,7 @@ function seedSyntheticHistory<T extends Position>(
   if (isFiniteNumber(next.opened.t)) {
     history = upsertHistoryPoint(
       history,
-      { t: next.opened.t, pct: 0 },
+      { t: next.opened.t, pct: 0, usdt: 0 },
       false,
     );
   }
@@ -267,7 +273,11 @@ function seedSyntheticHistory<T extends Position>(
   if (isFiniteNumber(next.closed?.t) && isFiniteNumber(next.pnl.netPct)) {
     history = upsertHistoryPoint(
       history,
-      { t: next.closed.t!, pct: roundPct(next.pnl.netPct!) },
+      {
+        t: next.closed.t!,
+        pct: roundPct(next.pnl.netPct!),
+        usdt: roundUsdt(next.pnl.netUsdt ?? 0),
+      },
       false,
     );
   }
@@ -277,6 +287,7 @@ function seedSyntheticHistory<T extends Position>(
       {
         t: next.opened.t,
         pct: isFiniteNumber(next.pnl.netPct) ? roundPct(next.pnl.netPct) : 0,
+        usdt: roundUsdt(next.pnl.netUsdt ?? 0),
       },
     ];
   }
@@ -338,12 +349,17 @@ function applyObservation(
     timeMs: number;
     replaceWithinBucket: boolean;
     bucketMs?: number;
+    usdt: number;
   },
 ): void {
   const next = ensureReportPosition(position);
   next.pnl.history = upsertHistoryPoint(
     next.pnl.history ?? [],
-    { t: observation.timeMs, pct: roundPct(observation.pct) },
+    {
+      t: observation.timeMs,
+      pct: roundPct(observation.pct),
+      usdt: roundUsdt(observation.usdt),
+    },
     observation.replaceWithinBucket,
     observation.bucketMs ?? resolveBucketMs(undefined),
   );

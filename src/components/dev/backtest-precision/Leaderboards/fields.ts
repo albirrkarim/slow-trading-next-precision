@@ -24,6 +24,8 @@ const SCORE_FIELDS = new Set([
 const USD_FIELDS = new Set([
     "leaderboard.maxFloatingDrawdownUsdt.avg",
     "leaderboard.maxFloatingDrawdownUsdt.max",
+    "leaderboard.dailyFloatingDrawdownUsdt.avg",
+    "leaderboard.dailyFloatingDrawdownUsdt.max",
 ]);
 
 const DURATION_FIELDS = new Set([

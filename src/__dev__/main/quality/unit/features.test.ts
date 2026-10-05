@@ -250,15 +250,15 @@ describe("features.update", () => {
     );
   });
 
-  it("trims history older than 10 days but keeps the last survivor", () => {
+  it("trims history older than 20 days but keeps the last survivor", () => {
     const context = contextWith({
       features: {
         coins: {
           SUI: {
             priceNormalized: 0.5,
             priceNormalizedHistory: [
-              { p: 0.9, t: NOW - 20 * DAY_MS },
-              { p: 0.5, t: NOW - 12 * DAY_MS },
+              { p: 0.9, t: NOW - 40 * DAY_MS },
+              { p: 0.5, t: NOW - 25 * DAY_MS },
             ],
           },
         },
@@ -278,7 +278,7 @@ describe("features.update", () => {
     features.update(context);
     expect(
       context.state.features!.coins.SUI.priceNormalizedHistory,
-    ).toEqual([{ p: 0.5, t: NOW - 12 * DAY_MS }]);
+    ).toEqual([{ p: 0.5, t: NOW - 25 * DAY_MS }]);
   });
 });
 

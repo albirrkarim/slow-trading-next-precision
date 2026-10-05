@@ -547,7 +547,7 @@ function applyFill(
     },
     pnl: {
       currentValueUsdt: marginUsdt,
-      history: [{ t: fill.t, pct: 0 }],
+      history: [{ t: fill.t, pct: 0, usdt: 0 }],
       markPrice: fill.price,
       maxDownPct: 0,
       maxDownUsdt: 0,

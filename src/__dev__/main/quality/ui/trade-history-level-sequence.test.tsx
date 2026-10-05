@@ -196,8 +196,8 @@ describe("trade-history level sequence", () => {
       entryTime: 100,
       pnl: {
         history: [
-          { pct: 0, t: 100 },
-          { pct: 10, t: 300 },
+          { pct: 0, t: 100, usdt: 0 },
+          { pct: 10, t: 300, usdt: 1 },
         ],
         netPct: 10,
         netUsdt: 1,
