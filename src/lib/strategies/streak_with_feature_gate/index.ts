@@ -4,9 +4,10 @@ import type {
 } from "@/lib/precision/types";
 import type { StrategyAPI } from "../types";
 
-import featureGateV1 from "../default_with_features_gate/feature_gate_v1";
+import featureGateV1 from "./feature_gate_streak_v1";
 import streak from "../streak";
 import streakEntry from "../streak/entry";
+import streakGateExit from "./exit";
 
 /**
  * `streak` composed with FEATURE GATE V1 — every produced candidate is
@@ -14,9 +15,10 @@ import streakEntry from "../streak/entry";
  * role re-entries on their own `entrySignal`, atomic `pairEntry`s per
  * leg (one refused leg vetoes the whole pair — legs cannot partially
  * fill). Manual entries keep streak's `shape` and bypass the gate,
- * matching the forced-entry contract. Averaging, exit, guard,
- * `onActionResult`, preflight, and pair diagnostics are streak's own —
- * the gate only constrains which produced entries may fill.
+ * matching the forced-entry contract. Averaging, guard, `onActionResult`,
+ * preflight, and pair diagnostics are streak's own — the gate constrains
+ * which produced entries may fill, and the exit keeps the rail while
+ * leaving TP%/SL+ armed on pair legs (see `./exit`).
  */
 function passes(
   context: RuntimeContext,
@@ -46,6 +48,7 @@ const streakWithFeatureGate: StrategyAPI = {
           passes(context, candidate),
         ),
     },
+    exit: { find: streakGateExit.find },
   },
   diagnostics: {
     ...streak.diagnostics,

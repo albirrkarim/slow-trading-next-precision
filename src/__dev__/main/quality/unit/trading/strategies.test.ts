@@ -27,6 +27,7 @@ import streak from "@/lib/strategies/streak";
 import streakEntry from "@/lib/strategies/streak/entry";
 import streakExit from "@/lib/strategies/streak/exit";
 import streakState from "@/lib/strategies/streak/state";
+import streakGateExit from "@/lib/strategies/streak_with_feature_gate/exit";
 
 const NOW = Date.UTC(2026, 5, 18, 12);
 
@@ -923,6 +924,60 @@ describe("streak exit — entry vPoint cannot be its own target", () => {
     );
     const later = await streakExit.find(context, position);
     expect(later?.tradeDecision.position?.closed?.reason).toBe(
+      "VOLATILITY_TARGET_EXIT",
+    );
+  });
+});
+
+describe("streak_with_feature_gate exit — TP rules stay armed on pair legs", () => {
+  function exitConfigState(): RuntimeEngineState {
+    const state = makeState({
+      markPriceMap: { SUI: { lastUpdated: NOW, price: 1.02 } },
+      vPointsMap: {
+        // Pre-entry anchor only — no post-entry target, so the rail and
+        // the target-zone TP stay out of the SL+ assertion.
+        SUI: [point({ id: "A", l: "T", lvl: 1, t: 90 })],
+      },
+    });
+    state.config.accounts[0].trading = {
+      stopLossPlusTrigger: 0.1,
+      takeProfitPercent: 1,
+      useStopLossPlus: true,
+    } as never;
+    return state;
+  }
+
+  it("fires SL+ on a retrace that streak leaves parked", async () => {
+    // LONG pair leg: persisted peak 5%, current net +1.8% — the retrace
+    // already exceeds the 0.1% trigger, so an armed SL+ closes it.
+    const position = pairedLeg("p1", "MAIN", {
+      pnl: { maxUpPct: 5 } as never,
+    });
+    const context = makeContext(exitConfigState());
+
+    const parked = await streakExit.find(context, position);
+    expect(parked).toBeNull();
+
+    const armed = await streakGateExit.find(context, position);
+    expect(armed?.tradeDecision.position?.closed?.reason).toBe(
+      "STOP_LOSS_PLUS_TP",
+    );
+  });
+
+  it("still takes the rail exit ahead of the shared rules", async () => {
+    const position = pairedLeg("p1", "MAIN", {
+      pnl: { maxUpPct: 5 } as never,
+    });
+    const state = exitConfigState();
+    // A confirmed post-entry TOP is the leg's rail target.
+    state.vPointsMap.SUI = [
+      point({ id: "A", l: "T", lvl: 1, t: 90 }),
+      point({ id: "B", l: "T", lvl: 2, t: 150 }),
+    ];
+    const context = makeContext(state);
+
+    const decision = await streakGateExit.find(context, position);
+    expect(decision?.tradeDecision.position?.closed?.reason).toBe(
       "VOLATILITY_TARGET_EXIT",
     );
   });
