@@ -156,6 +156,9 @@ async function run(
   context.state.currentTime = context.adapter.clock.now();
   await context.helper.market.updateMarkPrice();
   await context.helper.market.updateVPointsMap();
+  // Feature-scoped inputs (e.g. the VWAP fold) refresh through the feature
+  // hook so gates see current values in the entry capture below.
+  await context.adapter.onFeatureUpdate?.(context);
 
   const result: RuntimeManualPassResult = {
     entries: [],

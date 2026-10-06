@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import features, { FEATURES_VPOINT_WINDOW_MS } from "@/lib/features";
 import { computePriceNormalized } from "@/lib/features/price-normalized";
+import vwap from "@/lib/features/vwap";
 import type { RuntimeContext } from "@/lib/precision/types";
 import vpoints from "@/lib/system/utils/vpoints";
 import type { Position } from "@/lib/system/trading";
@@ -255,6 +256,71 @@ describe("features.update", () => {
     expect(
       context.state.features!.coins.SUI.priceNormalizedHistory,
     ).toEqual([{ p: 0.5, t: NOW - 25 * DAY_MS }]);
+  });
+});
+
+describe("features.update vwap", () => {
+  it("derives vwap fields into coins and carries the accumulator through", () => {
+    // Monthly accumulator for SUI: two candles, hlc3 10 & 20 → vwap 16,
+    // σ 5 — written by the market stage, derived here.
+    const acc = vwap.accumulator.create(Date.UTC(2026, 9, 1));
+    vwap.accumulator.foldKline(acc, [
+      NOW - 10 * 60_000,
+      "10",
+      "10",
+      "10",
+      "10",
+      "2",
+      NOW - 5 * 60_000,
+    ] as never);
+    vwap.accumulator.foldKline(acc, [
+      NOW - 5 * 60_000,
+      "20",
+      "20",
+      "20",
+      "20",
+      "3",
+      NOW,
+    ] as never);
+
+    const context = contextWith({
+      features: { coins: {}, shared: {}, vwap: { SUI: acc } },
+      vPointsMap: {
+        SUI: [
+          point(NOW - 30 * DAY_MS, 8),
+          point(NOW - 20 * DAY_MS, 12),
+          point(NOW - DAY_MS, 10),
+        ],
+      },
+    });
+    context.state.markPriceMap = {
+      SUI: { lastUpdated: NOW, price: 19 },
+    };
+
+    features.update(context);
+
+    const coin = context.state.features!.coins.SUI;
+    expect(coin.vwap).toBeCloseTo(16);
+    expect(coin.vwapStdev).toBeCloseTo(5);
+    expect(coin.vwapDistancePct).toBeCloseTo(18.8, 1);
+    // The accumulator is an input — it survives the coins rebuild untouched.
+    expect(context.state.features!.vwap!.SUI).toBe(acc);
+  });
+
+  it("emits no vwap fields for a coin without an accumulator", () => {
+    const context = contextWith({
+      vPointsMap: {
+        SUI: [
+          point(NOW - 30 * DAY_MS, 8),
+          point(NOW - 20 * DAY_MS, 12),
+          point(NOW - DAY_MS, 10),
+        ],
+      },
+    });
+    features.update(context);
+    const coin = context.state.features!.coins.SUI;
+    expect(coin.vwap).toBeUndefined();
+    expect(coin.vwapAnchorT).toBeUndefined();
   });
 });
 

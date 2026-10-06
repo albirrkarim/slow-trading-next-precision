@@ -143,7 +143,7 @@ async function main() {
     },
     // Keep the feature store current so gates and entry snapshots behave
     // like production; the driver does not persist a features stream.
-    onFeatureUpdate: (context) => features.update(context),
+    onFeatureUpdate: async (context) => features.refresh(context),
     onNotif: () => true,
   };
 

@@ -302,7 +302,7 @@ export async function precisionBacktest(
     // dashboard can chart feature values over the run.
     onFeatureUpdate: async (context) => {
       const previous = context.state.features;
-      features.update(context);
+      await features.refresh(context);
       const nextCoins = context.state.features?.coins ?? {};
       const changed = features.changedCoins(previous?.coins, nextCoins);
       await Promise.all(

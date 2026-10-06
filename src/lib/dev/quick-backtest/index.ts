@@ -312,7 +312,7 @@ async function runSingle({
     },
     // Feature store keeps parity with live/backtest so feature gates and
     // entry snapshots behave identically on the quick path.
-    onFeatureUpdate: (context) => features.update(context),
+    onFeatureUpdate: async (context) => features.refresh(context),
     onStateChange: async () => {
       snapshot(state.currentTime);
     },

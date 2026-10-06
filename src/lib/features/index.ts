@@ -5,6 +5,8 @@ import {
   isSameNormalizedValue,
   replayPriceNormalizedHistory,
 } from "./price-normalized";
+import vwap from "./vwap";
+import vwapFeed from "./vwap-feed";
 import {
   FEATURES_HISTORY_WINDOW_MS,
   type CoinFeatures,
@@ -23,8 +25,9 @@ const EMPTY_HISTORY: FeatureHistoryPoint[] = [];
  * Replaces the whole store with a fresh object so callers comparing
  * against the previous snapshot see exact per-symbol diffs.
  *
- * Called inside `adapter.onFeatureUpdate` — production writes state only;
- * the backtest adapter additionally delta-records the artifact stream.
+ * Called by `features.refresh` inside `adapter.onFeatureUpdate` —
+ * production writes state only; the backtest adapter additionally
+ * delta-records the artifact stream.
  */
 function update(context: RuntimeContext): void {
   const now = context.state.currentTime;
@@ -33,6 +36,13 @@ function update(context: RuntimeContext): void {
   for (const symbol of Object.keys(context.state.vPointsMap)) {
     const points = context.state.vPointsMap[symbol];
     const priceNormalized = computePriceNormalized({ now, points });
+    // Monthly-anchored VWAP: derive the coin-facing `vwap*` fields from
+    // the market-stage accumulator (lives at features.vwap — outside this
+    // rebuilt map so the fold survives every pass).
+    const vwapFields = vwap.derive(
+      context.state.features?.vwap?.[symbol],
+      context.state.markPriceMap?.[symbol]?.price,
+    );
     // Step-series trail: append only when the value changed; reuse the
     // previous array when nothing moved so changedCoins stays sparse.
     let history =
@@ -61,9 +71,29 @@ function update(context: RuntimeContext): void {
     coins[symbol] = {
       priceNormalized,
       priceNormalizedHistory: history,
+      ...vwapFields,
     };
   }
-  context.state.features = { coins, shared: {} };
+  // Accumulators are inputs, not derived values — carry them through the
+  // wholesale rebuild untouched.
+  context.state.features = {
+    coins,
+    shared: {},
+    vwap: context.state.features?.vwap,
+  };
+}
+
+/**
+ * Adapter-facing feature refresh — the body every `onFeatureUpdate` hook
+ * should run before it diffs/persists. Feeds feature-scoped market inputs
+ * (`vwap-feed` folds closed klines through `context.adapter.market`) then
+ * runs the pure `update`. Keeps the runtime engine free of
+ * feature-specific data paths: the engine calls the hook, the feature
+ * pipeline owns what it needs.
+ */
+async function refresh(context: RuntimeContext): Promise<void> {
+  await vwapFeed.update(context);
+  update(context);
 }
 
 /**
@@ -97,6 +127,7 @@ function changedCoins(
 
 const features = {
   changedCoins,
+  refresh,
   update,
 } as const;
 

@@ -826,7 +826,7 @@ function createProductionFactory(): ProductionRuntimeFactory {
       onExit: handlers.onExit,
       onFeatureUpdate: async (context) => {
         const previous = context.state.features;
-        features.update(context);
+        await features.refresh(context);
         // PROD:FEATURES_STATE_PERSIST — trails move only when a pivot shifts
         // a reading, so a changedCoins diff keeps the flush sparse instead
         // of rewriting `features.json` every tick.

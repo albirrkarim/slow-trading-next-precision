@@ -130,6 +130,7 @@ black-swan flag, entry cutoff, daily-PnL stop). The optional
 | `onStateChange` | Usually omitted | Persists account state and vPoint usage markers |
 | `onNewVPoint` | Buffers detected points for the full result map | Merges each point into shared volatility files |
 | `retainRecentVPoints` | Unset — same window as production | Unset — default `DEFAULT_RECENT_VPOINTS` |
+| `onFeatureUpdate` | Shared compute plus delta-recording of changed coin features into the artifact stream | Shared compute plus sparse `features.json` persistence |
 | `onNotif` | Disabled/no-op | Delivers configured notifications |
 | `onRiskSentinel` | Normal runs evaluate historical BTC/breadth in memory with automatic cooldown and silent shared emergency exits; precision checker keeps only the captured flag | Black Swan detection, status, and protection |
 | `onManagement` | Omitted | Balance snapshots and daily reporting stage |
@@ -392,6 +393,22 @@ Environment-specific:
 - How an accepted action is filled
 - Where state is persisted
 - Whether notifications are delivered
+
+### Core market state vs feature state
+
+The engine owns only the market snapshot its stages consume directly:
+`markPriceMap` (latest close per symbol) and `vPointsMap` (detected
+volatility points — the input every entry decision is built from). Both
+are refreshed by `context.helper.market` before stage bodies run.
+
+`state.features` is different: it belongs to the replaceable feature
+pipeline in `src/lib/features`, refreshed through the `onFeatureUpdate`
+adapter hook (warmup and before every entry capture). Feature-scoped
+market inputs — e.g. the VWAP candle fold in `features/vwap-feed` — are
+fed by the feature pipeline itself through `context.adapter.market`,
+never by engine stage bodies or the market helper. A new feature that
+needs data the core snapshot does not carry brings its own feed inside
+`features/`; the engine stays unaware of it.
 
 Select the environment when constructing the adapter. Avoid scattering
 `if (state.mode === "backtest")` throughout monitoring and trading logic.

@@ -80,6 +80,16 @@ function normColor(value: number): string {
   return value < 0 || value > 1 ? "warning.main" : "text.primary";
 }
 
+/** Compact price-scale formatter: BTC-scale values collapse, sub-1 keeps sig figs. */
+function fmtPrice(value: number): string {
+  if (!Number.isFinite(value)) return "—";
+  const abs = Math.abs(value);
+  if (abs >= 1000) return value.toFixed(0);
+  if (abs >= 10) return value.toFixed(1);
+  if (abs >= 1) return value.toFixed(2);
+  return value.toPrecision(4);
+}
+
 /**
  * Compact entry-feature preview for a trade row: the cloned `RuntimeFeatures`
  * snapshot captured at entry, distilled to one line per coin — BTC market
@@ -163,6 +173,29 @@ export default function TradeFeaturePreview({
                 </Typography>
               )}
             </Box>
+            {row.coin?.vwap !== undefined && (
+              <Typography
+                color="text.secondary"
+                component="span"
+                display="block"
+                sx={{ pl: "40px" }}
+                title={
+                  `Monthly-anchored VWAP at entry — σ = population stdev of ` +
+                  `typical price since the month boundary, dist = mark vs ` +
+                  `VWAP, env = ±2σ envelope width`
+                }
+                variant="caption"
+              >
+                vwap {fmtPrice(row.coin.vwap)}
+                {row.coin.vwapStdev !== undefined &&
+                  ` · σ ${fmtPrice(row.coin.vwapStdev)}`}
+                {row.coin.vwapDistancePct !== undefined &&
+                  ` · ${row.coin.vwapDistancePct > 0 ? "+" : ""}` +
+                    `${row.coin.vwapDistancePct}%`}
+                {row.coin.vwapStretchPct !== undefined &&
+                  ` · env ${row.coin.vwapStretchPct}%`}
+              </Typography>
+            )}
             <PriceNormalizedHistorySparkline
               current={row.coin?.priceNormalized}
               entryTimeMs={entryTimeMs}
