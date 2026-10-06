@@ -1,13 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useSnackbar } from "notistack";
 import {
     Box,
     Button,
+    IconButton,
     MenuItem,
     TextField,
+    Tooltip,
     Typography,
 } from "@mui/material";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 
 import {
     filterTradeHistory,
@@ -59,6 +63,7 @@ export function TradeHistoryFilters<T extends FilterableTrade>({
             : "lt",
     );
     const [filterValue, setFilterValue] = useState(storedFilters.value ?? "");
+    const { enqueueSnackbar } = useSnackbar();
     const hasFilters = Boolean(
         filterAccount || filterFromDate || filterToDate || filterValue,
     );
@@ -264,12 +269,47 @@ export function TradeHistoryFilters<T extends FilterableTrade>({
                         </Button>
                     )}
                 </Box>
-                {hasFilters && (
-                    <Typography color="text.secondary" variant="body2">
-                        Showing {filteredHistory.length} of {history.length}{" "}
-                        trades
-                    </Typography>
-                )}
+                <Box sx={{ alignItems: "center", display: "flex", gap: 0.5 }}>
+                    <Tooltip title="Copy the filtered trades' entry feature snapshots as a JSON array">
+                        <span>
+                            <IconButton
+                                aria-label="Copy filtered entry features"
+                                disabled={filteredHistory.length === 0}
+                                onClick={() => {
+                                    const features = filteredHistory
+                                        .map(
+                                            (trade) =>
+                                                trade.strategy?.entry?.feature,
+                                        )
+                                        .filter((f) => f !== undefined);
+                                    void navigator.clipboard
+                                        .writeText(JSON.stringify(features))
+                                        .then(() =>
+                                            enqueueSnackbar(
+                                                `Copied ${features.length} entry features`,
+                                                { variant: "success" },
+                                            ),
+                                        )
+                                        .catch(() =>
+                                            enqueueSnackbar(
+                                                "Failed to copy entry features",
+                                                { variant: "error" },
+                                            ),
+                                        );
+                                }}
+                                size="small"
+                            >
+                                <ContentCopyIcon fontSize="small" />
+                            </IconButton>
+                        </span>
+                    </Tooltip>
+                    {hasFilters && (
+                        <Typography color="text.secondary" variant="body2">
+                            Showing {filteredHistory.length} of {history.length}{" "}
+                            trades
+                        </Typography>
+                    )}
+                </Box>
             </Box>
             {children(filteredHistory)}
         </Box>

@@ -5,6 +5,8 @@ export interface FilterableTrade {
   exposure?: { marginUsdt?: number };
   opened: { t: number; vPoint?: { lvl?: number } };
   pnl?: { netPct?: number; netUsdt?: number };
+  /** Entry-feature snapshot — read by the copy-features action only. */
+  strategy?: { entry?: { feature?: unknown } };
 }
 
 export type TradeMetric =
