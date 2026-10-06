@@ -27,8 +27,9 @@ import {
 import { useBetterCloseLine } from "./useBetterCloseLine";
 import { useEntryOrderLines, usePriceLines } from "./usePriceLines";
 import { useTrajectorySeries } from "./useTrajectorySeries";
+import { useOverlayLines } from "./useOverlayLines";
 
-export default function CurrencyChart({ data, markers, activePosition, aimPosition, dashedEntryPriceLine = false, tpPrice, slPrice, betterToCloseAt, entryOrders, height = 400, trajectory, trajectoryAnchor, trajectoryDirection, initialVisibleRange }: ChartProps) {
+export default function CurrencyChart({ data, markers, activePosition, aimPosition, dashedEntryPriceLine = false, tpPrice, slPrice, betterToCloseAt, entryOrders, height = 400, trajectory, trajectoryAnchor, trajectoryDirection, initialVisibleRange, overlayLines, overlayBands }: ChartProps) {
     const theme = useTheme();
     const chartTextColor = theme.palette.text.secondary;
     const chartGridColor = theme.palette.divider;
@@ -38,6 +39,8 @@ export default function CurrencyChart({ data, markers, activePosition, aimPositi
     const seriesRef = useRef<ISeriesApi<any> | null>(null);
     const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
     const trajectorySeriesRef = useRef<ISeriesApi<"Line">[]>([]);
+    const overlaySeriesRef = useRef<ISeriesApi<"Line">[]>([]);
+    const bandSeriesRef = useRef<ISeriesApi<"Custom">[]>([]);
     const trajectoryMetaRef = useRef<Map<ISeriesApi<"Line">, TrajectoryMetaPoint[]>>(new Map());
     const trajectoryAnchorPriceRef = useRef<number | undefined>(trajectoryAnchor?.price);
     const trajectoryDirectionRef = useRef<TrajectoryDirection>(trajectoryDirection);
@@ -296,6 +299,14 @@ export default function CurrencyChart({ data, markers, activePosition, aimPositi
     useEntryOrderLines({
         seriesRef,
         entryOrders,
+    });
+
+    useOverlayLines({
+        chartRef,
+        overlayBands,
+        overlayLines,
+        bandSeriesRef,
+        overlaySeriesRef,
     });
 
     const betterCloseLabel =

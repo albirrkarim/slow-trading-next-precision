@@ -30,6 +30,7 @@ const chartMocks = vi.hoisted(() => {
     unsubscribeVisibleLogicalRangeChange: vi.fn(),
   };
   const chart = {
+    addCustomSeries: vi.fn(() => ({ setData: vi.fn() })),
     addSeries: vi.fn((seriesType: string) =>
       seriesType === "HistogramSeries" ? volumeSeries : candlestickSeries,
     ),
@@ -57,6 +58,7 @@ vi.mock("lightweight-charts", () => ({
   LineStyle: { Dashed: 2, Dotted: 1 },
   createChart: vi.fn(() => chartMocks.chart),
   createSeriesMarkers: vi.fn(() => chartMocks.markerPrimitive),
+  customSeriesDefaultOptions: {},
 }));
 
 describe("CurrencyChart", () => {

@@ -39,6 +39,35 @@ export type CandleOrWhitespacePoint = CandlePoint | { time: number };
 
 export type TrajectoryDirection = "LONG" | "SHORT" | undefined;
 
+export type OverlayLinePoint = {
+    time: number;
+    value: number;
+};
+
+/** Indicator-style line drawn over the candles (e.g. VWAP, bands). */
+export type OverlayLine = {
+    name?: string;
+    color?: string;
+    lineWidth?: number;
+    /** lightweight-charts LineStyle enum value. */
+    lineStyle?: number;
+    data: OverlayLinePoint[];
+};
+
+export type OverlayBandPoint = {
+    time: number;
+    upper: number;
+    lower: number;
+};
+
+/** Translucent fill between an upper/lower price rail (band envelope). */
+export type OverlayBand = {
+    name?: string;
+    /** Fill color — translucent rgba recommended; nested bands stack. */
+    color?: string;
+    data: OverlayBandPoint[];
+};
+
 export type TrajectoryHoverState = {
     x: number;
     y: number;
@@ -84,4 +113,15 @@ export interface ChartProps {
         time: number;
     };
     trajectoryDirection?: TrajectoryDirection;
+    /**
+     * Indicator overlays (VWAP, bands, …) rendered as line series on the
+     * candle pane. Caller owns the computation; pass a stable array
+     * reference (memoized) — the chart rebuilds the series on change.
+     */
+    overlayLines?: OverlayLine[];
+    /**
+     * Translucent fills between two price rails (band envelopes), drawn
+     * beneath `overlayLines`. Same memoized-reference contract applies.
+     */
+    overlayBands?: OverlayBand[];
 }
