@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { memo, useEffect, useMemo } from "react";
 
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import { Alert, Box, Button, CircularProgress } from "@mui/material";
@@ -69,7 +69,7 @@ function CalendarContent({
   );
 }
 
-export default function BacktestDailyPnlCalendar(props: {
+function BacktestDailyPnlCalendarView(props: {
   positions: LazyArtifact<Position[]>;
   settings?: ConfigDraft;
 }) {
@@ -98,3 +98,5 @@ export default function BacktestDailyPnlCalendar(props: {
     </ButtonDialog>
   );
 }
+
+export default memo(BacktestDailyPnlCalendarView);

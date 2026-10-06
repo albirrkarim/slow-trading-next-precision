@@ -1,7 +1,7 @@
 "use client";
 
 import axios from "axios";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import type {
   BacktestBalanceSnapshot,
@@ -106,12 +106,16 @@ function useLazyArtifact<T>(
     return promise;
   }, [cacheKey, entry, entryKey, field]);
 
-  return {
-    data,
-    error,
-    loading: isCurrent ? loading && entry.value === undefined && !entry.error : loading,
-    ensure,
-  };
+  const isLoading = isCurrent
+    ? loading && entry.value === undefined && !entry.error
+    : loading;
+  // Stable object identity: memoized sections must bail out on unrelated
+  // parent renders (e.g. typing in the config form), which requires the
+  // artifact props they receive to keep their reference.
+  return useMemo(
+    () => ({ data, error, loading: isLoading, ensure }),
+    [data, error, isLoading, ensure],
+  );
 }
 
 /**
@@ -126,27 +130,29 @@ function useLazyArtifact<T>(
  */
 export function useBacktestArtifacts(cacheKey?: string, runId?: number) {
   const id = runId === undefined ? undefined : String(runId);
-  return {
-    features: useLazyArtifact<Record<string, BacktestFeatureRecord[]>>(
-      cacheKey,
-      "features",
-      id,
-    ),
-    metrics: useLazyArtifact<BacktestLeaderboardMetrics>(
-      cacheKey,
-      "metrics",
-      id,
-    ),
-    positions: useLazyArtifact<Position[]>(cacheKey, "positions", id),
-    vpoints: useLazyArtifact<Record<string, VolatilityPoint[]>>(
-      cacheKey,
-      "vpoints",
-      id,
-    ),
-    snapshots: useLazyArtifact<Record<string, BacktestBalanceSnapshot[]>>(
-      cacheKey,
-      "snapshots",
-      id,
-    ),
-  };
+  const features = useLazyArtifact<Record<string, BacktestFeatureRecord[]>>(
+    cacheKey,
+    "features",
+    id,
+  );
+  const metrics = useLazyArtifact<BacktestLeaderboardMetrics>(
+    cacheKey,
+    "metrics",
+    id,
+  );
+  const positions = useLazyArtifact<Position[]>(cacheKey, "positions", id);
+  const vpoints = useLazyArtifact<Record<string, VolatilityPoint[]>>(
+    cacheKey,
+    "vpoints",
+    id,
+  );
+  const snapshots = useLazyArtifact<Record<string, BacktestBalanceSnapshot[]>>(
+    cacheKey,
+    "snapshots",
+    id,
+  );
+  return useMemo(
+    () => ({ features, metrics, positions, snapshots, vpoints }),
+    [features, metrics, positions, snapshots, vpoints],
+  );
 }

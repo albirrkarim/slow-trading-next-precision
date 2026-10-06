@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { memo, useEffect, useMemo } from "react";
 
 import { Alert, Box, CircularProgress, Typography } from "@mui/material";
 
@@ -104,7 +104,7 @@ function SnapshotsChart({
   );
 }
 
-export default function BacktestBalanceChart(props: {
+function BacktestBalanceChartView(props: {
   accounts?: Array<{ name?: string; slug: string }>;
   snapshots: LazyArtifact<Record<string, BacktestBalanceSnapshot[]>>;
 }) {
@@ -126,3 +126,5 @@ export default function BacktestBalanceChart(props: {
     </HeaderMetrics>
   );
 }
+
+export default memo(BacktestBalanceChartView);

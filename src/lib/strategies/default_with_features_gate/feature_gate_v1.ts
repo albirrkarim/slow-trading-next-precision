@@ -22,6 +22,11 @@ const recentValues = (cutoff: number, history: { p: number; t: number }[] | unde
  * 
  * AAVE, LINK, SUI, XRP
  * 
+ * it succesfully recognize the price norm 2 month as valid feature.
+ * 
+ * Tested:
+ * - Paired with the current default strategy.
+ * 
  * Returns the feature-gate refusal for one symbol at the current tick, or
  * undefined when the candidate may pass.
  */

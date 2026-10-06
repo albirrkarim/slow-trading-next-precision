@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { memo, useEffect } from "react";
 
 import VPointsFrequency from "@/components/charts/VPointsFrequency";
 import {
@@ -24,7 +24,7 @@ import VolatilityRails from "./VolatilityRails";
 
 type Artifacts = ReturnType<typeof useBacktestArtifacts>;
 
-export default function VPointsResult({
+function VPointsResultView({
   accounts,
   artifacts,
   blackSwanTimeline,
@@ -111,3 +111,7 @@ export default function VPointsResult({
     </Box>
   );
 }
+
+// Stable artifact/config refs let this heavy result tree skip re-renders
+// while the config form above it is being edited.
+export default memo(VPointsResultView);
