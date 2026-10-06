@@ -1,5 +1,6 @@
 import type { RuntimeContext } from "@/lib/precision/types";
 import type { VolatilityPoint } from "@/lib/system/types/market";
+import featureGateRegimes from "./feature_gate_regimes";
 
 
 
@@ -15,7 +16,7 @@ import type { VolatilityPoint } from "@/lib/system/types/market";
  * - `minSigma`/`maxSigma`: the signal's distance from the VWAP must sit
  *   inside `[1σ, 2σ]` — stretched enough to mean-revert, not so extreme
  *   it becomes a falling knife.
- * - `maxSignalAgeMs`: reject signals older than 1 day — stretched points
+ * - `maxSignalAgeMs`: reject signals older than 12h — stretched points
  *   must be fresh; an aging vPoint can slide into the σ zone without
  *   representing a new stretched entry.
  */
@@ -23,11 +24,14 @@ export const FEATURE_GATE_VWAP_BOUNDS = {
     minStretchPct: 6,
     minSigma: 1.2,
     maxSigma: 1.7,
-    maxSignalAgeMs: 24 * 60 * 60 * 1000,
+    // 5y backtest (726 trades): 7/16 losers vs 59/710 winners entered on
+    // a vPoint >12h old; tightening from 24h nets ≈ +426 USDT, positive in
+    // both halves of the run.
+    maxSignalAgeMs: 12 * 60 * 60 * 1000,
 };
 
 /**
- * Feature Gate V2: VWAP-only.
+ * Feature Gate V2: VWAP stretch followed by normalized-range regime checks.
  *
  * Judges the signal point's distance from the monthly-anchored VWAP:
  * `|signal.p − vwap|` measured in σ must land inside the
@@ -69,7 +73,7 @@ export default function featureGateV2(
     }
 
     // A stretched point is only admissible while fresh — `t` is the pivot's
-    // confirmation time, so an aging vPoint can drift into the σ zone as the
+    // timestamp (it becomes visible after confirmation), so an aging vPoint can drift into the σ zone as the
     // envelope stretches without representing a new stretched entry. A
     // missing/invalid `t` falls through (veto only on evidence).
     if (Number.isFinite(signal.t)) {
@@ -77,7 +81,8 @@ export default function featureGateV2(
         if (signalAgeMs > bounds.maxSignalAgeMs) {
             return (
                 `signal vPoint is ${(signalAgeMs / 3_600_000).toFixed(1)}h ` +
-                `old (> 24h) — stale stretch, not a fresh entry`
+                `old (> ${bounds.maxSignalAgeMs / 3_600_000}h) — stale ` +
+                `stretch, not a fresh entry`
             );
         }
     }
@@ -105,10 +110,8 @@ export default function featureGateV2(
 
 
     // Extreme condition
-    const historiesBTC = (context.state.features?.coins["BTC"]?.priceNormalized?.history ?? []).map(e => e.p).slice(-3)
-    const historiesSymbol = (context.state.features?.coins[symbol.toUpperCase()]?.priceNormalized?.history ?? []).map(e => e.p).slice(-3)
-
-    const currentLevel = Math.abs(signal?.lvl ?? 0);
+    const historiesBTC = (context.state.features?.coins["BTC"]?.priceNormalized?.history ?? []).slice(-3).map(e => e.p)
+    const historiesSymbol = (context.state.features?.coins[symbol.toUpperCase()]?.priceNormalized?.history ?? []).slice(-3).map(e => e.p)
 
     const minBTC = Math.min(...historiesBTC);
     const maxBTC = Math.max(...historiesBTC);
@@ -119,25 +122,24 @@ export default function featureGateV2(
     const min = Math.min(minBTC, minSymbol);
     const max = Math.max(maxBTC, maxSymbol);
 
-    if ((max > 0.9 || min < 0.1)) {
-
-        const coinBtc = context.state.features?.coins["BTC"].priceNormalized.current ?? 0
-        const coinSymbol = context.state.features?.coins[symbol.toUpperCase()].priceNormalized.current ?? 0
-
-        const minCurrent = Math.min(coinBtc, coinSymbol);
-        const maxCurrent = Math.max(coinBtc, coinSymbol);
-
-        if ((maxCurrent > 1 || minCurrent < 0)) {
-            return `Too much extreme`
-        }
-
-        // if (currentLevel < 2) {
-        //     if (dSigma > 1.5) {
-        //         return `Extreme condition, low level, almost outside area`
-        //     }
-        //     // return `Extreme condition detected`
-        // }
+    if ((max > 0.95 || min < 0.1)) {
+        return `extreme`
     }
 
-    return undefined;
+    const coinBtc = context.state.features?.coins["BTC"]?.priceNormalized?.current
+    const coinSymbol = context.state.features?.coins[symbol.toUpperCase()]?.priceNormalized?.current
+
+    const currentValues = [coinBtc, coinSymbol].filter(
+        (value): value is number => typeof value === "number" && Number.isFinite(value),
+    );
+    const minCurrent = Math.min(...currentValues);
+    const maxCurrent = Math.max(...currentValues);
+
+    if ((maxCurrent > 1 || minCurrent < 0)) {
+        return `Too much extreme`
+    }
+    // return undefined
+
+    // BOTH:FEATURE_GATE_REGIMES — shared by backtest, sandbox and live.
+    return featureGateRegimes(context, symbol, signal);
 }
