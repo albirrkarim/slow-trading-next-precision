@@ -17,6 +17,7 @@ export function NetProfitPercentHistorySparkline(props: {
   history?: {
     t: number;
     pct: number;
+    usdt?: number;
   }[];
   height?: number;
   exitTimeMs?: number;
@@ -37,7 +38,7 @@ export function NetProfitPercentHistorySparkline(props: {
         Number.isFinite(p.pct),
     )
     .sort((a, b) => a.t - b.t)
-    .map((p) => ({ t: p.t, v: p.pct }));
+    .map((p) => ({ t: p.t, u: p.usdt, v: p.pct }));
 
   if (data.length < 2) return null;
 
@@ -125,7 +126,20 @@ export function NetProfitPercentHistorySparkline(props: {
           />
           <Tooltip
             isAnimationActive={false}
-            formatter={(value: any) => [`${Number(value).toFixed(2)}%`, "PnL"]}
+            formatter={(value: any, _name: any, item: any) => {
+              const usdt = item?.payload?.u;
+              return [
+                <>
+                  {`${Number(value).toFixed(2)}%`}
+                  {typeof usdt === "number" && Number.isFinite(usdt) ? (
+                    <Box component="span" display="block" sx={{ opacity: 0.75 }}>
+                      {`${usdt >= 0 ? "+" : "-"}$${Math.abs(usdt).toFixed(2)}`}
+                    </Box>
+                  ) : null}
+                </>,
+                "PnL",
+              ];
+            }}
             labelFormatter={(label: any) => formatTooltipTime(Number(label))}
             contentStyle={{
               backgroundColor: theme.palette.background.paper,
