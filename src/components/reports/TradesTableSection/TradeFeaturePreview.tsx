@@ -12,6 +12,7 @@ import type {
   RuntimeFeatures,
 } from "@/lib/features/types";
 import { FEATURE_GATE_VWAP_BOUNDS } from "@/lib/strategies/default_with_features_gate/feature_gate_v2";
+import format from "@/lib/system/utils/format";
 
 export interface FeaturePreviewRow {
   /** Min/max/span over the coin's `priceNormalized.history` plus its current value. */
@@ -223,6 +224,15 @@ export default function TradeFeaturePreview({
                 vwap?.stdev,
               )
             : undefined;
+        const vPointT = row.coin?.latestVpoint?.t;
+        const vPointAgeMs =
+          row.own === true &&
+          typeof vPointT === "number" &&
+          Number.isFinite(vPointT) &&
+          typeof entryTimeMs === "number" &&
+          Number.isFinite(entryTimeMs)
+            ? entryTimeMs - vPointT
+            : undefined;
         const trail =
           bounds !== undefined
             ? `${bounds.samples} trail samples` +
@@ -310,6 +320,25 @@ export default function TradeFeaturePreview({
                     {` · dσ ${dSigma.toFixed(2)}`}
                   </Typography>
                 )}
+              </Typography>
+            )}
+            {vPointAgeMs !== undefined && (
+              <Typography
+                color={
+                  vPointAgeMs > FEATURE_GATE_VWAP_BOUNDS.maxSignalAgeMs
+                    ? "warning.main"
+                    : "text.secondary"
+                }
+                component="span"
+                display="block"
+                sx={{ pl: "40px" }}
+                title={
+                  `Time from the signal vPoint (${row.coin?.latestVpoint?.id}) ` +
+                  `forming to the entry fill`
+                }
+                variant="caption"
+              >
+                vPoint → entry {format.duration(vPointAgeMs)}
               </Typography>
             )}
             <PriceNormalizedHistorySparkline
