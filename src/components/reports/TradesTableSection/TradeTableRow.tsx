@@ -194,6 +194,9 @@ export function TradeTableRow({
         <NetProfitPercentHistorySparkline
           history={row.pnl.history ?? []}
           exitTimeMs={row.closed?.t}
+          markers={row.strategy.averaging.executions?.map(
+            (execution) => ({ t: execution.t }),
+          )}
         />
         <Box sx={{ mt: 0.75, maxWidth: 220 }}>
           {/* BOTH:REUSABLE_LEVEL_SEQUENCE */}

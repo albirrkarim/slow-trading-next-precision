@@ -22,9 +22,15 @@ export function NetProfitPercentHistorySparkline(props: {
   height?: number;
   exitTimeMs?: number;
   enableTimeDisplayToggle?: boolean;
+  /**
+   * Timestamps of fills to dot on the line (e.g. averaging executions) —
+   * each is snapped to the nearest history sample so the dot sits on the
+   * rendered path.
+   */
+  markers?: { t: number }[];
 }) {
   const theme = useTheme();
-  const { history, height = 60, exitTimeMs, enableTimeDisplayToggle = false } = props;
+  const { history, height = 60, exitTimeMs, enableTimeDisplayToggle = false, markers } = props;
   const [showUtcTime, setShowUtcTime] = useState(false);
 
   if (!history || history.length < 2) return null;
@@ -49,26 +55,33 @@ export function NetProfitPercentHistorySparkline(props: {
       ? theme.palette.success.main
       : theme.palette.error.main;
 
-  const exitPoint = (() => {
-    if (typeof exitTimeMs !== "number" || !Number.isFinite(exitTimeMs)) return null;
+  const snapToDataPoint = (t: number) => {
+    if (typeof t !== "number" || !Number.isFinite(t)) return null;
     if (data.length === 0) return null;
 
     const firstT = data[0].t;
     const lastT = data[data.length - 1].t;
-    if (exitTimeMs < firstT || exitTimeMs > lastT) return null;
+    if (t < firstT || t > lastT) return null;
 
     let best = data[0];
-    let bestDiff = Math.abs(best.t - exitTimeMs);
+    let bestDiff = Math.abs(best.t - t);
     for (let i = 1; i < data.length; i++) {
       const d = data[i];
-      const diff = Math.abs(d.t - exitTimeMs);
+      const diff = Math.abs(d.t - t);
       if (diff < bestDiff) {
         best = d;
         bestDiff = diff;
       }
     }
     return best;
-  })();
+  };
+
+  const exitPoint =
+    typeof exitTimeMs === "number" ? snapToDataPoint(exitTimeMs) : null;
+
+  const markerPoints = (markers ?? [])
+    .map((marker) => snapToDataPoint(marker.t))
+    .filter((point): point is NonNullable<typeof point> => point !== null);
 
   const formatTooltipTime = (value: number) => {
     const timestamp = Number(value);
@@ -158,6 +171,17 @@ export function NetProfitPercentHistorySparkline(props: {
             dot={false}
             isAnimationActive={false}
           />
+          {markerPoints.map((point, index) => (
+            <ReferenceDot
+              key={`${point.t}-${index}`}
+              x={point.t}
+              y={point.v}
+              r={3.5}
+              fill={theme.palette.info.main}
+              stroke={alpha(theme.palette.background.paper, 0.95)}
+              strokeWidth={1}
+            />
+          ))}
           {exitPoint ? (
             <>
               <ReferenceLine

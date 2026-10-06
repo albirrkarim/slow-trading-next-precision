@@ -323,6 +323,9 @@ export default function OpenPositionItem({
             <Box sx={{ mt: 1 }}>
               <NetProfitPercentHistorySparkline
                 history={position.pnl.history ?? []}
+                markers={position.strategy.averaging.executions?.map(
+                  (execution) => ({ t: execution.t }),
+                )}
               />
             </Box>
 
