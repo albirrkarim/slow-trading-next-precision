@@ -294,9 +294,9 @@ export interface RuntimeEntryDecision {
   /**
    * Strategy-authored entry-feature payload landing on
    * `position.strategy.entry.feature` at commit. When unset the shared
-   * commit clones the whole live `state.features` store instead, so every
-   * position records the feature context seen at entry — including the BTC
-   * market anchor — regardless of strategy.
+   * commit stores the live `state.features` store pruned to the BTC market
+   * anchor plus the leg's own symbol, so every position records the
+   * feature context seen at entry regardless of strategy.
    */
   feature?: unknown;
   /**

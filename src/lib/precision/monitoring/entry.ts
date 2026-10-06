@@ -1,6 +1,8 @@
-import positions from "../utils/positions";
+import features from "@/lib/features";
 import type { Position } from "@/lib/system/trading";
 import { systemLog } from "@/lib/system/logging";
+
+import positions from "../utils/positions";
 
 import defaultDecision from "../defaultDecision";
 import guard from "../guard";
@@ -135,15 +137,13 @@ async function executeDecision(
     // producers, the pair-aware guard, and `onActionResult` can correlate
     // legs for the position's whole persisted lifecycle. The entry-feature
     // snapshot lands on `position.strategy.entry.feature` — the leg's own
-    // `feature` payload wins, else the WHOLE live feature store at entry
-    // time (cloned so context features like the BTC anchor travel with the
-    // position and later store ticks never mutate the record).
+    // `feature` payload wins, else the live feature store pruned to the
+    // BTC anchor plus the leg's symbol (cloned so context features travel
+    // with the position and later store ticks never mutate the record).
     const logic = leg.strategy;
     const feature =
       leg.feature ??
-      (context.state.features
-        ? structuredClone(context.state.features)
-        : undefined);
+      features.prune.forPosition(context.state.features, leg.symbol);
     if (logic !== undefined || feature !== undefined) {
       position.strategy = {
         ...position.strategy,

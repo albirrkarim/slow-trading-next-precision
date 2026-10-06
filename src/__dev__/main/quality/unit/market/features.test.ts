@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import features, { FEATURES_VPOINT_WINDOW_MS } from "@/lib/features";
 import { computePriceNormalized } from "@/lib/features/price-normalized";
 import vwap from "@/lib/features/vwap";
+import type { RuntimeFeatures } from "@/lib/features/types";
 import type { RuntimeContext } from "@/lib/precision/types";
 import vpoints from "@/lib/system/utils/vpoints";
 import type { Position } from "@/lib/system/trading";
@@ -439,6 +440,66 @@ describe("features.changedCoins", () => {
       },
     };
     expect(features.changedCoins(previous, next).sort()).toEqual(["LINK"]);
+  });
+});
+
+describe("features.prune.forPosition", () => {
+  const store = (): RuntimeFeatures => ({
+    coins: {
+      BTC: {
+        latestVpoint: point(NOW - DAY_MS, 100),
+        priceNormalized: { current: 0.5, history: [] },
+      },
+      DOGE: {
+        latestVpoint: point(NOW - DAY_MS, 5),
+        priceNormalized: { current: 0.2, history: [] },
+      },
+      SUI: {
+        latestVpoint: point(NOW - DAY_MS, 10),
+        priceNormalized: { current: 0.8, history: [] },
+      },
+    },
+    shared: { regime: 1 },
+    vwap: { SUI: { aT: NOW, n: 1, pv: 10, s: 10, s2: 100, t: NOW, v: 1 } },
+  });
+
+  it("keeps the BTC anchor and the position's own coin, drops the rest", () => {
+    const pruned = features.prune.forPosition(store(), "sui")!;
+    expect(Object.keys(pruned.coins).sort()).toEqual(["BTC", "SUI"]);
+    expect(pruned.shared).toEqual({ regime: 1 });
+    // Accumulators are working state — never serialized into a position.
+    expect("vwap" in pruned).toBe(false);
+  });
+
+  it("keeps a single BTC entry when the position symbol is BTC", () => {
+    const pruned = features.prune.forPosition(store(), "BTC")!;
+    expect(Object.keys(pruned.coins)).toEqual(["BTC"]);
+  });
+
+  it("always returns a coins record, even with nothing to keep", () => {
+    const pruned = features.prune.forPosition(
+      { coins: {}, shared: {} },
+      "SUI",
+    );
+    expect(pruned).toEqual({ coins: {}, shared: {} });
+  });
+
+  it("returns undefined when the live store is absent", () => {
+    expect(
+      features.prune.forPosition(undefined, "SUI"),
+    ).toBeUndefined();
+  });
+
+  it("deep-clones the snapshot so later store mutations cannot leak", () => {
+    const source = store();
+    const pruned = features.prune.forPosition(source, "SUI")!;
+    // latestVpoint mutates in place on mark-price passes — the snapshot
+    // must hold a clone, not the live object.
+    expect(pruned.coins.SUI.latestVpoint).not.toBe(
+      source.coins.SUI.latestVpoint,
+    );
+    source.coins.SUI.latestVpoint!.p = 999;
+    expect(pruned.coins.SUI.latestVpoint!.p).toBe(10);
   });
 });
 

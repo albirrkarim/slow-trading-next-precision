@@ -16,6 +16,7 @@ features/
   index.ts            Public API: update (pure), refresh (orchestration), changedCoins
   types.ts            RuntimeFeatures / CoinFeatures / VwapAccumulator contracts
   price-normalized.ts Pivot-envelope normalization + history replay (pure)
+  prune.ts            Entry-commit snapshot pruner (pure)
   vwap.ts             Monthly-anchored VWAP fold and σ derivation (pure)
   vwap-feed.ts        Kline I/O feeding the VWAP accumulators
 ```
@@ -37,6 +38,10 @@ import features from "@/lib/features";
   identity — `update` reuses unchanged group objects). The `vwap` and
   `latestVpoint` keys are excluded from the diff: they ride along in any
   record a real change triggers but never trigger one themselves.
+- `features.prune.forPosition(store, symbol)` — **pure**. Entry-commit
+  snapshot pruner: deep-clones the store down to `shared` plus the BTC
+  anchor and the position's own coin; the `vwap` accumulator layer is
+  dropped (raw substrate, not entry context).
 
 Adapter wiring:
 
@@ -82,7 +87,8 @@ Two layers per feature, deliberately:
 
 Symbols follow `vPointsMap` keys — the canonical tracked set (configured
 coins, open-position coins, BTC context) already maintained by the
-engine's market stage.
+engine's market stage. Position snapshots stored at entry are pruned:
+BTC + the position's own coin, no accumulators.
 
 ## Invariants
 

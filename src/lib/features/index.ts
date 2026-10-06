@@ -5,6 +5,7 @@ import {
   isSameNormalizedValue,
   replayPriceNormalizedHistory,
 } from "./price-normalized";
+import prune from "./prune";
 import vwap from "./vwap";
 import vwapFeed from "./vwap-feed";
 import {
@@ -150,6 +151,7 @@ function changedCoins(
 
 const features = {
   changedCoins,
+  prune,
   refresh,
   update,
 } as const;

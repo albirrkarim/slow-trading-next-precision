@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import type { RuntimeFeatures } from "@/lib/features/types";
 import type {
   RuntimeContext,
   RuntimeEngineState,
@@ -428,7 +429,17 @@ describe("strategies.resolve — slug to module", () => {
 
 describe("entryMonitoring.executeDecision — pair dispatch", () => {
   it("routes pairEntry to onPairAction and commits every leg", async () => {
-    const state = makeState();
+    const state = makeState({
+      features: {
+        coins: {
+          BTC: { priceNormalized: { current: 0.5, history: [] } },
+          DOGE: { priceNormalized: { current: 0.1, history: [] } },
+          SUI: { priceNormalized: { current: 0.8, history: [] } },
+        },
+        shared: {},
+        vwap: { SUI: { aT: 1, n: 1, pv: 1, s: 1, s2: 1, t: 1, v: 1 } },
+      },
+    });
     const fills = [pairedLeg("acc:SUI:A", "MAIN"), pairedLeg("acc:SUI:A", "COUNTER")];
     const onPairAction = vi.fn(async () => fills);
     const onAction = vi.fn(async () => null);
@@ -448,6 +459,14 @@ describe("entryMonitoring.executeDecision — pair dispatch", () => {
     expect(pair.meta.ofPosition(state.openPositions[1])?.role).toBe(
       "COUNTER",
     );
+    // The entry-feature snapshot is pruned to the BTC anchor plus the
+    // leg's own symbol — DOGE and the vwap accumulators are cross-symbol
+    // working state, not entry context.
+    for (const position of state.openPositions) {
+      const feature = position.strategy.entry.feature as RuntimeFeatures;
+      expect(Object.keys(feature.coins).sort()).toEqual(["BTC", "SUI"]);
+      expect("vwap" in feature).toBe(false);
+    }
     // Balances updated per leg.
     expect(state.balance.acc.locked).toBe(20);
   });

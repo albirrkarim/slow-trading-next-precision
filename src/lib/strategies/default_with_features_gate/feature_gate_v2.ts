@@ -1,6 +1,8 @@
 import type { RuntimeContext } from "@/lib/precision/types";
 import type { VolatilityPoint } from "@/lib/system/types/market";
 
+
+
 /**
  * Bounds this strategy enforces on the monthly-anchored VWAP feature —
  * strategy-owned policy, deliberately hardcoded here instead of living in
@@ -18,10 +20,10 @@ import type { VolatilityPoint } from "@/lib/system/types/market";
  *   representing a new stretched entry.
  */
 export const FEATURE_GATE_VWAP_BOUNDS = {
-  minStretchPct: 8,
-  minSigma: 1.2,
-  maxSigma: 1.7,
-  maxSignalAgeMs: 24 * 60 * 60 * 1000,
+    minStretchPct: 6,
+    minSigma: 1.2,
+    maxSigma: 1.7,
+    maxSignalAgeMs: 24 * 60 * 60 * 1000,
 };
 
 /**
@@ -98,6 +100,43 @@ export default function featureGateV2(
             `signal ${signal.p} is ${dSigma.toFixed(2)}σ from monthly VWAP ` +
             `${vwap} — beyond the 2σ extreme (overstretched)`
         );
+    }
+
+
+
+    // Extreme condition
+    const historiesBTC = (context.state.features?.coins["BTC"]?.priceNormalized?.history ?? []).map(e => e.p).slice(-3)
+    const historiesSymbol = (context.state.features?.coins[symbol.toUpperCase()]?.priceNormalized?.history ?? []).map(e => e.p).slice(-3)
+
+    const currentLevel = Math.abs(signal?.lvl ?? 0);
+
+    const minBTC = Math.min(...historiesBTC);
+    const maxBTC = Math.max(...historiesBTC);
+
+    const minSymbol = Math.min(...historiesSymbol);
+    const maxSymbol = Math.max(...historiesSymbol);
+
+    const min = Math.min(minBTC, minSymbol);
+    const max = Math.max(maxBTC, maxSymbol);
+
+    if ((max > 0.9 || min < 0.1)) {
+
+        const coinBtc = context.state.features?.coins["BTC"].priceNormalized.current ?? 0
+        const coinSymbol = context.state.features?.coins[symbol.toUpperCase()].priceNormalized.current ?? 0
+
+        const minCurrent = Math.min(coinBtc, coinSymbol);
+        const maxCurrent = Math.max(coinBtc, coinSymbol);
+
+        if ((maxCurrent > 1 || minCurrent < 0)) {
+            return `Too much extreme`
+        }
+
+        // if (currentLevel < 2) {
+        //     if (dSigma > 1.5) {
+        //         return `Extreme condition, low level, almost outside area`
+        //     }
+        //     // return `Extreme condition detected`
+        // }
     }
 
     return undefined;
