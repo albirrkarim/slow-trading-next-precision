@@ -99,7 +99,7 @@ async function loadStrategy(mode: RuntimeMode): Promise<unknown> {
 /**
  * Loads the persisted feature store for one mode (`features.json[mode]`) —
  * the `state.features` snapshot production maintains between ticks so a
- * restart resumes the `priceNormalizedHistory` trail instead of restarting
+ * restart resumes the `priceNormalized.history` trail instead of restarting
  * from a single point. `undefined` when no slice exists; the next
  * `features.update` reseeds it by replaying the stored pivot timeline.
  */

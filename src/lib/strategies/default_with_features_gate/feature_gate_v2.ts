@@ -36,9 +36,9 @@ export default function featureGateV2(
 ): string | undefined {
     const bounds = FEATURE_GATE_VWAP_BOUNDS;
     const coin = context.state.features?.coins[symbol.toUpperCase()];
-    const vwap = coin?.vwap;
-    const stdev = coin?.vwapStdev;
-    const stretchPct = coin?.vwapStretchPct;
+    const vwap = coin?.vwap?.price;
+    const stdev = coin?.vwap?.stdev;
+    const stretchPct = coin?.vwap?.stretchPct;
 
     if (typeof vwap !== "number" || !Number.isFinite(vwap) || vwap <= 0) {
         return "reject entry - no monthly VWAP feature";

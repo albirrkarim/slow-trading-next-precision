@@ -2,10 +2,10 @@
  * Monthly-anchored VWAP feature math — pure functions, no I/O. The
  * feature feed (`features/vwap-feed`) folds closed klines into the
  * `state.features.vwap` accumulator; `features.update` derives the
- * per-coin `vwap*` fields consumed by gates and snapshots.
+ * per-coin `vwap` group consumed by gates and snapshots.
  */
 import type { Kline } from "@/lib/system/types/market";
-import type { CoinFeatures, VwapAccumulator } from "./types";
+import type { CoinVwap, VwapAccumulator } from "./types";
 
 /** UTC month-start (ms) containing `timeMs` — the VWAP anchor boundary. */
 function monthStartMs(timeMs: number): number {
@@ -48,47 +48,34 @@ function foldKline(acc: VwapAccumulator, kline: Kline): void {
 }
 
 /**
- * Derives the coin-facing `vwap*` fields from an accumulator. Returns
- * empty fields when the run has no volume — absence reads as "no opinion".
- * `vwap`/`vwapStdev` quantize to 4 significant digits and the pct fields
- * to 0.1 so the delta stream sees step functions instead of float churn.
+ * Derives the coin-facing `vwap` group from an accumulator. Returns
+ * `undefined` when no accumulator exists, and an anchor-only group when
+ * the run has no volume — absence reads as "no opinion". `price`/`stdev`
+ * quantize to 4 significant digits and the pct fields to 0.1 so the delta
+ * stream sees step functions instead of float churn.
  */
 function derive(
   acc: VwapAccumulator | undefined,
   markPrice?: number,
-): Pick<
-  CoinFeatures,
-  | "vwap"
-  | "vwapStdev"
-  | "vwapDistancePct"
-  | "vwapStretchPct"
-  | "vwapAnchorT"
-> {
-  if (!acc) return {};
-  if (acc.v <= 0 || acc.n <= 0) return { vwapAnchorT: acc.aT };
+): CoinVwap | undefined {
+  if (!acc) return undefined;
+  if (acc.v <= 0 || acc.n <= 0) return { anchorT: acc.aT };
 
   const price = acc.pv / acc.v;
-  if (!Number.isFinite(price) || price <= 0) return { vwapAnchorT: acc.aT };
+  if (!Number.isFinite(price) || price <= 0) return { anchorT: acc.aT };
 
   const variance = Math.max(acc.s2 / acc.n - (acc.s / acc.n) ** 2, 0);
   const stdev = Math.sqrt(variance);
 
-  const fields: Pick<
-    CoinFeatures,
-    | "vwap"
-    | "vwapStdev"
-    | "vwapDistancePct"
-    | "vwapStretchPct"
-    | "vwapAnchorT"
-  > = {
-    vwap: Number(price.toPrecision(4)),
-    vwapAnchorT: acc.aT,
-    vwapStdev: Number(stdev.toPrecision(4)),
-    vwapStretchPct: Number((((2 * stdev) / price) * 100).toFixed(1)),
+  const fields: CoinVwap = {
+    anchorT: acc.aT,
+    price: Number(price.toPrecision(4)),
+    stdev: Number(stdev.toPrecision(4)),
+    stretchPct: Number((((2 * stdev) / price) * 100).toFixed(1)),
   };
 
   if (Number.isFinite(markPrice)) {
-    fields.vwapDistancePct = Number(
+    fields.distancePct = Number(
       ((((markPrice as number) - price) / price) * 100).toFixed(1),
     );
   }

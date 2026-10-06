@@ -20,6 +20,17 @@ const Y_REFERENCE_LINES = [
   { color: "#78909c", label: "1", y: 1 },
 ];
 
+/**
+ * `priceNormalized` reading across record shapes — grouped `{current}`
+ * now, a flat number in cache dirs written before the group existed.
+ */
+const recordValue = (
+  record: BacktestFeatureRecord,
+): number | undefined =>
+  typeof record.priceNormalized === "number"
+    ? record.priceNormalized
+    : record.priceNormalized?.current;
+
 function PriceNormalizedBody({
   datasetEndTimeMs,
   datasetStartTimeMs,
@@ -37,9 +48,12 @@ function PriceNormalizedBody({
     const series: LeveledMarkers[][] = [];
     let fallbackIdx = 0;
     for (const symbol of Object.keys(featuresMap ?? {})) {
-      const records = (featuresMap?.[symbol] ?? []).filter(
-        (record) => record.priceNormalized !== undefined,
-      );
+      const records = (featuresMap?.[symbol] ?? [])
+        .map((record) => ({ t: record.t, v: recordValue(record) }))
+        .filter(
+          (record): record is { t: number; v: number } =>
+            record.v !== undefined,
+        );
       // A symbol without a defined value (fewer than two pivots in the
       // window the whole run) emits no line at all.
       if (records.length === 0) continue;
@@ -52,10 +66,8 @@ function PriceNormalizedBody({
       series.push(
         records.map((record) => ({
           color,
-          level: record.priceNormalized as number,
-          text: `${symbol} priceNormalized ${(
-            record.priceNormalized as number
-          ).toFixed(3)}`,
+          level: record.v,
+          text: `${symbol} priceNormalized ${record.v.toFixed(3)}`,
           time: Math.floor(record.t / 1000),
         })),
       );

@@ -21,10 +21,23 @@ import type { LazyArtifact } from "./use-backtest-artifacts";
 
 const ANCHOR_SYMBOL = "BTC";
 
+/**
+ * `priceNormalized` reading across record shapes — grouped `{current}`
+ * now, a flat number in cache dirs written before the group existed.
+ */
+const recordValue = (
+    record: BacktestFeatureRecord,
+): number | undefined =>
+    typeof record.priceNormalized === "number"
+        ? record.priceNormalized
+        : record.priceNormalized?.current;
+
 const toSamples = (records?: BacktestFeatureRecord[]): StepSample[] =>
     (records ?? [])
-        .filter((record) => record.priceNormalized !== undefined)
-        .map((record) => ({ t: record.t, v: record.priceNormalized as number }))
+        .map((record) => ({ t: record.t, v: recordValue(record) }))
+        .filter(
+            (sample): sample is StepSample => sample.v !== undefined,
+        )
         .sort((x, y) => x.t - y.t);
 
 /** Score color by co-movement strength; sign picks the hue. */

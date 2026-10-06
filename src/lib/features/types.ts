@@ -8,6 +8,8 @@
  * `update`.
  */
 
+import type { VolatilityPoint } from "@/lib/system/types/market";
+
 /**
  * Pivot envelope window every pivot-derived feature reads from
  * `state.vPointsMap`. Matches the ~2-month volatility warm-up lookback
@@ -18,7 +20,7 @@ export const FEATURES_VPOINT_WINDOW_MS = 2 * 30 * 24 * 60 * 60 * 1000;
 
 /**
  * Rolling window for per-coin feature history trails (e.g.
- * `priceNormalizedHistory`) — keeps roughly the recent decision horizon.
+ * `priceNormalized.history`) — keeps roughly the recent decision horizon.
  */
 export const FEATURES_HISTORY_WINDOW_MS = 20 * 24 * 60 * 60 * 1000;
 
@@ -30,7 +32,7 @@ export interface FeatureHistoryPoint {
 
 /**
  * Running fold of hlc3 candles for the monthly-anchored VWAP — the raw
- * substrate the derived `vwap*` fields are computed from. Written by the
+ * substrate the derived `vwap` group is computed from. Written by the
  * feature feed (`features.vwap-feed` inside `refresh`), never by
  * `features.update`: accumulators must survive the per-pass `coins`
  * rebuild. Sums restart at each UTC month boundary.
@@ -53,10 +55,11 @@ export interface VwapAccumulator {
 }
 
 /**
- * Per-symbol feature values keyed by feature name. Sparse by design:
- * features derived from pivot prices only move when a new vPoint forms.
+ * Grouped `priceNormalized` feature — the current envelope reading plus its
+ * recorded change trail. `update` reuses the previous group object when both
+ * members are unchanged so `changedCoins` identity-diffing stays sparse.
  */
-export interface CoinFeatures {
+export interface CoinPriceNormalized {
   /**
    * Position of the latest pivot price inside the trailing pivot-price
    * envelope: `0` = range floor, `1` = range top, `>1`/`<0` = pivot formed
@@ -64,7 +67,7 @@ export interface CoinFeatures {
    * Quantized to 3 decimals. Undefined until at least two earlier pivots
    * exist in the window — absence means "no opinion", never a block.
    */
-  priceNormalized?: number;
+  current?: number;
 
   /**
    * Rolling trail of `priceNormalized` change points within the last
@@ -72,39 +75,64 @@ export interface CoinFeatures {
    * changes (it is a step function); the last surviving point is kept even
    * when older than the window so "unchanged since t" stays readable.
    */
-  priceNormalizedHistory: FeatureHistoryPoint[];
+  history: FeatureHistoryPoint[];
+}
 
+/**
+ * Grouped monthly-anchored VWAP feature — derived each pass from the
+ * `RuntimeFeatures.vwap` accumulator. The mark-driven fields move every
+ * pass, so `changedCoins` excludes the whole group: it rides along in any
+ * record a real change triggers but never triggers one itself.
+ */
+export interface CoinVwap {
   /**
-   * Monthly-anchored VWAP (Σ hlc3·vol / Σvol since `vwapAnchorT`), derived
-   * each pass from the `RuntimeFeatures.vwap` accumulator. Quantized to 4
-   * significant digits so it records as a step function in the delta
+   * Monthly-anchored VWAP (Σ hlc3·vol / Σvol since `anchorT`). Quantized to
+   * 4 significant digits so it records as a step function in the delta
    * stream. Absent until the accumulator carries volume.
    */
-  vwap?: number;
+  price?: number;
 
   /**
-   * Population standard deviation of hlc3 since `vwapAnchorT`
+   * Population standard deviation of hlc3 since `anchorT`
    * (`sqrt(Σs²/n − mean²)`) — the σ the VWAP-band distances are measured
-   * in. Same quantization cadence as `vwap`.
+   * in. Same quantization cadence as `price`.
    */
-  vwapStdev?: number;
+  stdev?: number;
 
   /**
-   * Signed distance of the latest mark price from `vwap`, percent:
-   * `(mark − vwap)/vwap × 100`. Quantized to 0.1 steps.
+   * Signed distance of the latest mark price from `price`, percent:
+   * `(mark − price)/price × 100`. Quantized to 0.1 steps.
    */
-  vwapDistancePct?: number;
+  distancePct?: number;
 
   /**
-   * Envelope width: `2σ/vwap × 100` — how stretched the monthly VWAP
+   * Envelope width: `2σ/price × 100` — how stretched the monthly VWAP
    * bands are as a share of price. Quantized to 0.1 steps.
    */
-  vwapStretchPct?: number;
+  stretchPct?: number;
 
   /** UTC month-start (ms) the VWAP run belongs to. */
-  vwapAnchorT?: number;
+  anchorT?: number;
+}
 
-  [feature: string]: number | FeatureHistoryPoint[] | undefined;
+/**
+ * Per-symbol feature values grouped by feature name. Sparse by design:
+ * features derived from pivot prices only move when a new vPoint forms.
+ */
+export interface CoinFeatures {
+  /**
+   * Latest vPoint in `vPointsMap` for this coin at refresh time. Excluded
+   * from `changedCoins` diffs — it mutates every pass. Entry commits clone
+   * it, so position snapshots freeze the entry-time signal point (incl.
+   * `p`).
+   */
+  latestVpoint?: VolatilityPoint;
+
+  priceNormalized: CoinPriceNormalized;
+
+  vwap?: CoinVwap;
+
+  [feature: string]: any;
 }
 
 /** Feature store carried on `RuntimeEngineState.features`. */

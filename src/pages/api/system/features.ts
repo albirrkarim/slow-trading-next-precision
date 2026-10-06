@@ -15,7 +15,8 @@ interface FeaturesResponse {
 
 /**
  * Serves the live feature store (`state.features`) — the per-coin
- * `priceNormalized` trail the dashboard charts. Prefers the running
+ * `priceNormalized` group (current value plus history trail) the
+ * dashboard charts. Prefers the running
  * engine's in-memory snapshot; falls back to the persisted
  * `features.json[mode]` slice so the page still renders while the
  * engine is restarting.

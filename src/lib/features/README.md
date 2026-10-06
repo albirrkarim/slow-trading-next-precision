@@ -33,10 +33,10 @@ import features from "@/lib/features";
   `onFeatureUpdate` implementation should run: feeds feature-scoped
   market inputs (`vwapFeed`) then calls `update`.
 - `features.changedCoins(prev, next)` — shallow per-symbol diff used by
-  adapters to keep feature persistence sparse. Per-pass VWAP fields
-  (`vwap`, `vwapStdev`, `vwapDistancePct`, `vwapStretchPct`) are excluded
-  from the diff: they ride along in any record a real change triggers
-  but never trigger one themselves.
+  adapters to keep feature persistence sparse (nested groups compare by
+  identity — `update` reuses unchanged group objects). The `vwap` and
+  `latestVpoint` keys are excluded from the diff: they ride along in any
+  record a real change triggers but never trigger one themselves.
 
 Adapter wiring:
 
@@ -56,6 +56,12 @@ state.features = {
   coins: Record<symbol, CoinFeatures>,       // derived, gate-facing values
   vwap: Record<symbol, VwapAccumulator>,     // raw substrate (input)
 };
+
+CoinFeatures = {
+  latestVpoint?: VolatilityPoint,            // newest pivot (mutates in place)
+  priceNormalized: { current?: number; history: FeatureHistoryPoint[] },
+  vwap?: { price, stdev, distancePct, stretchPct, anchorT },
+};
 ```
 
 Two layers per feature, deliberately:
@@ -64,13 +70,15 @@ Two layers per feature, deliberately:
   between passes (`{aT, pv, v, s, s2, n, t}`). Written by the feed, read
   by `update`. It lives *outside* `coins` because `update` rebuilds that
   map wholesale every pass — anything stored inside `coins` is destroyed.
-- **Derived** (`coins[s].vwap*`) — flat quantized numbers
-  (`vwap`, `vwapStdev`, `vwapDistancePct`, `vwapStretchPct`,
-  `vwapAnchorT`). The mark-driven fields move every pass, so
-  `changedCoins` ignores them — they are written alongside any record a
-  pivot-driven change triggers but never trigger a write themselves,
-  keeping the backtest artifact stream and production `features.json`
-  flush sparse. Only `vwapAnchorT` still counts as a change.
+- **Derived** (`coins[s]`) — grouped feature objects: `priceNormalized`
+  carries the current reading plus its change trail, `vwap` carries the
+  quantized monthly-anchored numbers, and `latestVpoint` mirrors the
+  newest pivot so entry snapshots freeze the signal point. The `vwap`
+  mark-driven fields and the in-place-mutating `latestVpoint` move every
+  pass, so `changedCoins` ignores both keys — they are written alongside
+  any record a pivot-driven change triggers but never trigger a write
+  themselves, keeping the backtest artifact stream and production
+  `features.json` flush sparse.
 
 Symbols follow `vPointsMap` keys — the canonical tracked set (configured
 coins, open-position coins, BTC context) already maintained by the
@@ -95,5 +103,5 @@ engine's market stage.
 2. Pure math → a module like `vwap.ts` (fold + derive, no I/O).
 3. Needs candles or other market data → a `*-feed.ts` that reads
    `context.adapter.market`; the engine must not learn about it.
-4. Derive into flat `CoinFeatures` fields inside `update`; wire the feed
+4. Derive into `CoinFeatures` groups inside `update`; wire the feed
    call inside `refresh`.

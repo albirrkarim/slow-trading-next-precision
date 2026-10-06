@@ -126,23 +126,19 @@ describe("backtest artifact spool", () => {
     const spool = backtestArtifacts.spool.create(dir, 2);
 
     await spool.pushFeature("AAA", {
-      priceNormalized: 0.4,
-      priceNormalizedHistory: [],
+      priceNormalized: { current: 0.4, history: [] },
       t: 1,
     });
     await spool.pushFeature("BBB", {
-      priceNormalized: 0.9,
-      priceNormalizedHistory: [],
+      priceNormalized: { current: 0.9, history: [] },
       t: 2,
     });
     await spool.pushFeature("AAA", {
-      priceNormalized: 0.6,
-      priceNormalizedHistory: [],
+      priceNormalized: { current: 0.6, history: [] },
       t: 3,
     });
     await spool.pushFeature("AAA", {
-      priceNormalized: 1.1,
-      priceNormalizedHistory: [],
+      priceNormalized: { current: 1.1, history: [] },
       t: 4,
     });
     const manifest = await spool.finalize();
@@ -152,10 +148,10 @@ describe("backtest artifact spool", () => {
     const scoped = (await backtestArtifacts.read.features(
       dir,
       "AAA",
-    )) as { t: number; priceNormalized?: number }[];
-    expect(scoped.map((record) => record.priceNormalized)).toEqual([
-      0.4, 0.6, 1.1,
-    ]);
+    )) as { t: number; priceNormalized?: { current?: number } }[];
+    expect(
+      scoped.map((record) => record.priceNormalized?.current),
+    ).toEqual([0.4, 0.6, 1.1]);
 
     const merged = (await backtestArtifacts.read.features(dir)) as Record<
       string,

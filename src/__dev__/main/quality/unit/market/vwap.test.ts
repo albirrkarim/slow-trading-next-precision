@@ -51,7 +51,7 @@ describe("vwap.accumulator.foldKline", () => {
     expect(acc.n).toBe(2);
     expect(acc.t).toBe(MONTH + CANDLE_MS);
     const derived = vwap.derive(acc);
-    expect(derived.vwap).toBeCloseTo(16);
+    expect(derived?.price).toBeCloseTo(16);
   });
 
   it("computes σ as the population stdev of hlc3", () => {
@@ -63,7 +63,7 @@ describe("vwap.accumulator.foldKline", () => {
       kline(MONTH + CANDLE_MS, 20, 20, 20, 1),
     );
     const derived = vwap.derive(acc);
-    expect(derived.vwapStdev).toBeCloseTo(5);
+    expect(derived?.stdev).toBeCloseTo(5);
   });
 
   it("a zero-volume candle moves σ but not the weighted mean", () => {
@@ -76,8 +76,8 @@ describe("vwap.accumulator.foldKline", () => {
     const derived = vwap.derive(acc);
     // vwap stays 10 (the volume-less candle carries no weight) while σ
     // reads both prices: mean 20, σ = 10.
-    expect(derived.vwap).toBeCloseTo(10);
-    expect(derived.vwapStdev).toBeCloseTo(10);
+    expect(derived?.price).toBeCloseTo(10);
+    expect(derived?.stdev).toBeCloseTo(10);
   });
 });
 
@@ -91,25 +91,25 @@ describe("vwap.derive", () => {
     );
     // hlc3s: 93.33…, 110 → vwap ≈ 101.67 (quantized 101.7), σ ≈ 8.333
     const derived = vwap.derive(acc, 110);
-    expect(derived.vwap).toBeCloseTo(101.7, 1);
-    expect(derived.vwapDistancePct).toBeCloseTo(8.2, 1);
+    expect(derived?.price).toBeCloseTo(101.7, 1);
+    expect(derived?.distancePct).toBeCloseTo(8.2, 1);
     // stretchPct = 2σ / vwap — the envelope width the gate preconditions on
-    expect(derived.vwapStretchPct).toBeCloseTo(16.4, 1);
-    expect(derived.vwapAnchorT).toBe(MONTH);
+    expect(derived?.stretchPct).toBeCloseTo(16.4, 1);
+    expect(derived?.anchorT).toBe(MONTH);
   });
 
   it("exposes no opinion without folded volume or an accumulator", () => {
-    expect(vwap.derive(undefined)).toEqual({});
+    expect(vwap.derive(undefined)).toBeUndefined();
     const acc = vwap.accumulator.create(MONTH);
-    expect(vwap.derive(acc)).toEqual({ vwapAnchorT: MONTH });
+    expect(vwap.derive(acc)).toEqual({ anchorT: MONTH });
   });
 
   it("omits distancePct when no mark price exists yet", () => {
     const acc = vwap.accumulator.create(MONTH);
     vwap.accumulator.foldKline(acc, kline(MONTH, 10, 10, 10, 1));
     const derived = vwap.derive(acc);
-    expect(derived.vwap).toBeCloseTo(10);
-    expect(derived.vwapDistancePct).toBeUndefined();
+    expect(derived?.price).toBeCloseTo(10);
+    expect(derived?.distancePct).toBeUndefined();
   });
 });
 
@@ -126,7 +126,7 @@ describe("month boundary", () => {
     const feb = vwap.accumulator.create(febAnchor);
     vwap.accumulator.foldKline(feb, kline(NEXT_MONTH, 10, 10, 10, 2));
     const derived = vwap.derive(feb);
-    expect(derived.vwap).toBeCloseTo(10);
+    expect(derived?.price).toBeCloseTo(10);
     expect(feb.n).toBe(1);
   });
 });

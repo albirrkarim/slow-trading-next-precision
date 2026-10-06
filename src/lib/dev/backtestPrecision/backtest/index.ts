@@ -307,8 +307,15 @@ export async function precisionBacktest(
       const changed = features.changedCoins(previous?.coins, nextCoins);
       await Promise.all(
         changed.map(async (symbol) => {
+          const coin = nextCoins[symbol];
           const record: BacktestFeatureRecord = {
-            ...nextCoins[symbol],
+            ...coin,
+            // The vPoint object mutates in place (`usedBy`, maxUp/DownPct)
+            // — the record freezes the signal point as of this tick, same
+            // as the entry commit's structuredClone snapshot.
+            latestVpoint: coin.latestVpoint
+              ? structuredClone(coin.latestVpoint)
+              : undefined,
             t: context.state.currentTime,
           };
           if (spool) {

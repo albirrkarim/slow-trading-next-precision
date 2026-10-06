@@ -36,7 +36,7 @@ function update(context: RuntimeContext): void {
   for (const symbol of Object.keys(context.state.vPointsMap)) {
     const points = context.state.vPointsMap[symbol];
     const priceNormalized = computePriceNormalized({ now, points });
-    // Monthly-anchored VWAP: derive the coin-facing `vwap*` fields from
+    // Monthly-anchored VWAP: derive the coin-facing `vwap` group from
     // the market-stage accumulator (lives at features.vwap — outside this
     // rebuilt map so the fold survives every pass).
     const vwapFields = vwap.derive(
@@ -45,9 +45,12 @@ function update(context: RuntimeContext): void {
     );
     // Step-series trail: append only when the value changed; reuse the
     // previous array when nothing moved so changedCoins stays sparse.
-    let history =
-      context.state.features?.coins[symbol]?.priceNormalizedHistory ??
-      EMPTY_HISTORY;
+    // Legacy stores carried the trail flat (`priceNormalizedHistory`) —
+    // the `.history` read simply misses there and the replay below
+    // reseeds the group.
+    const previousGroup =
+      context.state.features?.coins[symbol]?.priceNormalized;
+    let history = previousGroup?.history ?? EMPTY_HISTORY;
     if (history.length === 0 && priceNormalized !== undefined) {
       // No persisted trail (first boot, fresh symbol): reconstruct what
       // live ticks would have captured by replaying the pivot timeline.
@@ -68,10 +71,18 @@ function update(context: RuntimeContext): void {
           point.t >= cutoff || index === history.length - 1,
       );
     }
+    // Reuse the previous group object when neither member moved —
+    // changedCoins diffs nested objects by identity, so a fresh wrapper
+    // would list every coin on every pass.
+    const priceNormalizedGroup =
+      isSameNormalizedValue(previousGroup?.current, priceNormalized) &&
+      previousGroup?.history === history
+        ? previousGroup
+        : { current: priceNormalized, history };
     coins[symbol] = {
-      priceNormalized,
-      priceNormalizedHistory: history,
-      ...vwapFields,
+      latestVpoint: points?.at(-1),
+      priceNormalized: priceNormalizedGroup,
+      ...(vwapFields && { vwap: vwapFields }),
     };
   }
   // Accumulators are inputs, not derived values — carry them through the
@@ -97,23 +108,22 @@ async function refresh(context: RuntimeContext): Promise<void> {
 }
 
 /**
- * Mark/candle-driven fields that move on nearly every pass. They ride along
- * in every written record but never trigger one — otherwise the backtest
- * stream and production `features.json` flush would write each tick.
+ * Top-level coin keys excluded from `changedCoins` diffs — the whole
+ * `vwap` group (mark/candle-driven fields move on nearly every pass) and
+ * `latestVpoint` (the point object mutates in place on mark-price passes
+ * and entry markers). They ride along in every written record but never
+ * trigger one — otherwise the backtest stream and production
+ * `features.json` flush would write each tick.
  */
-const PER_PASS_KEYS = new Set<string>([
-  "vwap",
-  "vwapDistancePct",
-  "vwapStdev",
-  "vwapStretchPct",
-]);
+const PER_PASS_KEYS = new Set<string>(["latestVpoint", "vwap"]);
 
 /**
  * Lists symbols whose coin-feature values differ between two snapshots
- * (shallow per-field compare, ignoring `PER_PASS_KEYS`). Used by the
- * backtest adapter to append a record only when a feature actually
- * changed — pivot-derived features are step functions, so the delta stream
- * stays sparse.
+ * (shallow per-key compare — nested groups like `priceNormalized` compare
+ * by identity, which `update` preserves by reusing unchanged group
+ * objects — ignoring `PER_PASS_KEYS`). Used by the backtest adapter to
+ * append a record only when a feature actually changed — pivot-derived
+ * features are step functions, so the delta stream stays sparse.
  */
 function changedCoins(
   previous: Record<string, CoinFeatures> | undefined,

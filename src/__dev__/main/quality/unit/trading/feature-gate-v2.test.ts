@@ -24,11 +24,13 @@ function signal(p: number): VolatilityPoint {
 
 /** Coin with vwap 100, σ 10, stretch 20% — comfortably past the 5% floor. */
 const READY: CoinFeatures = {
-  priceNormalizedHistory: [],
-  vwap: 100,
-  vwapAnchorT: Date.UTC(2026, 0, 1),
-  vwapStdev: 10,
-  vwapStretchPct: 20,
+  priceNormalized: { history: [] },
+  vwap: {
+    anchorT: Date.UTC(2026, 0, 1),
+    price: 100,
+    stdev: 10,
+    stretchPct: 20,
+  },
 };
 
 describe("featureGateV2", () => {
@@ -38,7 +40,10 @@ describe("featureGateV2", () => {
     );
     expect(
       featureGateV2(
-        contextWith({ priceNormalizedHistory: [], vwapAnchorT: 1 }),
+        contextWith({
+          priceNormalized: { history: [] },
+          vwap: { anchorT: 1 },
+        }),
         "SUI",
         signal(110),
       ),
@@ -46,7 +51,10 @@ describe("featureGateV2", () => {
   });
 
   it("refuses a monthly envelope narrower than the 5% floor", () => {
-    const narrow = { ...READY, vwapStretchPct: 4.9 };
+    const narrow = {
+      ...READY,
+      vwap: { ...READY.vwap, stretchPct: 4.9 },
+    };
     expect(featureGateV2(contextWith(narrow), "SUI", signal(115))).toContain(
       "too narrow",
     );

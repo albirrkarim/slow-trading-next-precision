@@ -753,10 +753,10 @@ function createProductionFactory(): ProductionRuntimeFactory {
       currentTime,
     );
 
-    // PROD:FEATURES_STATE_LOAD — the feature-store trails (priceNormalized
-    // history) resume across restarts exactly where the last flush left
-    // them; absent on first boot, `features.update` then reseeds each trail
-    // by replaying the persisted pivot timeline.
+    // PROD:FEATURES_STATE_LOAD — the feature-store trails
+    // (`priceNormalized.history`) resume across restarts exactly where the
+    // last flush left them; absent on first boot, `features.update` then
+    // reseeds each trail by replaying the persisted pivot timeline.
     const persistedFeatures = await runtimeStorage.features
       .load(mode === "sandbox" ? "sandbox" : "live")
       .catch(() => undefined);

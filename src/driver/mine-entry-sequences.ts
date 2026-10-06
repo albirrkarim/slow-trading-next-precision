@@ -49,15 +49,17 @@ function trailStats(trail: FeatureHistoryPoint[]) {
 /** Rebuilds the coin feature slice exactly as `features.update` would at `now`. */
 function coinFeaturesAt(now: number, points: VolatilityPoint[]) {
   return {
-    priceNormalized: computePriceNormalized({ now, points }),
-    priceNormalizedHistory: replayPriceNormalizedHistory({ now, points }),
-    // Extended trail for mining only — runtime persists 10d; the study gets
-    // 30d so long-window excursions stay visible.
-    priceNormalizedHistoryExtended: replayPriceNormalizedHistory({
-      historyWindowMs: EXTENDED_HISTORY_MS,
-      now,
-      points,
-    }),
+    priceNormalized: {
+      current: computePriceNormalized({ now, points }),
+      history: replayPriceNormalizedHistory({ now, points }),
+      // Extended trail for mining only — runtime persists 10d; the study
+      // gets 30d so long-window excursions stay visible.
+      historyExtended: replayPriceNormalizedHistory({
+        historyWindowMs: EXTENDED_HISTORY_MS,
+        now,
+        points,
+      }),
+    },
   };
 }
 
@@ -120,14 +122,14 @@ async function main() {
 
       const coin = coinFeaturesAt(t, points.slice(0, i + 1));
       const btc = coinFeaturesAt(t, btcUpto);
-      const trail5d = coin.priceNormalizedHistoryExtended.filter(
+      const trail5d = coin.priceNormalized.historyExtended.filter(
         (p) => p.t >= t - 5 * DAY_MS,
       );
-      const btcTrail5d = btc.priceNormalizedHistoryExtended.filter(
+      const btcTrail5d = btc.priceNormalized.historyExtended.filter(
         (p) => p.t >= t - 5 * DAY_MS,
       );
-      const coin30 = trailStats(coin.priceNormalizedHistoryExtended);
-      const btc30 = trailStats(btc.priceNormalizedHistoryExtended);
+      const coin30 = trailStats(coin.priceNormalized.historyExtended);
+      const btc30 = trailStats(btc.priceNormalized.historyExtended);
       const coin5 = trailStats(trail5d);
       const btc5 = trailStats(btcTrail5d);
 
@@ -154,7 +156,7 @@ async function main() {
               ? Math.max(...prev.map((p) => Math.abs(p.lvl)))
               : undefined,
           prevOppositeCount: prev.length || undefined,
-          pn: coin.priceNormalized,
+          pn: coin.priceNormalized.current,
           pnMin5d: coin5.min,
           pnMax5d: coin5.max,
           pnMean5d: coin5.mean,
@@ -163,7 +165,7 @@ async function main() {
           pnMax30d: coin30.max,
           pnMean30d: coin30.mean,
           pnSlope30d: coin30.slope,
-          btcPn: btc.priceNormalized,
+          btcPn: btc.priceNormalized.current,
           btcPnMin5d: btc5.min,
           btcPnMax5d: btc5.max,
           btcPnMean5d: btc5.mean,

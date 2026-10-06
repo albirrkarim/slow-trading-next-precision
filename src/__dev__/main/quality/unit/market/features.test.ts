@@ -128,11 +128,15 @@ describe("features.update", () => {
       "SUI",
     ]);
     expect(
-      context.state.features!.coins.SUI.priceNormalized,
+      context.state.features!.coins.SUI.priceNormalized.current,
     ).toBeCloseTo(0.5);
     expect(
-      context.state.features!.coins.BTC.priceNormalized,
+      context.state.features!.coins.BTC.priceNormalized.current,
     ).toBeCloseTo(0.5);
+    // latestVpoint mirrors the newest pivot — the same in-place object.
+    expect(context.state.features!.coins.SUI.latestVpoint).toBe(
+      context.state.vPointsMap.SUI.at(-1),
+    );
   });
 
   it("appends priceNormalized changes to a rolling 10-day history", () => {
@@ -149,14 +153,18 @@ describe("features.update", () => {
     // First update seeds the trail by replaying the pivot timeline — the
     // only in-window pivot is the latest one, recorded at its own time.
     features.update(context);
-    const first = context.state.features!.coins.SUI.priceNormalizedHistory;
-    expect(first).toEqual([{ p: 0.5, t: NOW - DAY_MS }]);
+    const firstGroup = context.state.features!.coins.SUI.priceNormalized;
+    expect(firstGroup.history).toEqual([{ p: 0.5, t: NOW - DAY_MS }]);
 
-    // Same pivots → same value → no append, same array reference stays.
+    // Same pivots → same value → no append: the group object itself is
+    // reused so changedCoins identity-diffing stays sparse.
     features.update(context);
-    expect(context.state.features!.coins.SUI.priceNormalizedHistory).toBe(
-      first,
+    expect(context.state.features!.coins.SUI.priceNormalized).toBe(
+      firstGroup,
     );
+    expect(
+      context.state.features!.coins.SUI.priceNormalized.history,
+    ).toBe(firstGroup.history);
 
     // A new pivot changes the value → one new history point is appended.
     const later = NOW + DAY_MS;
@@ -164,7 +172,7 @@ describe("features.update", () => {
     context.state.vPointsMap.SUI.push(point(later - DAY_MS, 9));
     features.update(context);
     const history =
-      context.state.features!.coins.SUI.priceNormalizedHistory;
+      context.state.features!.coins.SUI.priceNormalized.history;
     expect(history).toHaveLength(2);
     expect(history[1].t).toBe(later);
     expect(history[1].p).toBeCloseTo(0.25); // envelope [8,12], latest 9
@@ -189,16 +197,16 @@ describe("features.update", () => {
     // that preceded them: 10→0.5, 14→1.5, then 9 lands in an envelope
     // that now includes 14 → (9-8)/(14-8) ≈ 0.167.
     const history =
-      context.state.features!.coins.SUI.priceNormalizedHistory;
+      context.state.features!.coins.SUI.priceNormalized.history;
     expect(history).toHaveLength(3);
     expect(history[0]).toEqual({ p: 0.5, t: NOW - 8 * DAY_MS });
     expect(history[1]).toEqual({ p: 1.5, t: NOW - 4 * DAY_MS });
     expect(history[2].t).toBe(NOW - DAY_MS);
     expect(history[2].p).toBeCloseTo(1 / 6);
     // Current value equals the last replayed point — no extra tick point.
-    expect(context.state.features!.coins.SUI.priceNormalized).toBeCloseTo(
-      1 / 6,
-    );
+    expect(
+      context.state.features!.coins.SUI.priceNormalized.current,
+    ).toBeCloseTo(1 / 6);
   });
 
   it("resumes a persisted trail instead of reseeding it", () => {
@@ -207,8 +215,7 @@ describe("features.update", () => {
       features: {
         coins: {
           SUI: {
-            priceNormalized: 0.4,
-            priceNormalizedHistory: existing,
+            priceNormalized: { current: 0.4, history: existing },
           },
         },
         shared: {},
@@ -222,9 +229,38 @@ describe("features.update", () => {
       },
     });
     features.update(context);
-    expect(context.state.features!.coins.SUI.priceNormalizedHistory).toBe(
+    expect(context.state.features!.coins.SUI.priceNormalized.history).toBe(
       existing,
     );
+  });
+
+  it("reseeds the trail when the persisted record predates the group", () => {
+    // Legacy flat records carry the trail on `priceNormalizedHistory` —
+    // invisible to the group read, so the replay reseeds it.
+    const context = contextWith({
+      features: {
+        coins: {
+          SUI: {
+            priceNormalized: 0.4,
+            priceNormalizedHistory: [
+              { p: 0.4, t: NOW - 5 * DAY_MS },
+            ],
+          } as never,
+        },
+        shared: {},
+      },
+      vPointsMap: {
+        SUI: [
+          point(NOW - 30 * DAY_MS, 8),
+          point(NOW - 20 * DAY_MS, 12),
+          point(NOW - DAY_MS, 10),
+        ],
+      },
+    });
+    features.update(context);
+    expect(
+      context.state.features!.coins.SUI.priceNormalized.history,
+    ).toEqual([{ p: 0.5, t: NOW - DAY_MS }]);
   });
 
   it("trims history older than 20 days but keeps the last survivor", () => {
@@ -232,11 +268,13 @@ describe("features.update", () => {
       features: {
         coins: {
           SUI: {
-            priceNormalized: 0.5,
-            priceNormalizedHistory: [
-              { p: 0.9, t: NOW - 40 * DAY_MS },
-              { p: 0.5, t: NOW - 25 * DAY_MS },
-            ],
+            priceNormalized: {
+              current: 0.5,
+              history: [
+                { p: 0.9, t: NOW - 40 * DAY_MS },
+                { p: 0.5, t: NOW - 25 * DAY_MS },
+              ],
+            },
           },
         },
         shared: {},
@@ -254,7 +292,7 @@ describe("features.update", () => {
     // last one, which survives so "unchanged since t" stays readable.
     features.update(context);
     expect(
-      context.state.features!.coins.SUI.priceNormalizedHistory,
+      context.state.features!.coins.SUI.priceNormalized.history,
     ).toEqual([{ p: 0.5, t: NOW - 25 * DAY_MS }]);
   });
 });
@@ -300,14 +338,15 @@ describe("features.update vwap", () => {
     features.update(context);
 
     const coin = context.state.features!.coins.SUI;
-    expect(coin.vwap).toBeCloseTo(16);
-    expect(coin.vwapStdev).toBeCloseTo(5);
-    expect(coin.vwapDistancePct).toBeCloseTo(18.8, 1);
+    expect(coin.vwap?.price).toBeCloseTo(16);
+    expect(coin.vwap?.stdev).toBeCloseTo(5);
+    expect(coin.vwap?.distancePct).toBeCloseTo(18.8, 1);
+    expect(coin.vwap?.anchorT).toBe(Date.UTC(2026, 9, 1));
     // The accumulator is an input — it survives the coins rebuild untouched.
     expect(context.state.features!.vwap!.SUI).toBe(acc);
   });
 
-  it("emits no vwap fields for a coin without an accumulator", () => {
+  it("emits no vwap group for a coin without an accumulator", () => {
     const context = contextWith({
       vPointsMap: {
         SUI: [
@@ -320,18 +359,17 @@ describe("features.update vwap", () => {
     features.update(context);
     const coin = context.state.features!.coins.SUI;
     expect(coin.vwap).toBeUndefined();
-    expect(coin.vwapAnchorT).toBeUndefined();
   });
 });
 
 describe("features.changedCoins", () => {
   it("lists only symbols whose feature values moved", () => {
     const previous = {
-      SUI: { priceNormalized: 0.5, priceNormalizedHistory: [] },
+      SUI: { priceNormalized: { current: 0.5, history: [] } },
     };
     const next = {
-      LINK: { priceNormalized: 0.1, priceNormalizedHistory: [] },
-      SUI: { priceNormalized: 0.8, priceNormalizedHistory: [] },
+      LINK: { priceNormalized: { current: 0.1, history: [] } },
+      SUI: { priceNormalized: { current: 0.8, history: [] } },
     };
     expect(features.changedCoins(previous, next).sort()).toEqual([
       "LINK",
@@ -340,53 +378,67 @@ describe("features.changedCoins", () => {
     expect(features.changedCoins(previous, previous)).toEqual([]);
   });
 
-  it("ignores per-pass vwap fields but still flags real changes", () => {
-    // update() reuses the history array when nothing moved — share the
-    // reference so the shallow diff mirrors real snapshots.
-    const history: never[] = [];
+  it("ignores per-pass vwap/latestVpoint keys but still flags real changes", () => {
+    // update() reuses the group object when nothing moved — share the
+    // references so the shallow diff mirrors real snapshots.
+    const pnAda = { current: 0.4, history: [] };
+    const pnLink = { current: 0.1, history: [] };
+    const pnLinkNext = { current: 0.2, history: [] };
+    const pnSui = { current: 0.5, history: [] };
+    const pnDoge = { current: 0.6, history: [] };
+    const pointA = point(NOW - DAY_MS, 1);
+    const pointB = point(NOW - DAY_MS, 2);
     const previous = {
       ADA: {
-        priceNormalized: 0.4,
-        priceNormalizedHistory: history,
-        vwapAnchorT: NOW - DAY_MS,
+        latestVpoint: pointA,
+        priceNormalized: pnAda,
+        vwap: { anchorT: NOW - DAY_MS, price: 10 },
       },
-      LINK: { priceNormalized: 0.1, priceNormalizedHistory: history },
+      DOGE: { latestVpoint: pointA, priceNormalized: pnDoge },
+      LINK: { latestVpoint: pointA, priceNormalized: pnLink },
       SUI: {
-        priceNormalized: 0.5,
-        priceNormalizedHistory: history,
-        vwap: 10,
-        vwapDistancePct: 2,
-        vwapStdev: 0.5,
-        vwapStretchPct: 1,
+        latestVpoint: pointA,
+        priceNormalized: pnSui,
+        vwap: {
+          anchorT: NOW - DAY_MS,
+          distancePct: 2,
+          price: 10,
+          stdev: 0.5,
+          stretchPct: 1,
+        },
       },
     };
     const next = {
+      // ADA re-anchored inside the vwap group alone — the group is
+      // excluded wholesale, so a month rollover no longer lists the coin.
       ADA: {
-        priceNormalized: 0.4,
-        priceNormalizedHistory: history,
-        vwapAnchorT: NOW,
+        latestVpoint: pointA,
+        priceNormalized: pnAda,
+        vwap: { anchorT: NOW, price: 10 },
       },
+      // DOGE only swapped the latestVpoint object: excluded, not listed.
+      DOGE: { latestVpoint: pointB, priceNormalized: pnDoge },
+      // LINK's priceNormalized group is a new object (current moved):
+      // listed even though vwap moved too.
       LINK: {
-        priceNormalized: 0.2,
-        priceNormalizedHistory: history,
-        vwap: 30,
+        latestVpoint: pointA,
+        priceNormalized: pnLinkNext,
+        vwap: { price: 30 },
       },
+      // SUI moved only vwap fields: not listed.
       SUI: {
-        priceNormalized: 0.5,
-        priceNormalizedHistory: history,
-        vwap: 10.4,
-        vwapDistancePct: 2.3,
-        vwapStdev: 0.6,
-        vwapStretchPct: 1.1,
+        latestVpoint: pointA,
+        priceNormalized: pnSui,
+        vwap: {
+          anchorT: NOW - DAY_MS,
+          distancePct: 2.3,
+          price: 10.4,
+          stdev: 0.6,
+          stretchPct: 1.1,
+        },
       },
     };
-    // SUI moved only per-pass vwap fields: not listed.
-    // LINK moved priceNormalized alongside vwap: listed.
-    // ADA moved vwapAnchorT alone: listed (re-anchor is a real change).
-    expect(features.changedCoins(previous, next).sort()).toEqual([
-      "ADA",
-      "LINK",
-    ]);
+    expect(features.changedCoins(previous, next).sort()).toEqual(["LINK"]);
   });
 });
 

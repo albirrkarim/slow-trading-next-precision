@@ -7,7 +7,7 @@ import { windowsMs } from "@/lib/system/constants";
 
 /**
  * Judge window shared by the gate and its tests: only
- * `priceNormalizedHistory` samples newer than `now - GATE_JUDGE_WINDOW_MS`
+ * `priceNormalized.history` samples newer than `now - GATE_JUDGE_WINDOW_MS`
  * count toward the level-floor and BTC checks. The recorded trail itself
  * keeps the full `FEATURES_HISTORY_WINDOW_MS` (~20 days) for display.
  */
@@ -28,7 +28,7 @@ export const GATE_JUDGE_WINDOW_MS = 5 * windowsMs["1d"];
  *   volatility anchor even when it is not a traded symbol, so below 0.3
  *   means the market is breaking down and above 0.8 means it is extended.
  *
- * Both bounds apply to the recent portion of `priceNormalizedHistory`,
+ * Both bounds apply to the recent portion of `priceNormalized.history`,
  * not just the current value — a coin that touched outside its zone
  * within `GATE_JUDGE_WINDOW_MS` is rejected even when it has since moved
  * back inside. The recorded trail itself keeps the full 20-day window
@@ -83,8 +83,8 @@ export default function featureGateV1(
     const cutoff = context.state.currentTime - GATE_JUDGE_WINDOW_MS;
 
 
-    const historiesBTCRaw = context.state.features?.coins["BTC"]?.priceNormalizedHistory ?? []
-    const historiesSymbolRaw = context.state.features?.coins[symbol.toUpperCase()]?.priceNormalizedHistory ?? [];
+    const historiesBTCRaw = context.state.features?.coins["BTC"]?.priceNormalized?.history ?? []
+    const historiesSymbolRaw = context.state.features?.coins[symbol.toUpperCase()]?.priceNormalized?.history ?? [];
 
     if ((historiesBTCRaw.length < 3 || historiesSymbolRaw.length < 2) && currentLevel < 3) {
         return "reject entry - no price normalized history";
@@ -137,7 +137,7 @@ export default function featureGateV1(
     // an up-leg and the coin is likely to follow, so a TOP (short) signal
     // on the coin fights the move BTC has already made.
     const btcNow =
-        context.state.features?.coins["BTC"]?.priceNormalized ?? arrBTC.at(-1);
+        context.state.features?.coins["BTC"]?.priceNormalized?.current ?? arrBTC.at(-1);
     const btcRecovering =
         minBTCRaw < bounds.minPriceNormalized &&
         btcNow !== undefined &&
@@ -164,7 +164,7 @@ export default function featureGateV1(
         return `BTC PriceNormalized ${minBTCRaw.toFixed(3)} is below 0.0 with level ${currentLevel}`;
     }
 
-    const symbolPriceNormalized = context.state.features?.coins[symbol.toUpperCase()]?.priceNormalized;
+    const symbolPriceNormalized = context.state.features?.coins[symbol.toUpperCase()]?.priceNormalized?.current;
 
     if (symbolPriceNormalized !== undefined && symbolPriceNormalized < 0) {
         return `Symbol PriceNormalized ${symbolPriceNormalized.toFixed(3)} is below 0.0`;

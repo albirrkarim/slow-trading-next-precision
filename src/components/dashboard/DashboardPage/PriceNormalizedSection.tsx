@@ -34,7 +34,7 @@ interface FeaturesSnapshot {
 }
 
 /**
- * Live Price Normalized — each coin's `priceNormalizedHistory` trail as a
+ * Live Price Normalized — each coin's `priceNormalized.history` trail as a
  * step line (values only move when a new vPoint forms), plus a flat tail at
  * the fetch time so the current value reads at the right edge. Follows the
  * Volatility Points brush selection above it.
@@ -141,16 +141,27 @@ function PriceNormalizedBody({
       const symbol = symbols[symbolIdx];
       const coin = coins[symbol];
       if (!coin) continue;
-      const trail = coin.priceNormalizedHistory ?? [];
+      // features.json may still carry the pre-group flat shape until the
+      // first pass rewrites it — `priceNormalized` can be a bare number,
+      // the trail a flat `priceNormalizedHistory` array.
+      const current =
+        typeof coin.priceNormalized === "number"
+          ? coin.priceNormalized
+          : coin.priceNormalized?.current;
+      const trail = (
+        Array.isArray(coin.priceNormalized?.history)
+          ? coin.priceNormalized.history
+          : (coin.priceNormalizedHistory ?? [])
+      ) as { p: number; t: number }[];
       const points = [...trail];
       // The trail stores change points only; a flat tail at the snapshot
       // time stretches the step line to "now" so the live value is visible.
       if (
-        typeof coin.priceNormalized === "number" &&
+        typeof current === "number" &&
         fetchedAt > 0 &&
         (points.at(-1)?.t ?? 0) < fetchedAt
       ) {
-        points.push({ t: fetchedAt, p: coin.priceNormalized });
+        points.push({ t: fetchedAt, p: current });
       }
       if (points.length === 0) continue;
       const color = DEFAULT_COLORS[symbolIdx % DEFAULT_COLORS.length];
