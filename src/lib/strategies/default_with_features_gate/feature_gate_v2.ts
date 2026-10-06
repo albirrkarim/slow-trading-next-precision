@@ -13,11 +13,15 @@ import type { VolatilityPoint } from "@/lib/system/types/market";
  * - `minSigma`/`maxSigma`: the signal's distance from the VWAP must sit
  *   inside `[1σ, 2σ]` — stretched enough to mean-revert, not so extreme
  *   it becomes a falling knife.
+ * - `maxSignalAgeMs`: reject signals older than 1 day — stretched points
+ *   must be fresh; an aging vPoint can slide into the σ zone without
+ *   representing a new stretched entry.
  */
 export const FEATURE_GATE_VWAP_BOUNDS = {
   minStretchPct: 5,
-  minSigma: 1,
-  maxSigma: 2,
+  minSigma: 1.2,
+  maxSigma: 1.7,
+  maxSignalAgeMs: 24 * 60 * 60 * 1000,
 };
 
 /**
@@ -60,6 +64,20 @@ export default function featureGateV2(
     // v1: the gate only vetoes on evidence, never on absence).
     if (!signal || !Number.isFinite(signal.p) || signal.p <= 0) {
         return undefined;
+    }
+
+    // A stretched point is only admissible while fresh — `t` is the pivot's
+    // confirmation time, so an aging vPoint can drift into the σ zone as the
+    // envelope stretches without representing a new stretched entry. A
+    // missing/invalid `t` falls through (veto only on evidence).
+    if (Number.isFinite(signal.t)) {
+        const signalAgeMs = context.state.currentTime - signal.t;
+        if (signalAgeMs > bounds.maxSignalAgeMs) {
+            return (
+                `signal vPoint is ${(signalAgeMs / 3_600_000).toFixed(1)}h ` +
+                `old (> 24h) — stale stretch, not a fresh entry`
+            );
+        }
     }
 
     if (typeof stdev !== "number" || !Number.isFinite(stdev) || stdev <= 0) {
