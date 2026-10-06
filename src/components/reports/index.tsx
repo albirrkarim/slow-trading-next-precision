@@ -16,6 +16,7 @@ import { ChartsSection } from "./ChartsSection";
 import TradeOutcomeEvaluationSection from "./LossEvaluationSection";
 import { SummarySection } from "./SummarySection";
 import { TradesTableSection } from "./TradesTableSection";
+import { TradeHistoryFilters } from "./TradesTableSection/TradeHistoryFilters";
 import MaxUpDistributionChart from "./MaxUpDistributionChart";
 import { endpoints } from "@/components/endpoints";
 import type { RuntimeDashboardState } from "@/lib/system/dashboard";
@@ -204,18 +205,26 @@ export default function Reporting({
         />
       )}
 
-      <TradesTableSection
+      <TradeHistoryFilters
         accounts={dashboardState.accounts}
-        exchangeType={dashboardState.config.exchangeType}
         history={visibleHistory}
-        mode={activeMode}
-        onHistoryChange={(nextHistory, refreshDashboard) => {
-          setHistory(nextHistory);
-          if (refreshDashboard) {
-            void onRefresh?.();
-          }
-        }}
-      />
+        storageKey="precision-trade-history-filters"
+      >
+        {(filteredHistory) => (
+          <TradesTableSection
+            accounts={dashboardState.accounts}
+            exchangeType={dashboardState.config.exchangeType}
+            history={filteredHistory}
+            mode={activeMode}
+            onHistoryChange={(nextHistory, refreshDashboard) => {
+              setHistory(nextHistory);
+              if (refreshDashboard) {
+                void onRefresh?.();
+              }
+            }}
+          />
+        )}
+      </TradeHistoryFilters>
     </Box>
   );
 }

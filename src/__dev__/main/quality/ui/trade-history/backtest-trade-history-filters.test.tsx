@@ -7,7 +7,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import BacktestTradeHistory from "@/components/dev/backtest-precision/BacktestTradeHistory";
-import { filterBacktestTradeHistory } from "@/components/dev/backtest-precision/trade-filters";
+import { filterTradeHistory } from "@/components/reports/TradesTableSection/trade-filters";
 import type { Position } from "@/lib/system/trading";
 import type { VolatilityPoint } from "@/lib/system/types";
 
@@ -94,15 +94,15 @@ const expandIfCollapsed = () => {
 
 const visibleRows = () => screen.getByTestId("backtest-history").textContent;
 
-describe("filterBacktestTradeHistory", () => {
+describe("filterTradeHistory", () => {
   const at = (value: string) => new Date(value).getTime();
 
   it("returns the same list when no filter is set", () => {
-    expect(filterBacktestTradeHistory(positions, {})).toBe(positions);
+    expect(filterTradeHistory(positions, {})).toBe(positions);
   });
 
   it("combines account and entry-date bounds with AND semantics", () => {
-    const filtered = filterBacktestTradeHistory(positions, {
+    const filtered = filterTradeHistory(positions, {
       account: "acc-1",
       fromMs: at("2024-05-01T00:00:00"),
       toMs: at("2024-06-30T23:59:59.999"),
@@ -122,7 +122,7 @@ describe("filterBacktestTradeHistory", () => {
     // Exclusive bound: level 3 stays out, +4 and -5 both pass by magnitude;
     // trades without an exit vPoint never satisfy a set bound.
     expect(
-      filterBacktestTradeHistory(exits, {
+      filterTradeHistory(exits, {
         metric: "exitLevel",
         operator: "gt",
         value: 3,
@@ -134,14 +134,14 @@ describe("filterBacktestTradeHistory", () => {
     // Entry level < 1 isolates the level-0 entries; the -2 point passes a
     // < 3 bound by magnitude.
     expect(
-      filterBacktestTradeHistory(positions, {
+      filterTradeHistory(positions, {
         metric: "entryLevel",
         operator: "lt",
         value: 1,
       }).map((trade) => trade.symbol),
     ).toEqual(["BTC"]);
     expect(
-      filterBacktestTradeHistory(positions, {
+      filterTradeHistory(positions, {
         metric: "entryLevel",
         operator: "lt",
         value: 3,
@@ -151,7 +151,7 @@ describe("filterBacktestTradeHistory", () => {
 
   it("evaluates every comparison operator against the metric value", () => {
     const run = (operator: "lt" | "lte" | "eq" | "gte" | "gt") =>
-      filterBacktestTradeHistory(positions, {
+      filterTradeHistory(positions, {
         metric: "entryLevel",
         operator,
         value: 1,
