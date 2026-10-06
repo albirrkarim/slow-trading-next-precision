@@ -339,6 +339,55 @@ describe("features.changedCoins", () => {
     ]);
     expect(features.changedCoins(previous, previous)).toEqual([]);
   });
+
+  it("ignores per-pass vwap fields but still flags real changes", () => {
+    // update() reuses the history array when nothing moved — share the
+    // reference so the shallow diff mirrors real snapshots.
+    const history: never[] = [];
+    const previous = {
+      ADA: {
+        priceNormalized: 0.4,
+        priceNormalizedHistory: history,
+        vwapAnchorT: NOW - DAY_MS,
+      },
+      LINK: { priceNormalized: 0.1, priceNormalizedHistory: history },
+      SUI: {
+        priceNormalized: 0.5,
+        priceNormalizedHistory: history,
+        vwap: 10,
+        vwapDistancePct: 2,
+        vwapStdev: 0.5,
+        vwapStretchPct: 1,
+      },
+    };
+    const next = {
+      ADA: {
+        priceNormalized: 0.4,
+        priceNormalizedHistory: history,
+        vwapAnchorT: NOW,
+      },
+      LINK: {
+        priceNormalized: 0.2,
+        priceNormalizedHistory: history,
+        vwap: 30,
+      },
+      SUI: {
+        priceNormalized: 0.5,
+        priceNormalizedHistory: history,
+        vwap: 10.4,
+        vwapDistancePct: 2.3,
+        vwapStdev: 0.6,
+        vwapStretchPct: 1.1,
+      },
+    };
+    // SUI moved only per-pass vwap fields: not listed.
+    // LINK moved priceNormalized alongside vwap: listed.
+    // ADA moved vwapAnchorT alone: listed (re-anchor is a real change).
+    expect(features.changedCoins(previous, next).sort()).toEqual([
+      "ADA",
+      "LINK",
+    ]);
+  });
 });
 
 describe("vpoints.retainRecent sinceMs", () => {

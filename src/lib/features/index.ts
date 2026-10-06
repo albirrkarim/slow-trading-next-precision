@@ -97,10 +97,23 @@ async function refresh(context: RuntimeContext): Promise<void> {
 }
 
 /**
+ * Mark/candle-driven fields that move on nearly every pass. They ride along
+ * in every written record but never trigger one — otherwise the backtest
+ * stream and production `features.json` flush would write each tick.
+ */
+const PER_PASS_KEYS = new Set<string>([
+  "vwap",
+  "vwapDistancePct",
+  "vwapStdev",
+  "vwapStretchPct",
+]);
+
+/**
  * Lists symbols whose coin-feature values differ between two snapshots
- * (shallow per-field compare). Used by the backtest adapter to append a
- * record only when a feature actually changed — pivot-derived features are
- * step functions, so the delta stream stays sparse.
+ * (shallow per-field compare, ignoring `PER_PASS_KEYS`). Used by the
+ * backtest adapter to append a record only when a feature actually
+ * changed — pivot-derived features are step functions, so the delta stream
+ * stays sparse.
  */
 function changedCoins(
   previous: Record<string, CoinFeatures> | undefined,
@@ -116,7 +129,7 @@ function changedCoins(
     }
     const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
     for (const key of keys) {
-      if (before[key] !== after[key]) {
+      if (!PER_PASS_KEYS.has(key) && before[key] !== after[key]) {
         changed.push(symbol);
         break;
       }

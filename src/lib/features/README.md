@@ -33,7 +33,10 @@ import features from "@/lib/features";
   `onFeatureUpdate` implementation should run: feeds feature-scoped
   market inputs (`vwapFeed`) then calls `update`.
 - `features.changedCoins(prev, next)` — shallow per-symbol diff used by
-  adapters to keep feature persistence sparse.
+  adapters to keep feature persistence sparse. Per-pass VWAP fields
+  (`vwap`, `vwapStdev`, `vwapDistancePct`, `vwapStretchPct`) are excluded
+  from the diff: they ride along in any record a real change triggers
+  but never trigger one themselves.
 
 Adapter wiring:
 
@@ -63,9 +66,11 @@ Two layers per feature, deliberately:
   map wholesale every pass — anything stored inside `coins` is destroyed.
 - **Derived** (`coins[s].vwap*`) — flat quantized numbers
   (`vwap`, `vwapStdev`, `vwapDistancePct`, `vwapStretchPct`,
-  `vwapAnchorT`). Flat fields, not a nested object: `changedCoins`
-  compares values, so quantized numbers record as sparse step functions
-  while an object would diff as changed on every pass.
+  `vwapAnchorT`). The mark-driven fields move every pass, so
+  `changedCoins` ignores them — they are written alongside any record a
+  pivot-driven change triggers but never trigger a write themselves,
+  keeping the backtest artifact stream and production `features.json`
+  flush sparse. Only `vwapAnchorT` still counts as a change.
 
 Symbols follow `vPointsMap` keys — the canonical tracked set (configured
 coins, open-position coins, BTC context) already maintained by the
