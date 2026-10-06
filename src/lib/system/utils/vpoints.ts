@@ -55,9 +55,11 @@ function createPredictorMemory(
 }
 
 function makeVolatilityId(prefix: string, time: number, symbol?: string) {
-  const a = moment(time).format("DD_MM_YY_HH_mm");
-  const hashInput = symbol ? `${symbol}:${a}` : a;
-  return `${prefix}_${md5(hashInput).substring(0, 3)}_${a}`;
+  // UTC so the same pivot yields the same id on any host — ids are the
+  // position↔vPoint pairing key (entry ref, Precision Checker).
+  const timeInfo = moment(time).utc().format("DD_MM_YY_HH_mm");
+  const hashInput = symbol ? `${symbol}:${timeInfo}` : timeInfo;
+  return `${prefix}_${md5(hashInput).substring(0, 3)}_${timeInfo}`;
 }
 
 /**
