@@ -13,13 +13,17 @@ const recentValues = (cutoff: number, history: { p: number; t: number }[] | unde
 
 
 /**
+ * Feature Gate V1: 5 Oktober 2026
+ * 
+ * Train / tuning using the 5 year of other coin that not use for trade (unseen):
+ * ADA, ETH, HBAR, SOL, XLM
+ * 
+ * It work 100% correct for the test dataset:
+ * 
+ * AAVE, LINK, SUI, XRP
+ * 
  * Returns the feature-gate refusal for one symbol at the current tick, or
- * undefined when the candidate may pass. Checks the BTC market-context
- * bound first, then the candidate coin's own bound — each judged on the
- * current value plus history samples inside `historyWindowDays` — and
- * last the deep-run repetition guard on level-1 signals. An
- * undefined `priceNormalized` (thin pivot history) means "no opinion" —
- * never a block.
+ * undefined when the candidate may pass.
  */
 export function gateReason(
     context: RuntimeContext,

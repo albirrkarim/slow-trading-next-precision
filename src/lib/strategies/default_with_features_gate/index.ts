@@ -1,6 +1,6 @@
 import defaultDecision from "@/lib/precision/defaultDecision";
 import type { StrategyAPI } from "../types";
-import { gateReason } from "./gate";
+import { gateReason } from "./feature_gate_v1";
 
 
 const defaultWithFeaturesGate: StrategyAPI = {
