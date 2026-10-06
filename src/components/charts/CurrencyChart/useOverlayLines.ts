@@ -59,7 +59,9 @@ export function useOverlayLines({
                 fillColor: band.color ?? "rgba(144, 164, 174, 0.18)",
                 priceLineVisible: false,
                 lastValueVisible: false,
-                title: band.name ?? "",
+                // Untitled: the rail line series already label each edge —
+                // a band title would paint a duplicate axis label at `upper`.
+                title: "",
             });
 
             series.setData(points as BandPlotRow[]);

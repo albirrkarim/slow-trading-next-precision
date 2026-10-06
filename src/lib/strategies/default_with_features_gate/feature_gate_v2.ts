@@ -18,7 +18,7 @@ import type { VolatilityPoint } from "@/lib/system/types/market";
  *   representing a new stretched entry.
  */
 export const FEATURE_GATE_VWAP_BOUNDS = {
-  minStretchPct: 5,
+  minStretchPct: 8,
   minSigma: 1.2,
   maxSigma: 1.7,
   maxSignalAgeMs: 24 * 60 * 60 * 1000,
