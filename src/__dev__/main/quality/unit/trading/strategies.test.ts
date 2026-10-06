@@ -415,6 +415,9 @@ describe("strategies.resolve — slug to module", () => {
   it("resolves configured slugs and passes through absent ones", async () => {
     expect((await strategies.resolve("both"))?.name).toBe("both");
     expect((await strategies.resolve("streak"))?.name).toBe("streak");
+    expect((await strategies.resolve("streak_with_feature_gate"))?.name).toBe(
+      "streak_with_feature_gate",
+    );
     expect(await strategies.resolve(undefined)).toBeUndefined();
     await expect(strategies.resolve("bogus")).rejects.toThrow(
       /Unknown strategy slug/,

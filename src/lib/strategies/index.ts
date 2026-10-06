@@ -16,6 +16,7 @@ const loaders: Record<
     import("./custom_gpt6_astra_bounded_cover_v1"),
   default_with_features_gate: () => import("./default_with_features_gate"),
   streak: () => import("./streak"),
+  streak_with_feature_gate: () => import("./streak_with_feature_gate"),
 };
 
 /** Resolves a configured strategy slug to its module, when one exists. */

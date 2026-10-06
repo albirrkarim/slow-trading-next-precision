@@ -177,14 +177,21 @@ function workerKey(position: Position): string {
 }
 
 /** Strategy slugs whose entry producers stamp MAIN/COUNTER pair meta. */
-const PAIR_SLUGS: ReadonlySet<string> = new Set(["both", "streak"]);
+const PAIR_SLUGS: ReadonlySet<string> = new Set([
+  "both",
+  "streak",
+  "streak_with_feature_gate",
+]);
 
 /**
  * Pair strategies that keep a pending empty-role re-entry after a leg
  * closes — they render the paired board for every `entryLegs` selection
  * and get streak-style empty slots/diagnostics.
  */
-const REENTRY_SLUGS: ReadonlySet<string> = new Set(["streak"]);
+const REENTRY_SLUGS: ReadonlySet<string> = new Set([
+  "streak",
+  "streak_with_feature_gate",
+]);
 
 /** Whether a strategy slug produces pair legs. */
 function isPairSlug(slug?: string): boolean {

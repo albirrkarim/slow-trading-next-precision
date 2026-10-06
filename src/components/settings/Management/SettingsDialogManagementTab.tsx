@@ -32,6 +32,10 @@ const STRATEGY_OPTIONS = [
   { label: "Both (pair: MAIN + COUNTER)", value: "both" },
   { label: "Streak", value: "streak" },
   {
+    label: "Streak + Features Gate",
+    value: "streak_with_feature_gate",
+  },
+  {
     label: "Default + Features Gate",
     value: "default_with_features_gate",
   },
