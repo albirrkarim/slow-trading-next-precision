@@ -5,6 +5,7 @@ import type {
 import type { StrategyAPI } from "../types";
 
 import featureGateV1 from "./feature_gate_streak_v1";
+import pair from "../shared/pair";
 import streak from "../streak";
 import streakEntry from "../streak/entry";
 import streakGateExit from "./exit";
@@ -27,12 +28,21 @@ function passes(
   if (candidate.type === "pairEntry") {
     return candidate.legs.every(
       (leg) =>
-        featureGateV1(context, leg.symbol, leg.entrySignal) === undefined,
+        featureGateV1(
+          context,
+          leg.symbol,
+          leg.entrySignal,
+          pair.meta.ofDecision(leg),
+        ) === undefined,
     );
   }
   return (
-    featureGateV1(context, candidate.symbol, candidate.entrySignal) ===
-    undefined
+    featureGateV1(
+      context,
+      candidate.symbol,
+      candidate.entrySignal,
+      pair.meta.ofDecision(candidate),
+    ) === undefined
   );
 }
 
@@ -53,15 +63,28 @@ const streakWithFeatureGate: StrategyAPI = {
   diagnostics: {
     ...streak.diagnostics,
     explain: (params) => {
-      const { context, decision, symbol } = params;
+      const { accountSlug, context, decision, symbol } = params;
       if (decision) {
-        const reason = featureGateV1(context, symbol, decision.entrySignal);
-        if (reason) {
-          return {
-            code: "FEATURE_GATE",
-            reason: `Blocked by the feature gate: ${reason}.`,
-            status: "blocked",
-          };
+        // The scan decision is a raw signal (no pair meta) — but a pair
+        // emits one MAIN + one COUNTER leg sharing it, so probe the gate
+        // per role the account emits; any refusal vetoes the candidate.
+        const legs =
+          context.helper.getAccountConfig(accountSlug).entryLegs ?? "BOTH";
+        const roles = legs === "BOTH" ? (["MAIN", "COUNTER"] as const) : [legs];
+        for (const role of roles) {
+          const reason = featureGateV1(
+            context,
+            symbol,
+            decision.entrySignal,
+            { role },
+          );
+          if (reason) {
+            return {
+              code: "FEATURE_GATE",
+              reason: `Blocked by the feature gate (${role} leg): ${reason}.`,
+              status: "blocked",
+            };
+          }
         }
       }
       return streak.diagnostics?.explain?.(params);

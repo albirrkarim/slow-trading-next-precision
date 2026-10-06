@@ -1,5 +1,6 @@
 import type { RuntimeContext } from "@/lib/precision/types";
 import type { VolatilityPoint } from "@/lib/system/types/market";
+import type { PairRole } from "../shared/pair";
 import {
     mapRange,
 } from "../shared/utils";
@@ -35,13 +36,13 @@ export const GATE_JUDGE_WINDOW_MS = 5 * windowsMs["1d"];
  * (`FEATURES_HISTORY_WINDOW_MS`); the gate only judges its freshest days.
  */
 export const FEATURE_GATE_BOUNDS = {
-  // coin
-  maxPriceNormalized: 0.8,
-  minPriceNormalized: 0.3,
+    // coin
+    maxPriceNormalized: 0.8,
+    minPriceNormalized: 0.3,
 
-  // btc
-  btcMaxPriceNormalized: 0.8,
-  btcMinPriceNormalized: 0.3,
+    // btc
+    btcMaxPriceNormalized: 0.8,
+    btcMinPriceNormalized: 0.3,
 };
 
 
@@ -68,11 +69,17 @@ const recentValues = (cutoff: number, history: { p: number; t: number }[] | unde
  * 
  * Returns the feature-gate refusal for one symbol at the current tick, or
  * undefined when the candidate may pass.
+ *
+ * @param leg - which pair leg is being gated (satisfied by `PairLegMeta`):
+ * `leg.role` distinguishes `"MAIN"` / `"COUNTER"`, `leg.reopen` marks a
+ * role re-entry (vs the initial fresh-pair legs). Diagnostics callers
+ * pass `{ role }` probes; absent legs may omit it.
  */
 export default function featureGateV1(
     context: RuntimeContext,
     symbol: string,
     signal?: VolatilityPoint,
+    leg?: { reopen?: boolean; role?: PairRole },
 ): string | undefined {
     const bounds = FEATURE_GATE_BOUNDS;
 
@@ -160,8 +167,8 @@ export default function featureGateV1(
         return `BTC PriceNormalized ${btcNow.toFixed(3)} is above 1.0`;
     }
 
-    if ((minBTCRaw < 0) && currentLevel < 5) {
-        return `BTC PriceNormalized ${minBTCRaw.toFixed(3)} is below 0.0 with level ${currentLevel}`;
+    if ((minBTCRaw < 0 || maxBTCRaw > 0.9)) {
+        return `BTC volatile`
     }
 
     const symbolPriceNormalized = context.state.features?.coins[symbol.toUpperCase()]?.priceNormalized;
