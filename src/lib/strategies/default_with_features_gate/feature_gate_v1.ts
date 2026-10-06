@@ -30,7 +30,7 @@ const recentValues = (cutoff: number, history: { p: number; t: number }[] | unde
  * Returns the feature-gate refusal for one symbol at the current tick, or
  * undefined when the candidate may pass.
  */
-export function gateReason(
+export default function featureGateV1(
     context: RuntimeContext,
     symbol: string,
     signal?: VolatilityPoint,
