@@ -84,14 +84,10 @@ function create() {
     },
 
     /**
-     * Run-end finalize: drains the still-pending rows (no reversal ever
-     * formed, `resolved: false`, no `missScore`) into the closed list and
-     * returns every collected row.
+     * Run-end finalize: drops the still-pending rows — a signal whose
+     * reversal never formed is noise, so only resolved rows are persisted.
      */
     flush(): FeatureGateDatasetRow[] {
-      for (const rows of pending.values()) {
-        closed.push(...rows);
-      }
       pending.clear();
       signals.clear();
       return closed;

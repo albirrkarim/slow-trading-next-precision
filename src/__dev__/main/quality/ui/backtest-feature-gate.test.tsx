@@ -53,7 +53,7 @@ beforeEach(() => {
     data: { ...input, metrics: {
       total: 1, resolved: 1, accepted: 1, rejected: 0, skipped: 0,
       acceptanceRate: 1, acceptedQuality: 1, goodRetained: 1,
-      acceptedScoreDistribution: { "0": 1, "1": 0, "2": 0, "3+": 0 },
+      acceptedScoreDistribution: { "0": 1, "2": 1, avgScore: 0.5, worstScore: 2 },
       topRejections: [], bySymbol: {},
     } },
   }));
@@ -85,6 +85,7 @@ describe("feature-gate dataset selection", () => {
     expect(within(panel).getByText(/Bad opportunities blocked/)).toBeTruthy();
     expect(within(panel).getByText(/Accepted score distribution/)).toBeTruthy();
 
+    expect(screen.getByTitle("View vPoint chart")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "JSON" }));
     const tree = await screen.findByRole("tree", { name: "AAA dataset JSON" });
     fireEvent.click(screen.getByRole("button", { name: "Expand all" }));

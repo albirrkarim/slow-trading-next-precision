@@ -57,7 +57,7 @@ describe("feature-gate evaluate", () => {
       row({ feature: featuresWith("AAA", 0.4), missScore: 0, symbol: "AAA" }),
       // rejected score>0
       row({ feature: featuresWith("AAA", 0.4), missScore: 1, symbol: "AAA" }),
-      // accepted score 2 and 4 (3+ bucket)
+      // accepted score 2 and 4
       row({ feature: featuresWith("AAA", 0.7), missScore: 2, symbol: "AAA" }),
       row({ feature: featuresWith("AAA", 0.7), missScore: 4, symbol: "AAA" }),
       // unresolved — counts in total/acceptanceRate only
@@ -91,9 +91,8 @@ describe("feature-gate evaluate", () => {
 
     expect(report.acceptedScoreDistribution).toEqual({
       "0": 1,
-      "1": 0,
       "2": 1,
-      "3+": 1,
+      "4": 1,
       avgScore: 2,
       worstScore: 4,
     });

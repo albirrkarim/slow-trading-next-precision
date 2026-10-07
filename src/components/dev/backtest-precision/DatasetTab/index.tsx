@@ -131,7 +131,11 @@ export default function DatasetTab({ cacheKey }: { cacheKey?: string }) {
                     Dataset rows from the selected run (requires
                     &quot;also produce dataset&quot; on the backtest form).
                 </Typography>
-                <DatasetTable key={hash} cacheKey={hash || undefined} />
+                <DatasetTable
+                    key={hash}
+                    cacheKey={hash || undefined}
+                    option={datasets.find((run) => run.hash === hash)}
+                />
             </Box>
 
             <Box

@@ -5,15 +5,28 @@ import { Box, TableCell, TableRow, Typography } from "@mui/material";
 import TradeFeaturePreview from "@/components/reports/TradesTableSection/TradeFeaturePreview";
 import ButtonDialog from "@/components/ui/ButtonDialog";
 import JsonTreeViewer from "@/components/ui/JsonTreeViewer";
-import type { FeatureGateDatasetRow } from "@/lib/dev/feature-gate";
+import type {
+    FeatureGateDatasetOption,
+    FeatureGateDatasetRow,
+} from "@/lib/dev/feature-gate";
 import format from "@/lib/system/utils/format";
 
+import DatasetChartDialog from "./DatasetChartDialog";
+
 /** Compact `B0→B-1→B-2→T0` rendering of the row's level sequence. */
-function sequenceLabel(row: FeatureGateDatasetRow): string {
+export function sequenceLabel(row: FeatureGateDatasetRow): string {
     return row.sequences.map((point) => `${point.l}${point.lvl}`).join("→");
 }
 
-export default function DatasetRow({ row }: { row: FeatureGateDatasetRow }) {
+export default function DatasetRow({
+    row,
+    hash,
+    option,
+}: {
+    row: FeatureGateDatasetRow;
+    hash: string;
+    option?: FeatureGateDatasetOption;
+}) {
     const signal = row.sequences[0];
 
     return (
@@ -54,22 +67,30 @@ export default function DatasetRow({ row }: { row: FeatureGateDatasetRow }) {
                 </Typography>
             </TableCell>
             <TableCell sx={{ verticalAlign: "top" }}>
-                {/* BTEST:FEATURE_GATE_DATASET — inspect the complete dataset row. */}
-                <ButtonDialog
-                    maxWidth="md"
-                    size="small"
-                    title="JSON"
-                    titleLong={`Dataset: ${row.symbol} · ${signal?.id ?? "unknown signal"}`}
-                >
-                    {() => (
-                        <Box sx={{ p: 2 }}>
-                            <JsonTreeViewer
-                                ariaLabel={`${row.symbol} dataset JSON`}
-                                value={row}
-                            />
-                        </Box>
-                    )}
-                </ButtonDialog>
+                <Box sx={{ alignItems: "center", display: "flex", gap: 0.5 }}>
+                    <DatasetChartDialog
+                        exchangeType={option?.exchangeType}
+                        hash={hash}
+                        marketType={option?.marketType}
+                        row={row}
+                    />
+                    {/* BTEST:FEATURE_GATE_DATASET — inspect the complete dataset row. */}
+                    <ButtonDialog
+                        maxWidth="md"
+                        size="small"
+                        title="JSON"
+                        titleLong={`Dataset: ${row.symbol} · ${signal?.id ?? "unknown signal"}`}
+                    >
+                        {() => (
+                            <Box sx={{ p: 2 }}>
+                                <JsonTreeViewer
+                                    ariaLabel={`${row.symbol} dataset JSON`}
+                                    value={row}
+                                />
+                            </Box>
+                        )}
+                    </ButtonDialog>
+                </Box>
             </TableCell>
         </TableRow>
     );

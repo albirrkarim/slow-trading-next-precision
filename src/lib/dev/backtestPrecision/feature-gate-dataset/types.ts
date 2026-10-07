@@ -38,8 +38,9 @@ export interface FeatureGateDatasetRow {
   sequences: VolatilityPoint[];
 
   /**
-   * False while the level sequence is still open. Rows flushed at run end
-   * stay unresolved — no reversal ever formed for them.
+   * False while the level sequence is still open. Unresolved rows are
+   * dropped at flush — a signal whose reversal never formed is noise, so
+   * every persisted row is resolved.
    */
   resolved: boolean;
 

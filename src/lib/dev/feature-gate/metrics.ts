@@ -20,12 +20,7 @@ function scoreRows(
   rows: FeatureGateDatasetRow[],
 ): FeatureGateMetrics {
   const bySymbol: Record<string, FeatureGateSymbolCounts> = {};
-  const distribution: FeatureGateScoreDistribution = {
-    "0": 0,
-    "1": 0,
-    "2": 0,
-    "3+": 0,
-  };
+  const distribution: FeatureGateScoreDistribution = {};
   const rejections = new Map<string, { count: number; sample: string }>();
 
   let skipped = 0;
@@ -90,10 +85,8 @@ function scoreRows(
       if (score === 0) acceptedScoreZero += 1;
       scoreSum += score;
       if (score > worstScore) worstScore = score;
-      if (score === 0) distribution["0"] += 1;
-      else if (score === 1) distribution["1"] += 1;
-      else if (score === 2) distribution["2"] += 1;
-      else distribution["3+"] += 1;
+      const key = String(score);
+      distribution[key] = (distribution[key] ?? 0) + 1;
     } else if (score > 0) {
       rejectedScorePositive += 1;
     }

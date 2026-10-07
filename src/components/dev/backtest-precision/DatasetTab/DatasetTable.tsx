@@ -18,7 +18,10 @@ import axios from "axios";
 import { useEffect, useState } from "react";
 
 import { endpoints } from "@/components/endpoints";
-import type { FeatureGateRowPage } from "@/lib/dev/feature-gate";
+import type {
+    FeatureGateDatasetOption,
+    FeatureGateRowPage,
+} from "@/lib/dev/feature-gate";
 
 import DatasetFilters from "./DatasetFilters";
 import DatasetRow from "./DatasetRow";
@@ -33,7 +36,13 @@ const PAGE_SIZES = [25, 50, 100];
  */
 type SortKey = "missScore" | "sequence" | "time";
 
-export default function DatasetTable({ cacheKey }: { cacheKey?: string }) {
+export default function DatasetTable({
+    cacheKey,
+    option,
+}: {
+    cacheKey?: string;
+    option?: FeatureGateDatasetOption;
+}) {
     const [page, setPage] = useState(0);
     const [pageSize, setPageSize] = useState(50);
     const [sort, setSort] = useState<SortKey>("time");
@@ -173,7 +182,9 @@ export default function DatasetTable({ cacheKey }: { cacheKey?: string }) {
                             <TableBody>
                                 {result.rows.map((row) => (
                                     <DatasetRow
+                                        hash={cacheKey}
                                         key={`${row.symbol}:${row.sequences[0]?.id}`}
+                                        option={option}
                                         row={row}
                                     />
                                 ))}

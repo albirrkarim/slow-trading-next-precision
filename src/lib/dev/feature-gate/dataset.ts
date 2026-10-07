@@ -116,7 +116,11 @@ async function listRuns(): Promise<FeatureGateDatasetOption[]> {
 
     const params = entry.params ?? {};
     const config = (params.config ?? {}) as {
-      management?: { strategy?: unknown; symbols?: unknown };
+      management?: {
+        strategy?: unknown;
+        symbols?: unknown;
+        tradingMode?: unknown;
+      };
       symbols?: unknown;
     };
     const management = config.management ?? {};
@@ -128,7 +132,9 @@ async function listRuns(): Promise<FeatureGateDatasetOption[]> {
       createdAt: entry.createdAt,
       datasetSymbols,
       datasetWindow: entry.dataset,
+      exchangeType: entry.exchangeType,
       hash: entry.cacheKey,
+      marketType: management.tradingMode === "futures" ? "FUTURES" : "SPOT",
       range: typeof params.range === "string" ? params.range : undefined,
       strategy:
         typeof management.strategy === "string"

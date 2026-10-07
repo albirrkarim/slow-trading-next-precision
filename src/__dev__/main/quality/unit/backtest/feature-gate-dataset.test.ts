@@ -165,12 +165,12 @@ describe("feature-gate dataset collector", () => {
     collector.captureFeatures(context);
     const report = featureGate.metrics.scoreRows(() => undefined, collector.flush());
     expect(report.skipped).toBe(1);
-    expect(report.total).toBe(1);
+    expect(report.total).toBe(0);
     expect(report.resolved).toBe(0);
     expect(report.acceptedQuality).toBeUndefined();
   });
 
-  it("flushes still-pending rows unresolved without a missScore", () => {
+  it("drops still-pending rows at flush — unresolved rows are noise", () => {
     const collector = featureGateDataset.collector.create();
     const context = contextAt(1000);
 
@@ -179,12 +179,8 @@ describe("feature-gate dataset collector", () => {
     collector.captureFeatures(context);
 
     const rows = collector.flush();
-    expect(rows).toHaveLength(2);
-    expect(rows.map((row) => row.resolved)).toEqual([false, false]);
-    expect(rows.every((row) => row.missScore === undefined)).toBe(true);
-    // Both were pending at capture time, so both carry the snapshot.
-    expect(rows.map((row) => row.t)).toEqual([1000, 1000]);
-    expect(collector.rows()).toHaveLength(2);
+    expect(rows).toHaveLength(0);
+    expect(collector.rows()).toHaveLength(0);
   });
 });
 
@@ -207,6 +203,7 @@ describe("feature-gate dataset write", () => {
     collector.onVPoint(context, "BBB", point("T_0", "T", 0, 10));
     collector.captureFeatures(context);
     collector.onVPoint(context, "AAA", point("T_1", "T", 0, 20));
+    collector.onVPoint(context, "BBB", point("B_1", "B", 0, 15));
 
     await featureGateDataset.write(dir, collector.flush());
 
@@ -219,23 +216,23 @@ describe("feature-gate dataset write", () => {
     const aaa = (await fs.readJson(
       path.join(datasetDir, "AAA.json"),
     )) as FeatureGateDatasetRow[];
-    // B_0 resolved by T_1 (score 0); T_1's own row stays pending.
-    expect(aaa).toHaveLength(2);
+    // B_0 resolved by T_1 (score 0); T_1's own row stays pending and is
+    // dropped at flush.
+    expect(aaa).toHaveLength(1);
     expect(aaa[0].resolved).toBe(true);
     expect(aaa[0].missScore).toBe(0);
     expect(aaa[0].sequences.map((p) => p.id)).toEqual(["B_0", "T_1"]);
-    expect(aaa[1].resolved).toBe(false);
-    expect(aaa[1].sequences.map((p) => p.id)).toEqual(["T_1"]);
 
     const bbb = (await fs.readJson(
       path.join(datasetDir, "BBB.json"),
     )) as FeatureGateDatasetRow[];
     expect(bbb).toHaveLength(1);
-    expect(bbb[0].resolved).toBe(false);
+    expect(bbb[0].resolved).toBe(true);
+    expect(bbb[0].missScore).toBe(0);
 
     // Compact output — single-line JSON (trailing EOL aside).
     const raw = await fs.readFile(path.join(datasetDir, "AAA.json"), "utf8");
     expect(raw.trim()).not.toContain("\n");
-    expect(JSON.parse(raw)).toHaveLength(2);
+    expect(JSON.parse(raw)).toHaveLength(1);
   });
 });

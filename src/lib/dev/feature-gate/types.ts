@@ -1,4 +1,5 @@
 import type { FeatureGateDatasetRow } from "@/lib/dev/backtestPrecision/feature-gate-dataset";
+import type { ExchangeType, MarketType } from "@/lib/system/types";
 import type { NumericFilterOperator } from "@/lib/system/utils/numeric-filter";
 
 import type datasetFilters from "./filters";
@@ -12,15 +13,14 @@ export interface FeatureGateInfo {
 }
 
 /**
- * Miss-score histogram of the accepted resolved rows — `0`/`1`/`2`/`3+`
- * counts plus the mean and worst score so one glance shows whether accepted
- * entries cluster at clean level-0 reversals or drag losing sequences in.
+ * Miss-score histogram of the accepted resolved rows — one key per exact
+ * score present plus the mean and worst score so one glance shows whether
+ * accepted entries cluster at clean level-0 reversals or drag losing
+ * sequences in.
  */
 export interface FeatureGateScoreDistribution {
-  "0": number;
-  "1": number;
-  "2": number;
-  "3+": number;
+  /** Exact score → count of accepted resolved rows with that missScore. */
+  [score: string]: number | undefined;
   /** Mean missScore across accepted resolved rows; absent when none exist. */
   avgScore?: number;
   /** Highest missScore among accepted resolved rows; absent when none. */
@@ -81,6 +81,10 @@ export interface FeatureGateDatasetOption {
   /** Simulated window timestamps after symbol-availability intersection. */
   datasetWindow?: { endTime: number; startTime: number };
   hash: string;
+  /** Exchange the run traded on — from the run meta. */
+  exchangeType: ExchangeType;
+  /** Market the run traded — derived from `management.tradingMode`. */
+  marketType: MarketType;
   /** Symbols the run traded — from the cached request params. */
   coins: string[];
   /** Symbols with captured dataset rows — the dataset/*.json files. */
