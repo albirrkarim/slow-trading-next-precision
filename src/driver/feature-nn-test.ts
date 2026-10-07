@@ -10,14 +10,15 @@ import jsonFile from "@/lib/system/storage/json-file";
 /** Evaluates an existing frozen artifact without training or overwriting weights. */
 async function main(): Promise<void> {
   const { values } = parseArgs({ options: {
-    help: { type: "boolean" }, "test-hash": { type: "string" }, model: { type: "string" }, "run-dir": { type: "string" },
+    help: { type: "boolean" }, "test-hash": { type: "string" }, model: { type: "string" }, "run-dir": { type: "string" }, "dataset-dir": { type: "string" },
   } });
   if (values.help) {
     console.log(`Usage: npm run nn:test -- [options]
 --test-hash HASH  Dataset to evaluate (default ${DEFAULT_TEST_HASH})
 --model PATH     Existing frozen artifact (default ${DEFAULT_MODEL_PATH})
 --run-dir PATH   Evaluation log/report directory (default unique storage/research/nn directory)
-Exit codes: 0 = nonempty, fully resolved acceptance with worst score below 3; 1 = execution error; 2 = criterion failed.
+--dataset-dir PATH  Use a fixed snapshot with manifest.json and verified per-symbol checksums
+Exit codes: 0 = at least 300 accepted resolved rows with worst score below 3; 1 = execution error; 2 = criterion failed.
 No training, cutoff selection, or model writes occur.`);
     return;
   }
@@ -28,9 +29,9 @@ No training, cutoff selection, or model writes occur.`);
   try {
     const modelHash = createHash("sha256").update(await readFile(modelPath)).digest("hex");
     logger.log(`FROZEN existing model=${modelPath}; SHA256=${modelHash}`);
-    const result = await nn.assessment.run(hash, modelPath, logger.log);
+    const result = await nn.assessment.run(hash, modelPath, logger.log, 300, values["dataset-dir"]);
     const reportPath = path.join(runDir, "report.json");
-    await jsonFile.write.atomic(reportPath, { status: result.status, modelHash, modelPath, testHash: hash, fingerprint: result.fingerprint, testMetrics: result.metrics });
+    await jsonFile.write.atomic(reportPath, { status: result.status, modelHash, modelPath, testHash: hash, snapshotDir: values["dataset-dir"], fingerprint: result.fingerprint, minAccepted: result.minAccepted, testMetrics: result.metrics });
     logger.log(`REPORT ${reportPath}; outcome=${result.status}`);
     if (result.status === "failed") process.exitCode = 2;
   } catch (error) {

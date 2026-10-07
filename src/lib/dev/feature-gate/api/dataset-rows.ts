@@ -70,6 +70,7 @@ export default async function featureGateDatasetRowsHandler(
               | "time")
           : undefined,
         symbol: pickQuery(req.query.symbol)?.trim() || undefined,
+        signalId: pickQuery(req.query.signalId),
       }),
     );
   } catch (error) {

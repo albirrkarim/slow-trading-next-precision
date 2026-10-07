@@ -18,6 +18,9 @@ npm run nn:train -- --research --test
 # Show every option and its default.
 npm run nn:train -- --help
 
+# Optional CPU PyTorch ensemble; the Python environment needs numpy and torch.
+npm run nn:train -- --backend torch --python /path/to/python --test
+
 # Example training-only experiment.
 npm run nn:train -- --epochs 400 --seeds 17,29,43 --hidden 16,8 --log-every 5
 ```
@@ -35,7 +38,48 @@ backtest or change its configuration.
 The default command does **not** read the test hash. Use training-only runs
 while choosing features and settings. After those choices are fixed, use
 `--test` for the held-out assessment. Test results never update weights,
-normalization, thresholds, or checkpoint selection.
+normalization, thresholds, or checkpoint selection. With a final test enabled,
+failed candidates remain in their research folders and do not replace `--model`.
+
+## Optional PyTorch ensemble training
+
+Install `src/lib/dev/nn/requirements-torch.txt` in a Python environment and pass
+its executable with `--python`. Runtime inference still uses TypeScript and
+requires no Python packages. This backend trains one configurable network
+family using every `--seeds` member, then averages their sigmoid scores.
+
+Torch defaults: directional inputs, ReLU hidden widths 32/16, dropout 0.1,
+Adam learning rate 0.003, weight decay 0.01, batches of 128, seeds 17/29/43,
+150 epochs maximum, patience 35. `--activation`, `--dropout`, and
+`--learning-target` configure Torch; ordinary architecture/optimizer/split flags
+also apply. `--cutoff-margin` belongs to the native backend. With Torch,
+`--research` compares eight families: widths 16/8 at weight decay 0.01 and
+widths 32/16 at decay 0.001/0.01/0.05, each with learning targets >=1 and >=2.
+Seeds, activation, dropout, epoch/optimizer/split settings apply to every
+family. Selection maximizes the lower of cross-coin and full-training
+acceptance rates; only the frozen winner is assessed against the final test.
+
+The default learning target is `score >= 2`, to learn a stricter adverse-outcome
+ranking. Selection and evaluation always enforce the actual `score < 3` rule.
+Each training coin is held out in turn. Fit-only scaling and a purged latest-20%
+validation split are shared across that fold's ensemble members. Checkpoints
+maximize chronological validation acceptance below the lowest score-3+ risk
+across that fold's training rows. The ensemble cutoff uses 90% of the minimum
+unsafe held-out/training risk ratio, capped at 0.9. This is a training heuristic,
+not a future-outcome guarantee. Every held-out training coin must retain rows.
+
+`torch-input.json` records training-only observations once plus fit-only
+normalization/indices for each fold, avoiding duplicate encoded datasets;
+`torch-output.json` records seed checkpoints/predictions and Python library
+versions. The TypeScript runtime audits accepted labels and verifies acceptance
+parity with exported weights before saving a candidate. Final testing begins
+only after saving frozen weights, normalization, and cutoff. Epoch logs stream
+to the terminal and `training.log`; Ctrl+C terminates the Python worker.
+
+For a fixed test copy, `--dataset-dir PATH` on `nn:train` or `nn:test` requires a
+`manifest.json` containing `{cacheKey, files: {"SYMBOL.json": "SHA256"}}`.
+Every file checksum and the cache key are verified. Reports include the actual
+dataset fingerprint, model SHA256, and required acceptance floor.
 
 ## Cross-coin experiments
 
@@ -63,9 +107,9 @@ No test rows are read until the whole search finishes and one model is frozen.
 With `--research --test`, a failed candidate stays in its research folder and
 does not replace the active model. Without `--test`, a qualifying training
 candidate is exported immediately. `nn:test` saves `evaluation.log` and
-`report.json` without changing any model file. Success requires nonempty,
-fully resolved acceptance with worst score below 3; reject-all or unresolved
-accepted outcomes fail.
+`report.json` without changing any model file. Success requires at least
+**300 accepted, fully resolved rows**, with every accepted score below 3.
+Low coverage, reject-all, score-3+ acceptance, and unresolved acceptance fail.
 
 ### Recorded result: 2026-10-07
 
@@ -80,7 +124,7 @@ Selected epoch: 14. Final cutoff: `0.03219368087262588`.
 | Full training runtime audit | 9 / 6,588 | 0: 8, 1: 1 | 1 |
 | Frozen test runtime audit | 6 / 3,647 (0.16%) | 0: 5, 2: 1 | 2 |
 
-The test passed the score constraint **at very low acceptance**. Six accepted
+The six-row result **fails the current 300-row requirement**. Six accepted
 examples do not establish reliable future performance; missScore below 3 is
 not equivalent to a profitable trade or a 100% win rate. The test hash had
 already been assessed on the previous model; this is a benchmark on that
@@ -93,6 +137,34 @@ Training fingerprint:
 `1d4545b5885bea4a05daaca0d81ef1f20f6dcc0a2c629fcd756d3810b4817774`.
 Cache keys describe runs; changed dataset files can change results, so new
 reports include dataset fingerprints and saved-model SHA256 hashes.
+
+### Coverage research: current failures
+
+| Frozen candidate | Accepted / test rows | Score 3 | Score 4 | Outcome |
+| --- | --- | --- | --- | --- |
+| Directional ReLU, one seed, loss target >=2 | 254 / 3,589 | 7 | 2 | Failed |
+| Same family, three-seed mean | 317 / 3,589 | 7 | 2 | Failed |
+| Same family, nine-seed mean | 344 / 3,589 | 7 | 2 | Failed |
+| Training-selected four-seed subset | 355 / 3,589 | 7 | 2 | Failed |
+| Seven training coins including TRX/DOGE | 147 / 3,589 | 0 | 0 | Failed: low acceptance |
+
+The nine-seed artifact is reproducible with:
+
+```bash
+npm run nn:train -- --backend torch --python /path/to/python \
+  --seeds 17,29,43,71,89,97,131,193,211 --test \
+  --dataset-dir storage/research/nn/coverage-300-2026-10-07/test-snapshot \
+  --run-dir storage/research/nn/my-nine-seed-run
+```
+
+Recorded reports are in `coverage-300-2026-10-07/`,
+`coverage-300-ensemble-2026-10-07/`, and
+`coverage-300-nine-seeds-2026-10-07/` under `storage/research/nn/`.
+These candidates were not published. Their fixed test snapshot fingerprint is
+`ab32db3bb17f9c3060bdaa7b3fcf956a5711d84a5aff15f3f5fcfb6d00160150`.
+The cache changed between the earlier 3,647-row evaluation and this 3,589-row
+snapshot; results from those copies are not interchangeable. The test hash is
+now a repeatedly assessed benchmark, not a fresh independent holdout.
 
 ## Logs and saved files
 
@@ -167,8 +239,8 @@ accepted scores, then higher fitting acceptance, then lower validation loss.
 Both fitting and validation acceptance must be nonempty. Rejecting everything
 is not a qualifying model. If no checkpoint qualifies, a report is saved and
 no new model is published. Historical zero violations do not guarantee zero
-violations on unseen data. The final test passes only with nonempty, fully resolved acceptance
-and an actual accepted worst score below 3; otherwise it reports failure and
+violations on unseen data. The final test passes only with at least 300 fully
+resolved acceptances and an actual accepted worst score below 3; otherwise it reports failure and
 performs no automatic retuning.
 
 ## Feature-gate evaluation
@@ -194,9 +266,9 @@ also warm their own session and dispose it after the task.
 V2 remains available in the dataset gate registry. Changing the selected
 artifact does not update a running engine: restart it to load the new weights.
 `npm run build` copies the saved model into the standalone server's expected
-runtime path. Single-model training exports before optional testing, so a
-final-test failure does not remove that artifact. Research with `--test`
-publishes to the active path only after passing.
+runtime path. Every training backend saves its research candidate first.
+With `--test`, publishing to the selected model path happens only after passing.
+Without `--test`, a qualifying training candidate is exported immediately.
 
 ## Algorithm references
 

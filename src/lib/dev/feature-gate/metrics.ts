@@ -18,6 +18,7 @@ const TOP_REJECTIONS = 8;
 function scoreRows(
   gate: FeatureGate,
   rows: FeatureGateDatasetRow[],
+  onAcceptedResolved?: (row: FeatureGateDatasetRow, message: string) => void,
 ): FeatureGateMetrics {
   const bySymbol: Record<string, FeatureGateSymbolCounts> = {};
   const distribution: FeatureGateScoreDistribution = {};
@@ -83,6 +84,7 @@ function scoreRows(
 
     if (isAccepted) {
       acceptedResolved += 1;
+      onAcceptedResolved?.(row, result.message);
       if (score === 0) acceptedScoreZero += 1;
       scoreSum += score;
       if (score > worstScore) worstScore = score;

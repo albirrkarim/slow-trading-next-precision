@@ -53,6 +53,9 @@ i think we can before real inference (for test dataset) we doing warm up model t
 
 minimize the missScore ditribution and maximize acceptance number.
 
+Current test requirement: accept at least 300 resolved dataset rows, with every
+accepted row having `missScore < 3`. Dataset rows are not a trade-count target.
+
 2. Gate behavior: does v3 replace v2 entirely, or run after v2 accepts a row?
 
 keep existing v2, dont wireup the v3 yet into the strategy code. we test it based on the feature gate first.

@@ -39,6 +39,7 @@ async function run(params: {
   options: NeuralTrainingOptions;
   log: (message: string) => void;
   signal?: AbortSignal;
+  snapshotDir?: string;
 }) {
   const { log, options } = params;
   if (params.trainHash === params.testHash) throw new Error("Train and test hashes must differ.");
@@ -116,27 +117,31 @@ async function run(params: {
   if (!trainMetrics.accepted || (trainMetrics.acceptedScoreDistribution.worstScore ?? Infinity) >= 3) {
     throw new Error("Export audit failed: runtime inference did not preserve training score constraints.");
   }
-  await jsonFile.write.atomic(path.join(params.runDir, "model.json"), artifact);
-  await jsonFile.write.atomic(params.modelPath, artifact);
-  const modelHash = createHash("sha256").update(await readFile(params.modelPath)).digest("hex");
+  const frozenPath = path.join(params.runDir, "model.json");
+  await jsonFile.write.atomic(frozenPath, artifact);
+  const modelHash = createHash("sha256").update(await readFile(frozenPath)).digest("hex");
   log(`FROZEN seed=${best.seed} epoch=${best.epoch} cutoff=${best.threshold.toPrecision(8)} modelSHA256=${modelHash}`);
-  log(`EXPORT ${path.resolve(params.modelPath)}; run copy=${path.resolve(params.runDir, "model.json")}`);
+  log(`CANDIDATE ${path.resolve(frozenPath)}`);
   log(`TRAIN AUDIT accepted=${trainMetrics.accepted}/${trainMetrics.total}; distribution=${JSON.stringify(trainMetrics.acceptedScoreDistribution)}`);
   let testMetrics;
   let testFingerprint;
   let status = "not-tested";
   if (params.testHash) {
     params.signal?.throwIfAborted();
-    const result = await assessment.run(params.testHash, params.modelPath, log);
+    const result = await assessment.run(params.testHash, frozenPath, log, 300, params.snapshotDir);
     testMetrics = result.metrics;
     testFingerprint = result.fingerprint;
     status = result.status;
-    if (status === "failed") log("FINAL TEST requirement unmet. No automatic retuning; the exported artifact remains at the model output path.");
+    if (status === "failed") log("FINAL TEST requirement unmet; candidate retained in research folder; active model not replaced.");
+  }
+  if (status !== "failed") {
+    await jsonFile.write.atomic(params.modelPath, artifact);
+    log(`EXPORT ${path.resolve(params.modelPath)}`);
   }
   const report = { status, modelHash, trainHash: params.trainHash, testHash: params.testHash, fingerprint, options,
     selection: { seed: best.seed, epoch: best.epoch, threshold: best.threshold, fit: best.fit, validation: best.validation },
     split: { t: split.splitT, fitRows: fit.length, validationRows: validation.length, purgedRows: split.purged },
-    candidates, trainMetrics, testMetrics, testFingerprint };
+    candidates, trainMetrics, testMetrics, testFingerprint, testMinAccepted: params.testHash ? 300 : undefined };
   await jsonFile.write.atomic(path.join(params.runDir, "report.json"), report);
   log(`REPORT ${path.resolve(params.runDir, "report.json")}; outcome=${status}`);
   return report;

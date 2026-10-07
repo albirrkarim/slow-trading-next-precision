@@ -1,0 +1,3 @@
+# Optional CPU training dependencies; live/backtest inference uses TypeScript only.
+numpy>=1.22
+torch>=1.13

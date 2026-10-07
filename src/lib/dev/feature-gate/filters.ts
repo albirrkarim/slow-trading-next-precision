@@ -35,6 +35,7 @@ const metrics = {
 /** Applies all dataset constraints with AND semantics before pagination. */
 function matches(row: FeatureGateDatasetRow, query: FeatureGateRowQuery): boolean {
   if (query.symbol && row.symbol !== query.symbol) return false;
+  if (query.signalId !== undefined && row.sequences[0]?.id !== query.signalId) return false;
   if (query.minMissScore !== undefined && (row.missScore ?? -1) < query.minMissScore) return false;
   if (query.fromT !== undefined || query.toT !== undefined) {
     const t = finite(row.t);

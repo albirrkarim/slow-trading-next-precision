@@ -3,10 +3,13 @@ import { createHash } from "node:crypto";
 import featureGate from "@/lib/dev/feature-gate";
 import v3 from "@/lib/strategies/default_with_features_gate/features/v3";
 
+import input from "./assessment-input";
+
 /** Scores one frozen saved model, loading/warming once and disposing even if inference throws. */
-async function run(hash: string, modelPath: string, log: (message: string) => void) {
+async function run(hash: string, modelPath: string, log: (message: string) => void, minAccepted = 300, snapshotDir?: string) {
+  if (!Number.isInteger(minAccepted) || minAccepted < 1) throw new Error("Minimum acceptance must be a positive integer.");
   log(`FINAL TEST reading ${hash}; saved weights, preprocessing and cutoff remain frozen`);
-  const bySymbol = await featureGate.dataset.readRows(hash);
+  const bySymbol = await input.read(hash, snapshotDir);
   const fingerprint = createHash("sha256").update(JSON.stringify(bySymbol)).digest("hex");
   const rows = Object.values(bySymbol).flat();
   log(`FINAL TEST datasetSHA256=${fingerprint}`);
@@ -20,11 +23,12 @@ async function run(hash: string, modelPath: string, log: (message: string) => vo
   // Captured unresolved acceptances cannot establish a successful outcome audit.
   const acceptedResolved = Object.entries(metrics.acceptedScoreDistribution)
     .filter(([key]) => /^\d+$/.test(key)).reduce((sum, [, count]) => sum + (count ?? 0), 0);
-  const status = acceptedResolved > 0 && acceptedResolved === metrics.accepted && worst !== undefined && worst < 3 ? "passed" : "failed";
+  const status = acceptedResolved >= minAccepted && acceptedResolved === metrics.accepted && worst !== undefined && worst < 3 ? "passed" : "failed";
   log(`FINAL TEST ${status.toUpperCase()} accepted=${metrics.accepted}/${metrics.total} (${(metrics.acceptanceRate * 100).toFixed(2)}%) mean=${metrics.acceptedScoreDistribution.avgScore?.toFixed(3) ?? "n/a"} worst=${worst ?? "n/a"} elapsed=${Date.now() - started}ms`);
   log(`FINAL TEST exact distribution=${JSON.stringify(metrics.acceptedScoreDistribution)}`);
   if (acceptedResolved !== metrics.accepted) log("FINAL TEST unresolved accepted rows prevent a complete outcome audit");
-  return { status, metrics, fingerprint };
+  if (acceptedResolved < minAccepted) log(`FINAL TEST acceptance requirement unmet: resolved accepted=${acceptedResolved}; minimum=${minAccepted}`);
+  return { status, metrics, fingerprint, minAccepted };
 }
 
 const assessment = { run } as const;

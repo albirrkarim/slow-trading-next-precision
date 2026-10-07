@@ -28,10 +28,9 @@ signed signal/VWAP sigma distance. For both coin and BTC it computes:
 It also adds the observed BTC pivot's side alignment, absolute level,
 percentage and log age; coin-minus-BTC extrema, sigma distance, 24/72-hour
 changes; and the log coin/BTC volatility ratio. Future history/BTC pivots are
-excluded, and unavailable lookbacks stay missing. This profile was compared
-in cross-coin research but did not beat the selected legacy model under the
-acceptance and score constraints. It is available for further training-only
-experiments, not used by the selected weights.
+excluded, and unavailable lookbacks stay missing. ReLU ensembles using this
+profile increased test acceptance but still accepted scores of 3 and 4, so
+those artifacts have not replaced the selected legacy weights.
 
 ### Signal features: 8
 
@@ -131,8 +130,11 @@ the capture time. Optional missing readings use the presence channels above.
 
 ## Model output
 
-The binary training target is `missScore >= 3`. The CPU MLP uses tanh hidden
-layers and one sigmoid output: a risk ranking score between 0 and 1. Its
+The native binary training target is `missScore >= 3`. Optional Torch training
+can use a stricter `>=1` or `>=2` learning target. Every artifact is still
+calibrated/audited against the required `missScore < 3` outcome. The CPU MLP
+uses the saved hidden activation (`tanh` when absent; `relu` is also supported)
+and one sigmoid output: a risk ranking score between 0 and 1. Its
 class-weighted training does not provide calibrated probabilities.
 
 ```text
@@ -142,8 +144,13 @@ allow = risk < savedThreshold
 The current artifact uses one 8-neuron hidden layer. Its training-only
 cross-coin cutoff multiplier is `0.2026439305243851`, producing a saved cutoff
 of `0.03219368087262588`. The recorded test accepted just 6/3,647 rows: five
-score-zero and one score-two. This passes the score constraint at very low
-acceptance; it does not establish a 100% trading win rate.
+score-zero and one score-two. This fails the current minimum of 300 accepted
+rows; it does not establish a 100% trading win rate.
+
+An optional `ensemble` stores additional independent networks sharing the
+artifact's preprocessing and activation. Inference averages their sigmoid
+scores, warms every network once, and wipes each member's in-memory weights
+when the session is disposed. Older single-network artifacts remain loadable.
 
 The gate returns `{ allow, message }` for both outcomes. The message contains
 the risk and cutoff comparison. Accepted strategy decisions save it into

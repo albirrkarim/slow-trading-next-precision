@@ -2,6 +2,7 @@ import type { CoinFeatures, RuntimeFeatures } from "@/lib/features/types";
 import type { VolatilityPoint } from "@/lib/system/types";
 
 import directional from "./directional";
+import contextual from "./contextual";
 import type { InputNormalization, NeuralInputProfile } from "./types";
 
 const COIN_FIELDS = ["norm", "last2", "last3", "last5", "min", "max", "span", "mean", "change", "trailAgeHours", "distancePct", "stretchPct", "sigmaPct"];
@@ -50,6 +51,7 @@ function valid(currentTime: number, features: RuntimeFeatures | undefined, signa
 /** Reads numerical inputs without access to any future outcome label. */
 function read(currentTime: number, features: RuntimeFeatures | undefined, signal: VolatilityPoint, profile: NeuralInputProfile = "legacy"): Array<number | undefined> {
   if (profile === "directional") return directional.read(currentTime, features, signal);
+  if (profile === "contextual") return contextual.read(currentTime, features, signal);
   const symbol = (signal.symbol ?? "").toUpperCase().replace(/_USDT$/, "");
   const coin = features?.coins[symbol];
   const price = finite(coin?.vwap?.price);
@@ -95,7 +97,7 @@ function encode(raw: Array<number | undefined>, normalization: InputNormalizatio
 
 /** Returns the exact persisted feature order for a supported preprocessing profile. */
 function namesFor(profile: NeuralInputProfile = "legacy"): string[] {
-  return profile === "directional" ? directional.names : names;
+  return profile === "contextual" ? contextual.names : profile === "directional" ? directional.names : names;
 }
 
 const inputs = { encode, fit, names, namesFor, read, valid } as const;

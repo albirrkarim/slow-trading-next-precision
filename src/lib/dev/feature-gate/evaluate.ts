@@ -5,7 +5,7 @@ import {
 
 import dataset from "./dataset";
 import metrics from "./metrics";
-import type { FeatureGateDatasetRow, FeatureGateReport } from "./types";
+import type { FeatureGateAcceptedHighScoreRow, FeatureGateDatasetRow, FeatureGateReport } from "./types";
 
 /** Flattens the symbol-grouped dataset map into one row list. */
 function allRows(bySymbol: Record<string, FeatureGateDatasetRow[]>) {
@@ -37,9 +37,22 @@ async function evaluate(params: {
   // BTEST:FEATURE_NN — prepare once before scoring, release even if scoring fails.
   const session = "prepare" in entry ? await entry.prepare() : { gate: entry.gate, dispose: () => undefined };
   try {
+    const acceptedHighScoreRows: FeatureGateAcceptedHighScoreRow[] = [];
+    const scored = metrics.scoreRows(session.gate, allRows(rows), (row, message) => {
+      if ((row.missScore ?? -1) < 3) return;
+      acceptedHighScoreRows.push({
+        t: row.t!,
+        symbol: row.symbol,
+        signalId: row.sequences[0].id,
+        missScore: row.missScore!,
+        message,
+      });
+    });
+    acceptedHighScoreRows.sort((a, b) => b.missScore - a.missScore || a.t - b.t);
     return {
+      acceptedHighScoreRows,
       hash: params.hash,
-      metrics: metrics.scoreRows(session.gate, allRows(rows)),
+      metrics: scored,
       slug: params.slug,
     };
   } finally {

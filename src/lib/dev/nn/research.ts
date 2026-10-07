@@ -143,14 +143,14 @@ async function research(params: Parameters<typeof run>[0] & { trials?: ResearchT
   log(`FROZEN ${String(best.record.id)} modelSHA256=${modelHash}; candidate=${frozenPath}`);
   log(`TRAIN AUDIT accepted=${trainMetrics.accepted}/${trainMetrics.total}; distribution=${JSON.stringify(trainMetrics.acceptedScoreDistribution)}`);
   params.signal?.throwIfAborted();
-  const test = params.testHash ? await assessment.run(params.testHash, frozenPath, log) : undefined;
+  const test = params.testHash ? await assessment.run(params.testHash, frozenPath, log, 300, params.snapshotDir) : undefined;
   const status = test?.status ?? "not-tested";
   if (status !== "failed") {
     await jsonFile.write.atomic(params.modelPath, best.artifact);
     log(`EXPORT ${params.modelPath}`);
   } else log("FINAL TEST failed; candidate retained in research folder; active model not replaced; no retuning against test rows");
   const report = { status, modelHash, trainHash: params.trainHash, testHash: params.testHash, fingerprint, selection: best.record,
-    trainMetrics, testMetrics: test?.metrics, testFingerprint: test?.fingerprint, results };
+    trainMetrics, testMetrics: test?.metrics, testFingerprint: test?.fingerprint, testMinAccepted: test?.minAccepted, results };
   await jsonFile.write.atomic(path.join(params.runDir, "report.json"), report);
   log(`REPORT ${path.join(params.runDir, "report.json")}; outcome=${status}`);
   return report;
