@@ -1,4 +1,5 @@
 import defaultDecision from "@/lib/precision/defaultDecision";
+import type { RuntimeEntryDecision } from "@/lib/precision/types";
 import type { StrategyAPI } from "../types";
 import featureGate from "./features";
 
@@ -10,28 +11,27 @@ const defaultWithFeaturesGate: StrategyAPI = {
     entry: {
       find: async (context) => {
         const candidates = await defaultDecision.entry.find(context);
-        return candidates.filter(
-          (candidate) =>
-            featureGate.gate(
-              context,
-              { ...candidate.entrySignal, symbol: candidate.symbol },
-            ) === undefined,
-        );
+        const accepted: RuntimeEntryDecision[] = [];
+        for (const candidate of candidates) {
+          // BOTH:FEATURE_GATE_ENTRY_MESSAGE — keep the strategy's acceptance reason through fill/storage.
+          const result = featureGate.gate(context, { ...candidate.entrySignal, symbol: candidate.symbol });
+          if (result.allow) accepted.push({ ...candidate, message: result.message });
+        }
+        return accepted;
       },
     },
   },
   diagnostics: {
     explain: ({ context, symbol, decision }) => {
       if (!decision) return undefined;
-      const reason = featureGate.gate(context, {
+      const result = featureGate.gate(context, {
         ...decision.entrySignal,
         symbol,
       });
-      if (!reason) return undefined;
       return {
         code: "FEATURE_GATE",
-        reason: `Blocked by the feature gate: ${reason}.`,
-        status: "blocked",
+        reason: result.message,
+        status: result.allow ? "ready" : "blocked",
       };
     },
   },

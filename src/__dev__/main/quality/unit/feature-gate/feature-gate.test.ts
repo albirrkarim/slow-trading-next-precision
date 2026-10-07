@@ -44,8 +44,8 @@ const row = (
 const stubGate: FeatureGate = (_currentTime, features, signal) => {
   const current =
     features?.coins[signal.symbol ?? ""]?.priceNormalized?.current;
-  if (current === undefined) return "no coin feature";
-  return current >= 0.5 ? undefined : "low normalized";
+  if (current === undefined) return { allow: false, message: "no coin feature" };
+  return { allow: current >= 0.5, message: current >= 0.5 ? "normalized threshold passed" : "low normalized" };
 };
 
 // Feature-gate evaluation metrics — docs/STRATEGY/FEATURE_EXTRACTION.md.
@@ -111,7 +111,7 @@ describe("feature-gate evaluate", () => {
 
   it("excludes uncaptured and invalid resolved rows before calling the gate", () => {
     let calls = 0;
-    const gate: FeatureGate = () => { calls += 1; return undefined; };
+    const gate: FeatureGate = () => { calls += 1; return { allow: true, message: "allowed" }; };
     const report = featureGate.metrics.scoreRows(gate, [
       row({ symbol: "AAA", t: undefined, missScore: 0 }),
       row({ symbol: "AAA", t: Number.NaN, feature: featuresWith("AAA", 0.6), missScore: 0 }),

@@ -16,12 +16,14 @@ function create(value: NeuralGateArtifact): FeatureGateSession {
     gate: (currentTime, features, signal) => {
       if (disposed) throw new Error("v3 NN session has been disposed.");
       const symbol = (signal.symbol ?? "").toUpperCase().replace(/_USDT$/, "");
-      if (model.training.excludedSymbols.includes(symbol)) return "v3 NN: anchor-only symbol";
+      if (model.training.excludedSymbols.includes(symbol)) return { allow: false, message: "v3 NN: anchor-only symbol" };
       if (!inputs.valid(currentTime, features, signal)) {
-        return "v3 NN: invalid capture inputs";
+        return { allow: false, message: "v3 NN: invalid capture inputs" };
       }
       const score = network.predict(model.layers, inputs.encode(inputs.read(currentTime, features, signal), model.normalization));
-      return score < model.threshold ? undefined : `v3 NN: risk ${score.toFixed(6)} >= cutoff ${model.threshold.toFixed(6)}`;
+      if (!Number.isFinite(score)) return { allow: false, message: "v3 NN: nonfinite risk score" };
+      const allow = score < model.threshold;
+      return { allow, message: `v3 NN: risk ${score} ${allow ? "<" : ">="} cutoff ${model.threshold} (${allow ? "allowed" : "rejected"})` };
     },
     dispose: () => {
       if (disposed) return;

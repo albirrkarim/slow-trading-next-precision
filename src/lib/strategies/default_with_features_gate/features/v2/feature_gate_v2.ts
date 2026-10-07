@@ -1,4 +1,5 @@
 import type { RuntimeFeatures } from "@/lib/features/types";
+import type { FeatureGateResult } from "@/lib/strategies/feature-gates";
 import type { VolatilityPoint } from "@/lib/system/types/market";
 import featureGateRegimes from "./feature_gate_regimes";
 
@@ -45,7 +46,7 @@ export const FEATURE_GATE_VWAP_BOUNDS = {
  * at least `minStretchPct` wide. Returns the refusal reason, or
  * undefined when the candidate may pass.
  */
-export default function featureGateV2(
+function rejectionReason(
     currentTime: number,
     features: RuntimeFeatures | undefined,
     signal: VolatilityPoint,
@@ -175,4 +176,13 @@ export default function featureGateV2(
 
     // BOTH:FEATURE_GATE_REGIMES — shared by backtest, sandbox and live.
     return featureGateRegimes(currentTime, features, signal);
+}
+
+/** Returns the v2 decision with an explanation for either outcome. */
+export default function featureGateV2(currentTime: number, features: RuntimeFeatures | undefined, signal: VolatilityPoint): FeatureGateResult {
+    const reason = rejectionReason(currentTime, features, signal);
+    const allowed = !Number.isFinite(signal.p) || signal.p <= 0
+        ? "v2: VWAP presence and width checks passed; invalid signal price skips distance checks"
+        : "v2: monthly VWAP stretch and normalized-range regime checks passed";
+    return { allow: reason === undefined, message: reason ?? allowed };
 }

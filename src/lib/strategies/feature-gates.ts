@@ -5,12 +5,18 @@ import featureGateV1 from "./default_with_features_gate/features/feature_gate_v1
 import featureGateV2 from "./default_with_features_gate/features/v2/feature_gate_v2";
 import featureGateStreakV1 from "./streak_with_feature_gate/feature_gate_streak_v1";
 
+/** Gate decision and its explanation, including why an entry was allowed. */
+export interface FeatureGateResult {
+  allow: boolean;
+  message: string;
+}
+
 /** Pure gate inputs, shared by backtest, live/sandbox, and dataset inference. */
 export type FeatureGate = (
   currentTime: number,
   features: RuntimeFeatures | undefined,
   signal: VolatilityPoint,
-) => string | undefined;
+) => FeatureGateResult;
 
 /** Each engine or dataset evaluation owns and releases its prepared resources. */
 export interface FeatureGateSession {

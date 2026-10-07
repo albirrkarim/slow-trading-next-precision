@@ -20,27 +20,23 @@ import streakGateExit from "./exit";
  * which produced entries may fill, and the exit keeps the rail while
  * leaving TP%/SL+ armed on pair legs (see `./exit`).
  */
-function passes(
+function acceptedCandidate(
   context: RuntimeContext,
   candidate: RuntimeEntryCandidate,
-): boolean {
+): RuntimeEntryCandidate | undefined {
   if (candidate.type === "pairEntry") {
-    return candidate.legs.every(
-      (leg) =>
-        featureGateV1(
-          context.state.currentTime,
-          context.state.features,
-          { ...leg.entrySignal, symbol: leg.symbol },
-        ) === undefined,
-    );
+    const results = candidate.legs.map((leg) => featureGateV1(
+      context.state.currentTime, context.state.features, { ...leg.entrySignal, symbol: leg.symbol },
+    ));
+    if (results.some((result) => !result.allow)) return undefined;
+    return { ...candidate, legs: candidate.legs.map((leg, index) => ({ ...leg, message: `${leg.message}; ${results[index].message}` })) };
   }
-  return (
-    featureGateV1(
+  const result = featureGateV1(
       context.state.currentTime,
       context.state.features,
       { ...candidate.entrySignal, symbol: candidate.symbol },
-    ) === undefined
-  );
+    );
+  return result.allow ? { ...candidate, message: `${candidate.message}; ${result.message}` } : undefined;
 }
 
 const streakWithFeatureGate: StrategyAPI = {
@@ -50,10 +46,14 @@ const streakWithFeatureGate: StrategyAPI = {
     ...streak.decisions,
     entry: {
       ...streak.decisions?.entry,
-      find: async (context) =>
-        (await streakEntry.find(context)).filter((candidate) =>
-          passes(context, candidate),
-        ),
+      find: async (context) => {
+        const accepted: RuntimeEntryCandidate[] = [];
+        for (const candidate of await streakEntry.find(context)) {
+          const result = acceptedCandidate(context, candidate);
+          if (result) accepted.push(result);
+        }
+        return accepted;
+      },
     },
     exit: { find: streakGateExit.find },
   },
@@ -69,15 +69,15 @@ const streakWithFeatureGate: StrategyAPI = {
           context.helper.getAccountConfig(accountSlug).entryLegs ?? "BOTH";
         const roles = legs === "BOTH" ? (["MAIN", "COUNTER"] as const) : [legs];
         for (const role of roles) {
-          const reason = featureGateV1(
+          const result = featureGateV1(
             context.state.currentTime,
             context.state.features,
             { ...decision.entrySignal, symbol },
           );
-          if (reason) {
+          if (!result.allow) {
             return {
               code: "FEATURE_GATE",
-              reason: `Blocked by the feature gate (${role} leg): ${reason}.`,
+              reason: `Blocked by the feature gate (${role} leg): ${result.message}.`,
               status: "blocked",
             };
           }

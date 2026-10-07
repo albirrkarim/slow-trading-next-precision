@@ -1,4 +1,5 @@
 import type { RuntimeFeatures } from "@/lib/features/types";
+import type { FeatureGateResult } from "@/lib/strategies/feature-gates";
 import type { VolatilityPoint } from "@/lib/system/types/market";
 import {
     mapRange,
@@ -70,7 +71,7 @@ const recentValues = (cutoff: number, history: { p: number; t: number }[] | unde
  * undefined when the candidate may pass.
  *
  */
-export default function featureGateV1(
+function rejectionReason(
     currentTime: number,
     features: RuntimeFeatures | undefined,
     signal: VolatilityPoint,
@@ -174,4 +175,10 @@ export default function featureGateV1(
     }
 
     return undefined;
+}
+
+/** Returns the streak gate decision with an explanation for either outcome. */
+export default function featureGateV1(currentTime: number, features: RuntimeFeatures | undefined, signal: VolatilityPoint): FeatureGateResult {
+    const reason = rejectionReason(currentTime, features, signal);
+    return { allow: reason === undefined, message: reason ?? `streak v1: level ${Math.abs(signal.lvl)} passed normalized-price and BTC checks` };
 }

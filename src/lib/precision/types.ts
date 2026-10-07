@@ -278,7 +278,7 @@ export interface RuntimeEntryDecision {
   entrySignal: EntryRecommendation;
   /** Operator-forced entry: bypasses the auto-entry runtime gate. */
   manual?: boolean;
-  /** Human-readable reason shown in notifications and logs. */
+  /** Strategy-authored explanation shown in notifications/logs and saved as position.opened.message. */
   message: string;
   /** Base symbol being entered, e.g. `SUI`. */
   symbol: string;

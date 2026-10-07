@@ -11,8 +11,8 @@ const TOP_REJECTIONS = 8;
 
 /**
  * BTEST:FEATURE_GATE_DATASET — skips uncaptured or invalid rows, then scores
- * captured inputs through the gate: a row is accepted when the gate returns
- * undefined, rejected on any reason string. Unresolved rows count toward
+ * captured inputs through the gate: a row is accepted when `allow` is true,
+ * and rejections are grouped by `message`. Unresolved rows count toward
  * `total`/`acceptanceRate` but are excluded from every score-based metric.
  */
 function scoreRows(
@@ -45,17 +45,18 @@ function scoreRows(
       skipped += 1;
       continue;
     }
-    const reason = gate(row.t, row.feature, { ...signal, symbol: row.symbol });
-    const isAccepted = reason === undefined;
+    const result = gate(row.t, row.feature, { ...signal, symbol: row.symbol });
+    const isAccepted = result.allow;
 
     total += 1;
     if (isAccepted) {
       accepted += 1;
     } else {
+      const reason = result.message;
       // Reasons embed measured values ("envelope is only 3.9% wide") —
       // bucket on the number-stripped template so variants group, and keep
       // one real example for the tooltip.
-      const bucket = reason.replace(/-?\d+(\.\d+)?%?/g, "#");
+      const bucket = reason.replace(/-?\d+(?:\.\d+)?(?:e[+-]?\d+)?%?/gi, "#");
       const entry = rejections.get(bucket) ?? { count: 0, sample: reason };
       entry.count += 1;
       rejections.set(bucket, entry);

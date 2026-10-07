@@ -134,10 +134,10 @@ describe("feature-gate dataset collector", () => {
     expect(captured.sequences[0].maxUpPct).toBe(4);
     expect(captured.sequences[0].symbol).toBe("AAA");
     expect(captured.t).toBe(now);
-    expect(expected).toMatch(/rebound already spent/);
+    expect(expected).toMatchObject({ allow: false, message: expect.stringMatching(/rebound already spent/) });
     const report = featureGate.metrics.scoreRows(gateV2, [captured]);
     expect(report.accepted).toBe(0);
-    expect(report.topRejections[0].reason).toBe(expected);
+    expect(report.topRejections[0].reason).toBe(expected.message);
   });
 
   it("keeps each starting signal when several points precede capture", () => {

@@ -1,5 +1,5 @@
 import type { RuntimeContext } from "@/lib/precision/types";
-import type { FeatureGateSession } from "@/lib/strategies/feature-gates";
+import type { FeatureGateResult, FeatureGateSession } from "@/lib/strategies/feature-gates";
 import type { VolatilityPoint } from "@/lib/system/types";
 
 import v3 from "./v3";
@@ -23,9 +23,9 @@ async function warmup(context: RuntimeContext): Promise<void> {
 }
 
 /** Rejects entry until this engine's model is ready, then uses frozen v3 inference. */
-function gate(context: RuntimeContext, signal: VolatilityPoint): string | undefined {
+function gate(context: RuntimeContext, signal: VolatilityPoint): FeatureGateResult {
   const session = sessions.get(context.helper)?.ready;
-  if (!session) return "v3 NN: model is not warmed up";
+  if (!session) return { allow: false, message: "v3 NN: model is not warmed up" };
   return session.gate(context.state.currentTime, context.state.features, signal);
 }
 

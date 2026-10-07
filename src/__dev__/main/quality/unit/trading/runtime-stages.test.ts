@@ -448,7 +448,7 @@ describe("RuntimeEngine strategy lifecycle", () => {
         const adapter = createAdapter(state);
         const factory = { createState: () => state, createAdapter: () => adapter };
         vi.spyOn(productionFactory, "create").mockReturnValue(factory);
-        const session = { gate: vi.fn(() => undefined), dispose: vi.fn() };
+        const session = { gate: vi.fn(() => ({ allow: true, message: "v3 allowed" })), dispose: vi.fn() };
         const load = vi.spyOn(v3, "load").mockResolvedValue(session);
         load.mockClear();
         const runtime = new ProductionRuntime();
@@ -459,19 +459,19 @@ describe("RuntimeEngine strategy lifecycle", () => {
           const signal = { id: "A", symbol: "SUI", t: 1, p: 1, lvl: 0, l: "B" as const, pct: 5, vb: 0, vq: 0 };
           const result = await runtime.runManual(async (context) => {
             contexts.push(context);
-            expect(strategyGate.gate(context, signal)).toBeUndefined();
+            expect(strategyGate.gate(context, signal)).toMatchObject({ allow: true });
             expect(session.dispose).not.toHaveBeenCalled();
             return 42;
           });
           expect(result).toBe(42);
           expect(load).toHaveBeenCalledTimes(1);
           expect(session.dispose).toHaveBeenCalledTimes(1);
-          expect(strategyGate.gate(contexts[0], signal)).toMatch(/not warmed up/);
+          expect(strategyGate.gate(contexts[0], signal)).toMatchObject({ allow: false, message: expect.stringMatching(/not warmed up/) });
 
           const error = new Error("operator failed");
           await expect(runtime.runManual(async (context) => {
             contexts.push(context);
-            expect(strategyGate.gate(context, signal)).toBeUndefined();
+            expect(strategyGate.gate(context, signal)).toMatchObject({ allow: true });
             throw error;
           })).rejects.toBe(error);
           expect(load).toHaveBeenCalledTimes(2);

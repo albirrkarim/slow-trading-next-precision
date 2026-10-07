@@ -524,7 +524,8 @@ async function build(
         continue;
       }
 
-      if (explained) {
+      // A strategy's positive explanation still needs the shared funding checks.
+      if (explained?.status === "blocked") {
         diagnostics.push({ ...base, ...explained });
         continue;
       }
@@ -556,7 +557,7 @@ async function build(
           diagnostics.push({
             ...base,
             code: "READY",
-            reason: streakBoard
+            reason: explained?.reason ?? (streakBoard
               ? "Ready in this read-only preview: the decision engine " +
                 "selected this symbol and entry funding checks passed; " +
                 "final guards and exchange order checks can still reject " +
@@ -564,7 +565,7 @@ async function build(
                 "capture."
               : "Ready: selected by the decision engine and every entry " +
                 "guard passed; final exchange account, precision, and " +
-                "order checks run during execution.",
+                "order checks run during execution."),
             status: "ready",
           });
         } else {

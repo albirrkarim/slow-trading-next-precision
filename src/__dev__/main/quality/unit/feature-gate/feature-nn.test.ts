@@ -65,25 +65,28 @@ describe("default_with_features_gate v3 strategy", () => {
       const dispose = vi.spyOn(session, "dispose");
       const load = vi.spyOn(v3, "load").mockResolvedValue(session);
       const context = captureContext(mode);
-      const allowed = { type: "entry", symbol: "AAA", entrySignal: row(1).sequences[0] } as RuntimeEntryDecision;
+      const allowed = { type: "entry", symbol: "AAA", entrySignal: row(1).sequences[0], message: "default decision message" } as RuntimeEntryDecision;
       const blocked = { ...allowed, entrySignal: { ...allowed.entrySignal, lvl: 1 } };
       vi.spyOn(defaultDecision.entry, "find").mockResolvedValue([allowed, blocked]);
       try {
         await strategy.warmup!(context);
         await strategy.warmup!(context);
         expect(load).toHaveBeenCalledTimes(1);
-        expect(await strategy.decisions!.entry!.find(context)).toEqual([allowed]);
+        const accepted = session.gate(context.state.currentTime, context.state.features, { ...allowed.entrySignal, symbol: "AAA" });
+        expect(accepted).toMatchObject({ allow: true, message: expect.stringMatching(/v3 NN: risk .* < cutoff .*\(allowed\)/) });
+        expect(await strategy.decisions!.entry!.find(context)).toEqual([{ ...allowed, message: accepted.message }]);
+        expect(allowed.message).toBe("default decision message");
         const reason = session.gate(context.state.currentTime, context.state.features, { ...blocked.entrySignal, symbol: "AAA" });
-        expect(reason).toMatch(/v3 NN: risk/);
+        expect(reason).toMatchObject({ allow: false, message: expect.stringMatching(/v3 NN: risk .* >= cutoff .*\(rejected\)/) });
         expect(strategy.diagnostics!.explain!({ context, symbol: "AAA", accountSlug: "acc", decision: blocked })).toMatchObject({
-          code: "FEATURE_GATE", status: "blocked", reason: `Blocked by the feature gate: ${reason}.`,
+          code: "FEATURE_GATE", status: "blocked", reason: reason.message,
         });
-        expect(strategy.diagnostics!.explain!({ context, symbol: "AAA", accountSlug: "acc", decision: allowed })).toBeUndefined();
+        expect(strategy.diagnostics!.explain!({ context, symbol: "AAA", accountSlug: "acc", decision: allowed })).toMatchObject({ status: "ready", reason: accepted.message });
         await strategy.dispose!(context);
         await strategy.dispose!(context);
         expect(dispose).toHaveBeenCalledTimes(1);
         expect(await strategy.decisions!.entry!.find(context)).toEqual([]);
-        expect(strategyGate.gate(context, { ...allowed.entrySignal, symbol: "AAA" })).toMatch(/not warmed up/);
+        expect(strategyGate.gate(context, { ...allowed.entrySignal, symbol: "AAA" })).toMatchObject({ allow: false, message: expect.stringMatching(/not warmed up/) });
       } finally { await strategy.dispose!(context); }
     },
   );
@@ -97,8 +100,8 @@ describe("default_with_features_gate v3 strategy", () => {
       await Promise.all([strategy.warmup!(first), strategy.warmup!(second)]);
       expect(load).toHaveBeenCalledTimes(2);
       await strategy.dispose!(first);
-      expect(strategyGate.gate(first, signal)).toMatch(/not warmed up/);
-      expect(strategyGate.gate(second, signal)).toBeUndefined();
+      expect(strategyGate.gate(first, signal)).toMatchObject({ allow: false, message: expect.stringMatching(/not warmed up/) });
+      expect(strategyGate.gate(second, signal)).toMatchObject({ allow: true });
     } finally { await Promise.all([strategy.dispose!(first), strategy.dispose!(second)]); }
   });
 
@@ -116,7 +119,7 @@ describe("default_with_features_gate v3 strategy", () => {
     await Promise.all([first, second, cleanup]);
     expect(load).toHaveBeenCalledTimes(1);
     expect(dispose).toHaveBeenCalledTimes(1);
-    expect(strategyGate.gate(context, { ...row(1).sequences[0], symbol: "AAA" })).toMatch(/not warmed up/);
+    expect(strategyGate.gate(context, { ...row(1).sequences[0], symbol: "AAA" })).toMatchObject({ allow: false, message: expect.stringMatching(/not warmed up/) });
   });
 
   it("fails startup on model-load errors and can warm a fresh session after cleanup", async () => {
@@ -128,7 +131,7 @@ describe("default_with_features_gate v3 strategy", () => {
     try {
       await strategy.warmup!(context);
       expect(load).toHaveBeenCalledTimes(2);
-      expect(strategyGate.gate(context, { ...row(1).sequences[0], symbol: "AAA" })).toBeUndefined();
+      expect(strategyGate.gate(context, { ...row(1).sequences[0], symbol: "AAA" })).toMatchObject({ allow: true });
     } finally { await strategy.dispose!(context); }
   });
 });
@@ -224,10 +227,10 @@ describe("v3 inference lifecycle", () => {
     const second = v3.create(model);
     const sample = row(1);
     const signal = { ...sample.sequences[0], symbol: sample.symbol };
-    expect(first.gate(sample.t!, sample.feature, signal)).toBeUndefined();
+    expect(first.gate(sample.t!, sample.feature, signal)).toMatchObject({ allow: true });
     first.dispose(); first.dispose();
     expect(() => first.gate(sample.t!, sample.feature, signal)).toThrow(/disposed/);
-    expect(second.gate(sample.t!, sample.feature, signal)).toBeUndefined();
+    expect(second.gate(sample.t!, sample.feature, signal)).toMatchObject({ allow: true });
     expect(model.layers[0].b[0]).toBe(-2);
     second.dispose();
     const broken = artifact(); broken.layers[0].w.pop();
@@ -238,7 +241,7 @@ describe("v3 inference lifecycle", () => {
 
   it("prepares once and releases evaluation resources on success and errors", async () => {
     const dispose = vi.fn();
-    const gate = vi.fn(() => undefined);
+    const gate = vi.fn(() => ({ allow: true, message: "allowed" }));
     const prepare = vi.spyOn(FEATURE_GATE_REGISTRY.v3, "prepare").mockResolvedValue({ gate, dispose });
     vi.spyOn(featureGate.dataset, "readRows").mockResolvedValue({ AAA: [row(1), row(2)] });
     await featureGate.evaluate({ hash: TRAIN_HASH, slug: "v3" });
@@ -271,7 +274,7 @@ describe("v3 inference lifecycle", () => {
       expect((await fs.readFile(modelPath, "utf8")).trim()).not.toContain("\n");
       expect(await fs.pathExists(path.join(dir, "report.json"))).toBe(true);
       const loaded = await v3.load(modelPath);
-      expect(loaded.gate(row(1).t!, row(1).feature, { ...row(1).sequences[0], symbol: "AAA" })).toBeUndefined();
+      expect(loaded.gate(row(1).t!, row(1).feature, { ...row(1).sequences[0], symbol: "AAA" })).toMatchObject({ allow: true });
       loaded.dispose();
     } finally { await fs.remove(dir); }
   });

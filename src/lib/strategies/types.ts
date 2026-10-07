@@ -237,6 +237,8 @@ export interface StrategyAPI {
      * Strategy-specific explanation for one account/symbol, or undefined
      * to fall back to the default explanation. `decision` is the default
      * signal for that account/symbol when the (view) scan produced one.
+     * A ready explanation supplies copy after shared entry/funding checks;
+     * it never bypasses those checks.
      */
     explain?(params: {
       context: RuntimeContext;
