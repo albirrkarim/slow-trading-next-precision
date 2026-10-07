@@ -34,11 +34,17 @@ async function evaluate(params: {
   }
 
   const rows = await dataset.readRows(params.hash);
-  return {
-    hash: params.hash,
-    metrics: metrics.scoreRows(entry.gate, allRows(rows)),
-    slug: params.slug,
-  };
+  // BTEST:FEATURE_NN — prepare once before scoring, release even if scoring fails.
+  const session = "prepare" in entry ? await entry.prepare() : { gate: entry.gate, dispose: () => undefined };
+  try {
+    return {
+      hash: params.hash,
+      metrics: metrics.scoreRows(session.gate, allRows(rows)),
+      slug: params.slug,
+    };
+  } finally {
+    session.dispose();
+  }
 }
 
 export default evaluate;

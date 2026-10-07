@@ -12,6 +12,17 @@ export type FeatureGate = (
   signal: VolatilityPoint,
 ) => string | undefined;
 
+/** One evaluation owns its prepared resources and always releases them after scoring. */
+export interface FeatureGateSession {
+  gate: FeatureGate;
+  dispose: () => void;
+}
+
+type FeatureGateEntry = { label: string } & (
+  { gate: FeatureGate; prepare?: never } |
+  { prepare: () => Promise<FeatureGateSession>; gate?: never }
+);
+
 /**
  * Versioned gate catalog across strategies — the slug selects the rule set
  * for dataset evaluation (`/api/dev/feature-gate/*`) while each strategy's
@@ -30,6 +41,10 @@ export const FEATURE_GATE_REGISTRY = {
     gate: featureGateV2,
     label: "v2 — monthly VWAP σ + regimes",
   },
-} as const satisfies Record<string, { gate: FeatureGate; label: string }>;
+  v3: {
+    label: "v3 — neural miss-score risk gate (evaluation only)",
+    prepare: async () => (await import("./default_with_features_gate/features/v3")).default.load(),
+  },
+} as const satisfies Record<string, FeatureGateEntry>;
 
 export type FeatureGateSlug = keyof typeof FEATURE_GATE_REGISTRY;

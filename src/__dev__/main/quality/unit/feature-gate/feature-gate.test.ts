@@ -155,6 +155,7 @@ describe("feature-gate registry", () => {
       },
       { label: FEATURE_GATE_REGISTRY.v1.label, slug: "v1" },
       { label: FEATURE_GATE_REGISTRY.v2.label, slug: "v2" },
+      { label: FEATURE_GATE_REGISTRY.v3.label, slug: "v3" },
     ]);
     expect(gateDefault).toBe(FEATURE_GATE_REGISTRY.v2.gate);
   });
