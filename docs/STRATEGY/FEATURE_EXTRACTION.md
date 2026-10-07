@@ -20,7 +20,7 @@ when the benchmark using the test dataset are failed still big lose
 
 so we need add more coins to the train dataset
 
-with that method we can avoid overfitting, and learn real feature actually working.
+with that method we can reduces overfitting, and learn real feature actually working.
 
 
 ## Dataset
@@ -84,7 +84,7 @@ interface Dataset {
      * 
      * so lower are better
      */
-    missScore: 0,
+    missScore: number,
 }
 ```
 
