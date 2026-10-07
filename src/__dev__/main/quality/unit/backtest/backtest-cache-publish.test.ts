@@ -108,6 +108,34 @@ describe("backtest cache publication", () => {
     ).toEqual(timeline);
   });
 
+  it("keeps an existing dataset dir when a rerun produced none", async () => {
+    const result: BacktestChunkedResult = {
+      counts: { closedPositions: 1, positions: 1, snapshots: 0, vPoints: 0 },
+      exchangeType: "binance",
+      parts: { positions: 0, vpoints: {}, snapshots: {}, features: {} },
+      summary: { accounts: [], exits: {} },
+    };
+    const runOnce = async (rows?: { missScore: number }[]) => {
+      const stagingDir = backtestResultCache.stagingDirFor(key);
+      stagingDirs.push(stagingDir);
+      if (rows) {
+        await fs.outputJson(path.join(stagingDir, "dataset", "AAA.json"), rows);
+      }
+      await backtestResultCache.finalize(key, result, { range: "6month" }, stagingDir);
+      await backtestResultCache.publish(key, stagingDir);
+    };
+
+    const datasetFile = path.join(finalDir, "dataset", "AAA.json");
+    await runOnce([{ missScore: 0 }]);
+    expect(await fs.readJson(datasetFile)).toEqual([{ missScore: 0 }]);
+
+    await runOnce(undefined);
+    expect(await fs.readJson(datasetFile)).toEqual([{ missScore: 0 }]);
+
+    await runOnce([{ missScore: 9 }]);
+    expect(await fs.readJson(datasetFile)).toEqual([{ missScore: 9 }]);
+  });
+
   it("reads legacy meta entries without a timeline as undefined", async () => {
     const stagingDir = backtestResultCache.stagingDirFor(key);
     stagingDirs.push(stagingDir);

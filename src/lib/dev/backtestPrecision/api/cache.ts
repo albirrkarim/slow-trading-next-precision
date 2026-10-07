@@ -13,6 +13,7 @@ import type {
   BacktestRunSummary,
 } from "../backtest/backtest-precision-types";
 import backtestArtifacts from "../backtest/artifacts";
+import featureGateDataset from "../feature-gate-dataset";
 
 /**
  * Cache key version — bumped whenever simulated results must recompute
@@ -153,7 +154,20 @@ async function clearFailed(cacheKey: string): Promise<void> {
 
 /** Replaces a finished cache entry without exposing partially written parts. */
 async function publish(cacheKey: string, stagingDir: string): Promise<void> {
-  await fs.move(stagingDir, cacheDir(cacheKey), { overwrite: true });
+  const target = cacheDir(cacheKey);
+  // BTEST:FEATURE_GATE_DATASET — the cache key ignores produceDataset, so a
+  // rerun without it stages no dataset/ and the overwrite move would delete
+  // the previously captured one. Carry it over; the rows are deterministic
+  // for the same key, and a produceDataset rerun stages a fresh copy.
+  const stagedDataset = featureGateDataset.datasetDir(stagingDir);
+  const existingDataset = featureGateDataset.datasetDir(target);
+  if (
+    !(await fs.pathExists(stagedDataset)) &&
+    (await fs.pathExists(existingDataset))
+  ) {
+    await fs.move(existingDataset, stagedDataset);
+  }
+  await fs.move(stagingDir, target, { overwrite: true });
 }
 
 /**
