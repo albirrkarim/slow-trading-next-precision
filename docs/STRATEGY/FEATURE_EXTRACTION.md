@@ -154,4 +154,22 @@ Acceptance rate: accepted rows / all rows.
 Accepted quality: accepted score-zero rows / accepted resolved rows.
 Good opportunities retained: accepted score-zero rows / all score-zero rows.
 Bad opportunities blocked: rejected score-positive rows / all score-positive rows.
-Accepted score distribution: counts for scores 0, 1, 2, 3+, plus average and worst score.
+Accepted score distribution: counts per exact score (0, 1, 2, … up to the highest present), plus average and worst score.
+
+Only evaluable rows are persisted: rows still pending at run end (no reversal ever formed) and rows that opened and closed inside one capture gap (never captured — no `t`/`feature`) are dropped at flush.
+
+## MCP tools
+
+The agent's experiment loop — propose a gate change, evaluate on the train hash, verify on the test hash, compare metrics. `src/lib/dev/feature-gate` already holds the logic; these tools just expose it like the `backtest_*` family in `src/lib/dev/backtestPrecision/mcp.ts`.
+
+- `feature_gate_list` — gate slugs + labels from the registry (`src/lib/strategies/feature-gates.ts`), plus each gate's tunable bounds so the agent knows what it can vary.
+- `feature_gate_datasets` — runs that produced a `dataset/` artifact: `hash`, `coins`, `datasetSymbols`, `range`, `datasetWindow`, `exchangeType`, `marketType`, `strategy`, `createdAt` (wraps `dataset.listRuns`).
+- `feature_gate_rows` — paginated filtered rows for one `cacheKey`: `symbol`, `fromT`/`toT`, `metric`/`operator`/`value`, `sort`/`order`, `page`/`pageSize` (wraps `dataset.queryRows`). `slim: true` strips the heavy `feature` snapshot when the agent only needs outcomes.
+- `feature_gate_evaluate` — `{cacheKey, slug, bounds?}` → the metric block above, plus `topRejections` and `bySymbol`. Wraps `evaluate`; runs fresh every call — no cache.
+
+Two upgrades make the loop real:
+
+1. **Bounds overrides on `feature_gate_evaluate`** — e.g. `{minStretchPct: 8, maxSignalAgeMs: 6h}` replayed over the same frozen dataset without editing code. Requires parameterizing the gate bounds (today `FEATURE_GATE_VWAP_BOUNDS` is a module constant) — e.g. each registry entry gets `defaults` + `(overrides) => gate`.
+2. **`feature_gate_rules_evaluate`** — ad-hoc declarative rules `[{metric, operator, value}, …]` scored with the same `datasetFilters.metrics` readers: a row is rejected when any rule fails. Lets the agent test "what if we block rows where X < c" hypotheses before committing to a gate version.
+
+Rules of the game stay the same as the Method section: tune on the train hash only, then evaluate once on the test hash. If a `bounds` set only wins on train, it's overfit — discard it.

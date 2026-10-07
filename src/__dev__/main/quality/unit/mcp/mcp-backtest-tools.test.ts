@@ -32,6 +32,11 @@ describe("MCP backtest tool gating", () => {
     const names = runtimeMcpTools.list(reader).map((tool) => tool.name);
     expect(names).toContain("backtest_run_status");
     expect(names).toContain("backtest_result_metrics");
+    // Feature-gate experiment tools ride the same backtest.read + devOnly gate.
+    expect(names).toContain("feature_gate_list");
+    expect(names).toContain("feature_gate_datasets");
+    expect(names).toContain("feature_gate_rows");
+    expect(names).toContain("feature_gate_evaluate");
     // Write-permission tools stay hidden from a read-only token.
     expect(names).not.toContain("backtest_precision_run");
     expect(names).not.toContain("backtest_leaderboard_save");
@@ -59,6 +64,31 @@ describe("MCP backtest tool gating", () => {
     expect(result).toEqual(
       expect.objectContaining({ warning: expect.stringContaining("local") }),
     );
+  });
+
+  it("keeps feature_gate tools behind the same dev-only gate", async () => {
+    const handler = vi.fn().mockReturnValue({ gates: [] });
+    runtimeMcpTools.registerHandler("feature_gate_list", handler);
+
+    const blocked = await runtimeMcpTools.call({
+      arguments: {},
+      auth: authWith(["backtest.read"]),
+      devToolsEnabled: false,
+      name: "feature_gate_list",
+    });
+    expect(handler).not.toHaveBeenCalled();
+    expect(blocked).toEqual(
+      expect.objectContaining({ warning: expect.stringContaining("local") }),
+    );
+
+    const allowed = await runtimeMcpTools.call({
+      arguments: {},
+      auth: authWith(["backtest.read"]),
+      devToolsEnabled: true,
+      name: "feature_gate_list",
+    });
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(allowed).toEqual({ gates: [] });
   });
 
   it("dispatches to the registered handler when dev tooling is enabled", async () => {

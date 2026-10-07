@@ -11,6 +11,8 @@ import { buildTradeMarkersFromHistory } from "@/lib/system/utils/ui/trade-marker
 import { DAY_MS, getDayStart } from "../klines";
 import backtestLeaderboards from "./leaderboards";
 import featureGateDataset from "./feature-gate-dataset";
+import featureGate from "../feature-gate";
+import datasetFilters from "../feature-gate/filters";
 import backtestResultCache from "./api/cache";
 import backtestRunner from "./api/runner";
 import type { BacktestPrecisionParams } from "./api/precision-api-types";
@@ -35,6 +37,18 @@ function requireKey(args: Record<string, unknown>): string {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** Optional finite numeric arg. */
+function optNumber(value: unknown): number | undefined {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+/** Optional non-negative integer arg. */
+function optInt(value: unknown): number | undefined {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : undefined;
 }
 
 /** Resolves a dotted field path (e.g. "pnl.netUsdt") on a row object. */
@@ -470,6 +484,47 @@ async function leaderboardDelete(args: Record<string, unknown>) {
   return { ok: true };
 }
 
+const DATASET_SORTS = new Set(["missScore", "sequence", "time"]);
+
+// BTEST:FEATURE_GATE_DATASET — feature-gate experiment surface: datasets,
+// filtered rows, and fresh gate evaluations over stored dataset runs.
+async function featureGateRows(args: Record<string, unknown>) {
+  const result = await featureGate.dataset.queryRows({
+    ...datasetFilters.parseCondition(
+      typeof args.metric === "string" ? args.metric : undefined,
+      typeof args.operator === "string" ? args.operator : undefined,
+      args.value === undefined ? undefined : String(args.value),
+    ),
+    hash: requireKey(args),
+    fromT: optNumber(args.fromT),
+    toT: optNumber(args.toT),
+    minMissScore: optInt(args.minMissScore),
+    order: args.order === "desc" ? "desc" : undefined,
+    page: optInt(args.page),
+    pageSize: optInt(args.pageSize),
+    sort:
+      typeof args.sort === "string" && DATASET_SORTS.has(args.sort)
+        ? (args.sort as "missScore" | "sequence" | "time")
+        : undefined,
+    symbol:
+      typeof args.symbol === "string" && args.symbol.trim()
+        ? args.symbol.trim()
+        : undefined,
+  });
+  if (args.slim !== true) return result;
+  return {
+    ...result,
+    rows: result.rows.map(({ feature: _feature, ...row }) => row),
+  };
+}
+
+async function featureGateEvaluate(args: Record<string, unknown>) {
+  return featureGate.evaluate({
+    hash: requireKey(args),
+    slug: String(args.slug ?? ""),
+  });
+}
+
 /** Registers every backtest tool handler — gating happens in tools.call. */
 function register() {
   const tools = runtimeMcp.tools;
@@ -499,6 +554,18 @@ function register() {
   );
   tools.registerHandler("backtest_profile_delete", ({ args }) =>
     profileDelete(args),
+  );
+  tools.registerHandler("feature_gate_list", () => ({
+    gates: featureGate.list(),
+  }));
+  tools.registerHandler("feature_gate_datasets", async () => ({
+    datasets: await featureGate.dataset.listRuns(),
+  }));
+  tools.registerHandler("feature_gate_rows", ({ args }) =>
+    featureGateRows(args),
+  );
+  tools.registerHandler("feature_gate_evaluate", ({ args }) =>
+    featureGateEvaluate(args),
   );
 }
 

@@ -292,6 +292,11 @@ const toolDefinitions: RuntimeMcpToolDefinition[] = [
           type: "boolean",
           description: "Bypass the saved result cache. Defaults to false.",
         },
+        produceDataset: {
+          type: "boolean",
+          description:
+            "Also capture a feature-gate dataset (dataset/<SYMBOL>.json) for feature_gate_* tools. Defaults to false.",
+        },
       },
       ["config", "range"],
     ),
@@ -472,6 +477,80 @@ const toolDefinitions: RuntimeMcpToolDefinition[] = [
         name: { type: "string", description: "Profile name to delete." },
       },
       ["name"],
+    ),
+  },
+  {
+    name: "feature_gate_list",
+    description:
+      "LOCALHOST DEV INSTANCE ONLY. List registered feature-gate versions (slug + label) usable with feature_gate_evaluate.",
+    permission: "backtest.read",
+    devOnly: true,
+    readOnlyHint: true,
+    inputSchema: jsonSchema({}),
+  },
+  {
+    name: "feature_gate_datasets",
+    description:
+      "LOCALHOST DEV INSTANCE ONLY. List backtest runs that produced a feature-gate dataset (runs made with produceDataset) — cacheKey, coins, datasetSymbols, range, window, exchange/market, strategy, createdAt. Pick train/test runs by hash.",
+    permission: "backtest.read",
+    devOnly: true,
+    readOnlyHint: true,
+    inputSchema: jsonSchema({}),
+  },
+  {
+    name: "feature_gate_rows",
+    description:
+      "LOCALHOST DEV INSTANCE ONLY. Paginated dataset rows for one run — capture time, level sequence, missScore, captured features. Filters combine with AND: symbol, fromT/toT capture-time bounds (ms), metric/operator/value (metrics: missScore, signalLevel, reversalLevel, sequenceLength, signalPct, signalMaxUpPct, signalAgeMinutes, priceNormalized, btcPriceNormalized, vwapDistancePct, vwapStretchPct), sort=time|missScore|sequence with order=asc|desc. slim=true strips the heavy feature snapshot.",
+    permission: "backtest.read",
+    devOnly: true,
+    readOnlyHint: true,
+    inputSchema: jsonSchema(
+      {
+        cacheKey: {
+          type: "string",
+          description: "64-char hash of a run that produced a dataset.",
+        },
+        symbol: { type: "string", description: "Optional base symbol filter." },
+        fromT: { type: "number", description: "Capture time lower bound (ms)." },
+        toT: { type: "number", description: "Capture time upper bound (ms)." },
+        metric: {
+          type: "string",
+          description: "Row/feature metric name — see tool description for the list.",
+        },
+        operator: { type: "string", enum: ["lt", "lte", "eq", "gte", "gt"] },
+        value: { type: "number" },
+        minMissScore: { type: "number" },
+        sort: { type: "string", enum: ["time", "missScore", "sequence"] },
+        order: { type: "string", enum: ["asc", "desc"] },
+        page: { type: "number", description: "1-based; defaults to 1." },
+        pageSize: { type: "number", description: "Defaults to 50." },
+        slim: {
+          type: "boolean",
+          description: "Strip each row's captured feature snapshot.",
+        },
+      },
+      ["cacheKey"],
+    ),
+  },
+  {
+    name: "feature_gate_evaluate",
+    description:
+      "LOCALHOST DEV INSTANCE ONLY. Replay a feature-gate version over one run's dataset and return the experiment metrics — acceptance rate, accepted quality, good opportunities retained, bad opportunities blocked, per-score distribution, top rejections, per-symbol counts. Fresh evaluation on every call — tune on a train dataset, then verify once on the test dataset.",
+    permission: "backtest.read",
+    devOnly: true,
+    readOnlyHint: true,
+    inputSchema: jsonSchema(
+      {
+        cacheKey: {
+          type: "string",
+          description: "64-char hash of a run that produced a dataset.",
+        },
+        slug: {
+          type: "string",
+          description: "Feature gate slug from feature_gate_list.",
+        },
+      },
+      ["cacheKey", "slug"],
     ),
   },
 ];
