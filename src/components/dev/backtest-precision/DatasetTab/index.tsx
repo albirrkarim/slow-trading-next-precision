@@ -1,18 +1,22 @@
 "use client";
 
+import CheckIcon from "@mui/icons-material/Check";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import {
     Alert,
     Box,
     Button,
     CircularProgress,
     FormControl,
+    IconButton,
     InputLabel,
     MenuItem,
     Select,
     Typography,
 } from "@mui/material";
 import axios from "axios";
-import { useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 
 import { endpoints } from "@/components/endpoints";
 import HeaderMetrics from "@/components/ui/HeaderMetrics";
@@ -34,6 +38,19 @@ export default function DatasetTab({ cacheKey }: { cacheKey?: string }) {
     const [report, setReport] = useState<FeatureGateReport | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+    const [copied, setCopied] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
+
+    const refreshDatasets = useCallback(() => {
+        setRefreshing(true);
+        axios
+            .get<{ datasets: FeatureGateDatasetOption[] }>(
+                endpoints.dev.featureGateDatasets,
+            )
+            .then((resp) => setDatasets(resp.data.datasets ?? []))
+            .catch(() => setDatasets([]))
+            .finally(() => setRefreshing(false));
+    }, []);
 
     useEffect(() => {
         const controller = new AbortController();
@@ -71,6 +88,16 @@ export default function DatasetTab({ cacheKey }: { cacheKey?: string }) {
     // Keep a completed response tied to the selection that produced it.
     const currentReport = report?.hash === hash && report.slug === slug ? report : null;
 
+    const copyHash = async () => {
+        try {
+            await navigator.clipboard.writeText(hash);
+            setCopied(true);
+            window.setTimeout(() => setCopied(false), 1_500);
+        } catch {
+            // Clipboard unavailable (non-secure context) — ignore.
+        }
+    };
+
     const evaluate = async () => {
         setLoading(true);
         setError(null);
@@ -105,14 +132,15 @@ export default function DatasetTab({ cacheKey }: { cacheKey?: string }) {
             p: 1,
         }}>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
-                <FormControl fullWidth size="small">
-                    <InputLabel id={`${labelId}-dataset`}>Dataset run</InputLabel>
-                    <Select
-                        label="Dataset run"
-                        labelId={`${labelId}-dataset`}
-                        onChange={(event) => setHash(event.target.value)}
-                        value={hash}
-                    >
+                <Box sx={{ alignItems: "center", display: "flex", gap: 0.5 }}>
+                    <FormControl fullWidth size="small">
+                        <InputLabel id={`${labelId}-dataset`}>Dataset run</InputLabel>
+                        <Select
+                            label="Dataset run"
+                            labelId={`${labelId}-dataset`}
+                            onChange={(event) => setHash(event.target.value)}
+                            value={hash}
+                        >
                         {datasets.map((run) => (
                             <MenuItem key={run.hash} value={run.hash}>
                                 {`${run.coins.join(", ") || "?"} · ${run.range ?? "custom"} · ${
@@ -126,7 +154,59 @@ export default function DatasetTab({ cacheKey }: { cacheKey?: string }) {
                             <MenuItem value={hash}>{`current run · ${hash.slice(0, 8)}`}</MenuItem>
                         )}
                     </Select>
-                </FormControl>
+                    </FormControl>
+                    <IconButton
+                        aria-label="Refresh dataset runs"
+                        disabled={refreshing}
+                        onClick={refreshDatasets}
+                        size="small"
+                        title="Refresh dataset runs"
+                    >
+                        {refreshing ? (
+                            <CircularProgress size={16} />
+                        ) : (
+                            <RefreshIcon fontSize="small" />
+                        )}
+                    </IconButton>
+                </Box>
+                {hash && (
+                    <Box
+                        sx={{
+                            alignItems: "center",
+                            display: "flex",
+                            gap: 0.5,
+                            minWidth: 0,
+                        }}
+                    >
+                        <Typography
+                            color="text.secondary"
+                            component="span"
+                            sx={{
+                                fontFamily: "monospace",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                            }}
+                            title={hash}
+                            variant="caption"
+                        >
+                            {hash}
+                        </Typography>
+                        <IconButton
+                            aria-label="Copy dataset hash"
+                            color={copied ? "success" : "default"}
+                            onClick={() => void copyHash()}
+                            size="small"
+                            title={copied ? "Copied" : "Copy dataset hash"}
+                        >
+                            {copied ? (
+                                <CheckIcon sx={{ fontSize: 14 }} />
+                            ) : (
+                                <ContentCopyIcon sx={{ fontSize: 14 }} />
+                            )}
+                        </IconButton>
+                    </Box>
+                )}
                 <Typography color="text.secondary" variant="caption">
                     Dataset rows from the selected run (requires
                     &quot;also produce dataset&quot; on the backtest form).

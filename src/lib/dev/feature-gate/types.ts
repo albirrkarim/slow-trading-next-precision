@@ -120,6 +120,8 @@ export interface FeatureGateRowQuery {
 
 /** Paginated dataset-rows response — rows ordered by capture time. */
 export interface FeatureGateRowPage {
+  /** Unfiltered rows across all symbols — the "n of total" denominator. */
+  datasetTotal: number;
   page: number;
   pageSize: number;
   rows: FeatureGateDatasetRow[];

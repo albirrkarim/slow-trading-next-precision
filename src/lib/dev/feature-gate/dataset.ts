@@ -61,6 +61,10 @@ async function queryRows(
 ): Promise<FeatureGateRowPage> {
   const bySymbol = await readRows(query.hash);
   const symbols = Object.keys(bySymbol).sort();
+  const datasetTotal = symbols.reduce(
+    (sum, symbol) => sum + bySymbol[symbol].length,
+    0,
+  );
   const source = query.symbol
     ? (bySymbol[query.symbol] ?? [])
     : symbols.flatMap((symbol) => bySymbol[symbol]);
@@ -89,6 +93,7 @@ async function queryRows(
   const page = Math.max(query.page ?? 1, 1);
   const start = (page - 1) * pageSize;
   return {
+    datasetTotal,
     page,
     pageSize,
     rows: filtered.slice(start, start + pageSize),

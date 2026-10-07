@@ -149,7 +149,17 @@ export default function DatasetTable({
                 onChange={(next) => { setFilters(next); setPage(0); }}
                 symbols={entry?.value?.symbols ?? []}
             />
-            {loading && <CircularProgress size={16} />}
+            <Box sx={{ alignItems: "center", display: "flex", gap: 1 }}>
+                {loading && <CircularProgress size={16} />}
+                {result && (
+                    <Typography color="text.secondary" variant="caption">
+                        {typeof result.datasetTotal === "number" &&
+                        result.datasetTotal !== result.total
+                            ? `${result.total.toLocaleString()} of ${result.datasetTotal.toLocaleString()} rows`
+                            : `${result.total.toLocaleString()} rows`}
+                    </Typography>
+                )}
+            </Box>
 
             {error && <Alert severity="warning">{error}</Alert>}
 
