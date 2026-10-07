@@ -15,7 +15,7 @@ import {
     Typography,
 } from "@mui/material";
 import axios from "axios";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { endpoints } from "@/components/endpoints";
 import type {
@@ -51,6 +51,11 @@ export default function DatasetTable({
     const [sort, setSort] = useState<SortKey>("time");
     const [order, setOrder] = useState<"asc" | "desc">("asc");
     const [filters, setFilters] = useState(() => references === undefined ? filterStorage.read() : filterStorage.defaults);
+    // Match the original evaluation message by symbol, capture tick and starting point.
+    const approvalMessages = useMemo(() => new Map((references ?? []).map((reference) => [
+        JSON.stringify([reference.symbol, reference.t, reference.signalId]),
+        reference.message,
+    ])), [references]);
 
     useEffect(() => {
         if (references === undefined) filterStorage.write(filters);
@@ -201,6 +206,7 @@ export default function DatasetTable({
                             <TableBody>
                                 {result.rows.map((row) => (
                                     <DatasetRow
+                                        approvalMessage={approvalMessages.get(JSON.stringify([row.symbol, row.t, row.sequences[0]?.id]))}
                                         hash={cacheKey}
                                         key={`${row.symbol}:${row.sequences[0]?.id}`}
                                         option={option}

@@ -2,6 +2,7 @@ import type { RuntimeFeatures } from "@/lib/features/types";
 import type { FeatureGateResult } from "@/lib/strategies/feature-gates";
 import type { VolatilityPoint } from "@/lib/system/types/market";
 import featureGateRegimes from "./feature_gate_regimes";
+import { closeToExtreme, isCurrentExtreme } from "./feature_gate_price_norm";
 
 
 
@@ -145,38 +146,20 @@ function rejectionReason(
     }
 
     // Extreme condition
-    const historiesBTC = (features?.coins["BTC"]?.priceNormalized?.history ?? []).slice(-5).map(e => e.p)
-    const historiesSymbol = (features?.coins[symbol.toUpperCase()]?.priceNormalized?.history ?? []).slice(-5).map(e => e.p)
-
-    const minBTC = Math.min(...historiesBTC);
-    const maxBTC = Math.max(...historiesBTC);
-
-    const minSymbol = Math.min(...historiesSymbol);
-    const maxSymbol = Math.max(...historiesSymbol);
-
-    const min = Math.min(minBTC, minSymbol);
-    const max = Math.max(maxBTC, maxSymbol);
-
-    if ((max > 0.96 || min < 0) && currentLevel < 4) {
-        return `extreme`
+    if (closeToExtreme(features, symbol, currentLevel, -5)) {
+        return `Too close to extreme`
     }
 
-    const coinBtc = features?.coins["BTC"]?.priceNormalized?.current
-    const coinSymbol = features?.coins[symbol.toUpperCase()]?.priceNormalized?.current
 
-    const currentValues = [coinBtc, coinSymbol].filter(
-        (value): value is number => typeof value === "number" && Number.isFinite(value),
-    );
-    const minCurrent = Math.min(...currentValues);
-    const maxCurrent = Math.max(...currentValues);
-
-    if ((maxCurrent > 1 || minCurrent < 0)) {
+    if (isCurrentExtreme(features, symbol)) {
         return `Too much extreme`
     }
+
 
     // BOTH:FEATURE_GATE_REGIMES — shared by backtest, sandbox and live.
     return featureGateRegimes(currentTime, features, signal);
 }
+
 
 /** Returns the v2 decision with an explanation for either outcome. */
 export default function featureGateV2(currentTime: number, features: RuntimeFeatures | undefined, signal: VolatilityPoint): FeatureGateResult {

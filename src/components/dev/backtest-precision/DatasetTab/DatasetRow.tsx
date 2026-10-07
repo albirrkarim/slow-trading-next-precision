@@ -22,10 +22,13 @@ export default function DatasetRow({
     row,
     hash,
     option,
+    approvalMessage,
 }: {
     row: FeatureGateDatasetRow;
     hash: string;
     option?: FeatureGateDatasetOption;
+    /** Explanation from the gate invocation that accepted this row during evaluation. */
+    approvalMessage?: string;
 }) {
     const signal = row.sequences[0];
 
@@ -40,6 +43,16 @@ export default function DatasetRow({
                 </Typography>
             </TableCell>
             <TableCell>
+                {approvalMessage !== undefined && (
+                    <Typography
+                        component="div"
+                        sx={{ mb: 1, overflowWrap: "anywhere", whiteSpace: "pre-wrap" }}
+                        variant="body2"
+                    >
+                        <Box component="span" sx={{ fontWeight: 700 }}>Gate approved: </Box>
+                        {approvalMessage}
+                    </Typography>
+                )}
                 <TradeFeaturePreview
                     entryTimeMs={row.t}
                     feature={row.feature}
