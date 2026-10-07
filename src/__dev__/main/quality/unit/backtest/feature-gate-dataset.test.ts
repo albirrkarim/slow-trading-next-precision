@@ -157,17 +157,15 @@ describe("feature-gate dataset collector", () => {
     ]);
   });
 
-  it("does not score a row that reversed before any entry capture", () => {
+  it("drops a row that reversed before any entry capture — nothing to replay", () => {
     const collector = featureGateDataset.collector.create();
     const context = contextAt(1000);
     collector.onVPoint(context, "AAA", point("B_0", "B", 0, 10));
     collector.onVPoint(context, "AAA", point("T_1", "T", 0, 20));
     collector.captureFeatures(context);
-    const report = featureGate.metrics.scoreRows(() => undefined, collector.flush());
-    expect(report.skipped).toBe(1);
-    expect(report.total).toBe(0);
-    expect(report.resolved).toBe(0);
-    expect(report.acceptedQuality).toBeUndefined();
+    // The B_0 row resolved inside the capture gap, T_1's own row is still
+    // pending — neither is evaluable, so nothing is persisted.
+    expect(collector.flush()).toHaveLength(0);
   });
 
   it("drops still-pending rows at flush — unresolved rows are noise", () => {

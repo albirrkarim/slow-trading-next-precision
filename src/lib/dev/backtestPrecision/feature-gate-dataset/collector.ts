@@ -86,11 +86,15 @@ function create() {
     /**
      * Run-end finalize: drops the still-pending rows — a signal whose
      * reversal never formed is noise, so only resolved rows are persisted.
+     * Also drops resolved rows that opened and closed inside a single
+     * capture gap (`t`/`feature` never stamped) — nothing to replay.
      */
     flush(): FeatureGateDatasetRow[] {
       pending.clear();
       signals.clear();
-      return closed;
+      return closed.filter(
+        (row) => Number.isFinite(row.t) && row.feature !== undefined,
+      );
     },
 
     /** Every collected row — closed rows then any rows still pending. */

@@ -23,7 +23,8 @@ export interface FeatureGateDatasetRow {
    * (`features.prune.forPosition`) — the same snapshot a real entry commit
    * would persist. `latestVpoint` reflects the market at capture; the row's
    * own signal is `sequences[0]`, frozen at that same tick.
-   * Optional: rows flushed before any capture pass carry none.
+   * Rows that resolve inside one capture gap never carry one and are
+   * dropped at flush.
    */
   feature?: RuntimeFeatures;
 
