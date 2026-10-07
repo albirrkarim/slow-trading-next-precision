@@ -34,9 +34,9 @@ describe("dataset filter conditions", () => {
     expect(run("gt")).toEqual([2]);
   });
 
-  it("combines symbol, resolution, inclusive capture dates and the metric condition", () => {
-    const query = { hash: HASH, symbol: "AAA", resolved: true, fromT: 100, toT: 200, metric: "signalLevel", operator: "eq", value: 2 } as const;
-    expect([row(0, 99), row(0, 100), row(0, 200), row(0, 201), row(undefined, 150)]
+  it("combines symbol, inclusive capture dates and the metric condition", () => {
+    const query = { hash: HASH, symbol: "AAA", fromT: 100, toT: 200, metric: "signalLevel", operator: "eq", value: 2 } as const;
+    expect([row(0, 99), row(0, 100), row(0, 200), row(0, 201)]
       .filter((r) => datasetFilters.matches(r, query)).map((r) => r.t)).toEqual([100, 200]);
     expect(datasetFilters.matches({ ...row(0), symbol: "BBB" }, query)).toBe(false);
     expect(datasetFilters.matches({ ...row(0), t: undefined }, query)).toBe(false);
@@ -67,7 +67,7 @@ describe("dataset filter conditions", () => {
       expect(result.total).toBe(2);
       expect(result.symbols).toEqual(["AAA", "BBB"]);
       expect(result.rows.map((r) => r.t)).toEqual([300]);
-      const legacy = await featureGate.dataset.queryRows({ hash: HASH, symbol: "AAA", resolved: true, minMissScore: 3 });
+      const legacy = await featureGate.dataset.queryRows({ hash: HASH, symbol: "AAA", minMissScore: 3 });
       expect(legacy.rows.map((r) => r.missScore)).toEqual([3]);
     } finally {
       cache.mockRestore();

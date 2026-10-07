@@ -145,24 +145,21 @@ describe("feature-gate dataset selection", () => {
     fireEvent.change(screen.getByLabelText("Capture to"), { target: { value: "2024-12-31" } });
     fireEvent.mouseDown(screen.getByRole("combobox", { name: "Symbol" }));
     fireEvent.click(await screen.findByRole("option", { name: "AAA" }));
-    fireEvent.click(screen.getByRole("checkbox", { name: "Resolved only" }));
     await waitFor(() => expect(http.get).toHaveBeenLastCalledWith(endpoints.dev.featureGateDatasetRows,
-      expect.objectContaining({ params: expect.objectContaining({ metric: "priceNormalized", operator: "lt", value: 0.3, resolved: "true", fromT: new Date("2024-01-01T00:00:00").getTime() }) })));
+      expect.objectContaining({ params: expect.objectContaining({ metric: "priceNormalized", operator: "lt", value: 0.3, fromT: new Date("2024-01-01T00:00:00").getTime() }) })));
     expect(JSON.parse(window.localStorage.getItem(filterStorage.key)!)).toEqual({
-      symbol: "AAA", resolvedOnly: true, from: "2024-01-01", to: "2024-12-31", metric: "priceNormalized", operator: "lt", value: "0.3",
+      symbol: "AAA", from: "2024-01-01", to: "2024-12-31", metric: "priceNormalized", operator: "lt", value: "0.3",
     });
     view.unmount();
     render(<DatasetTable cacheKey={SECOND_HASH} />);
     await screen.findByText("T0→B0");
     expect(http.get).toHaveBeenLastCalledWith(endpoints.dev.featureGateDatasetRows,
-      expect.objectContaining({ params: expect.objectContaining({ hash: SECOND_HASH, symbol: "AAA", metric: "priceNormalized", operator: "lt", value: 0.3, resolved: "true", fromT: new Date("2024-01-01T00:00:00").getTime(), toT: new Date("2024-12-31T23:59:59.999").getTime(), page: 1 }) }));
+      expect.objectContaining({ params: expect.objectContaining({ hash: SECOND_HASH, symbol: "AAA", metric: "priceNormalized", operator: "lt", value: 0.3, fromT: new Date("2024-01-01T00:00:00").getTime(), toT: new Date("2024-12-31T23:59:59.999").getTime(), page: 1 }) }));
     expect((screen.getByLabelText("Value") as HTMLInputElement).value).toBe("0.3");
-    expect((screen.getByRole("checkbox", { name: "Resolved only" }) as HTMLInputElement).checked).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "Clear" }));
     await waitFor(() => {
       const params = http.get.mock.lastCall?.[1].params;
       expect(params.metric).toBeUndefined();
-      expect(params.resolved).toBeUndefined();
       expect(params.fromT).toBeUndefined();
       expect(params.toT).toBeUndefined();
       expect(params.symbol).toBeUndefined();

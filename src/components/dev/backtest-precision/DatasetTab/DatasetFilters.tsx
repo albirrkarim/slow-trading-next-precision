@@ -1,6 +1,6 @@
 "use client";
 
-import { Box, Button, Checkbox, FormControlLabel, MenuItem, TextField } from "@mui/material";
+import { Box, Button, MenuItem, TextField } from "@mui/material";
 
 import MetricCondition from "@/components/ui/MetricCondition";
 import datasetFilters from "@/lib/dev/feature-gate/filters";
@@ -13,7 +13,7 @@ export default function DatasetFilters({ filters, onChange, symbols }: {
   onChange: (filters: DatasetFilterValues) => void;
   symbols: string[];
 }) {
-  const hasFilters = filters.symbol || filters.resolvedOnly || filters.from || filters.to || filters.value ||
+  const hasFilters = filters.symbol || filters.from || filters.to || filters.value ||
     filters.metric !== filterStorage.defaults.metric || filters.operator !== filterStorage.defaults.operator;
   const symbolOptions = filters.symbol && !symbols.includes(filters.symbol) ? [filters.symbol, ...symbols] : symbols;
   return (
@@ -23,8 +23,6 @@ export default function DatasetFilters({ filters, onChange, symbols }: {
         <MenuItem value="">All symbols</MenuItem>
         {symbolOptions.map((symbol) => <MenuItem key={symbol} value={symbol}>{symbol}</MenuItem>)}
       </TextField>
-      <FormControlLabel label="Resolved only" control={<Checkbox size="small" checked={filters.resolvedOnly}
-        onChange={(event) => onChange({ ...filters, resolvedOnly: event.target.checked })} />} />
       <TextField label="Capture from" type="date" size="small" slotProps={{ inputLabel: { shrink: true } }}
         sx={{ width: { xs: "100%", sm: 150 } }} value={filters.from}
         onChange={(event) => onChange({ ...filters, from: event.target.value })} />

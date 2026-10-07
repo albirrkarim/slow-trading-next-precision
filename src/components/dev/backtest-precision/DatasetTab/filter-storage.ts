@@ -5,7 +5,6 @@ import type { NumericFilterOperator } from "@/lib/system/utils/numeric-filter";
 
 export interface DatasetFilterValues {
   symbol: string;
-  resolvedOnly: boolean;
   from: string;
   to: string;
   metric: FeatureGateRowMetric;
@@ -15,7 +14,7 @@ export interface DatasetFilterValues {
 
 const key = "precision-backtest-dataset-filters";
 const defaults: DatasetFilterValues = {
-  symbol: "", resolvedOnly: false, from: "", to: "", metric: "missScore", operator: "eq", value: "",
+  symbol: "", from: "", to: "", metric: "missScore", operator: "eq", value: "",
 };
 
 /** Restores a date input only when it is a valid YYYY-MM-DD calendar date. */
@@ -35,7 +34,6 @@ function read(): DatasetFilterValues {
     const values = stored as Record<string, unknown>;
     return {
       symbol: typeof values.symbol === "string" ? values.symbol : defaults.symbol,
-      resolvedOnly: values.resolvedOnly === true,
       from: dateValue(values.from),
       to: dateValue(values.to),
       metric: typeof values.metric === "string" && Object.hasOwn(datasetFilters.metrics, values.metric) ? values.metric as FeatureGateRowMetric : defaults.metric,

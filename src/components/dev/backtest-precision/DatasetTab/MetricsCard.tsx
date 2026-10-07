@@ -28,7 +28,9 @@ function MetricLine({ label, value, detail }: { label: string; value: string; de
 
 export default function MetricsCard({ metrics, title }: { metrics: FeatureGateMetrics; title: string }) {
     const distribution = metrics.acceptedScoreDistribution;
-    const acceptedResolved = distribution["0"] + distribution["1"] + distribution["2"] + distribution["3+"];
+    const acceptedResolved = Object.keys(distribution)
+        .filter((key) => Number.isInteger(Number(key)))
+        .reduce((sum, key) => sum + (distribution[key] ?? 0), 0);
     return (
         <Box>
             <Typography fontWeight={700} variant="body2">{title}</Typography>

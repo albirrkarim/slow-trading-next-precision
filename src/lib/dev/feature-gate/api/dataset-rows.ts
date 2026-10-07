@@ -14,9 +14,6 @@ const pickInt = (value: string | undefined) => {
   return Number.isInteger(parsed) && parsed >= 0 ? parsed : undefined;
 };
 
-const pickBoolean = (value: string | undefined) =>
-  value === "true" || value === "1";
-
 /** Parses an optional finite capture-time bound without accepting empty strings. */
 function pickTime(value: string | undefined, field: string): number | undefined {
   if (value === undefined) return undefined;
@@ -28,7 +25,7 @@ function pickTime(value: string | undefined, field: string): number | undefined 
 /**
  * GET /api/dev/feature-gate/dataset-rows — paginated view of one run's
  * captured dataset: `hash`, `symbol?`, `page` (default 1), `pageSize`
- * (default 50), `resolved=true`, `minMissScore`, inclusive capture bounds
+ * (default 50), `minMissScore`, inclusive capture bounds
  * `fromT`/`toT`, and optional `metric`/`operator`/`value`. Returns
  * `{page, pageSize, rows, symbols, total}`.
  */
@@ -62,9 +59,6 @@ export default async function featureGateDatasetRowsHandler(
         minMissScore: pickInt(pickQuery(req.query.minMissScore)),
         page: pickInt(pickQuery(req.query.page)),
         pageSize: pickInt(pickQuery(req.query.pageSize)),
-        resolved: pickBoolean(pickQuery(req.query.resolved))
-          ? true
-          : undefined,
         order:
           pickQuery(req.query.order) === "desc" ? "desc" : undefined,
         sort: ["missScore", "sequence", "time"].includes(

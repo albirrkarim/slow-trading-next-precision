@@ -86,7 +86,6 @@ export default function DatasetTable({
                     toT: filters.to ? new Date(`${filters.to}T23:59:59.999`).getTime() : undefined,
                     page: page + 1,
                     pageSize,
-                    resolved: filters.resolvedOnly ? "true" : undefined,
                     order: order === "desc" ? "desc" : undefined,
                     sort: sort === "time" ? undefined : sort,
                     symbol: filters.symbol || undefined,

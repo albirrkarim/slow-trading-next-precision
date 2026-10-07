@@ -112,8 +112,6 @@ export interface FeatureGateRowQuery {
   minMissScore?: number;
   page?: number;
   pageSize?: number;
-  /** `true` keeps only resolved rows. */
-  resolved?: boolean;
   /** Sort key — defaults to capture time ascending. */
   sort?: "missScore" | "sequence" | "time";
   order?: "asc" | "desc";
