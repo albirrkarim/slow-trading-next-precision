@@ -1,7 +1,6 @@
 import defaultDecision from "@/lib/precision/defaultDecision";
 import type { StrategyAPI } from "../types";
-import featureGateV2 from "./feature_gate_v2";
-
+import featureGate from "./features";
 
 const defaultWithFeaturesGate: StrategyAPI = {
   name: "default_with_features_gate",
@@ -11,7 +10,7 @@ const defaultWithFeaturesGate: StrategyAPI = {
         const candidates = await defaultDecision.entry.find(context);
         return candidates.filter(
           (candidate) =>
-            featureGateV2(
+            featureGate(
               context,
               candidate.symbol,
               candidate.type === "entry" ? candidate.entrySignal : undefined,
@@ -23,7 +22,7 @@ const defaultWithFeaturesGate: StrategyAPI = {
   diagnostics: {
     explain: ({ context, symbol, decision }) => {
       if (!decision) return undefined;
-      const reason = featureGateV2(context, symbol, decision.entrySignal);
+      const reason = featureGate(context, symbol, decision.entrySignal);
       if (!reason) return undefined;
       return {
         code: "FEATURE_GATE",

@@ -28,6 +28,12 @@ export const FEATURE_GATE_VWAP_BOUNDS = {
     // a vPoint >12h old; tightening from 24h nets ≈ +426 USDT, positive in
     // both halves of the run.
     maxSignalAgeMs: 12 * 60 * 60 * 1000,
+    // First 2 days of the UTC month: the anchor just reset, so stdev rests
+    // on too few candles — the σ envelope is thin and unstable.
+    blockAfterMonthStartMs: 2 * 24 * 60 * 60 * 1000,
+    // Last 2 days of the UTC month: the VWAP anchor is about to reset, so
+    // an entry opened now loses the envelope it was judged on within ~48h.
+    blockBeforeMonthEndMs: 2 * 24 * 60 * 60 * 1000,
 };
 
 /**
@@ -45,6 +51,34 @@ export default function featureGateV2(
     signal?: VolatilityPoint,
 ): string | undefined {
     const bounds = FEATURE_GATE_VWAP_BOUNDS;
+    const currentLevel = Math.abs(signal?.lvl ?? 0);
+
+    // Calendar rule, signal-independent: the VWAP anchor is monthly (UTC),
+    // so a position opened inside the last 2 days of the month straddles a
+    // band reset — entry context expires almost immediately.
+    const now = context.state.currentTime;
+    if (Number.isFinite(now)) {
+        const d = new Date(now);
+        const anchorMs = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1);
+        const sinceAnchorMs = now - anchorMs;
+        if (sinceAnchorMs < bounds.blockAfterMonthStartMs && currentLevel < 3) {
+            return (
+                `month started ${(sinceAnchorMs / 3_600_000).toFixed(1)}h ago ` +
+                `(< ${bounds.blockAfterMonthStartMs / 3_600_000}h) — monthly ` +
+                `VWAP envelope is too thin to judge σ`
+            );
+        }
+        const nextAnchorMs = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1);
+        const untilAnchorResetMs = nextAnchorMs - now;
+        if (untilAnchorResetMs < bounds.blockBeforeMonthEndMs && currentLevel < 3) {
+            return (
+                `month ends in ${(untilAnchorResetMs / 3_600_000).toFixed(1)}h ` +
+                `(< ${bounds.blockBeforeMonthEndMs / 3_600_000}h) — monthly ` +
+                `VWAP anchor resets and the entry loses its context`
+            );
+        }
+    }
+
     const coin = context.state.features?.coins[symbol.toUpperCase()];
     const vwap = coin?.vwap?.price;
     const stdev = coin?.vwap?.stdev;
@@ -107,11 +141,9 @@ export default function featureGateV2(
         );
     }
 
-
-
     // Extreme condition
-    const historiesBTC = (context.state.features?.coins["BTC"]?.priceNormalized?.history ?? []).slice(-3).map(e => e.p)
-    const historiesSymbol = (context.state.features?.coins[symbol.toUpperCase()]?.priceNormalized?.history ?? []).slice(-3).map(e => e.p)
+    const historiesBTC = (context.state.features?.coins["BTC"]?.priceNormalized?.history ?? []).slice(-10).map(e => e.p)
+    const historiesSymbol = (context.state.features?.coins[symbol.toUpperCase()]?.priceNormalized?.history ?? []).slice(-5).map(e => e.p)
 
     const minBTC = Math.min(...historiesBTC);
     const maxBTC = Math.max(...historiesBTC);
@@ -122,7 +154,7 @@ export default function featureGateV2(
     const min = Math.min(minBTC, minSymbol);
     const max = Math.max(maxBTC, maxSymbol);
 
-    if ((max > 0.95 || min < 0.1)) {
+    if ((max > 0.96 || min < 0)) {
         return `extreme`
     }
 

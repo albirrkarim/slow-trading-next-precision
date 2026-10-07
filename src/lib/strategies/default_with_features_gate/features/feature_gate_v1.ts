@@ -2,7 +2,7 @@ import type { RuntimeContext } from "@/lib/precision/types";
 import type { VolatilityPoint } from "@/lib/system/types/market";
 import {
     mapRange,
-} from "../shared/utils";
+} from "../../shared/utils";
 import { windowsMs } from "@/lib/system/constants";
 
 /**
