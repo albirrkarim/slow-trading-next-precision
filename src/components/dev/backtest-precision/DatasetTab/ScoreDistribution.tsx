@@ -44,6 +44,48 @@ export default function ScoreDistribution({ distribution }: { distribution: Feat
             </FrequencyHeatRow>
           );
         })}
+        <Box
+          sx={{
+            borderTop: "1px solid",
+            borderColor: "divider",
+            display: "flex",
+            fontVariantNumeric: "tabular-nums",
+            justifyContent: "space-between",
+            px: 1,
+            py: 0.75,
+          }}
+        >
+          <MetricValue
+            detail={`Sum of actual miss scores / accepted resolved rows (${total}). Uses each exact score, including scores grouped into 3+; n/a when none exist.`}
+          >
+            <Typography color="text.secondary" component="span" variant="body2">
+              Average score
+            </Typography>
+          </MetricValue>
+          <Typography component="span" fontWeight={700} variant="body2">
+            {distribution.avgScore?.toFixed(2) ?? "n/a"}
+          </Typography>
+        </Box>
+        <Box
+          sx={{
+            borderTop: "1px solid",
+            borderColor: "divider",
+            display: "flex",
+            fontVariantNumeric: "tabular-nums",
+            justifyContent: "space-between",
+            px: 1,
+            py: 0.75,
+          }}
+        >
+          <MetricValue detail="Maximum actual miss score among accepted resolved rows; n/a when none exist.">
+            <Typography color="text.secondary" component="span" variant="body2">
+              Worst score
+            </Typography>
+          </MetricValue>
+          <Typography component="span" fontWeight={700} variant="body2">
+            {distribution.worstScore?.toString() ?? "n/a"}
+          </Typography>
+        </Box>
       </Paper>
     </Box>
   );

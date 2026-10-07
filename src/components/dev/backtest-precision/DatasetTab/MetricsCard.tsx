@@ -50,20 +50,13 @@ export default function MetricsCard({ metrics, title }: { metrics: FeatureGateMe
                 </Table>
             </TableContainer>
             <ScoreDistribution distribution={distribution} />
-            <TableContainer>
-                <Table size="small" aria-label="Accepted score summary" sx={{ "& .MuiTableCell-root": { px: 1 } }}>
-                    <TableBody>
-                        <MetricLine label="Average score" value={distribution.avgScore?.toFixed(2) ?? "n/a"} detail={`Sum of actual miss scores / accepted resolved rows (${acceptedResolved}). Uses each exact score, including scores grouped into 3+; n/a when none exist.`} />
-                        <MetricLine label="Worst score" value={distribution.worstScore?.toString() ?? "n/a"} detail="Maximum actual miss score among accepted resolved rows; n/a when none exist." />
-                    </TableBody>
-                </Table>
-            </TableContainer>
             {metrics.topRejections.length > 0 && (
                 <Box sx={{ mt: 1.5 }}>
                     <Typography fontWeight={700} variant="body2">Top rejections</Typography>
                     {metrics.topRejections.map((rejection) => (
                         <Typography key={rejection.reason} component="div" color="text.secondary" variant="caption" display="block" sx={{ overflowWrap: "anywhere" }}>
-                            <MetricValue detail="Count of evaluable rows where the selected feature gate returned this exact rejection reason.">{rejection.count}×</MetricValue> {rejection.reason}
+                            <MetricValue detail={`Grouped reason (measured values normalized to #). One real example: "${rejection.sample}"`}>{rejection.count}×</MetricValue>{" "}
+                            {rejection.reason}
                         </Typography>
                     ))}
                 </Box>

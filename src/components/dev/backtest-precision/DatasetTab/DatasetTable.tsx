@@ -11,6 +11,7 @@ import {
     TableHead,
     TablePagination,
     TableRow,
+    TableSortLabel,
     Typography,
 } from "@mui/material";
 import axios from "axios";
@@ -19,8 +20,9 @@ import { useEffect, useState } from "react";
 import { endpoints } from "@/components/endpoints";
 import type { FeatureGateRowPage } from "@/lib/dev/feature-gate";
 
-import DatasetFilters, { EMPTY_DATASET_FILTERS } from "./DatasetFilters";
+import DatasetFilters from "./DatasetFilters";
 import DatasetRow from "./DatasetRow";
+import filterStorage from "./filter-storage";
 
 const PAGE_SIZES = [25, 50, 100];
 
@@ -29,15 +31,30 @@ const PAGE_SIZES = [25, 50, 100];
  * `dataset/*.json` through the dataset-rows endpoint; filters and pages
  * resolve server-side so the run size stays off the client.
  */
+type SortKey = "missScore" | "sequence" | "time";
+
 export default function DatasetTable({ cacheKey }: { cacheKey?: string }) {
     const [page, setPage] = useState(0);
     const [pageSize, setPageSize] = useState(50);
-    const [filters, setFilters] = useState(EMPTY_DATASET_FILTERS);
+    const [sort, setSort] = useState<SortKey>("time");
+    const [order, setOrder] = useState<"asc" | "desc">("asc");
+    const [filters, setFilters] = useState(() => filterStorage.read());
+
+    useEffect(() => {
+        filterStorage.write(filters);
+    }, [filters]);
 
     // The resolved page keyed by its query — a query change exposes empty
     // state for the new key until the fetch lands, so stale rows never
     // render under fresh filters and the effect needs no synchronous reset.
-    const queryKey = JSON.stringify([cacheKey, page, pageSize, filters]);
+    const queryKey = JSON.stringify([
+        cacheKey,
+        page,
+        pageSize,
+        filters,
+        sort,
+        order,
+    ]);
     const [entry, setEntry] = useState<
         { error?: string; key: string; value?: FeatureGateRowPage } | undefined
     >();
@@ -61,6 +78,8 @@ export default function DatasetTable({ cacheKey }: { cacheKey?: string }) {
                     page: page + 1,
                     pageSize,
                     resolved: filters.resolvedOnly ? "true" : undefined,
+                    order: order === "desc" ? "desc" : undefined,
+                    sort: sort === "time" ? undefined : sort,
                     symbol: filters.symbol || undefined,
                 },
                 signal: controller.signal,
@@ -82,7 +101,27 @@ export default function DatasetTable({ cacheKey }: { cacheKey?: string }) {
                 });
             });
         return () => controller.abort();
-    }, [cacheKey, filters, page, pageSize, queryKey]);
+    }, [cacheKey, filters, order, page, pageSize, queryKey, sort]);
+
+    const toggleSort = (key: SortKey) => {
+        setPage(0);
+        if (sort === key) {
+            setOrder(order === "asc" ? "desc" : "asc");
+            return;
+        }
+        setSort(key);
+        setOrder("asc");
+    };
+
+    const sortableHeader = (key: SortKey, label: string) => (
+        <TableSortLabel
+            active={sort === key}
+            direction={sort === key ? order : "asc"}
+            onClick={() => toggleSort(key)}
+        >
+            {label}
+        </TableSortLabel>
+    );
 
     const result = current?.value;
     const error = current?.error;
@@ -112,11 +151,21 @@ export default function DatasetTable({ cacheKey }: { cacheKey?: string }) {
                         <Table size="small">
                             <TableHead>
                                 <TableRow>
-                                    <TableCell>Time</TableCell>
+                                    <TableCell>
+                                        {sortableHeader("time", "Time")}
+                                    </TableCell>
                                     <TableCell>Feature</TableCell>
-                                    <TableCell>Level sequence</TableCell>
+                                    <TableCell>
+                                        {sortableHeader(
+                                            "sequence",
+                                            "Level sequence",
+                                        )}
+                                    </TableCell>
                                     <TableCell align="right">
-                                        Miss score
+                                        {sortableHeader(
+                                            "missScore",
+                                            "Miss score",
+                                        )}
                                     </TableCell>
                                     <TableCell>Debug</TableCell>
                                 </TableRow>

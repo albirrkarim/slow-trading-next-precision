@@ -26,7 +26,7 @@ function scoreRows(
     "2": 0,
     "3+": 0,
   };
-  const rejections = new Map<string, number>();
+  const rejections = new Map<string, { count: number; sample: string }>();
 
   let skipped = 0;
   let total = 0;
@@ -57,7 +57,13 @@ function scoreRows(
     if (isAccepted) {
       accepted += 1;
     } else {
-      rejections.set(reason, (rejections.get(reason) ?? 0) + 1);
+      // Reasons embed measured values ("envelope is only 3.9% wide") —
+      // bucket on the number-stripped template so variants group, and keep
+      // one real example for the tooltip.
+      const bucket = reason.replace(/-?\d+(\.\d+)?%?/g, "#");
+      const entry = rejections.get(bucket) ?? { count: 0, sample: reason };
+      entry.count += 1;
+      rejections.set(bucket, entry);
     }
 
     const bucket = (bySymbol[row.symbol] ??= {
@@ -112,7 +118,11 @@ function scoreRows(
     resolved,
     skipped,
     topRejections: [...rejections.entries()]
-      .map(([reason, count]) => ({ count, reason }))
+      .map(([reason, entry]) => ({
+        count: entry.count,
+        reason,
+        sample: entry.sample,
+      }))
       .sort((a, b) => b.count - a.count)
       .slice(0, TOP_REJECTIONS),
     total,

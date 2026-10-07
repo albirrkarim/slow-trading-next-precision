@@ -61,8 +61,12 @@ export interface FeatureGateMetrics {
   badBlocked?: number;
   acceptedScoreDistribution: FeatureGateScoreDistribution;
   bySymbol: Record<string, FeatureGateSymbolCounts>;
-  /** Top rejection reasons by frequency — the debugging signal. */
-  topRejections: { count: number; reason: string }[];
+  /**
+   * Top rejection reasons by frequency — the debugging signal. `reason` is
+   * the number-stripped template ("envelope is only #% wide") so variants
+   * group; `sample` keeps one real reason string for inspection.
+   */
+  topRejections: { count: number; reason: string; sample: string }[];
 }
 
 /** `evaluate` result — one run's dataset scored by one gate version. */
@@ -106,6 +110,9 @@ export interface FeatureGateRowQuery {
   pageSize?: number;
   /** `true` keeps only resolved rows. */
   resolved?: boolean;
+  /** Sort key — defaults to capture time ascending. */
+  sort?: "missScore" | "sequence" | "time";
+  order?: "asc" | "desc";
   symbol?: string;
 }
 

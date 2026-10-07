@@ -65,9 +65,22 @@ async function queryRows(
     ? (bySymbol[query.symbol] ?? [])
     : symbols.flatMap((symbol) => bySymbol[symbol]);
 
+  const order = query.order === "desc" ? -1 : 1;
+  const sortKeys: Record<
+    NonNullable<FeatureGateRowQuery["sort"]>,
+    (row: FeatureGateDatasetRow) => number
+  > = {
+    missScore: (row) =>
+      // Unresolved rows sink to the bottom regardless of direction.
+      row.missScore ?? (order === 1 ? Infinity : -Infinity),
+    sequence: (row) => row.sequences.length,
+    time: (row) => rowTime(row),
+  };
+  const sortKey = sortKeys[query.sort ?? "time"];
+
   const filtered = source
     .filter((row) => datasetFilters.matches(row, query))
-    .sort((a, b) => rowTime(a) - rowTime(b));
+    .sort((a, b) => (sortKey(a) - sortKey(b)) * order);
 
   const pageSize = Math.min(
     Math.max(query.pageSize ?? DEFAULT_PAGE_SIZE, 1),

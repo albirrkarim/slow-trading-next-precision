@@ -21,7 +21,7 @@ export default function DatasetRow({ row }: { row: FeatureGateDatasetRow }) {
             <TableCell sx={{ verticalAlign: "top" }}>
                 <Typography
                     title={row.t !== undefined ? format.timeForLog(row.t) : "not captured"}
-                    variant="caption"
+                    variant="body1"
                 >
                     {row.t !== undefined ? format.timeMsToReadable(row.t, "DD MMM HH:mm") : "—"}
                 </Typography>
@@ -38,7 +38,7 @@ export default function DatasetRow({ row }: { row: FeatureGateDatasetRow }) {
             <TableCell sx={{ verticalAlign: "top" }}>
                 <Typography
                     title={row.sequences.map((point) => point.id).join(" → ")}
-                    variant="caption"
+                    variant="body1"
                 >
                     {sequenceLabel(row)}
                 </Typography>
@@ -46,8 +46,9 @@ export default function DatasetRow({ row }: { row: FeatureGateDatasetRow }) {
             <TableCell align="right" sx={{ verticalAlign: "top" }}>
                 <Typography
                     color={row.resolved ? "text.primary" : "text.secondary"}
+                    fontWeight={row.resolved ? 700 : 400}
                     title={row.resolved ? undefined : "Unresolved — no reversal formed"}
-                    variant="caption"
+                    variant="body1"
                 >
                     {row.resolved ? row.missScore : "…"}
                 </Typography>

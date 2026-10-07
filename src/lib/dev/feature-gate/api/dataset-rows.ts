@@ -65,6 +65,16 @@ export default async function featureGateDatasetRowsHandler(
         resolved: pickBoolean(pickQuery(req.query.resolved))
           ? true
           : undefined,
+        order:
+          pickQuery(req.query.order) === "desc" ? "desc" : undefined,
+        sort: ["missScore", "sequence", "time"].includes(
+          pickQuery(req.query.sort) ?? "",
+        )
+          ? (pickQuery(req.query.sort) as
+              | "missScore"
+              | "sequence"
+              | "time")
+          : undefined,
         symbol: pickQuery(req.query.symbol)?.trim() || undefined,
       }),
     );

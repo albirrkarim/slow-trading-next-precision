@@ -9,11 +9,13 @@ vi.mock("axios", () => ({ default: { ...http, isCancel: () => false, isAxiosErro
 import { endpoints } from "@/components/endpoints";
 import DatasetTab from "@/components/dev/backtest-precision/DatasetTab";
 import DatasetTable from "@/components/dev/backtest-precision/DatasetTab/DatasetTable";
+import filterStorage from "@/components/dev/backtest-precision/DatasetTab/filter-storage";
 
 const FIRST_HASH = "1".repeat(64);
 const SECOND_HASH = "2".repeat(64);
 
 beforeEach(() => {
+  window.localStorage.removeItem(filterStorage.key);
   http.get.mockReset();
   http.post.mockReset();
   http.get.mockImplementation(async (url: string, config?: { params?: { hash?: string } }) => {
@@ -125,7 +127,7 @@ describe("feature-gate dataset selection", () => {
       const response = await getRows(...args);
       return { data: { ...response.data, total: 100 } };
     });
-    render(<DatasetTable cacheKey={FIRST_HASH} />);
+    const view = render(<DatasetTable cacheKey={FIRST_HASH} />);
     await screen.findByText("B0→T0");
     fireEvent.click(screen.getByRole("button", { name: "Go to next page" }));
     await waitFor(() => expect(http.get).toHaveBeenLastCalledWith(endpoints.dev.featureGateDatasetRows,
@@ -139,16 +141,50 @@ describe("feature-gate dataset selection", () => {
     fireEvent.click(await screen.findByRole("option", { name: "<" }));
     fireEvent.change(screen.getByLabelText("Value"), { target: { value: "0.3" } });
     fireEvent.change(screen.getByLabelText("Capture from"), { target: { value: "2024-01-01" } });
+    fireEvent.change(screen.getByLabelText("Capture to"), { target: { value: "2024-12-31" } });
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Symbol" }));
+    fireEvent.click(await screen.findByRole("option", { name: "AAA" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Resolved only" }));
     await waitFor(() => expect(http.get).toHaveBeenLastCalledWith(endpoints.dev.featureGateDatasetRows,
       expect.objectContaining({ params: expect.objectContaining({ metric: "priceNormalized", operator: "lt", value: 0.3, resolved: "true", fromT: new Date("2024-01-01T00:00:00").getTime() }) })));
+    expect(JSON.parse(window.localStorage.getItem(filterStorage.key)!)).toEqual({
+      symbol: "AAA", resolvedOnly: true, from: "2024-01-01", to: "2024-12-31", metric: "priceNormalized", operator: "lt", value: "0.3",
+    });
+    view.unmount();
+    render(<DatasetTable cacheKey={SECOND_HASH} />);
+    await screen.findByText("T0→B0");
+    expect(http.get).toHaveBeenLastCalledWith(endpoints.dev.featureGateDatasetRows,
+      expect.objectContaining({ params: expect.objectContaining({ hash: SECOND_HASH, symbol: "AAA", metric: "priceNormalized", operator: "lt", value: 0.3, resolved: "true", fromT: new Date("2024-01-01T00:00:00").getTime(), toT: new Date("2024-12-31T23:59:59.999").getTime(), page: 1 }) }));
+    expect((screen.getByLabelText("Value") as HTMLInputElement).value).toBe("0.3");
+    expect((screen.getByRole("checkbox", { name: "Resolved only" }) as HTMLInputElement).checked).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "Clear" }));
     await waitFor(() => {
       const params = http.get.mock.lastCall?.[1].params;
       expect(params.metric).toBeUndefined();
       expect(params.resolved).toBeUndefined();
       expect(params.fromT).toBeUndefined();
+      expect(params.toT).toBeUndefined();
+      expect(params.symbol).toBeUndefined();
       expect(params.page).toBe(1);
     });
+    expect(window.localStorage.getItem(filterStorage.key)).toBeNull();
+  });
+
+  it("handles malformed saved filters and unavailable localStorage without breaking filtering", () => {
+    window.localStorage.setItem(filterStorage.key, "invalid JSON");
+    expect(filterStorage.read()).toEqual(filterStorage.defaults);
+    window.localStorage.setItem(filterStorage.key, JSON.stringify({
+      symbol: 42, resolvedOnly: "false", from: "2024-02-30", to: "invalid", metric: "constructor", operator: "constructor", value: "Infinity",
+    }));
+    expect(filterStorage.read()).toEqual(filterStorage.defaults);
+    const get = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("blocked"); });
+    const set = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("blocked"); });
+    try {
+      expect(filterStorage.read()).toEqual(filterStorage.defaults);
+      expect(() => filterStorage.write({ ...filterStorage.defaults, value: "0" })).not.toThrow();
+    } finally {
+      get.mockRestore();
+      set.mockRestore();
+    }
   });
 });

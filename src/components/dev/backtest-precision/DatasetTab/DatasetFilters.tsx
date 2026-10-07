@@ -4,35 +4,24 @@ import { Box, Button, Checkbox, FormControlLabel, MenuItem, TextField } from "@m
 
 import MetricCondition from "@/components/ui/MetricCondition";
 import datasetFilters from "@/lib/dev/feature-gate/filters";
-import type { FeatureGateRowMetric } from "@/lib/dev/feature-gate";
-import type { NumericFilterOperator } from "@/lib/system/utils/numeric-filter";
 
-export interface DatasetFilterValues {
-  symbol: string;
-  resolvedOnly: boolean;
-  from: string;
-  to: string;
-  metric: FeatureGateRowMetric;
-  operator: NumericFilterOperator;
-  value: string;
-}
-
-export const EMPTY_DATASET_FILTERS: DatasetFilterValues = {
-  symbol: "", resolvedOnly: false, from: "", to: "", metric: "missScore", operator: "eq", value: "",
-};
+import filterStorage from "./filter-storage";
+import type { DatasetFilterValues } from "./filter-storage";
 
 export default function DatasetFilters({ filters, onChange, symbols }: {
   filters: DatasetFilterValues;
   onChange: (filters: DatasetFilterValues) => void;
   symbols: string[];
 }) {
-  const hasFilters = filters.symbol || filters.resolvedOnly || filters.from || filters.to || filters.value;
+  const hasFilters = filters.symbol || filters.resolvedOnly || filters.from || filters.to || filters.value ||
+    filters.metric !== filterStorage.defaults.metric || filters.operator !== filterStorage.defaults.operator;
+  const symbolOptions = filters.symbol && !symbols.includes(filters.symbol) ? [filters.symbol, ...symbols] : symbols;
   return (
     <Box sx={{ alignItems: { xs: "stretch", sm: "center" }, display: "flex", flexDirection: { xs: "column", sm: "row" }, flexWrap: "wrap", gap: 1, mb: 1.5 }}>
       <TextField label="Symbol" select size="small" sx={{ minWidth: 120 }} value={filters.symbol}
         onChange={(event) => onChange({ ...filters, symbol: event.target.value })}>
         <MenuItem value="">All symbols</MenuItem>
-        {symbols.map((symbol) => <MenuItem key={symbol} value={symbol}>{symbol}</MenuItem>)}
+        {symbolOptions.map((symbol) => <MenuItem key={symbol} value={symbol}>{symbol}</MenuItem>)}
       </TextField>
       <FormControlLabel label="Resolved only" control={<Checkbox size="small" checked={filters.resolvedOnly}
         onChange={(event) => onChange({ ...filters, resolvedOnly: event.target.checked })} />} />
@@ -47,7 +36,7 @@ export default function DatasetFilters({ filters, onChange, symbols }: {
         onOperatorChange={(operator) => onChange({ ...filters, operator })}
         onValueChange={(value) => onChange({ ...filters, value })}
         operator={filters.operator} value={filters.value} />
-      {hasFilters && <Button size="small" onClick={() => onChange(EMPTY_DATASET_FILTERS)}>Clear</Button>}
+      {hasFilters && <Button size="small" onClick={() => onChange(filterStorage.defaults)}>Clear</Button>}
     </Box>
   );
 }

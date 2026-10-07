@@ -104,8 +104,8 @@ describe("feature-gate evaluate", () => {
     });
 
     expect(report.topRejections).toEqual([
-      { count: 2, reason: "low normalized" },
-      { count: 1, reason: "no coin feature" },
+      { count: 2, reason: "low normalized", sample: "low normalized" },
+      { count: 1, reason: "no coin feature", sample: "no coin feature" },
     ]);
   });
 
