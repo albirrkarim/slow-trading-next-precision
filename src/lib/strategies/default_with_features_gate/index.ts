@@ -11,9 +11,9 @@ const defaultWithFeaturesGate: StrategyAPI = {
         return candidates.filter(
           (candidate) =>
             featureGate(
-              context,
-              candidate.symbol,
-              candidate.type === "entry" ? candidate.entrySignal : undefined,
+              context.state.currentTime,
+              context.state.features,
+              { ...candidate.entrySignal, symbol: candidate.symbol },
             ) === undefined,
         );
       },
@@ -22,7 +22,10 @@ const defaultWithFeaturesGate: StrategyAPI = {
   diagnostics: {
     explain: ({ context, symbol, decision }) => {
       if (!decision) return undefined;
-      const reason = featureGate(context, symbol, decision.entrySignal);
+      const reason = featureGate(context.state.currentTime, context.state.features, {
+        ...decision.entrySignal,
+        symbol,
+      });
       if (!reason) return undefined;
       return {
         code: "FEATURE_GATE",

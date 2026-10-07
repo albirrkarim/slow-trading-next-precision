@@ -156,6 +156,7 @@ function create(options: ProductionAdapterOptions): RuntimeEngineAdapter {
     onPairAction: options.onPairAction,
     onCycleComplete: options.onCycleComplete,
     onExit: options.onExit,
+    onEntryCapture: options.onEntryCapture,
     onFeatureUpdate: options.onFeatureUpdate,
     onManagement: options.onManagement,
     onNewVPoint: options.onNewVPoint,

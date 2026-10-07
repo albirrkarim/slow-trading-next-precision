@@ -21,6 +21,12 @@ export interface BacktestPrecisionParams extends BacktestTestCase {
   range: string;
   upToDateKlines: boolean;
   upToDateDecisionBacktest: boolean;
+  /**
+   * Also write the feature-gate candidate dataset —
+   * `<cachePath>/dataset/<SYMBOL>.json` rows of every detected vPoint with
+   * its entry-time feature snapshot, level sequence, and miss score.
+   */
+  produceDataset?: boolean;
   verbose?: boolean;
   /**
    * Captured production starting state for precision-checker replays. Normal

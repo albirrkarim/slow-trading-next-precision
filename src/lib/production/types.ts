@@ -39,6 +39,8 @@ export interface ProductionAdapterOptions {
   onNewVPoint?: RuntimeEngineAdapter["onNewVPoint"];
   /** Refreshes `state.features` before entry capture (state-only here). */
   onFeatureUpdate?: RuntimeEngineAdapter["onFeatureUpdate"];
+  /** Observes refreshed state before scheduled entry capture. */
+  onEntryCapture?: RuntimeEngineAdapter["onEntryCapture"];
   /** Optional notification delivery hook. */
   onNotif?: RuntimeEngineAdapter["onNotif"];
   /** Environment-owned risk-sentinel stage body. */

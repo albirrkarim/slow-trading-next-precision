@@ -45,3 +45,37 @@ level from the existing exit message; this enrichment is display-only and does
 not modify the simulation result.
 
 TC: `BTEST:BACKTEST_TRADE_CHART_AVERAGING`
+
+
+## Feature gate dataset and inference
+
+TC: `BTEST:FEATURE_GATE_DATASET`
+
+With `produceDataset` enabled, each detected vPoint starts a pending row.
+The first scheduled `onEntryCapture` after formation freezes the capture time,
+pruned symbol + BTC features, and the starting signal's then-observed runtime
+fields in `sequences[0]`. Later captures must not overwrite these inputs.
+Other same-label points extend every pending sequence; its first opposite
+point closes it with `missScore = sequences.length - 2`. All pending rows
+remain independent, yielding scores 2, 1, 0 for B → B → B → T.
+Rows persist as compact arrays in `dataset/<symbol>.json` within the backtest
+cache. Unfinished sequences have no score. Rows closed before any capture
+remain inspectable but are skipped by inference, as are invalid capture inputs
+or resolved labels. The report exposes a skipped count; the five evaluation
+metrics use evaluable rows only, and score metrics exclude unresolved rows.
+Inference uses the same pure gate as runtime, with currentTime, pruned features,
+and the frozen starting signal. Future sequence points and missScore are not
+passed to the gate. Gate refactoring must preserve existing trading thresholds.
+The dataset table and report both follow the selected dataset hash, and an old
+report must not appear under a different hash or gate selection.
+
+TC: `BOTH:FEATURE_GATE_INPUTS`
+
+The dataset UI places the table on the left and gate selection, evaluation
+control, and metrics on the right, stacking on narrow screens. Table columns
+are Time, Feature, Level sequence, Miss score, and Debug. Feature cells reuse
+the trade feature preview, with the dataset's frozen starting signal supplied
+for signal age and VWAP sigma distance. Each Debug button opens the complete
+dataset row in the shared JSON tree dialog. The evaluation panel explains how
+to show metrics before the first evaluation and displays the five metrics after
+Evaluate completes.

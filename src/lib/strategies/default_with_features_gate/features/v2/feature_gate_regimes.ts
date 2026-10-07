@@ -1,5 +1,4 @@
-import type { CoinPriceNormalized } from "@/lib/features/types";
-import type { RuntimeContext } from "@/lib/precision/types";
+import type { CoinPriceNormalized, RuntimeFeatures } from "@/lib/features/types";
 import type { VolatilityPoint } from "@/lib/system/types/market";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -43,14 +42,15 @@ function readTrail(group: CoinPriceNormalized | undefined, now: number) {
 
 /** Rejects failed breakouts, spent rebounds and extreme ranges with weak BTC support. */
 export default function featureGateRegimes(
-  context: RuntimeContext,
-  symbol: string,
+  currentTime: number,
+  features: RuntimeFeatures | undefined,
   signal: VolatilityPoint,
 ): string | undefined {
   // BOTH:FEATURE_GATE_REGIMES — no environment adapter or future prices.
+  const symbol = signal.symbol ?? "";
   const bounds = FEATURE_GATE_REGIME_BOUNDS;
-  const now = context.state.currentTime;
-  const coins = context.state.features?.coins;
+  const now = currentTime;
+  const coins = features?.coins;
   const coin = readTrail(coins?.[symbol.toUpperCase()]?.priceNormalized, now);
   const btc = readTrail(coins?.BTC?.priceNormalized, now);
   const upPct = signal.maxUpPct;

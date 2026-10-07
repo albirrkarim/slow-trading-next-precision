@@ -1,3 +1,5 @@
+import fs from "fs-extra";
+
 import systemConfig from "@/lib/system/config";
 import systemTime from "@/lib/system/time";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -8,6 +10,7 @@ import type {
   BacktestPrecisionResponse,
 } from "./precision-api-types";
 import { precisionBacktest } from "../backtest";
+import featureGateDataset from "../feature-gate-dataset";
 
 export default async function backtestPrecisionHandler(
   req: NextApiRequest,
@@ -40,6 +43,7 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
   const upToDateDecisionBacktest = pickBoolean(
     params.upToDateDecisionBacktest,
   );
+  const produceDataset = pickBoolean(params.produceDataset);
   const verbose =
     params.verbose === undefined ? true : pickBoolean(params.verbose);
 
@@ -74,7 +78,12 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
   const cachePath = backtestResultCache.dirFor(cacheKey);
   if (useCache && !upToDateDecisionBacktest && !upToDateKlines) {
     const cached = await backtestResultCache.readMeta(cacheKey);
-    if (cached) {
+    // A dataset request can only reuse a cached run that produced one —
+    // otherwise the same simulation must rerun with the collector wired in.
+    const datasetReady =
+      !produceDataset ||
+      (await fs.pathExists(featureGateDataset.datasetDir(cachePath)));
+    if (cached && datasetReady) {
       const body: BacktestPrecisionResponse = {
         ...cached,
         cached: true,
@@ -97,6 +106,7 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
       startTime,
       upToDateKlines,
       upToDateDecisionBacktest,
+      produceDataset,
       verbose,
     });
     res.json({ ...full, cacheKey, cachePath });
@@ -110,6 +120,7 @@ async function dynamicTradeBacktest(req: NextApiRequest, res: NextApiResponse) {
     startTime,
     upToDateKlines,
     upToDateDecisionBacktest,
+    produceDataset,
     verbose,
   });
   const result = await run.result;

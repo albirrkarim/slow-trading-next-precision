@@ -344,6 +344,8 @@ export class RuntimeEngine {
               // on the freshest market snapshot so gates and the entry
               // snapshot see this tick's values.
               await this.adapter.onFeatureUpdate?.(context);
+              // BOTH:ENTRY_CAPTURE_HOOK — after refresh, before producer filters.
+              await this.adapter.onEntryCapture?.(context);
               await monitoring.entry.capture(context);
             },
           ),

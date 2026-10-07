@@ -1,4 +1,4 @@
-import type { RuntimeContext } from "@/lib/precision/types";
+import type { RuntimeFeatures } from "@/lib/features/types";
 import type { VolatilityPoint } from "@/lib/system/types/market";
 import featureGateRegimes from "./feature_gate_regimes";
 
@@ -46,17 +46,19 @@ export const FEATURE_GATE_VWAP_BOUNDS = {
  * undefined when the candidate may pass.
  */
 export default function featureGateV2(
-    context: RuntimeContext,
-    symbol: string,
-    signal?: VolatilityPoint,
+    currentTime: number,
+    features: RuntimeFeatures | undefined,
+    signal: VolatilityPoint,
 ): string | undefined {
+    // BOTH:FEATURE_GATE_INPUTS — shared pure inputs for runtime and inference.
+    const symbol = signal.symbol ?? "";
     const bounds = FEATURE_GATE_VWAP_BOUNDS;
     const currentLevel = Math.abs(signal?.lvl ?? 0);
 
     // Calendar rule, signal-independent: the VWAP anchor is monthly (UTC),
     // so a position opened inside the last 2 days of the month straddles a
     // band reset — entry context expires almost immediately.
-    const now = context.state.currentTime;
+    const now = currentTime;
     if (Number.isFinite(now)) {
         const d = new Date(now);
         const anchorMs = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1);
@@ -79,7 +81,7 @@ export default function featureGateV2(
         }
     }
 
-    const coin = context.state.features?.coins[symbol.toUpperCase()];
+    const coin = features?.coins[symbol.toUpperCase()];
     const vwap = coin?.vwap?.price;
     const stdev = coin?.vwap?.stdev;
     const stretchPct = coin?.vwap?.stretchPct;
@@ -111,7 +113,7 @@ export default function featureGateV2(
     // envelope stretches without representing a new stretched entry. A
     // missing/invalid `t` falls through (veto only on evidence).
     if (Number.isFinite(signal.t)) {
-        const signalAgeMs = context.state.currentTime - signal.t;
+        const signalAgeMs = currentTime - signal.t;
         if (signalAgeMs > bounds.maxSignalAgeMs) {
             return (
                 `signal vPoint is ${(signalAgeMs / 3_600_000).toFixed(1)}h ` +
@@ -142,8 +144,8 @@ export default function featureGateV2(
     }
 
     // Extreme condition
-    const historiesBTC = (context.state.features?.coins["BTC"]?.priceNormalized?.history ?? []).slice(-5).map(e => e.p)
-    const historiesSymbol = (context.state.features?.coins[symbol.toUpperCase()]?.priceNormalized?.history ?? []).slice(-5).map(e => e.p)
+    const historiesBTC = (features?.coins["BTC"]?.priceNormalized?.history ?? []).slice(-5).map(e => e.p)
+    const historiesSymbol = (features?.coins[symbol.toUpperCase()]?.priceNormalized?.history ?? []).slice(-5).map(e => e.p)
 
     const minBTC = Math.min(...historiesBTC);
     const maxBTC = Math.max(...historiesBTC);
@@ -158,8 +160,8 @@ export default function featureGateV2(
         return `extreme`
     }
 
-    const coinBtc = context.state.features?.coins["BTC"]?.priceNormalized?.current
-    const coinSymbol = context.state.features?.coins[symbol.toUpperCase()]?.priceNormalized?.current
+    const coinBtc = features?.coins["BTC"]?.priceNormalized?.current
+    const coinSymbol = features?.coins[symbol.toUpperCase()]?.priceNormalized?.current
 
     const currentValues = [coinBtc, coinSymbol].filter(
         (value): value is number => typeof value === "number" && Number.isFinite(value),
@@ -172,5 +174,5 @@ export default function featureGateV2(
     }
 
     // BOTH:FEATURE_GATE_REGIMES — shared by backtest, sandbox and live.
-    return featureGateRegimes(context, symbol, signal);
+    return featureGateRegimes(currentTime, features, signal);
 }

@@ -162,6 +162,33 @@ function createAdapter(
 }
 
 describe("RuntimeEngine environment stages", () => {
+  // BOTH:ENTRY_CAPTURE_HOOK — the same ordering holds in every environment.
+  it.each(["backtest", "sandbox", "live"] as const)(
+    "observes fresh features before discovery, without firing at startup (%s)",
+    async (mode) => {
+      const state = createState({ mode });
+      const order: string[] = [];
+      let refreshCount = 0;
+      const adapter = createAdapter(state, {
+        onFeatureUpdate: async (context) => {
+          refreshCount += 1;
+          context.state.features = { coins: {}, shared: { refresh: refreshCount } };
+          order.push(`refresh:${refreshCount}`);
+        },
+        onEntryCapture: async (context) => {
+          expect(context.state.features?.shared.refresh).toBe(2);
+          expect(context.state.currentTime).toBe(state.currentTime);
+          order.push("capture");
+        },
+      });
+      await new RuntimeEngine(state, adapter, {
+        name: "both",
+        decisions: { entry: { find: async () => { order.push("find"); return []; } } },
+      }).start();
+      expect(order).toEqual(["refresh:1", "refresh:2", "capture", "find"]);
+    },
+  );
+
   it("dispatches sentinel and management hooks in stage order with stats", async () => {
     const state = createState();
     const order: string[] = [];

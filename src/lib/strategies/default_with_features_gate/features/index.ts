@@ -1,5 +1,4 @@
+import featureGateV2 from "./v2/feature_gate_v2";
 
-import featureGate from "./v2/feature_gate_v2";
-// import featureGate from "./feature_gate_v2";
-
-export default featureGate
+// The strategy's production gate tracks the current registry version (v2).
+export default featureGateV2;

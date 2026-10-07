@@ -35,6 +35,7 @@ export const DEFAULT_BACKTEST_CONFIG: BacktestConfig = {
     endTime: undefined,
     upToDateKlines: false,
     upToDateDecisionBacktest: false,
+    produceDataset: false,
 
     // Info
     name: "Example Name",
@@ -265,6 +266,22 @@ export default function DynamicBacktestConfig({
                 }
                 label="Rerun backtest"
                 title="Ignore the saved result and recompute this backtest"
+            />
+
+            <FormControlLabel
+                control={
+                    <Checkbox
+                        size="small"
+                        checked={backtestConfig.produceDataset === true}
+                        onChange={(e) =>
+                            updateBacktest({
+                                produceDataset: e.target.checked,
+                            })
+                        }
+                    />
+                }
+                label="Also produce dataset"
+                title="Write per-vPoint feature-gate dataset rows into the run's cache dir (dataset/<symbol>.json)"
             />
 
             {backtestConfig.settings && (

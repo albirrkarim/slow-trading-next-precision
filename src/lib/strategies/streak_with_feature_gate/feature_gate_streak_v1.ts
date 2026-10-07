@@ -1,6 +1,5 @@
-import type { RuntimeContext } from "@/lib/precision/types";
+import type { RuntimeFeatures } from "@/lib/features/types";
 import type { VolatilityPoint } from "@/lib/system/types/market";
-import type { PairRole } from "../shared/pair";
 import {
     mapRange,
 } from "../shared/utils";
@@ -70,28 +69,25 @@ const recentValues = (cutoff: number, history: { p: number; t: number }[] | unde
  * Returns the feature-gate refusal for one symbol at the current tick, or
  * undefined when the candidate may pass.
  *
- * @param leg - which pair leg is being gated (satisfied by `PairLegMeta`):
- * `leg.role` distinguishes `"MAIN"` / `"COUNTER"`, `leg.reopen` marks a
- * role re-entry (vs the initial fresh-pair legs). Diagnostics callers
- * pass `{ role }` probes; absent legs may omit it.
  */
 export default function featureGateV1(
-    context: RuntimeContext,
-    symbol: string,
-    signal?: VolatilityPoint,
-    leg?: { reopen?: boolean; role?: PairRole },
+    currentTime: number,
+    features: RuntimeFeatures | undefined,
+    signal: VolatilityPoint,
 ): string | undefined {
+    // BOTH:FEATURE_GATE_INPUTS — shared pure inputs for runtime and inference.
+    const symbol = signal.symbol ?? "";
     const bounds = FEATURE_GATE_BOUNDS;
 
     const currentLevel = Math.abs(signal?.lvl ?? 0);
 
     // Extremes judge only the freshest days of the trail — the record
     // itself keeps the full ~20-day window for display.
-    const cutoff = context.state.currentTime - GATE_JUDGE_WINDOW_MS;
+    const cutoff = currentTime - GATE_JUDGE_WINDOW_MS;
 
 
-    const historiesBTCRaw = context.state.features?.coins["BTC"]?.priceNormalized?.history ?? []
-    const historiesSymbolRaw = context.state.features?.coins[symbol.toUpperCase()]?.priceNormalized?.history ?? [];
+    const historiesBTCRaw = features?.coins["BTC"]?.priceNormalized?.history ?? []
+    const historiesSymbolRaw = features?.coins[symbol.toUpperCase()]?.priceNormalized?.history ?? [];
 
     if ((historiesBTCRaw.length < 3 || historiesSymbolRaw.length < 2) && currentLevel < 3) {
         return "reject entry - no price normalized history";
@@ -144,7 +140,7 @@ export default function featureGateV1(
     // an up-leg and the coin is likely to follow, so a TOP (short) signal
     // on the coin fights the move BTC has already made.
     const btcNow =
-        context.state.features?.coins["BTC"]?.priceNormalized?.current ?? arrBTC.at(-1);
+        features?.coins["BTC"]?.priceNormalized?.current ?? arrBTC.at(-1);
     const btcRecovering =
         minBTCRaw < bounds.minPriceNormalized &&
         btcNow !== undefined &&
@@ -171,7 +167,7 @@ export default function featureGateV1(
         return `BTC volatile`
     }
 
-    const symbolPriceNormalized = context.state.features?.coins[symbol.toUpperCase()]?.priceNormalized?.current;
+    const symbolPriceNormalized = features?.coins[symbol.toUpperCase()]?.priceNormalized?.current;
 
     if (symbolPriceNormalized !== undefined && symbolPriceNormalized < 0) {
         return `Symbol PriceNormalized ${symbolPriceNormalized.toFixed(3)} is below 0.0`;

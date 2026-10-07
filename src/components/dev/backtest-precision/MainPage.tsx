@@ -28,13 +28,11 @@ import { delayExecution } from "../../client/utils";
 import { endpoints } from "../../endpoints";
 import PrecisionBTestConfig, { DEFAULT_BACKTEST_CONFIG } from "./Config";
 import backtestBlackSwanConfig from "./black-swan-config";
-import BacktestBalanceChart from "./BalanceChart";
-import BacktestDailyPnlCalendar from "./DailyPnlCalendar";
 import Leaderboards from "./Leaderboards";
 import MetricsStrip from "./MetricsStrip";
+import ResultTabs from "./ResultTabs";
 import type { BacktestConfig } from "./types";
 import { useBacktestArtifacts } from "./use-backtest-artifacts";
-import VPointsResult from "./VPointsResult";
 
 const BACKTEST_KEY = "precision";
 
@@ -180,6 +178,7 @@ export default function DynamicTradeAnalytics() {
                 endTime,
                 upToDateKlines: usedConfig.upToDateKlines,
                 upToDateDecisionBacktest: usedConfig.upToDateDecisionBacktest,
+                produceDataset: usedConfig.produceDataset === true,
                 config: runtimeNormalize.config.toRuntime(usedConfig.settings),
             };
 
@@ -435,33 +434,11 @@ export default function DynamicTradeAnalytics() {
 
             {error && <Alert severity="error" sx={{ m: 2 }}>{error}</Alert>}
 
-            {data && (
-                <Box sx={{ m: 1 }}>
-                    <BacktestDailyPnlCalendar
-                        positions={artifacts.positions}
-                        settings={backtestConfig.settings}
-                    />
-                    {data.counts.snapshots > 0 && (
-                        <BacktestBalanceChart
-                            accounts={backtestConfig.settings?.accounts}
-                            snapshots={artifacts.snapshots}
-                        />
-                    )}
-                </Box>
-            )}
-            {data && (
-                <VPointsResult
-                    accounts={backtestConfig.settings?.accounts}
-                    artifacts={artifacts}
-                    blackSwanTimeline={data.blackSwanTimeline}
-                    counts={data.counts}
-                    datasetEndTimeMs={data.dataset?.endTime}
-                    datasetStartTimeMs={data.dataset?.startTime}
-                    exchangeType={data.exchangeType}
-                    settings={backtestConfig.settings}
-                    summary={data.summary}
-                />
-            )}
+            <ResultTabs
+                artifacts={artifacts}
+                backtestConfig={backtestConfig}
+                data={data}
+            />
 
             <Snackbar
                 anchorOrigin={{ horizontal: "center", vertical: "bottom" }}

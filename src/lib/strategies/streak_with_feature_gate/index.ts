@@ -5,7 +5,6 @@ import type {
 import type { StrategyAPI } from "../types";
 
 import featureGateV1 from "./feature_gate_streak_v1";
-import pair from "../shared/pair";
 import streak from "../streak";
 import streakEntry from "../streak/entry";
 import streakGateExit from "./exit";
@@ -29,19 +28,17 @@ function passes(
     return candidate.legs.every(
       (leg) =>
         featureGateV1(
-          context,
-          leg.symbol,
-          leg.entrySignal,
-          pair.meta.ofDecision(leg),
+          context.state.currentTime,
+          context.state.features,
+          { ...leg.entrySignal, symbol: leg.symbol },
         ) === undefined,
     );
   }
   return (
     featureGateV1(
-      context,
-      candidate.symbol,
-      candidate.entrySignal,
-      pair.meta.ofDecision(candidate),
+      context.state.currentTime,
+      context.state.features,
+      { ...candidate.entrySignal, symbol: candidate.symbol },
     ) === undefined
   );
 }
@@ -73,10 +70,9 @@ const streakWithFeatureGate: StrategyAPI = {
         const roles = legs === "BOTH" ? (["MAIN", "COUNTER"] as const) : [legs];
         for (const role of roles) {
           const reason = featureGateV1(
-            context,
-            symbol,
-            decision.entrySignal,
-            { role },
+            context.state.currentTime,
+            context.state.features,
+            { ...decision.entrySignal, symbol },
           );
           if (reason) {
             return {

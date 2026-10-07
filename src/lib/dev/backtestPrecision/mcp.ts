@@ -1,3 +1,5 @@
+import fs from "fs-extra";
+
 import { runtimeMcp } from "@/lib/system/mcp";
 import { runtimeStorage } from "@/lib/system/storage";
 import sanitize from "@/lib/system/storage/sanitize";
@@ -8,6 +10,7 @@ import pair from "@/lib/strategies/shared/pair";
 import { buildTradeMarkersFromHistory } from "@/lib/system/utils/ui/trade-markers";
 import { DAY_MS, getDayStart } from "../klines";
 import backtestLeaderboards from "./leaderboards";
+import featureGateDataset from "./feature-gate-dataset";
 import backtestResultCache from "./api/cache";
 import backtestRunner from "./api/runner";
 import type { BacktestPrecisionParams } from "./api/precision-api-types";
@@ -101,7 +104,12 @@ async function run(args: Record<string, unknown>) {
 
   if (!upToDateKlines && !upToDateDecisionBacktest) {
     const cached = await backtestResultCache.readMeta(cacheKey);
-    if (cached) {
+    // A dataset request can only reuse a cached run that produced one.
+    const datasetReady =
+      params.produceDataset === true
+        ? await fs.pathExists(featureGateDataset.datasetDir(cachePath))
+        : true;
+    if (cached && datasetReady) {
       return { cacheKey, cachePath, cached: true, status: "done", ...cached };
     }
   }

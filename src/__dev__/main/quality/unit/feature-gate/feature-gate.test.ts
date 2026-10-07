@@ -1,0 +1,162 @@
+import { describe, expect, it } from "vitest";
+
+import type { FeatureGateDatasetRow } from "@/lib/dev/backtestPrecision/feature-gate-dataset";
+import featureGate from "@/lib/dev/feature-gate";
+import type { RuntimeFeatures } from "@/lib/features/types";
+import type { VolatilityPoint } from "@/lib/system/types";
+import gateDefault from "@/lib/strategies/default_with_features_gate/features";
+import {
+  FEATURE_GATE_REGISTRY,
+  type FeatureGate,
+} from "@/lib/strategies/feature-gates";
+
+const MISSING_HASH = "0".repeat(64);
+
+const point = (id: string, l: "B" | "T"): VolatilityPoint =>
+  ({ id, l, lvl: 0, p: 100, pct: 5, t: 1, vb: 0, vq: 0 }) as VolatilityPoint;
+
+const featuresWith = (
+  symbol: string,
+  current?: number,
+): RuntimeFeatures | undefined =>
+  current === undefined
+    ? { coins: {}, shared: {} }
+    : {
+        coins: {
+          [symbol]: {
+            priceNormalized: { current, history: [] },
+          },
+        },
+        shared: {},
+      };
+
+const row = (
+  partial: Partial<FeatureGateDatasetRow> & { symbol: string },
+): FeatureGateDatasetRow => ({
+  t: 1000,
+  resolved: true,
+  sequences: [point("B_0", "B")],
+  ...partial,
+});
+
+/** Rule stub: rejects rows below a normalized threshold or without a coin. */
+const stubGate: FeatureGate = (_currentTime, features, signal) => {
+  const current =
+    features?.coins[signal.symbol ?? ""]?.priceNormalized?.current;
+  if (current === undefined) return "no coin feature";
+  return current >= 0.5 ? undefined : "low normalized";
+};
+
+// Feature-gate evaluation metrics — docs/STRATEGY/FEATURE_EXTRACTION.md.
+describe("feature-gate evaluate", () => {
+  it("computes every documented metric with unresolved rows excluded from scores", () => {
+    const rows: FeatureGateDatasetRow[] = [
+      // accepted score-0
+      row({ feature: featuresWith("AAA", 0.6), missScore: 0, symbol: "AAA" }),
+      // rejected score-0
+      row({ feature: featuresWith("AAA", 0.4), missScore: 0, symbol: "AAA" }),
+      // rejected score>0
+      row({ feature: featuresWith("AAA", 0.4), missScore: 1, symbol: "AAA" }),
+      // accepted score 2 and 4 (3+ bucket)
+      row({ feature: featuresWith("AAA", 0.7), missScore: 2, symbol: "AAA" }),
+      row({ feature: featuresWith("AAA", 0.7), missScore: 4, symbol: "AAA" }),
+      // unresolved — counts in total/acceptanceRate only
+      row({
+        feature: featuresWith("AAA", 0.7),
+        resolved: false,
+        symbol: "AAA",
+      }),
+      // no coin feature on another symbol — rejected
+      row({
+        feature: featuresWith("BBB", undefined),
+        missScore: 0,
+        symbol: "BBB",
+      }),
+    ];
+
+    const report = featureGate.metrics.scoreRows(stubGate, rows);
+
+    expect(report.total).toBe(7);
+    expect(report.resolved).toBe(6);
+    expect(report.accepted).toBe(4);
+    expect(report.rejected).toBe(3);
+    expect(report.acceptanceRate).toBeCloseTo(4 / 7);
+
+    // accepted score-0 / accepted resolved = 1/3
+    expect(report.acceptedQuality).toBeCloseTo(1 / 3);
+    // accepted score-0 / all score-0 (rows 1, 2, 7) = 1/3
+    expect(report.goodRetained).toBeCloseTo(1 / 3);
+    // rejected score>0 / all score>0 (rows 3, 4, 5) = 1/3
+    expect(report.badBlocked).toBeCloseTo(1 / 3);
+
+    expect(report.acceptedScoreDistribution).toEqual({
+      "0": 1,
+      "1": 0,
+      "2": 1,
+      "3+": 1,
+      avgScore: 2,
+      worstScore: 4,
+    });
+
+    expect(report.bySymbol).toEqual({
+      AAA: { accepted: 4, resolved: 5, total: 6 },
+      BBB: { accepted: 0, resolved: 1, total: 1 },
+    });
+
+    expect(report.topRejections).toEqual([
+      { count: 2, reason: "low normalized" },
+      { count: 1, reason: "no coin feature" },
+    ]);
+  });
+
+  it("excludes uncaptured and invalid resolved rows before calling the gate", () => {
+    let calls = 0;
+    const gate: FeatureGate = () => { calls += 1; return undefined; };
+    const report = featureGate.metrics.scoreRows(gate, [
+      row({ symbol: "AAA", t: undefined, missScore: 0 }),
+      row({ symbol: "AAA", t: Number.NaN, feature: featuresWith("AAA", 0.6), missScore: 0 }),
+      row({ symbol: "AAA", feature: featuresWith("AAA", 0.6) }),
+      row({ symbol: "AAA", feature: featuresWith("AAA", 0.6), missScore: 0 }),
+    ]);
+    expect(calls).toBe(1);
+    expect(report.skipped).toBe(3);
+    expect(report.total).toBe(1);
+    expect(report.resolved).toBe(1);
+    expect(report.acceptedQuality).toBe(1);
+  });
+
+  it("leaves ratio metrics undefined on empty denominators", () => {
+    const report = featureGate.metrics.scoreRows(stubGate, []);
+    expect(report.total).toBe(0);
+    expect(report.acceptanceRate).toBe(0);
+    expect(report.acceptedQuality).toBeUndefined();
+    expect(report.goodRetained).toBeUndefined();
+    expect(report.badBlocked).toBeUndefined();
+    expect(report.acceptedScoreDistribution.avgScore).toBeUndefined();
+    expect(report.acceptedScoreDistribution.worstScore).toBeUndefined();
+  });
+
+  it("rejects unknown slugs and missing datasets with clear errors", async () => {
+    await expect(
+      featureGate.evaluate({ hash: MISSING_HASH, slug: "nope" }),
+    ).rejects.toThrow(/Unknown feature gate slug/);
+
+    await expect(
+      featureGate.evaluate({ hash: MISSING_HASH, slug: "v1" }),
+    ).rejects.toThrow(/no dataset.*also produce dataset/i);
+  });
+});
+
+describe("feature-gate registry", () => {
+  it("lists every gate version and keeps v2 as the strategy default", () => {
+    expect(featureGate.list()).toEqual([
+      {
+        label: FEATURE_GATE_REGISTRY.streak_v1.label,
+        slug: "streak_v1",
+      },
+      { label: FEATURE_GATE_REGISTRY.v1.label, slug: "v1" },
+      { label: FEATURE_GATE_REGISTRY.v2.label, slug: "v2" },
+    ]);
+    expect(gateDefault).toBe(FEATURE_GATE_REGISTRY.v2.gate);
+  });
+});

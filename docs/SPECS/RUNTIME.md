@@ -1055,3 +1055,14 @@ Queue data is stored as compact JSON at:
 
 This corresponds to `${PERSISTENT_STORAGE_ROOT}/prod/queue.json` for other
 instances.
+
+
+## Entry capture observation hook
+
+TC: `BOTH:ENTRY_CAPTURE_HOOK`
+
+The scheduled capture-entry stage updates market prices and vPoints, awaits
+`onFeatureUpdate`, then awaits optional `onEntryCapture(context)` before the
+entry producer discovers or filters candidates. Backtest, sandbox and live
+share this ordering. Startup warm-up and forced manual execution do not fire
+this observation hook. Without a hook, entry behavior is unchanged.

@@ -13,6 +13,7 @@ import type {
 } from "@/lib/features/types";
 import { FEATURE_GATE_VWAP_BOUNDS } from "@/lib/strategies/default_with_features_gate/features/v2/feature_gate_v2";
 import format from "@/lib/system/utils/format";
+import type { VolatilityPoint } from "@/lib/system/types/market";
 
 export interface FeaturePreviewRow {
   /** Min/max/span over the coin's `priceNormalized.history` plus its current value. */
@@ -191,10 +192,13 @@ function fmtPrice(value: number): string {
 export default function TradeFeaturePreview({
   entryTimeMs,
   feature,
+  signal,
   symbol,
 }: {
   entryTimeMs?: number;
   feature: unknown;
+  /** Dataset starting signal; defaults to the snapshot's latest point for trades. */
+  signal?: VolatilityPoint;
   symbol: string;
 }) {
   const rows = summarizeFeaturePreview(feature, symbol);
@@ -214,17 +218,18 @@ export default function TradeFeaturePreview({
         const bounds = row.bounds;
         const current = priceNormCurrent(row.coin);
         const vwap = coinVwap(row.coin);
+        const vPoint = row.own ? (signal ?? row.coin?.latestVpoint) : row.coin?.latestVpoint;
         // The trade's own row only: σ-distance of the entry-time signal
         // point from the monthly VWAP — same dσ the vwap gate enforces.
         const dSigma =
           row.own === true
             ? vwapSigmaDistance(
-                row.coin?.latestVpoint?.p,
+                vPoint?.p,
                 vwap?.price,
                 vwap?.stdev,
               )
             : undefined;
-        const vPointT = row.coin?.latestVpoint?.t;
+        const vPointT = vPoint?.t;
         const vPointAgeMs =
           row.own === true &&
           typeof vPointT === "number" &&
@@ -333,7 +338,7 @@ export default function TradeFeaturePreview({
                 display="block"
                 sx={{ pl: "40px" }}
                 title={
-                  `Time from the signal vPoint (${row.coin?.latestVpoint?.id}) ` +
+                  `Time from the signal vPoint (${vPoint?.id}) ` +
                   `forming to the entry fill`
                 }
                 variant="caption"

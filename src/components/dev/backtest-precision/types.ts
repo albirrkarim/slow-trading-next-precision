@@ -11,6 +11,8 @@ export interface BacktestConfig {
   // Up to date
   upToDateKlines: boolean; // boolean: fetch fresh klines for selected symbols?
   upToDateDecisionBacktest: boolean;
+  /** Also write the per-vPoint feature-gate dataset under the run's cache dir. */
+  produceDataset?: boolean;
 
   // Info
   name?: string;

@@ -122,7 +122,10 @@ so the dataset tab will have like
 
 paginated table 
 
-[feature][level sequence][missScore]
+[time][feature][level sequence][missScore][debug]
+use the feature preview component
+
+debug column will have button dialog, to show the dataset json.
 
 i need it have filtering tools, maybe based on the
 

@@ -514,6 +514,13 @@ export interface RuntimeEngineAdapter {
   ) => Promise<void> | void;
 
   /**
+   * BOTH:ENTRY_CAPTURE_HOOK — observes the refreshed state immediately before
+   * scheduled entry candidate discovery in every mode. Not called by startup
+   * warm-up, feature refresh alone, or forced manual execution.
+   */
+  onEntryCapture?: (context: RuntimeContext) => Promise<void> | void;
+
+  /**
    * Optional environment-specific approval extension that runs after the
    * shared guard (`precision/guard`) and before `onAction`. The
    * shared guard already covers the state-readable policy identical across

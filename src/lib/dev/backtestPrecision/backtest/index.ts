@@ -14,6 +14,7 @@ import tradingExit from "@/lib/system/trading/exit";
 import blackSwan from "@/lib/system/trading/black-swan";
 import strategies from "@/lib/strategies";
 import type { BacktestPrecisionParams } from "../api/precision-api-types";
+import featureGateDataset from "../feature-gate-dataset";
 import backtestArtifacts from "./artifacts";
 import backtestBlackSwan from "./black-swan";
 import {
@@ -112,6 +113,12 @@ export async function precisionBacktest(
       )
     : null;
   const stats = backtestStats.tracker.create();
+  // BTEST:FEATURE_GATE_DATASET — optional per-vPoint candidate rows feeding
+  // the feature-gate evaluation surface; independent of the artifact spool.
+  const datasetCollector =
+    params.produceDataset === true
+      ? featureGateDataset.collector.create()
+      : undefined;
 
   // The engine trims state.vPointsMap to the same recent window production
   // uses; the full map returned to callers is rebuilt from this untouched
@@ -293,9 +300,10 @@ export async function precisionBacktest(
       stats.onVPoint();
       if (spool) {
         await spool.pushVPoint(symbol, newVPoint);
-        return;
+      } else {
+        (detectedVPoints[symbol] ??= []).push(newVPoint);
       }
-      (detectedVPoints[symbol] ??= []).push(newVPoint);
+      datasetCollector?.onVPoint({ state }, symbol, newVPoint);
     },
     // BTEST:FEATURES_ARTIFACT — same shared compute as production, then the
     // changed coins append `{t, ...coinFeatures}` rows per symbol so the
@@ -326,6 +334,8 @@ export async function precisionBacktest(
         }),
       );
     },
+    // BTEST:FEATURE_GATE_DATASET — only an actual entry-capture pass stamps rows.
+    onEntryCapture: (context) => datasetCollector?.captureFeatures(context),
     onNotif: () => true,
   };
 
@@ -356,6 +366,15 @@ export async function precisionBacktest(
   const engine = new RuntimeEngine(state, adapter, strategy);
   await engine.start();
   await captureBalance();
+
+  // Dataset rows live next to the run's streamed artifacts — callers without
+  // an artifact target (precision-checker replays) collect but never write.
+  if (datasetCollector && params.artifacts?.dir) {
+    await featureGateDataset.write(
+      params.artifacts.dir,
+      datasetCollector.flush(),
+    );
+  }
 
   const blackSwanTimeline: BacktestBlackSwanTimeline | undefined =
     isPrecisionChecker
