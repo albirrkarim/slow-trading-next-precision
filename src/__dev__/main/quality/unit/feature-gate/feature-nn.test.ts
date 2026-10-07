@@ -4,6 +4,8 @@ import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import featureGate from "@/lib/dev/feature-gate";
+import defaultDecision from "@/lib/precision/defaultDecision";
+import type { RuntimeContext, RuntimeEntryDecision } from "@/lib/precision/types";
 import type { FeatureGateDatasetRow } from "@/lib/dev/feature-gate";
 import nn from "@/lib/dev/nn";
 import optimizer from "@/lib/dev/nn/optimizer";
@@ -11,6 +13,8 @@ import selection from "@/lib/dev/nn/selection";
 import { DEFAULT_OPTIONS } from "@/lib/dev/nn/run";
 import type { TrainingSample } from "@/lib/dev/nn/types";
 import v3 from "@/lib/strategies/default_with_features_gate/features/v3";
+import strategy from "@/lib/strategies/default_with_features_gate";
+import strategyGate from "@/lib/strategies/default_with_features_gate/features";
 import artifactFormat from "@/lib/strategies/default_with_features_gate/features/v3/artifact";
 import inputs from "@/lib/strategies/default_with_features_gate/features/v3/inputs";
 import network from "@/lib/strategies/default_with_features_gate/features/v3/network";
@@ -40,7 +44,94 @@ const artifact = (): NeuralGateArtifact => ({
     excludedSymbols: ["BTC"], validationAccepted: 1, validationWorstScore: 0 },
 });
 
+/** Minimal capture context for the strategy's pure gate and mocked candidate producer. */
+function captureContext(mode: RuntimeContext["state"]["mode"] = "backtest"): RuntimeContext {
+  const sample = row(1);
+  return { helper: {}, state: { mode, currentTime: sample.t, features: sample.feature } } as RuntimeContext;
+}
+
 afterEach(() => vi.restoreAllMocks());
+
+// BOTH:FEATURE_GATE_V3 — strategy lifecycle, filtering and diagnostics share engine-owned v3 inference.
+describe("default_with_features_gate v3 strategy", () => {
+  it.each(["backtest", "sandbox", "live"] as const)(
+    "warms once, filters candidates, explains the same rejection, and releases weights (%s)",
+    async (mode) => {
+      const model = artifact();
+      model.normalization.mean[1] = 0;
+      model.normalization.std[1] = 1;
+      model.layers[0].w[1] = 4;
+      const session = v3.create(model);
+      const dispose = vi.spyOn(session, "dispose");
+      const load = vi.spyOn(v3, "load").mockResolvedValue(session);
+      const context = captureContext(mode);
+      const allowed = { type: "entry", symbol: "AAA", entrySignal: row(1).sequences[0] } as RuntimeEntryDecision;
+      const blocked = { ...allowed, entrySignal: { ...allowed.entrySignal, lvl: 1 } };
+      vi.spyOn(defaultDecision.entry, "find").mockResolvedValue([allowed, blocked]);
+      try {
+        await strategy.warmup!(context);
+        await strategy.warmup!(context);
+        expect(load).toHaveBeenCalledTimes(1);
+        expect(await strategy.decisions!.entry!.find(context)).toEqual([allowed]);
+        const reason = session.gate(context.state.currentTime, context.state.features, { ...blocked.entrySignal, symbol: "AAA" });
+        expect(reason).toMatch(/v3 NN: risk/);
+        expect(strategy.diagnostics!.explain!({ context, symbol: "AAA", accountSlug: "acc", decision: blocked })).toMatchObject({
+          code: "FEATURE_GATE", status: "blocked", reason: `Blocked by the feature gate: ${reason}.`,
+        });
+        expect(strategy.diagnostics!.explain!({ context, symbol: "AAA", accountSlug: "acc", decision: allowed })).toBeUndefined();
+        await strategy.dispose!(context);
+        await strategy.dispose!(context);
+        expect(dispose).toHaveBeenCalledTimes(1);
+        expect(await strategy.decisions!.entry!.find(context)).toEqual([]);
+        expect(strategyGate.gate(context, { ...allowed.entrySignal, symbol: "AAA" })).toMatch(/not warmed up/);
+      } finally { await strategy.dispose!(context); }
+    },
+  );
+
+  it("owns separate sessions even for two engines sharing the same runtime state", async () => {
+    const first = captureContext("live");
+    const second = { ...captureContext("sandbox"), state: first.state };
+    const load = vi.spyOn(v3, "load").mockImplementation(async () => v3.create(artifact()));
+    const signal = { ...row(1).sequences[0], symbol: "AAA" };
+    try {
+      await Promise.all([strategy.warmup!(first), strategy.warmup!(second)]);
+      expect(load).toHaveBeenCalledTimes(2);
+      await strategy.dispose!(first);
+      expect(strategyGate.gate(first, signal)).toMatch(/not warmed up/);
+      expect(strategyGate.gate(second, signal)).toBeUndefined();
+    } finally { await Promise.all([strategy.dispose!(first), strategy.dispose!(second)]); }
+  });
+
+  it("deduplicates concurrent warmup and disposes a session whose load is still pending", async () => {
+    const context = captureContext();
+    const session = v3.create(artifact());
+    const dispose = vi.spyOn(session, "dispose");
+    let release!: (value: typeof session) => void;
+    const pending = new Promise<typeof session>((resolve) => { release = resolve; });
+    const load = vi.spyOn(v3, "load").mockReturnValue(pending);
+    const first = strategy.warmup!(context);
+    const second = strategy.warmup!(context);
+    const cleanup = strategy.dispose!(context);
+    release(session);
+    await Promise.all([first, second, cleanup]);
+    expect(load).toHaveBeenCalledTimes(1);
+    expect(dispose).toHaveBeenCalledTimes(1);
+    expect(strategyGate.gate(context, { ...row(1).sequences[0], symbol: "AAA" })).toMatch(/not warmed up/);
+  });
+
+  it("fails startup on model-load errors and can warm a fresh session after cleanup", async () => {
+    const context = captureContext();
+    const error = new Error("Invalid v3 NN artifact");
+    const load = vi.spyOn(v3, "load").mockRejectedValueOnce(error).mockImplementation(async () => v3.create(artifact()));
+    await expect(strategy.warmup!(context)).rejects.toBe(error);
+    await strategy.dispose!(context);
+    try {
+      await strategy.warmup!(context);
+      expect(load).toHaveBeenCalledTimes(2);
+      expect(strategyGate.gate(context, { ...row(1).sequences[0], symbol: "AAA" })).toBeUndefined();
+    } finally { await strategy.dispose!(context); }
+  });
+});
 
 // BTEST:FEATURE_NN — capture-only inputs, purged splits, constrained selection and owned inference sessions.
 describe("NN inputs and validation", () => {

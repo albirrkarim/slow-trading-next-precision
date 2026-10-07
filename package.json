@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "PORT=3010 PERSISTENT_STORAGE_ROOT=storage/persistent/instances/3010 next dev -p 3010",
     "dev:prod": "PORT=3020 PERSISTENT_STORAGE_ROOT=storage/persistent/instances/3020 next dev -p 3020",
-    "build": "next build && cp -r .next/static .next/standalone/.next/ && rm -rf .next/standalone/storage",
+    "build": "next build && cp -r .next/static .next/standalone/.next/ && rm -rf .next/standalone/storage && node scripts/copy-feature-nn-model.mjs",
     "build:railway": "npm run build && sh scripts/cleanup-railway-runtime.sh",
     "start": "HOSTNAME=0.0.0.0 node .next/standalone/server.js",
     "start:local": "PORT=3010 PERSISTENT_STORAGE_ROOT=storage/persistent/instances/3010 HOSTNAME=0.0.0.0 node .next/standalone/server.js",

@@ -5,7 +5,7 @@ import inputs from "./inputs";
 import network from "./network";
 import type { NeuralGateArtifact } from "./types";
 
-/** Creates an isolated, warmed inference session; disposal cannot affect another evaluation. */
+/** Creates an isolated, warmed inference session; disposal cannot affect another engine or evaluation. */
 function create(value: NeuralGateArtifact): FeatureGateSession {
   artifactFormat.validate(value);
   const model = structuredClone(value);
@@ -34,7 +34,7 @@ function create(value: NeuralGateArtifact): FeatureGateSession {
   };
 }
 
-/** Loads saved weights once per evaluation. The saved artifact survives in-memory disposal. */
+/** Loads saved weights once per engine/evaluation. The saved artifact survives in-memory disposal. */
 async function load(file?: string): Promise<FeatureGateSession> {
   const [{ readFile }, { default: path }] = await Promise.all([import("node:fs/promises"), import("node:path")]);
   const target = file ?? path.resolve("src/lib/strategies/default_with_features_gate/features/v3/model.json");

@@ -4,15 +4,16 @@ import featureGate from "./features";
 
 const defaultWithFeaturesGate: StrategyAPI = {
   name: "default_with_features_gate",
+  warmup: featureGate.warmup,
+  dispose: featureGate.dispose,
   decisions: {
     entry: {
       find: async (context) => {
         const candidates = await defaultDecision.entry.find(context);
         return candidates.filter(
           (candidate) =>
-            featureGate(
-              context.state.currentTime,
-              context.state.features,
+            featureGate.gate(
+              context,
               { ...candidate.entrySignal, symbol: candidate.symbol },
             ) === undefined,
         );
@@ -22,7 +23,7 @@ const defaultWithFeaturesGate: StrategyAPI = {
   diagnostics: {
     explain: ({ context, symbol, decision }) => {
       if (!decision) return undefined;
-      const reason = featureGate(context.state.currentTime, context.state.features, {
+      const reason = featureGate.gate(context, {
         ...decision.entrySignal,
         symbol,
       });

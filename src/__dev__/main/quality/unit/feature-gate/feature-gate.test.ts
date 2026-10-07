@@ -5,6 +5,7 @@ import featureGate from "@/lib/dev/feature-gate";
 import type { RuntimeFeatures } from "@/lib/features/types";
 import type { VolatilityPoint } from "@/lib/system/types";
 import gateDefault from "@/lib/strategies/default_with_features_gate/features";
+import defaultStrategy from "@/lib/strategies/default_with_features_gate";
 import {
   FEATURE_GATE_REGISTRY,
   type FeatureGate,
@@ -147,7 +148,7 @@ describe("feature-gate evaluate", () => {
 });
 
 describe("feature-gate registry", () => {
-  it("lists every gate version and keeps v2 as the strategy default", () => {
+  it("lists every gate version and wires the strategy to prepared v3 sessions", () => {
     expect(featureGate.list()).toEqual([
       {
         label: FEATURE_GATE_REGISTRY.streak_v1.label,
@@ -157,6 +158,8 @@ describe("feature-gate registry", () => {
       { label: FEATURE_GATE_REGISTRY.v2.label, slug: "v2" },
       { label: FEATURE_GATE_REGISTRY.v3.label, slug: "v3" },
     ]);
-    expect(gateDefault).toBe(FEATURE_GATE_REGISTRY.v2.gate);
+    expect(defaultStrategy.warmup).toBe(gateDefault.warmup);
+    expect(defaultStrategy.dispose).toBe(gateDefault.dispose);
+    expect(FEATURE_GATE_REGISTRY.v2.gate).toBeTypeOf("function");
   });
 });

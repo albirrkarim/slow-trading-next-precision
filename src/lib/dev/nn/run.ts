@@ -123,7 +123,7 @@ async function run(params: {
     status = testMetrics.accepted > 0 && worst !== undefined && worst < 3 ? "passed" : "failed";
     log(`FINAL TEST ${status.toUpperCase()} accepted=${testMetrics.accepted}/${testMetrics.total} (${(testMetrics.acceptanceRate * 100).toFixed(2)}%) mean=${testMetrics.acceptedScoreDistribution.avgScore?.toFixed(3) ?? "n/a"} worst=${worst ?? "n/a"} elapsed=${Date.now() - started}ms`);
     log(`FINAL TEST exact distribution=${JSON.stringify(testMetrics.acceptedScoreDistribution)}`);
-    if (status === "failed") log("FINAL TEST requirement unmet. No automatic retuning; this candidate remains evaluation-only.");
+    if (status === "failed") log("FINAL TEST requirement unmet. No automatic retuning; the exported artifact remains at the model output path.");
   }
   const report = { status, modelHash, trainHash: params.trainHash, testHash: params.testHash, fingerprint, options,
     selection: { seed: best.seed, epoch: best.epoch, threshold: best.threshold, fit: best.fit, validation: best.validation },

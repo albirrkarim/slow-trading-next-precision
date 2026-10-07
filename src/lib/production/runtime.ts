@@ -43,6 +43,32 @@ async function createEngine(
   return new RuntimeEngine(state, adapter, strategy);
 }
 
+/** PROD:MANUAL_STRATEGY_LIFECYCLE — prepares and releases a one-shot engine's strategy resources. */
+async function runOneShot<T>(
+  engine: RuntimeEngine,
+  task: (context: RuntimeContext) => Promise<T>,
+): Promise<T> {
+  return engine.runExclusive(async (context) => {
+    let failure: { error: unknown } | undefined;
+    let result: T | undefined;
+    try {
+      await context.strategy?.warmup?.(context);
+      result = await task(context);
+    } catch (error) {
+      failure = { error };
+    } finally {
+      try {
+        await context.strategy?.dispose?.(context);
+      } catch (error) {
+        if (failure) systemLog.error("[Precision Runtime] one-shot strategy disposal failed", error);
+        else failure = { error };
+      }
+    }
+    if (failure) throw failure.error;
+    return result as T;
+  });
+}
+
 /** Owns one process-level production engine lifecycle and its shutdown signal. */
 class ProductionRuntime {
   private controller?: AbortController;
@@ -377,7 +403,7 @@ class ProductionRuntime {
         state: this.state,
       });
       const engine = await createEngine(this.state, adapter);
-      return engine.runExclusive(task);
+      return runOneShot(engine, task);
     }
 
     const factory = factoryModule.create();
@@ -390,7 +416,7 @@ class ProductionRuntime {
       state,
     });
     const engine = await createEngine(state, adapter);
-    return engine.runExclusive(task);
+    return runOneShot(engine, task);
   }
 
   /**

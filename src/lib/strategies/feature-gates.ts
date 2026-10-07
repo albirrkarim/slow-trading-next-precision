@@ -12,7 +12,7 @@ export type FeatureGate = (
   signal: VolatilityPoint,
 ) => string | undefined;
 
-/** One evaluation owns its prepared resources and always releases them after scoring. */
+/** Each engine or dataset evaluation owns and releases its prepared resources. */
 export interface FeatureGateSession {
   gate: FeatureGate;
   dispose: () => void;
@@ -42,7 +42,7 @@ export const FEATURE_GATE_REGISTRY = {
     label: "v2 — monthly VWAP σ + regimes",
   },
   v3: {
-    label: "v3 — neural miss-score risk gate (evaluation only)",
+    label: "v3 — neural miss-score risk gate",
     prepare: async () => (await import("./default_with_features_gate/features/v3")).default.load(),
   },
 } as const satisfies Record<string, FeatureGateEntry>;

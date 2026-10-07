@@ -115,9 +115,19 @@ own session in `finally`. Disposal wipes the in-memory parameter arrays and
 prevents further calls; it does not delete saved artifacts or affect another
 evaluation's session.
 
-The strategy default remains v2. The live, sandbox, and backtest strategy entry
-paths do not invoke v3. Testing it through `feature_gate_evaluate` or the
-Dataset tab changes neither the trading configuration nor the v2 rules.
+The `default_with_features_gate` strategy now uses v3 in live, sandbox, and
+backtest. Its `StrategyAPI.warmup` loads one model session before market
+initialization; entry filtering and diagnostics use that same session.
+`StrategyAPI.dispose` releases it on completion, abort, or startup failure.
+Sessions are keyed by each engine's helper object, so engines sharing a state
+snapshot still own independent weights. One-shot manual/diagnostic engines
+also warm their own session and dispose it after the task.
+
+V2 remains available in the dataset gate registry. Changing the selected
+artifact does not update a running engine: restart it to load the new weights.
+`npm run build` copies the saved model into the standalone server's expected
+runtime path. A final-test failure is reported honestly but does not remove
+the exported artifact or stop this strategy from using it.
 
 ## Algorithm references
 
