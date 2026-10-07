@@ -82,11 +82,13 @@ export class RuntimeEngine {
     systemLog.info("\n\nRUNTIME ENGINE STARTED");
     systemLog.info(preview.state(this.state));
 
-    // Boot-time strategy validation (e.g. hedge-mode position check) —
-    // throws surface to the caller instead of failing mid-cycle.
-    await this.strategy?.preflight?.(this.context);
-
+    let failure: { error: unknown } | undefined;
     try {
+      // BOTH:STRATEGY_LIFECYCLE — validate, then prepare strategy resources
+      // before market warmup and decisions. Partial startup is cleaned below.
+      await this.strategy?.preflight?.(this.context);
+      await this.strategy?.warmup?.(this.context);
+
       // Startup probe: reads one kline batch per symbol through the adapter
       // so a broken market-data path is reported (log + NOTIF_ERROR channels)
       // at boot instead of surfacing as repeated stage failures.
@@ -133,10 +135,22 @@ export class RuntimeEngine {
           );
         }
       }
+    } catch (error) {
+      failure = { error };
     } finally {
       this.ready = false;
+      // Operator work already queued may still be using strategy resources.
+      await this.queue;
       this.processing = false;
+      try {
+        await this.strategy?.dispose?.(this.context);
+      } catch (error) {
+        // Preserve the original failure, especially an AbortError shutdown.
+        if (failure) systemLog.error("[Precision Runtime] strategy disposal failed", error);
+        else failure = { error };
+      }
     }
+    if (failure) throw failure.error;
   }
 
   /**

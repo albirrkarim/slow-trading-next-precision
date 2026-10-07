@@ -210,6 +210,22 @@ export interface StrategyAPI {
    */
   preflight?: (context: RuntimeContext) => void | Promise<void>;
 
+  /**
+   * Prepares strategy resources once per enabled engine start, after preflight
+   * and before market/features warmup or any scheduled decisions. Awaited;
+   * throwing rejects startup. Keep resources scoped to this engine's context
+   * (e.g. keyed by context.state), never a shared module-level session.
+   */
+  warmup?: (context: RuntimeContext) => void | Promise<void>;
+
+  /**
+   * Releases this engine's resources after queued work finishes. Awaited on
+   * normal completion, shutdown, and startup failure, including partial or
+   * skipped warmup. Must tolerate resources that were never initialized.
+   * Disabled runners invoke neither warmup nor dispose.
+   */
+  dispose?: (context: RuntimeContext) => void | Promise<void>;
+
   /** Optional dashboard explanation hooks — read-only; must never mutate state. */
   diagnostics?: {
     /**

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const MINUTE_MS = 60_000;
 const NOW = Date.UTC(2026, 8, 3, 10, 4);
@@ -68,6 +68,7 @@ import type {
   RuntimeEngineAdapter,
   RuntimeEngineState,
 } from "@/lib/precision/types";
+import runtimeSelfTest from "@/lib/precision/utils/on-start-test";
 import productionStages from "@/lib/production/stages";
 import systemLog from "@/lib/system/logging";
 import { DEFAULT_BLACK_SWAN_CONFIG } from "@/lib/system/trading/black-swan";
@@ -424,6 +425,139 @@ describe("RuntimeEngine environment stages", () => {
         onRiskSentinel: async () => undefined,
       }),
     ).toBe(11 * MINUTE_MS);
+  });
+});
+
+// BOTH:STRATEGY_LIFECYCLE — the shared engine owns startup and cleanup in all modes.
+describe("RuntimeEngine strategy lifecycle", () => {
+  beforeEach(() => vi.clearAllMocks());
+  afterEach(() => vi.restoreAllMocks());
+
+  it.each(["backtest", "sandbox", "live"] as const)(
+    "awaits strategy warmup before market initialization and decisions (%s)",
+    async (mode) => {
+      const state = createState({ mode });
+      const order: string[] = [];
+      let release!: () => void;
+      const pending = new Promise<void>((resolve) => { release = resolve; });
+      const probe = vi.spyOn(runtimeSelfTest, "marketData").mockImplementation(async () => { order.push("market"); });
+      const adapter = createAdapter(state, {
+        onFeatureUpdate: async () => { order.push("features"); },
+      });
+      const warmup = vi.fn(async (context: RuntimeContext) => {
+        expect(context.state).toBe(state);
+        expect(context.adapter).toBe(adapter);
+        order.push("warmup");
+        await pending;
+        order.push("warmed");
+      });
+      const dispose = vi.fn(async (context: RuntimeContext) => {
+        expect(context.state).toBe(state);
+        expect(engine.isReady()).toBe(false);
+        order.push("dispose");
+        await Promise.resolve();
+        order.push("disposed");
+      });
+      const engine = new RuntimeEngine(state, adapter, {
+        name: "default_with_features_gate",
+        preflight: async () => { order.push("preflight"); },
+        warmup,
+        dispose,
+        decisions: { entry: { find: async () => { order.push("decision"); return []; } } },
+      });
+      const started = engine.start();
+      await vi.waitFor(() => expect(warmup).toHaveBeenCalledTimes(1));
+      expect(engine.isReady()).toBe(false);
+      expect(probe).not.toHaveBeenCalled();
+      release();
+      await started;
+      expect(order.slice(0, 4)).toEqual(["preflight", "warmup", "warmed", "market"]);
+      expect(order.indexOf("features")).toBeLessThan(order.indexOf("decision"));
+      expect(order.slice(-2)).toEqual(["dispose", "disposed"]);
+      expect(warmup).toHaveBeenCalledTimes(1);
+      expect(dispose).toHaveBeenCalledTimes(1);
+      expect(engine.isProcessing()).toBe(false);
+    },
+  );
+
+  it.each(["backtest", "sandbox", "live"] as const)(
+    "cleans resources on preflight, strategy/market warmup failure, and abort (%s)",
+    async (mode) => {
+      for (const phase of ["preflight", "warmup", "market", "abort"] as const) {
+        const state = createState({ mode });
+        const error = new Error(phase);
+        if (phase === "abort") error.name = "AbortError";
+        const dispose = vi.fn(async () => undefined);
+        const adapter = createAdapter(state);
+        if (phase === "abort") adapter.clock.finished = () => { throw error; };
+        const warmup = vi.fn(async () => { if (phase === "warmup") throw error; });
+        const engine = new RuntimeEngine(state, adapter, {
+          name: "default_with_features_gate", warmup, dispose,
+          preflight: async () => { if (phase === "preflight") throw error; },
+        });
+        if (phase === "market") vi.spyOn(engine.helper.market, "updateMarkPrice").mockRejectedValue(error);
+        await expect(engine.start()).rejects.toBe(error);
+        expect(dispose).toHaveBeenCalledTimes(1);
+        expect(warmup).toHaveBeenCalledTimes(phase === "preflight" ? 0 : 1);
+        expect(engine.isReady()).toBe(false);
+        expect(engine.isProcessing()).toBe(false);
+      }
+    },
+  );
+
+  it.each(["backtest", "sandbox", "live"] as const)(
+    "skips all strategy lifecycle hooks when the runner is disabled (%s)",
+    async (mode) => {
+      const state = createState({ mode });
+      state.config.runtime.runnerEnabled = false;
+      const preflight = vi.fn();
+      const warmup = vi.fn();
+      const dispose = vi.fn();
+      await new RuntimeEngine(state, createAdapter(state), {
+        name: "default_with_features_gate", preflight, warmup, dispose,
+      }).start();
+      expect(preflight).not.toHaveBeenCalled();
+      expect(warmup).not.toHaveBeenCalled();
+      expect(dispose).not.toHaveBeenCalled();
+    },
+  );
+
+  it("waits for queued operator work before disposing resources", async () => {
+    const state = createState();
+    let release!: () => void;
+    const pending = new Promise<void>((resolve) => { release = resolve; });
+    const order: string[] = [];
+    const dispose = vi.fn(() => { order.push("dispose"); });
+    const adapter = createAdapter(state);
+    const engine = new RuntimeEngine(state, adapter, { name: "default_with_features_gate", dispose });
+    adapter.clock.finished = () => {
+      void engine.runExclusive(async () => { order.push("operator"); await pending; order.push("finished"); });
+      return true;
+    };
+    const started = engine.start();
+    await vi.waitFor(() => expect(order).toEqual(["operator"]));
+    expect(dispose).not.toHaveBeenCalled();
+    release();
+    await started;
+    expect(order).toEqual(["operator", "finished", "dispose"]);
+  });
+
+  it("surfaces disposal failure on completion and preserves an earlier startup/abort error", async () => {
+    for (const original of [undefined, new Error("startup failed"), Object.assign(new Error("stopped"), { name: "AbortError" })]) {
+      const state = createState();
+      const cleanup = new Error("dispose failed");
+      const adapter = createAdapter(state);
+      adapter.clock.finished = () => true;
+      const engine = new RuntimeEngine(state, adapter, {
+        name: "default_with_features_gate",
+        warmup: () => { if (original) throw original; },
+        dispose: async () => { throw cleanup; },
+      });
+      await expect(engine.start()).rejects.toBe(original ?? cleanup);
+      expect(engine.isReady()).toBe(false);
+      expect(engine.isProcessing()).toBe(false);
+      if (original) expect(systemLog.error).toHaveBeenCalledWith("[Precision Runtime] strategy disposal failed", cleanup);
+    }
   });
 });
 
