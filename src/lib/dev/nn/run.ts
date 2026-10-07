@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import featureGate from "@/lib/dev/feature-gate";
@@ -6,8 +7,10 @@ import jsonFile from "@/lib/system/storage/json-file";
 import v3 from "@/lib/strategies/default_with_features_gate/features/v3";
 import inputs from "@/lib/strategies/default_with_features_gate/features/v3/inputs";
 import type { NeuralGateArtifact } from "@/lib/strategies/default_with_features_gate/features/v3";
+import network from "@/lib/strategies/default_with_features_gate/features/v3/network";
 
 import data from "./dataset";
+import assessment from "./assessment";
 import selection from "./selection";
 import trainer from "./trainer";
 import type { NeuralCandidate, NeuralTrainingOptions, RiskSummary, TrainingSample } from "./types";
@@ -16,8 +19,10 @@ export const DEFAULT_TRAIN_HASH = "c641dc191a3dcad0c5ed927ef80e99645c14a580637fd
 export const DEFAULT_TEST_HASH = "1f9966ef01ef820b553e0a583331506454fcf74bec3394f047df8d6e6ef0c438";
 export const DEFAULT_MODEL_PATH = "src/lib/strategies/default_with_features_gate/features/v3/model.json";
 export const DEFAULT_OPTIONS: NeuralTrainingOptions = {
-  epochs: 250, batchSize: 64, learningRate: 0.003, l2: 0.001, hidden: [16, 8], seeds: [17, 29, 43],
-  validationFraction: 0.2, gapMs: 86_400_000, logEvery: 5, patience: 50,
+  // Frozen from training-only cross-coin research, not adjusted against the test dataset.
+  profile: "legacy", cutoffMargin: 0.2026439305243851,
+  epochs: 180, batchSize: 64, learningRate: 0.003, l2: 0.001, hidden: [8], seeds: [17],
+  validationFraction: 0.2, gapMs: 86_400_000, logEvery: 5, patience: 40,
 };
 
 /** Compact progress readout for the score-constrained acceptance objective. */
@@ -42,9 +47,9 @@ async function run(params: {
   const bySymbol = await featureGate.dataset.readRows(params.trainHash);
   const rows = Object.values(bySymbol).flat();
   const fingerprint = createHash("sha256").update(JSON.stringify(bySymbol)).digest("hex");
-  const prepared = data.prepare(rows);
+  const prepared = data.prepare(rows, ["BTC"], options.profile);
   const split = data.split(prepared.samples, options.validationFraction, options.gapMs);
-  const normalization = inputs.fit(split.fit.map((sample) => sample.raw));
+  const normalization = inputs.fit(split.fit.map((sample) => sample.raw), options.profile);
   const encode = (sample: typeof split.fit[number]): TrainingSample => ({ ...sample, x: inputs.encode(sample.raw, normalization) });
   const fit = split.fit.map(encode);
   const validation = split.validation.map(encode);
@@ -58,7 +63,8 @@ async function run(params: {
     log(`  ${symbol}: ${coinRows.length} rows; scores=${JSON.stringify(histogram)}`);
   }
   log(`SPLIT fit=${fit.length}, validation=${validation.length}, purged from fitting=${split.purged}; validation starts ${new Date(split.splitT).toISOString()}; gap=${options.gapMs / 3_600_000}h`);
-  log(`NORMALIZATION fitted on ${fit.length} fitting rows only; ${inputs.names.length} features + ${inputs.names.length} presence bits; hidden=${options.hidden.join("→")}`);
+  const names = inputs.namesFor(options.profile);
+  log(`NORMALIZATION fitted on ${fit.length} fitting rows only; profile=${options.profile ?? "legacy"}; ${names.length} features + ${names.length} presence bits; hidden=${options.hidden.join("→") || "linear"}`);
   const unsafe = fit.filter((row) => row.score >= 3).length;
   log(`LABELS fit safe=${fit.length - unsafe}, unsafe=${unsafe}; unsafe loss weight=${Math.min(50, (fit.length - unsafe) / unsafe).toFixed(3)}`);
   log("SELECTION maximizes validation acceptance with zero accepted score>=3 across the entire training hash; no test inputs used");
@@ -90,11 +96,19 @@ async function run(params: {
     await jsonFile.write.atomic(path.join(params.runDir, "report.json"), { status: "no-qualifying-model", trainHash: params.trainHash, fingerprint, options, candidates });
     throw new Error("No model accepted a validation row while keeping scores below 3. No artifact published; inspect training.log/report.json.");
   }
+  const margin = options.cutoffMargin ?? 1;
+  if (!Number.isFinite(margin) || margin <= 0 || margin > 1) throw new Error("Cutoff margin must be in (0, 1].");
+  const baselineCutoff = best.threshold;
+  best.threshold *= margin;
+  best.fit = selection.summarize(fit, fit.map((row) => network.predict(best.layers, row.x)), best.threshold);
+  best.validation = selection.summarize(validation, validation.map((row) => network.predict(best.layers, row.x)), best.threshold);
+  log(`MARGIN multiplier=${margin} baselineCutoff=${baselineCutoff} effectiveCutoff=${best.threshold}; fit=${summary(best.fit)} validation=${summary(best.validation)}`);
+  if (!best.fit.accepted || !best.validation.accepted) throw new Error("Safety margin left empty fitting or validation acceptance. No artifact published.");
   const artifact: NeuralGateArtifact = {
-    v: 1, target: "missScore>=3", features: [...inputs.names], normalization, layers: best.layers, threshold: best.threshold,
+    v: 1, target: "missScore>=3", inputProfile: options.profile ?? "legacy", features: [...names], normalization, layers: best.layers, threshold: best.threshold,
     training: { hash: params.trainHash, fingerprint, t: Date.now(), seed: best.seed, epoch: best.epoch, splitT: split.splitT, gapMs: options.gapMs,
       fitRows: fit.length, validationRows: validation.length, purgedRows: split.purged, excludedSymbols: ["BTC"],
-      validationAccepted: best.validation.accepted, validationWorstScore: best.validation.worstScore! },
+      validationAccepted: best.validation.accepted, validationWorstScore: best.validation.worstScore!, cutoffMargin: margin },
   };
   const session = v3.create(artifact);
   let trainMetrics;
@@ -104,31 +118,25 @@ async function run(params: {
   }
   await jsonFile.write.atomic(path.join(params.runDir, "model.json"), artifact);
   await jsonFile.write.atomic(params.modelPath, artifact);
-  const modelHash = createHash("sha256").update(JSON.stringify(artifact)).digest("hex");
+  const modelHash = createHash("sha256").update(await readFile(params.modelPath)).digest("hex");
   log(`FROZEN seed=${best.seed} epoch=${best.epoch} cutoff=${best.threshold.toPrecision(8)} modelSHA256=${modelHash}`);
   log(`EXPORT ${path.resolve(params.modelPath)}; run copy=${path.resolve(params.runDir, "model.json")}`);
   log(`TRAIN AUDIT accepted=${trainMetrics.accepted}/${trainMetrics.total}; distribution=${JSON.stringify(trainMetrics.acceptedScoreDistribution)}`);
   let testMetrics;
+  let testFingerprint;
   let status = "not-tested";
   if (params.testHash) {
     params.signal?.throwIfAborted();
-    log(`FINAL TEST reading ${params.testHash} for the first time; weights and cutoff remain frozen`);
-    const testRows = Object.values(await featureGate.dataset.readRows(params.testHash)).flat();
-    const started = Date.now();
-    const testSession = await v3.load(params.modelPath);
-    log("FINAL TEST model loaded into memory and warmed; starting row loop");
-    try { testMetrics = featureGate.metrics.scoreRows(testSession.gate, testRows); }
-    finally { testSession.dispose(); log("FINAL TEST inference session disposed; saved weights retained"); }
-    const worst = testMetrics.acceptedScoreDistribution.worstScore;
-    status = testMetrics.accepted > 0 && worst !== undefined && worst < 3 ? "passed" : "failed";
-    log(`FINAL TEST ${status.toUpperCase()} accepted=${testMetrics.accepted}/${testMetrics.total} (${(testMetrics.acceptanceRate * 100).toFixed(2)}%) mean=${testMetrics.acceptedScoreDistribution.avgScore?.toFixed(3) ?? "n/a"} worst=${worst ?? "n/a"} elapsed=${Date.now() - started}ms`);
-    log(`FINAL TEST exact distribution=${JSON.stringify(testMetrics.acceptedScoreDistribution)}`);
+    const result = await assessment.run(params.testHash, params.modelPath, log);
+    testMetrics = result.metrics;
+    testFingerprint = result.fingerprint;
+    status = result.status;
     if (status === "failed") log("FINAL TEST requirement unmet. No automatic retuning; the exported artifact remains at the model output path.");
   }
   const report = { status, modelHash, trainHash: params.trainHash, testHash: params.testHash, fingerprint, options,
     selection: { seed: best.seed, epoch: best.epoch, threshold: best.threshold, fit: best.fit, validation: best.validation },
     split: { t: split.splitT, fitRows: fit.length, validationRows: validation.length, purgedRows: split.purged },
-    candidates, trainMetrics, testMetrics };
+    candidates, trainMetrics, testMetrics, testFingerprint };
   await jsonFile.write.atomic(path.join(params.runDir, "report.json"), report);
   log(`REPORT ${path.resolve(params.runDir, "report.json")}; outcome=${status}`);
   return report;

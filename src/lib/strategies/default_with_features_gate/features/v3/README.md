@@ -10,6 +10,28 @@ The encoder in [inputs.ts](./inputs.ts) builds **34 numerical features**:
 
 It appends 34 presence bits, giving the network **68 input channels**.
 Training and runtime inference use the same encoder and feature order.
+The selected artifact uses the `legacy` profile described here. Earlier
+artifacts without `inputProfile` keep this same preprocessing.
+
+### Experimental directional profile
+
+`--profile directional` enables 39 numerical inputs plus 39 presence bits,
+implemented in [directional.ts](./directional.ts). It keeps signal side,
+absolute and direction-aligned levels, percentage, log age, excursions and
+signed signal/VWAP sigma distance. For both coin and BTC it computes:
+
+- Direction-aligned normalized extrema, span and last change.
+- Changes versus the last observation at least 6/24/72/168 hours earlier.
+- Distance from the arithmetic trail mean and location inside its range.
+- Signed mark/VWAP distance in sigma units and sigma as percent of price.
+
+It also adds the observed BTC pivot's side alignment, absolute level,
+percentage and log age; coin-minus-BTC extrema, sigma distance, 24/72-hour
+changes; and the log coin/BTC volatility ratio. Future history/BTC pivots are
+excluded, and unavailable lookbacks stay missing. This profile was compared
+in cross-coin research but did not beat the selected legacy model under the
+acceptance and score constraints. It is available for further training-only
+experiments, not used by the selected weights.
 
 ### Signal features: 8
 
@@ -116,6 +138,12 @@ class-weighted training does not provide calibrated probabilities.
 ```text
 allow = risk < savedThreshold
 ```
+
+The current artifact uses one 8-neuron hidden layer. Its training-only
+cross-coin cutoff multiplier is `0.2026439305243851`, producing a saved cutoff
+of `0.03219368087262588`. The recorded test accepted just 6/3,647 rows: five
+score-zero and one score-two. This passes the score constraint at very low
+acceptance; it does not establish a 100% trading win rate.
 
 The gate returns `{ allow, message }` for both outcomes. The message contains
 the risk and cutoff comparison. Accepted strategy decisions save it into

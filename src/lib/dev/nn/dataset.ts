@@ -1,10 +1,11 @@
 import inputs from "@/lib/strategies/default_with_features_gate/features/v3/inputs";
 import type { FeatureGateDatasetRow } from "@/lib/dev/feature-gate";
+import type { NeuralInputProfile } from "@/lib/strategies/default_with_features_gate/features/v3";
 
 import type { NeuralSample } from "./types";
 
 /** Builds labeled training samples; neither outcomes nor future points enter the input vector. */
-function prepare(rows: FeatureGateDatasetRow[], excludedSymbols: string[] = ["BTC"]): { samples: NeuralSample[]; skipped: number; anchors: number } {
+function prepare(rows: FeatureGateDatasetRow[], excludedSymbols: string[] = ["BTC"], profile: NeuralInputProfile = "legacy"): { samples: NeuralSample[]; skipped: number; anchors: number } {
   let skipped = 0;
   let anchors = 0;
   const samples: NeuralSample[] = [];
@@ -13,7 +14,7 @@ function prepare(rows: FeatureGateDatasetRow[], excludedSymbols: string[] = ["BT
     const signal = row.sequences[0];
     if (!row.resolved || !Number.isInteger(row.missScore) || row.missScore! < 0 || row.t === undefined ||
         !signal || !inputs.valid(row.t, row.feature, { ...signal, symbol: row.symbol })) { skipped++; continue; }
-    samples.push({ row, t: row.t, score: row.missScore!, raw: inputs.read(row.t, row.feature, { ...signal, symbol: row.symbol }) });
+    samples.push({ row, t: row.t, score: row.missScore!, raw: inputs.read(row.t, row.feature, { ...signal, symbol: row.symbol }, profile) });
   }
   const starts = new Map<string, NeuralSample[]>();
   for (const sample of samples) {

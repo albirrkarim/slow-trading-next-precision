@@ -11,7 +11,7 @@ function create(value: NeuralGateArtifact): FeatureGateSession {
   const model = structuredClone(value);
   let disposed = false;
   // Warm up the same CPU forward path before scoring real rows. No learning occurs.
-  network.predict(model.layers, new Array<number>(inputs.names.length * 2).fill(0));
+  network.predict(model.layers, new Array<number>(model.features.length * 2).fill(0));
   return {
     gate: (currentTime, features, signal) => {
       if (disposed) throw new Error("v3 NN session has been disposed.");
@@ -20,7 +20,7 @@ function create(value: NeuralGateArtifact): FeatureGateSession {
       if (!inputs.valid(currentTime, features, signal)) {
         return { allow: false, message: "v3 NN: invalid capture inputs" };
       }
-      const score = network.predict(model.layers, inputs.encode(inputs.read(currentTime, features, signal), model.normalization));
+      const score = network.predict(model.layers, inputs.encode(inputs.read(currentTime, features, signal, model.inputProfile), model.normalization));
       if (!Number.isFinite(score)) return { allow: false, message: "v3 NN: nonfinite risk score" };
       const allow = score < model.threshold;
       return { allow, message: `v3 NN: risk ${score} ${allow ? "<" : ">="} cutoff ${model.threshold} (${allow ? "allowed" : "rejected"})` };

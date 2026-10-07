@@ -13,10 +13,15 @@ export interface InputNormalization {
   clip: number;
 }
 
+/** Legacy preprocessing remains loadable after adding direction-aligned features. */
+export type NeuralInputProfile = "legacy" | "directional";
+
 /** Versioned, portable CPU MLP artifact. The output is a weighted risk score, not a calibrated probability. */
 export interface NeuralGateArtifact {
   v: 1;
   target: "missScore>=3";
+  /** Absent in older artifacts, which use the original 34-feature vector. */
+  inputProfile?: NeuralInputProfile;
   features: string[];
   normalization: InputNormalization;
   layers: DenseLayer[];
@@ -36,5 +41,7 @@ export interface NeuralGateArtifact {
     excludedSymbols: string[];
     validationAccepted: number;
     validationWorstScore: number;
+    /** Training-only safety margin; applied after checkpoint selection. */
+    cutoffMargin?: number;
   };
 }

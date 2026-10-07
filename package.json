@@ -17,6 +17,7 @@
     "exchange": "npx tsx -r tsconfig-paths/register src/driver/exchange.ts",
     "backtest:precision": "npx tsx -r tsconfig-paths/register src/driver/backtest-precision.ts",
     "nn:train": "npx tsx -r tsconfig-paths/register src/driver/feature-nn.ts",
+    "nn:test": "npx tsx -r tsconfig-paths/register src/driver/feature-nn-test.ts",
     "lint:fix": "npx eslint src --fix",
     "type": "npx tsc -p tsconfig.json",
     "test:exchange": "npm run test:integration:exchange",

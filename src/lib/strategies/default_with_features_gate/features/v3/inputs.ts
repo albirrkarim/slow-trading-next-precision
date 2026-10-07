@@ -1,7 +1,8 @@
 import type { CoinFeatures, RuntimeFeatures } from "@/lib/features/types";
 import type { VolatilityPoint } from "@/lib/system/types";
 
-import type { InputNormalization } from "./types";
+import directional from "./directional";
+import type { InputNormalization, NeuralInputProfile } from "./types";
 
 const COIN_FIELDS = ["norm", "last2", "last3", "last5", "min", "max", "span", "mean", "change", "trailAgeHours", "distancePct", "stretchPct", "sigmaPct"];
 const names = [
@@ -47,7 +48,8 @@ function valid(currentTime: number, features: RuntimeFeatures | undefined, signa
 }
 
 /** Reads numerical inputs without access to any future outcome label. */
-function read(currentTime: number, features: RuntimeFeatures | undefined, signal: VolatilityPoint): Array<number | undefined> {
+function read(currentTime: number, features: RuntimeFeatures | undefined, signal: VolatilityPoint, profile: NeuralInputProfile = "legacy"): Array<number | undefined> {
+  if (profile === "directional") return directional.read(currentTime, features, signal);
   const symbol = (signal.symbol ?? "").toUpperCase().replace(/_USDT$/, "");
   const coin = features?.coins[symbol];
   const price = finite(coin?.vwap?.price);
@@ -66,13 +68,15 @@ function read(currentTime: number, features: RuntimeFeatures | undefined, signal
 }
 
 /** Fits mean/std using observed training values only. */
-function fit(rows: Array<Array<number | undefined>>): InputNormalization {
+function fit(rows: Array<Array<number | undefined>>, profile: NeuralInputProfile = "legacy"): InputNormalization {
   if (!rows.length) throw new Error("Cannot fit normalization on an empty training set.");
-  const mean = names.map((_, index) => {
+  const fields = namesFor(profile);
+  if (rows.some((row) => row.length !== fields.length)) throw new Error("NN input feature count mismatch.");
+  const mean = fields.map((_, index) => {
     const values = rows.map((row) => row[index]).filter((value): value is number => finite(value) !== undefined);
     return values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
   });
-  const std = names.map((_, index) => {
+  const std = fields.map((_, index) => {
     const values = rows.map((row) => row[index]).filter((value): value is number => finite(value) !== undefined);
     const variance = values.length ? values.reduce((sum, value) => sum + (value - mean[index]) ** 2, 0) / values.length : 0;
     return Math.sqrt(variance) > 1e-8 ? Math.sqrt(variance) : 1;
@@ -82,12 +86,17 @@ function fit(rows: Array<Array<number | undefined>>): InputNormalization {
 
 /** Applies frozen training normalization and appends one presence channel per feature. */
 function encode(raw: Array<number | undefined>, normalization: InputNormalization): number[] {
-  if (raw.length !== names.length) throw new Error("NN input feature count mismatch.");
+  if (raw.length !== normalization.mean.length || raw.length !== normalization.std.length) throw new Error("NN input feature count mismatch.");
   return [
     ...raw.map((value, index) => finite(value) === undefined ? 0 : Math.max(-normalization.clip, Math.min(normalization.clip, (value! - normalization.mean[index]) / normalization.std[index]))),
     ...raw.map((value) => finite(value) === undefined ? 0 : 1),
   ];
 }
 
-const inputs = { encode, fit, names, read, valid } as const;
+/** Returns the exact persisted feature order for a supported preprocessing profile. */
+function namesFor(profile: NeuralInputProfile = "legacy"): string[] {
+  return profile === "directional" ? directional.names : names;
+}
+
+const inputs = { encode, fit, names, namesFor, read, valid } as const;
 export default inputs;

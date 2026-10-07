@@ -9,6 +9,12 @@ npm run nn:train
 # Train, freeze the model/cutoff, then assess the separate test hash once.
 npm run nn:train -- --test
 
+# Test saved weights without retraining or overwriting the model.
+npm run nn:test
+
+# Compare features/networks on held-out training coins, then test the winner.
+npm run nn:train -- --research --test
+
 # Show every option and its default.
 npm run nn:train -- --help
 
@@ -17,9 +23,11 @@ npm run nn:train -- --epochs 400 --seeds 17,29,43 --hidden 16,8 --log-every 5
 ```
 
 Defaults come from `run.ts`: the training/test hashes specified in
-`docs/STRATEGY/FEATURE_NN.md`, 250 maximum epochs per seed, hidden widths 16/8,
+`docs/STRATEGY/FEATURE_NN.md`, 180 maximum epochs, one hidden layer of width 8,
 mini-batches of 64, Adam learning rate 0.003, L2 weight regularization 0.001,
-and deterministic seeds 17/29/43. `--train-hash` selects another training run.
+seed 17, patience 40, the `legacy` feature profile, and cutoff multiplier
+`0.2026439305243851`. These settings were selected using the training dataset
+only. `--train-hash` selects another training run.
 `--test-hash` selects a different final test and enables final testing.
 Both hashes must differ. Training reads cached datasets; it does not run a
 backtest or change its configuration.
@@ -28,6 +36,63 @@ The default command does **not** read the test hash. Use training-only runs
 while choosing features and settings. After those choices are fixed, use
 `--test` for the held-out assessment. Test results never update weights,
 normalization, thresholds, or checkpoint selection.
+
+## Cross-coin experiments
+
+`--research` compares 12 predefined families: legacy/directional inputs with
+linear, 8-neuron, and 16/8-neuron networks at L2=0.001; a 4-neuron network
+at L2=0.01; and 8-neuron networks at L2=0.01/0.05. `--seeds` repeats the
+entire family grid for each seed. Hidden widths/profile/L2 and the cutoff
+margin are selected by the search; ordinary epoch/optimizer/split controls
+still apply. `--hidden linear` also supports a single linear experiment.
+
+Each training coin is held out completely in turn. Scaling, gradients,
+checkpoint selection, and the baseline cutoff use the other coins with
+the same purged chronological split. Held-out predictions are expressed
+as risk divided by that fold's cutoff. The final multiplier is **half** the
+lowest unsafe held-out ratio, capped at 0.5. This is a conservative heuristic,
+not a statistical guarantee. Search requires nonempty acceptance from every
+held-out training coin and from the full model's fitting/validation sets.
+It maximizes combined held-out acceptance, breaking ties by lower mean score.
+The multiplier is applied after checkpoint selection in both search and
+single-model training.
+
+`experiments.json` is updated after every experiment. Logs identify family,
+seed, held-out coin, epochs, losses, cutoff, acceptance and qualification.
+No test rows are read until the whole search finishes and one model is frozen.
+With `--research --test`, a failed candidate stays in its research folder and
+does not replace the active model. Without `--test`, a qualifying training
+candidate is exported immediately. `nn:test` saves `evaluation.log` and
+`report.json` without changing any model file. Success requires nonempty,
+fully resolved acceptance with worst score below 3; reject-all or unresolved
+accepted outcomes fail.
+
+### Recorded result: 2026-10-07
+
+Training-only search evaluated all 12 families with seed 17, epochs 180,
+patience 40. Directional engineering and deeper/more regularized alternatives
+did not beat the selected legacy 8-neuron network under these constraints.
+Selected epoch: 14. Final cutoff: `0.03219368087262588`.
+
+| Evaluation | Accepted | Accepted scores | Worst |
+| --- | --- | --- | --- |
+| Leave-one-training-coin-out | 32 / 6,146 | 0–2; mean 0.1875 | 2 |
+| Full training runtime audit | 9 / 6,588 | 0: 8, 1: 1 | 1 |
+| Frozen test runtime audit | 6 / 3,647 (0.16%) | 0: 5, 2: 1 | 2 |
+
+The test passed the score constraint **at very low acceptance**. Six accepted
+examples do not establish reliable future performance; missScore below 3 is
+not equivalent to a profitable trade or a 100% win rate. The test hash had
+already been assessed on the previous model; this is a benchmark on that
+existing holdout, not a newly collected independent test. No test feature
+rows were inspected or used to choose the new settings.
+
+Search logs/reports: `storage/research/nn/cross-coin-2026-10-07/`.
+Frozen test report: its `final-test/report.json`.
+Training fingerprint:
+`1d4545b5885bea4a05daaca0d81ef1f20f6dcc0a2c629fcd756d3810b4817774`.
+Cache keys describe runs; changed dataset files can change results, so new
+reports include dataset fingerprints and saved-model SHA256 hashes.
 
 ## Logs and saved files
 
@@ -102,7 +167,7 @@ accepted scores, then higher fitting acceptance, then lower validation loss.
 Both fitting and validation acceptance must be nonempty. Rejecting everything
 is not a qualifying model. If no checkpoint qualifies, a report is saved and
 no new model is published. Historical zero violations do not guarantee zero
-violations on unseen data. The final test passes only with nonempty acceptance
+violations on unseen data. The final test passes only with nonempty, fully resolved acceptance
 and an actual accepted worst score below 3; otherwise it reports failure and
 performs no automatic retuning.
 
@@ -129,8 +194,9 @@ also warm their own session and dispose it after the task.
 V2 remains available in the dataset gate registry. Changing the selected
 artifact does not update a running engine: restart it to load the new weights.
 `npm run build` copies the saved model into the standalone server's expected
-runtime path. A final-test failure is reported honestly but does not remove
-the exported artifact or stop this strategy from using it.
+runtime path. Single-model training exports before optional testing, so a
+final-test failure does not remove that artifact. Research with `--test`
+publishes to the active path only after passing.
 
 ## Algorithm references
 

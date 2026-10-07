@@ -1,5 +1,5 @@
 import type { FeatureGateDatasetRow } from "@/lib/dev/feature-gate";
-import type { DenseLayer } from "@/lib/strategies/default_with_features_gate/features/v3";
+import type { DenseLayer, NeuralInputProfile } from "@/lib/strategies/default_with_features_gate/features/v3";
 
 export interface NeuralSample {
   row: FeatureGateDatasetRow;
@@ -32,6 +32,9 @@ export interface NeuralCandidate {
 }
 
 export interface NeuralTrainingOptions {
+  profile?: NeuralInputProfile;
+  /** Conservative multiplier on the training-calibrated cutoff, never selected using test rows. */
+  cutoffMargin?: number;
   epochs: number;
   batchSize: number;
   learningRate: number;
