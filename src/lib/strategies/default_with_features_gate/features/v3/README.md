@@ -10,10 +10,11 @@ The encoder in [inputs.ts](./inputs.ts) builds **34 numerical features**:
 
 It appends 34 presence bits, giving the network **68 input channels**.
 Training and runtime inference use the same encoder and feature order.
-The selected artifact uses the `legacy` profile described here. Earlier
-artifacts without `inputProfile` keep this same preprocessing.
+The legacy encoder is documented below. The currently installed inspection
+candidate uses the **directional** profile. Earlier artifacts without
+`inputProfile` keep the legacy preprocessing.
 
-### Experimental directional profile
+### Current directional profile
 
 `--profile directional` enables 39 numerical inputs plus 39 presence bits,
 implemented in [directional.ts](./directional.ts). It keeps signal side,
@@ -28,9 +29,7 @@ signed signal/VWAP sigma distance. For both coin and BTC it computes:
 It also adds the observed BTC pivot's side alignment, absolute level,
 percentage and log age; coin-minus-BTC extrema, sigma distance, 24/72-hour
 changes; and the log coin/BTC volatility ratio. Future history/BTC pivots are
-excluded, and unavailable lookbacks stay missing. ReLU ensembles using this
-profile increased test acceptance but still accepted scores of 3 and 4, so
-those artifacts have not replaced the selected legacy weights.
+excluded, and unavailable lookbacks stay missing.
 
 ### Signal features: 8
 
@@ -141,11 +140,27 @@ class-weighted training does not provide calibrated probabilities.
 allow = risk < savedThreshold
 ```
 
-The current artifact uses one 8-neuron hidden layer. Its training-only
-cross-coin cutoff multiplier is `0.2026439305243851`, producing a saved cutoff
-of `0.03219368087262588`. The recorded test accepted just 6/3,647 rows: five
-score-zero and one score-two. This fails the current minimum of 300 accepted
-rows; it does not establish a 100% trading win rate.
+The current artifact is the frozen six-specialist union requested for manual
+inspection: 23 ReLU networks in total, each specialist using its own saved
+normalization and hierarchical side/level/BTC-regime cutoffs. Any specialist
+may allow a row; the shared `v2-quiet-overstretched-low-level` rule can then veto it.
+
+Its recorded benchmark accepted **321/3,589** rows: scores 0/1/2/3/4 had
+counts **230/71/18/1/1**. It still fails the requirement that every accepted
+score be below 3. It was activated at the user's request for debugging.
+
+Frozen model SHA256:
+`a50d2a3e313833dfec2d04725e40f52d0c131081c5845f1a90c97471450d78c3`.
+Source: `storage/research/nn/coverage-300-ten-hierarchical-union-2026-10-07/v2-quiet-overstretched-low-level/model.json`.
+The previous model is backed up under that research run's
+`activation-2026-10-07/` directory.
+
+Select **v3** and dataset
+`1f9966ef01ef820b553e0a583331506454fcf74bec3394f047df8d6e6ef0c438`
+in the Dataset tab, then click **Evaluate**. The table below the metrics
+shows the accepted rows with `missScore >= 3`, including their feature
+preview and JSON debug button. New backtest/live engine warmups also load
+this artifact; already warmed engines retain their existing session.
 
 An optional `ensemble` stores additional independent networks sharing the
 artifact's preprocessing and activation. Inference averages their sigmoid
