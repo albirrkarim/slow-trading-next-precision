@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+import fs from "fs-extra";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { runtimeDefaults } from "@/lib/system/runtime";
 import { TradingMode } from "@/lib/exchange/types";
 
@@ -21,6 +24,10 @@ import lateEntryVPointDrift from "@/lib/system/trading/late-entry-vpoint-drift";
 import tradingExit from "@/lib/system/trading/exit";
 import systemPositions from "@/lib/precision/utils/positions";
 import systemVpoints from "@/lib/system/utils/vpoints";
+import featureStrategy from "@/lib/strategies/default_with_features_gate";
+import v3 from "@/lib/strategies/default_with_features_gate/features/v3";
+import entryDiagnostics from "@/lib/system/trading/entry-diagnostics";
+import jsonFile from "@/lib/system/storage/json-file";
 
 // The default strategy surface the shared runtime calls directly, composed
 // from the system trading/utils modules and precision position bookkeeping.
@@ -260,6 +267,73 @@ function makePoint(lvl: number, t: number): VolatilityPoint {
     lvl,
   };
 }
+
+// BOTH:FEATURE_GATE_ENTRY_MESSAGE — acceptance copy survives simulated/live fills and compact position JSON.
+describe("feature strategy entry explanations", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it.each(["backtest", "sandbox", "live"] as const)(
+    "persists the gate's acceptance message into the position (%s)",
+    async (mode) => {
+      const signal = makePoint(-3, 200);
+      const context = makeContext(["a1"], { SUI: [makePoint(-1, 100), signal] }, {
+        currentTime: 200,
+        markPriceMap: { SUI: { price: 100, lastUpdated: 200 } },
+      });
+      context.state.mode = mode;
+      context.strategy = featureStrategy;
+      const message = "v3 NN: risk 0.0002 < cutoff 0.0012085630401764136 (allowed)";
+      vi.spyOn(v3, "load").mockResolvedValue({ gate: () => ({ allow: true, message }), dispose: vi.fn() });
+      const dir = await fs.mkdtemp(path.join(os.tmpdir(), "gate-entry-message-"));
+      try {
+        await featureStrategy.warmup!(context);
+        const decisions = await featureStrategy.decisions!.entry!.find(context);
+        expect(decisions).toHaveLength(1);
+        const decision = decisions[0];
+        if (decision.type !== "entry") throw new Error("Expected a single feature-gated entry.");
+        expect(decision.message).toBe(message);
+        const plan = entryAction.plan(context, decision);
+        expect(plan).not.toBeNull();
+        const position = mode === "live"
+          ? entryAction.applyFill(context, decision, plan!, {
+              executionMode: "live", price: plan!.markPrice, quantity: plan!.preferredQuantity, t: context.state.currentTime,
+            })
+          : entryAction.execute(context, decision);
+        expect(position?.opened.message).toBe(message);
+        const file = path.join(dir, "position.json");
+        await jsonFile.write.atomic(file, position);
+        const saved = JSON.parse(await fs.readFile(file, "utf8")) as Position;
+        expect(saved.opened.message).toBe(message);
+
+        const preview = await entryDiagnostics.build(context);
+        expect(preview.accounts[0].diagnostics.find((item) => item.symbol === "SUI")).toMatchObject({ status: "ready", reason: message });
+      } finally {
+        await featureStrategy.dispose!(context);
+        await fs.remove(dir);
+      }
+    },
+  );
+
+  it("keeps entry funding checks when the strategy reports a positive gate explanation", async () => {
+    const context = makeContext(["a1"], { SUI: [makePoint(-3, 200)] }, {
+      currentTime: 200,
+      markPriceMap: { SUI: { price: 100, lastUpdated: 200 } },
+    });
+    context.strategy = featureStrategy;
+    vi.spyOn(v3, "load").mockResolvedValue({ gate: () => ({ allow: true, message: "v3 allowed" }), dispose: vi.fn() });
+    try {
+      await featureStrategy.warmup!(context);
+      const [decision] = await featureStrategy.decisions!.entry!.find(context);
+      expect(decision).toBeDefined();
+      if (decision.type !== "entry") throw new Error("Expected a single feature-gated entry.");
+      vi.spyOn(tradingEntry, "findDecisions").mockResolvedValue([decision]);
+      context.state.balance.a1.spendable = 0;
+      context.state.balance.a1.available = 0;
+      const preview = await entryDiagnostics.build(context);
+      expect(preview.accounts[0].diagnostics.find((item) => item.symbol === "SUI")).toMatchObject({ status: "blocked" });
+    } finally { await featureStrategy.dispose!(context); }
+  });
+});
 
 describe("multi strategy entry decisions", () => {
   it("recommends actionable latest points per account and respects usage", async () => {

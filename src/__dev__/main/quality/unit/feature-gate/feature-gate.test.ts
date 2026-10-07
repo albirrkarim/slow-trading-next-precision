@@ -50,6 +50,18 @@ const stubGate: FeatureGate = (_currentTime, features, signal) => {
 
 // Feature-gate evaluation metrics — docs/STRATEGY/FEATURE_EXTRACTION.md.
 describe("feature-gate evaluate", () => {
+  it("uses allow explicitly and groups scientific-notation rejection values", () => {
+    const messages = ["allowed even with a message", "v3 NN: risk 1e-7 >= cutoff 1e-8", "v3 NN: risk 0.1 >= cutoff 0.001"];
+    let index = 0;
+    const gate: FeatureGate = () => ({ allow: index === 0, message: messages[index++] });
+    const report = featureGate.metrics.scoreRows(gate, Array.from({ length: 3 }, () => row({
+      symbol: "AAA", feature: featuresWith("AAA", 0.5), missScore: 0,
+    })));
+    expect(report.accepted).toBe(1);
+    expect(report.rejected).toBe(2);
+    expect(report.topRejections).toEqual([{ count: 2, reason: "v# NN: risk # >= cutoff #", sample: messages[1] }]);
+  });
+
   it("computes every documented metric with unresolved rows excluded from scores", () => {
     const rows: FeatureGateDatasetRow[] = [
       // accepted score-0

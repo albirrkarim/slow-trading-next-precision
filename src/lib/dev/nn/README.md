@@ -119,6 +119,9 @@ The `default_with_features_gate` strategy now uses v3 in live, sandbox, and
 backtest. Its `StrategyAPI.warmup` loads one model session before market
 initialization; entry filtering and diagnostics use that same session.
 `StrategyAPI.dispose` releases it on completion, abort, or startup failure.
+Gate calls return `{ allow, message }`. V3 messages include the risk score and
+its comparison with the frozen cutoff. The strategy copies an allowed message
+into the entry decision, which is persisted as `position.opened.message`.
 Sessions are keyed by each engine's helper object, so engines sharing a state
 snapshot still own independent weights. One-shot manual/diagnostic engines
 also warm their own session and dispose it after the task.
