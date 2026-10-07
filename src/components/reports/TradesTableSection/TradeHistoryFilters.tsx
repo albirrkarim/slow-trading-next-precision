@@ -13,6 +13,8 @@ import {
 } from "@mui/material";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 
+import MetricCondition from "@/components/ui/MetricCondition";
+
 import {
     filterTradeHistory,
     readStoredFilters,
@@ -208,50 +210,14 @@ export function TradeHistoryFilters<T extends FilterableTrade>({
                             setFilterToDate(event.target.value)
                         }
                     />
-                    <TextField
-                        label="Metric"
-                        select
-                        size="small"
-                        sx={{ minWidth: { xs: "100%", sm: 130 } }}
-                        value={filterMetric}
-                        onChange={(event) =>
-                            setFilterMetric(event.target.value as TradeMetric)
-                        }
-                    >
-                        {Object.entries(TRADE_METRICS).map(([key, metric]) => (
-                            <MenuItem key={key} value={key}>
-                                {metric.label}
-                            </MenuItem>
-                        ))}
-                    </TextField>
-                    <TextField
-                        label="Op"
-                        select
-                        size="small"
-                        sx={{ width: { xs: "100%", sm: 80 } }}
-                        value={filterOperator}
-                        onChange={(event) =>
-                            setFilterOperator(
-                                event.target.value as TradeOperator,
-                            )
-                        }
-                    >
-                        {Object.entries(TRADE_OPERATORS).map(
-                            ([key, operator]) => (
-                                <MenuItem key={key} value={key}>
-                                    {operator.label}
-                                </MenuItem>
-                            ),
-                        )}
-                    </TextField>
-                    <TextField
-                        label="Value"
-                        size="small"
-                        slotProps={{ inputLabel: { shrink: true } }}
-                        sx={{ width: { xs: "100%", sm: 100 } }}
-                        type="number"
+                    <MetricCondition
+                        metric={filterMetric}
+                        metrics={TRADE_METRICS}
+                        onMetricChange={setFilterMetric}
+                        onOperatorChange={setFilterOperator}
+                        onValueChange={setFilterValue}
+                        operator={filterOperator}
                         value={filterValue}
-                        onChange={(event) => setFilterValue(event.target.value)}
                     />
                     {hasFilters && (
                         <Button

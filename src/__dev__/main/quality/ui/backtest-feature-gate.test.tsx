@@ -8,6 +8,7 @@ vi.mock("axios", () => ({ default: { ...http, isCancel: () => false, isAxiosErro
 
 import { endpoints } from "@/components/endpoints";
 import DatasetTab from "@/components/dev/backtest-precision/DatasetTab";
+import DatasetTable from "@/components/dev/backtest-precision/DatasetTab/DatasetTable";
 
 const FIRST_HASH = "1".repeat(64);
 const SECOND_HASH = "2".repeat(64);
@@ -116,5 +117,38 @@ describe("feature-gate dataset selection", () => {
     fireEvent.mouseDown(screen.getByRole("combobox", { name: "Feature gate" }));
     fireEvent.click(await screen.findByRole("option", { name: "Gate V1" }));
     await waitFor(() => expect(screen.queryByText("v2 · 22222222")).toBeNull());
+  });
+
+  it("sends the flexible condition and combined filters to the server and resets pagination", async () => {
+    const getRows = http.get.getMockImplementation()!;
+    http.get.mockImplementation(async (...args) => {
+      const response = await getRows(...args);
+      return { data: { ...response.data, total: 100 } };
+    });
+    render(<DatasetTable cacheKey={FIRST_HASH} />);
+    await screen.findByText("B0→T0");
+    fireEvent.click(screen.getByRole("button", { name: "Go to next page" }));
+    await waitFor(() => expect(http.get).toHaveBeenLastCalledWith(endpoints.dev.featureGateDatasetRows,
+      expect.objectContaining({ params: expect.objectContaining({ page: 2 }) })));
+    fireEvent.change(screen.getByLabelText("Value"), { target: { value: "2" } });
+    await waitFor(() => expect(http.get).toHaveBeenLastCalledWith(endpoints.dev.featureGateDatasetRows,
+      expect.objectContaining({ params: expect.objectContaining({ metric: "missScore", operator: "eq", value: 2, page: 1 }) })));
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "What" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Coin price normalized" }));
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Operator" }));
+    fireEvent.click(await screen.findByRole("option", { name: "<" }));
+    fireEvent.change(screen.getByLabelText("Value"), { target: { value: "0.3" } });
+    fireEvent.change(screen.getByLabelText("Capture from"), { target: { value: "2024-01-01" } });
+    fireEvent.click(screen.getByRole("checkbox", { name: "Resolved only" }));
+    await waitFor(() => expect(http.get).toHaveBeenLastCalledWith(endpoints.dev.featureGateDatasetRows,
+      expect.objectContaining({ params: expect.objectContaining({ metric: "priceNormalized", operator: "lt", value: 0.3, resolved: "true", fromT: new Date("2024-01-01T00:00:00").getTime() }) })));
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    await waitFor(() => {
+      const params = http.get.mock.lastCall?.[1].params;
+      expect(params.metric).toBeUndefined();
+      expect(params.resolved).toBeUndefined();
+      expect(params.fromT).toBeUndefined();
+      expect(params.page).toBe(1);
+    });
   });
 });

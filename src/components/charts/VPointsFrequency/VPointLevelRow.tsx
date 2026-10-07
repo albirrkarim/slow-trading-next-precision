@@ -1,6 +1,8 @@
 "use client";
 
-import { alpha, Box, Tooltip, Typography } from "@mui/material";
+import { Box, Tooltip, Typography } from "@mui/material";
+
+import FrequencyHeatRow from "@/components/ui/FrequencyHeatRow";
 
 import type {
   VPointLevelMaxDrawdown,
@@ -65,22 +67,7 @@ export function VPointLevelRow(props: {
   ) : undefined;
 
   return (
-    <Box
-      sx={{
-        alignItems: "center",
-        borderTop: index === 0 ? 0 : 1,
-        borderColor: "divider",
-        backgroundImage: (theme) =>
-          `linear-gradient(to left, ${alpha(theme.palette.primary.main, 0.28)}, ${alpha(theme.palette.primary.main, 0.08)} 68%, transparent)`,
-        backgroundPosition: "right center",
-        backgroundRepeat: "no-repeat",
-        backgroundSize: `${heatPct}% 100%`,
-        display: "flex",
-        justifyContent: "space-between",
-        px: 1.25,
-        py: 0.75,
-      }}
-    >
+    <FrequencyHeatRow heatPct={heatPct} index={index}>
       <Box
         sx={{
           alignItems: "baseline",
@@ -151,6 +138,6 @@ export function VPointLevelRow(props: {
           ),
         )}
       </Box>
-    </Box>
+    </FrequencyHeatRow>
   );
 }

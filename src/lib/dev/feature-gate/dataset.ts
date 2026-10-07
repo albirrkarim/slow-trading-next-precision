@@ -4,6 +4,7 @@ import path from "path";
 import backtestResultCache from "@/lib/dev/backtestPrecision/api/cache";
 import featureGateDataset from "@/lib/dev/backtestPrecision/feature-gate-dataset";
 
+import datasetFilters from "./filters";
 import type {
   FeatureGateDatasetOption,
   FeatureGateDatasetRow,
@@ -65,12 +66,7 @@ async function queryRows(
     : symbols.flatMap((symbol) => bySymbol[symbol]);
 
   const filtered = source
-    .filter(
-      (row) =>
-        (query.resolved !== true || row.resolved) &&
-        (query.minMissScore === undefined ||
-          (row.missScore ?? -1) >= query.minMissScore),
-    )
+    .filter((row) => datasetFilters.matches(row, query))
     .sort((a, b) => rowTime(a) - rowTime(b));
 
   const pageSize = Math.min(

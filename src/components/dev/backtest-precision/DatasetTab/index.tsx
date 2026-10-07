@@ -15,6 +15,7 @@ import axios from "axios";
 import { useEffect, useId, useState } from "react";
 
 import { endpoints } from "@/components/endpoints";
+import HeaderMetrics from "@/components/ui/HeaderMetrics";
 import type {
     FeatureGateDatasetOption,
     FeatureGateInfo,
@@ -138,42 +139,52 @@ export default function DatasetTab({ cacheKey }: { cacheKey?: string }) {
                 component="section"
                 sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}
             >
-                <Typography variant="subtitle2">Evaluation metrics</Typography>
-                <FormControl fullWidth size="small">
-                    <InputLabel id={`${labelId}-gate`}>Feature gate</InputLabel>
-                    <Select
-                        label="Feature gate"
-                        labelId={`${labelId}-gate`}
-                        onChange={(event) => setSlug(event.target.value)}
-                        value={slug}
-                    >
-                        {gates.map((gate) => (
-                            <MenuItem key={gate.slug} value={gate.slug}>{gate.label}</MenuItem>
-                        ))}
-                    </Select>
-                </FormControl>
-                <Button
-                    disabled={loading || !slug || !hash.trim()}
-                    onClick={() => void evaluate()}
-                    size="small"
-                    variant="contained"
+                <HeaderMetrics
+                    defaultExpanded
+                    headerCanBeClicked
+                    rememberExpand="backtest-precision:feature-gate-evaluation"
+                    title={<Typography fontWeight={700} variant="body1">Evaluation metrics</Typography>}
                 >
-                    {loading ? <CircularProgress size={18} /> : "Evaluate"}
-                </Button>
-                {error && <Alert severity="error">{error}</Alert>}
-                {currentReport && (
-                    <MetricsCard
-                        metrics={currentReport.metrics}
-                        title={`${currentReport.slug} · ${currentReport.hash.slice(0, 8)}`}
-                    />
-                )}
-                {!currentReport && !loading && (
-                    <Typography color="text.secondary" variant="body2">
-                        Select a gate and click Evaluate to show acceptance rate,
-                        accepted quality, good opportunities retained, bad opportunities
-                        blocked, and the accepted score distribution for this dataset.
-                    </Typography>
-                )}
+                    {(expanded) => expanded && (
+                        <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 1 }}>
+                            <FormControl fullWidth size="small">
+                                <InputLabel id={`${labelId}-gate`}>Feature gate</InputLabel>
+                                <Select
+                                    label="Feature gate"
+                                    labelId={`${labelId}-gate`}
+                                    onChange={(event) => setSlug(event.target.value)}
+                                    value={slug}
+                                >
+                                    {gates.map((gate) => (
+                                        <MenuItem key={gate.slug} value={gate.slug}>{gate.label}</MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                            <Button
+                                disabled={loading || !slug || !hash.trim()}
+                                onClick={() => void evaluate()}
+                                size="small"
+                                variant="contained"
+                            >
+                                {loading ? <CircularProgress size={18} /> : "Evaluate"}
+                            </Button>
+                            {error && <Alert severity="error">{error}</Alert>}
+                            {currentReport && (
+                                <MetricsCard
+                                    metrics={currentReport.metrics}
+                                    title={`${currentReport.slug} · ${currentReport.hash.slice(0, 8)}`}
+                                />
+                            )}
+                            {!currentReport && !loading && (
+                                <Typography color="text.secondary" variant="body2">
+                                    Select a gate and click Evaluate to show acceptance rate,
+                                    accepted quality, good opportunities retained, bad opportunities
+                                    blocked, and the accepted score distribution for this dataset.
+                                </Typography>
+                            )}
+                        </Box>
+                    )}
+                </HeaderMetrics>
             </Box>
         </Box>
     );

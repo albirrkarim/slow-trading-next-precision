@@ -1,3 +1,6 @@
+import numericFilter from "@/lib/system/utils/numeric-filter";
+import type { NumericFilterOperator } from "@/lib/system/utils/numeric-filter";
+
 /** Minimal trade shape the filter condition readers rely on. */
 export interface FilterableTrade {
   account: string;
@@ -17,7 +20,7 @@ export type TradeMetric =
   | "pnlPct"
   | "pnlUsdt";
 
-export type TradeOperator = "lt" | "lte" | "eq" | "gte" | "gt";
+export type TradeOperator = NumericFilterOperator;
 
 /** Numeric trade metrics a filter condition can evaluate. */
 export const TRADE_METRICS: Record<
@@ -81,16 +84,7 @@ export const TRADE_METRICS: Record<
 };
 
 /** Comparison operators for the filter condition. */
-export const TRADE_OPERATORS: Record<
-  TradeOperator,
-  { label: string; test: (a: number, b: number) => boolean }
-> = {
-  lt: { label: "<", test: (a, b) => a < b },
-  lte: { label: "≤", test: (a, b) => a <= b },
-  eq: { label: "=", test: (a, b) => a === b },
-  gte: { label: "≥", test: (a, b) => a >= b },
-  gt: { label: ">", test: (a, b) => a > b },
-};
+export const TRADE_OPERATORS = numericFilter.operators;
 
 interface StoredTradeFilters {
   account?: string;

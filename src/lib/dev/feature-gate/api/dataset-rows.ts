@@ -4,6 +4,7 @@ import systemConfig from "@/lib/system/config";
 
 import featureGate from "..";
 import { HASH_PATTERN } from "../dataset";
+import datasetFilters from "../filters";
 
 const pickQuery = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
@@ -16,10 +17,19 @@ const pickInt = (value: string | undefined) => {
 const pickBoolean = (value: string | undefined) =>
   value === "true" || value === "1";
 
+/** Parses an optional finite capture-time bound without accepting empty strings. */
+function pickTime(value: string | undefined, field: string): number | undefined {
+  if (value === undefined) return undefined;
+  const parsed = value.trim() ? Number(value) : Number.NaN;
+  if (!Number.isFinite(parsed)) throw new Error(`"${field}" must be a finite timestamp.`);
+  return parsed;
+}
+
 /**
  * GET /api/dev/feature-gate/dataset-rows — paginated view of one run's
  * captured dataset: `hash`, `symbol?`, `page` (default 1), `pageSize`
- * (default 50), `resolved=true`, `minMissScore`. Returns
+ * (default 50), `resolved=true`, `minMissScore`, inclusive capture bounds
+ * `fromT`/`toT`, and optional `metric`/`operator`/`value`. Returns
  * `{page, pageSize, rows, symbols, total}`.
  */
 export default async function featureGateDatasetRowsHandler(
@@ -45,7 +55,10 @@ export default async function featureGateDatasetRowsHandler(
   try {
     res.json(
       await featureGate.dataset.queryRows({
+        ...datasetFilters.parseCondition(pickQuery(req.query.metric), pickQuery(req.query.operator), pickQuery(req.query.value)),
         hash,
+        fromT: pickTime(pickQuery(req.query.fromT), "fromT"),
+        toT: pickTime(pickQuery(req.query.toT), "toT"),
         minMissScore: pickInt(pickQuery(req.query.minMissScore)),
         page: pickInt(pickQuery(req.query.page)),
         pageSize: pickInt(pickQuery(req.query.pageSize)),

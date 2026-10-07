@@ -3,13 +3,7 @@
 import {
     Alert,
     Box,
-    Checkbox,
     CircularProgress,
-    FormControl,
-    FormControlLabel,
-    InputLabel,
-    MenuItem,
-    Select,
     Table,
     TableBody,
     TableCell,
@@ -25,6 +19,7 @@ import { useEffect, useState } from "react";
 import { endpoints } from "@/components/endpoints";
 import type { FeatureGateRowPage } from "@/lib/dev/feature-gate";
 
+import DatasetFilters, { EMPTY_DATASET_FILTERS } from "./DatasetFilters";
 import DatasetRow from "./DatasetRow";
 
 const PAGE_SIZES = [25, 50, 100];
@@ -37,14 +32,12 @@ const PAGE_SIZES = [25, 50, 100];
 export default function DatasetTable({ cacheKey }: { cacheKey?: string }) {
     const [page, setPage] = useState(0);
     const [pageSize, setPageSize] = useState(50);
-    const [symbol, setSymbol] = useState("");
-    const [resolvedOnly, setResolvedOnly] = useState(false);
-    const [minMissScore, setMinMissScore] = useState<number | "">("");
+    const [filters, setFilters] = useState(EMPTY_DATASET_FILTERS);
 
     // The resolved page keyed by its query — a query change exposes empty
     // state for the new key until the fetch lands, so stale rows never
     // render under fresh filters and the effect needs no synchronous reset.
-    const queryKey = `${cacheKey ?? ""}|${page}|${pageSize}|${symbol}|${resolvedOnly}|${minMissScore}`;
+    const queryKey = JSON.stringify([cacheKey, page, pageSize, filters]);
     const [entry, setEntry] = useState<
         { error?: string; key: string; value?: FeatureGateRowPage } | undefined
     >();
@@ -58,12 +51,17 @@ export default function DatasetTable({ cacheKey }: { cacheKey?: string }) {
             .get<FeatureGateRowPage>(endpoints.dev.featureGateDatasetRows, {
                 params: {
                     hash: cacheKey,
-                    minMissScore:
-                        minMissScore === "" ? undefined : minMissScore,
+                    ...(filters.value.trim() !== "" && Number.isFinite(Number(filters.value)) ? {
+                        metric: filters.metric,
+                        operator: filters.operator,
+                        value: Number(filters.value),
+                    } : {}),
+                    fromT: filters.from ? new Date(`${filters.from}T00:00:00`).getTime() : undefined,
+                    toT: filters.to ? new Date(`${filters.to}T23:59:59.999`).getTime() : undefined,
                     page: page + 1,
                     pageSize,
-                    resolved: resolvedOnly ? "true" : undefined,
-                    symbol: symbol || undefined,
+                    resolved: filters.resolvedOnly ? "true" : undefined,
+                    symbol: filters.symbol || undefined,
                 },
                 signal: controller.signal,
             })
@@ -84,7 +82,7 @@ export default function DatasetTable({ cacheKey }: { cacheKey?: string }) {
                 });
             });
         return () => controller.abort();
-    }, [cacheKey, page, pageSize, symbol, resolvedOnly, minMissScore, queryKey]);
+    }, [cacheKey, filters, page, pageSize, queryKey]);
 
     const result = current?.value;
     const error = current?.error;
@@ -99,72 +97,12 @@ export default function DatasetTable({ cacheKey }: { cacheKey?: string }) {
 
     return (
         <Box>
-            <Box
-                sx={{
-                    alignItems: "center",
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: 1,
-                    mb: 0.5,
-                }}
-            >
-                <FormControl size="small" sx={{ minWidth: 120 }}>
-                    <InputLabel>Symbol</InputLabel>
-                    <Select
-                        label="Symbol"
-                        onChange={(e) => {
-                            setSymbol(e.target.value);
-                            setPage(0);
-                        }}
-                        size="small"
-                        value={symbol}
-                    >
-                        <MenuItem value="">All</MenuItem>
-                        {(result?.symbols ?? []).map((name) => (
-                            <MenuItem key={name} value={name}>
-                                {name}
-                            </MenuItem>
-                        ))}
-                    </Select>
-                </FormControl>
-
-                <FormControlLabel
-                    control={
-                        <Checkbox
-                            checked={resolvedOnly}
-                            onChange={(e) => {
-                                setResolvedOnly(e.target.checked);
-                                setPage(0);
-                            }}
-                            size="small"
-                        />
-                    }
-                    label="Resolved only"
-                />
-
-                <FormControl size="small" sx={{ minWidth: 140 }}>
-                    <InputLabel>Min miss score</InputLabel>
-                    <Select
-                        label="Min miss score"
-                        onChange={(e) => {
-                            const value = String(e.target.value);
-                            setMinMissScore(value === "" ? "" : Number(value));
-                            setPage(0);
-                        }}
-                        size="small"
-                        value={minMissScore}
-                    >
-                        <MenuItem value="">Any</MenuItem>
-                        {[0, 1, 2, 3].map((score) => (
-                            <MenuItem key={score} value={score}>
-                                ≥ {score}
-                            </MenuItem>
-                        ))}
-                    </Select>
-                </FormControl>
-
-                {loading && <CircularProgress size={16} />}
-            </Box>
+            <DatasetFilters
+                filters={filters}
+                onChange={(next) => { setFilters(next); setPage(0); }}
+                symbols={entry?.value?.symbols ?? []}
+            />
+            {loading && <CircularProgress size={16} />}
 
             {error && <Alert severity="warning">{error}</Alert>}
 

@@ -1,4 +1,7 @@
 import type { FeatureGateDatasetRow } from "@/lib/dev/backtestPrecision/feature-gate-dataset";
+import type { NumericFilterOperator } from "@/lib/system/utils/numeric-filter";
+
+import type datasetFilters from "./filters";
 
 export type { FeatureGateDatasetRow };
 
@@ -86,8 +89,18 @@ export interface FeatureGateDatasetOption {
 }
 
 /** Filter/pagination input for the dataset-rows endpoint. */
+export type FeatureGateRowMetric = keyof typeof datasetFilters.metrics;
+
+/** Filter/pagination input for the dataset-rows endpoint. Conditions combine with AND. */
 export interface FeatureGateRowQuery {
   hash: string;
+  /** Inclusive capture-time bounds (Unix ms). Missing capture times never match. */
+  fromT?: number;
+  toT?: number;
+  /** Numeric condition; all three fields are supplied together. Missing metrics never match. */
+  metric?: FeatureGateRowMetric;
+  operator?: NumericFilterOperator;
+  value?: number;
   minMissScore?: number;
   page?: number;
   pageSize?: number;
