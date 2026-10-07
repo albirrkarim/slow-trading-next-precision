@@ -28,7 +28,7 @@ export function PriceNormalizedHistorySparkline(props: {
   height?: number;
 }) {
   const theme = useTheme();
-  const { history, current, entryTimeMs, height = 24 } = props;
+  const { history, current, entryTimeMs, height = 60 } = props;
 
   const data = (Array.isArray(history) ? history : [])
     .filter(
