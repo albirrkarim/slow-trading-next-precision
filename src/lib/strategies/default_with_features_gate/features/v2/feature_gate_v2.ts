@@ -142,7 +142,7 @@ export default function featureGateV2(
     }
 
     // Extreme condition
-    const historiesBTC = (context.state.features?.coins["BTC"]?.priceNormalized?.history ?? []).slice(-10).map(e => e.p)
+    const historiesBTC = (context.state.features?.coins["BTC"]?.priceNormalized?.history ?? []).slice(-5).map(e => e.p)
     const historiesSymbol = (context.state.features?.coins[symbol.toUpperCase()]?.priceNormalized?.history ?? []).slice(-5).map(e => e.p)
 
     const minBTC = Math.min(...historiesBTC);
@@ -154,7 +154,7 @@ export default function featureGateV2(
     const min = Math.min(minBTC, minSymbol);
     const max = Math.max(maxBTC, maxSymbol);
 
-    if ((max > 0.96 || min < 0)) {
+    if ((max > 0.96 || min < 0) && currentLevel < 4) {
         return `extreme`
     }
 
@@ -170,7 +170,6 @@ export default function featureGateV2(
     if ((maxCurrent > 1 || minCurrent < 0)) {
         return `Too much extreme`
     }
-    // return undefined
 
     // BOTH:FEATURE_GATE_REGIMES — shared by backtest, sandbox and live.
     return featureGateRegimes(context, symbol, signal);

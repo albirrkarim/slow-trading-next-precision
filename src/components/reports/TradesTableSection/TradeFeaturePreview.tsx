@@ -11,7 +11,7 @@ import type {
   FeatureHistoryPoint,
   RuntimeFeatures,
 } from "@/lib/features/types";
-import { FEATURE_GATE_VWAP_BOUNDS } from "@/lib/strategies/default_with_features_gate/features/feature_gate_v2";
+import { FEATURE_GATE_VWAP_BOUNDS } from "@/lib/strategies/default_with_features_gate/features/v2/feature_gate_v2";
 import format from "@/lib/system/utils/format";
 
 export interface FeaturePreviewRow {
