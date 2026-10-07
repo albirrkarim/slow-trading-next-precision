@@ -138,8 +138,7 @@ i think we need to make new api and code in src/lib/dev/feature-gate
 
 it will takes only 
 
-- test dataset hash (backtest hash)
-- train dataset hash (backtest hash)
+- backtest hash (later i can manual switch between train/test dataset)
 - the feature gate slug
 
 and it will doing inference. and i think it will result fast.
