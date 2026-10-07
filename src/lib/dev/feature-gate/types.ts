@@ -71,7 +71,7 @@ export interface FeatureGateMetrics {
 
 /** `evaluate` result — one run's dataset scored by one gate version. */
 export interface FeatureGateReport {
-  /** Accepted resolved rows with score >= 3, captured during this evaluation. Features load only on inspection. */
+  /** Accepted resolved rows with score >= 3, captured during this evaluation. Features load through the paginated table. */
   acceptedHighScoreRows?: FeatureGateAcceptedHighScoreRow[];
   hash: string;
   metrics: FeatureGateMetrics;
@@ -128,8 +128,8 @@ export interface FeatureGateRowQuery {
   sort?: "missScore" | "sequence" | "time";
   order?: "asc" | "desc";
   symbol?: string;
-  /** Exact starting vPoint ID, used with symbol and capture time for manual inspection. */
-  signalId?: string;
+  /** Limit inspection to exact rows counted by a completed evaluation. */
+  references?: Pick<FeatureGateAcceptedHighScoreRow, "symbol" | "t" | "signalId">[];
 }
 
 /** Paginated dataset-rows response — rows ordered by capture time. */

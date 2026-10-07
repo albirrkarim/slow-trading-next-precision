@@ -19,6 +19,7 @@ import { useEffect, useState } from "react";
 
 import { endpoints } from "@/components/endpoints";
 import type {
+    FeatureGateAcceptedHighScoreRow,
     FeatureGateDatasetOption,
     FeatureGateRowPage,
 } from "@/lib/dev/feature-gate";
@@ -39,19 +40,21 @@ type SortKey = "missScore" | "sequence" | "time";
 export default function DatasetTable({
     cacheKey,
     option,
+    references,
 }: {
     cacheKey?: string;
     option?: FeatureGateDatasetOption;
+    references?: FeatureGateAcceptedHighScoreRow[];
 }) {
     const [page, setPage] = useState(0);
     const [pageSize, setPageSize] = useState(50);
     const [sort, setSort] = useState<SortKey>("time");
     const [order, setOrder] = useState<"asc" | "desc">("asc");
-    const [filters, setFilters] = useState(() => filterStorage.read());
+    const [filters, setFilters] = useState(() => references === undefined ? filterStorage.read() : filterStorage.defaults);
 
     useEffect(() => {
-        filterStorage.write(filters);
-    }, [filters]);
+        if (references === undefined) filterStorage.write(filters);
+    }, [filters, references]);
 
     // The resolved page keyed by its query — a query change exposes empty
     // state for the new key until the fetch lands, so stale rows never
@@ -63,6 +66,7 @@ export default function DatasetTable({
         filters,
         sort,
         order,
+        references,
     ]);
     const [entry, setEntry] = useState<
         { error?: string; key: string; value?: FeatureGateRowPage } | undefined
@@ -73,25 +77,31 @@ export default function DatasetTable({
     useEffect(() => {
         if (!cacheKey) return undefined;
         const controller = new AbortController();
-        axios
-            .get<FeatureGateRowPage>(endpoints.dev.featureGateDatasetRows, {
-                params: {
-                    hash: cacheKey,
-                    ...(filters.value.trim() !== "" && Number.isFinite(Number(filters.value)) ? {
-                        metric: filters.metric,
-                        operator: filters.operator,
-                        value: Number(filters.value),
-                    } : {}),
-                    fromT: filters.from ? new Date(`${filters.from}T00:00:00`).getTime() : undefined,
-                    toT: filters.to ? new Date(`${filters.to}T23:59:59.999`).getTime() : undefined,
-                    page: page + 1,
-                    pageSize,
-                    order: order === "desc" ? "desc" : undefined,
-                    sort: sort === "time" ? undefined : sort,
-                    symbol: filters.symbol || undefined,
-                },
-                signal: controller.signal,
-            })
+        const config = {
+            params: {
+                hash: cacheKey,
+                minMissScore: references === undefined ? undefined : 3,
+                ...(filters.value.trim() !== "" && Number.isFinite(Number(filters.value)) ? {
+                    metric: filters.metric,
+                    operator: filters.operator,
+                    value: Number(filters.value),
+                } : {}),
+                fromT: filters.from ? new Date(`${filters.from}T00:00:00`).getTime() : undefined,
+                toT: filters.to ? new Date(`${filters.to}T23:59:59.999`).getTime() : undefined,
+                page: page + 1,
+                pageSize,
+                order: order === "desc" ? "desc" : undefined,
+                sort: sort === "time" ? undefined : sort,
+                symbol: filters.symbol || undefined,
+            },
+            signal: controller.signal,
+        };
+        const request = references === undefined
+            ? axios.get<FeatureGateRowPage>(endpoints.dev.featureGateDatasetRows, config)
+            : axios.post<FeatureGateRowPage>(endpoints.dev.featureGateDatasetRows, {
+                references: references.map(({ symbol, t, signalId }) => ({ symbol, t, signalId })),
+            }, config);
+        request
             .then((resp) =>
                 setEntry({ key: queryKey, value: resp.data }),
             )
@@ -109,7 +119,7 @@ export default function DatasetTable({
                 });
             });
         return () => controller.abort();
-    }, [cacheKey, filters, order, page, pageSize, queryKey, sort]);
+    }, [cacheKey, filters, order, page, pageSize, queryKey, sort, references]);
 
     const toggleSort = (key: SortKey) => {
         setPage(0);
@@ -166,7 +176,7 @@ export default function DatasetTable({
             {result && (
                 <>
                     <TableContainer>
-                        <Table size="small">
+                        <Table size="small" aria-label={references === undefined ? "Dataset rows" : "Accepted high-score dataset rows"}>
                             <TableHead>
                                 <TableRow>
                                     <TableCell>

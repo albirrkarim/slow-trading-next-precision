@@ -5,6 +5,7 @@ import systemConfig from "@/lib/system/config";
 import featureGate from "..";
 import { HASH_PATTERN } from "../dataset";
 import datasetFilters from "../filters";
+import type { FeatureGateRowQuery } from "../types";
 
 const pickQuery = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
@@ -22,12 +23,28 @@ function pickTime(value: string | undefined, field: string): number | undefined 
   return parsed;
 }
 
+/** Validates compact references from an evaluation, keeping feature snapshots off request bodies. */
+function pickReferences(body: unknown): FeatureGateRowQuery["references"] {
+  const value = body as { references?: unknown } | undefined;
+  if (!Array.isArray(value?.references)) throw new Error('"references" must be an array of dataset row references.');
+  return value.references.map((item: unknown) => {
+    const row = item as { symbol?: unknown; t?: unknown; signalId?: unknown } | null;
+    if (!row || typeof row.symbol !== "string" || typeof row.signalId !== "string" ||
+      typeof row.t !== "number" || !Number.isFinite(row.t)) {
+      throw new Error('Each reference requires "symbol", finite "t", and "signalId".');
+    }
+    return { symbol: row.symbol, t: row.t, signalId: row.signalId };
+  });
+}
+
 /**
  * GET /api/dev/feature-gate/dataset-rows — paginated view of one run's
  * captured dataset: `hash`, `symbol?`, `page` (default 1), `pageSize`
  * (default 50), `minMissScore`, inclusive capture bounds
  * `fromT`/`toT`, and optional `metric`/`operator`/`value`. Returns
  * `{page, pageSize, rows, symbols, total}`.
+ * POST accepts the same query parameters plus `{references}` in the body
+ * to inspect only rows counted by a completed evaluation.
  */
 export default async function featureGateDatasetRowsHandler(
   req: NextApiRequest,
@@ -37,8 +54,8 @@ export default async function featureGateDatasetRowsHandler(
     res.status(404).json({ error: "Not found" });
     return;
   }
-  if (req.method !== "GET") {
-    res.setHeader("Allow", ["GET"]);
+  if (req.method !== "GET" && req.method !== "POST") {
+    res.setHeader("Allow", ["GET", "POST"]);
     res.status(405).end(`Method ${req.method} Not Allowed`);
     return;
   }
@@ -54,6 +71,7 @@ export default async function featureGateDatasetRowsHandler(
       await featureGate.dataset.queryRows({
         ...datasetFilters.parseCondition(pickQuery(req.query.metric), pickQuery(req.query.operator), pickQuery(req.query.value)),
         hash,
+        references: req.method === "POST" ? pickReferences(req.body) : undefined,
         fromT: pickTime(pickQuery(req.query.fromT), "fromT"),
         toT: pickTime(pickQuery(req.query.toT), "toT"),
         minMissScore: pickInt(pickQuery(req.query.minMissScore)),
@@ -70,7 +88,6 @@ export default async function featureGateDatasetRowsHandler(
               | "time")
           : undefined,
         symbol: pickQuery(req.query.symbol)?.trim() || undefined,
-        signalId: pickQuery(req.query.signalId),
       }),
     );
   } catch (error) {

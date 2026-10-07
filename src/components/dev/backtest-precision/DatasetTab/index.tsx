@@ -254,10 +254,25 @@ export default function DatasetTab({ cacheKey }: { cacheKey?: string }) {
                             </Button>
                             {error && <Alert severity="error">{error}</Alert>}
                             {currentReport && (
-                                <MetricsCard
-                                    metrics={currentReport.metrics}
-                                    title={`${currentReport.slug} · ${currentReport.hash.slice(0, 8)}`}
-                                />
+                                <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                                    <MetricsCard
+                                        metrics={currentReport.metrics}
+                                        title={`${currentReport.slug} · ${currentReport.hash.slice(0, 8)}`}
+                                    />
+                                    {currentReport.acceptedHighScoreRows && (
+                                        <Box>
+                                            <Typography fontWeight={700} variant="body2">
+                                                Accepted dataset rows with missScore ≥ 3 ({currentReport.acceptedHighScoreRows.length})
+                                            </Typography>
+                                            <DatasetTable
+                                                cacheKey={currentReport.hash}
+                                                key={`${currentReport.hash}:${currentReport.slug}`}
+                                                option={datasets.find((run) => run.hash === currentReport.hash)}
+                                                references={currentReport.acceptedHighScoreRows}
+                                            />
+                                        </Box>
+                                    )}
+                                </Box>
                             )}
                             {!currentReport && !loading && (
                                 <Typography color="text.secondary" variant="body2">

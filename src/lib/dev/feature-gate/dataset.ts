@@ -82,7 +82,11 @@ async function queryRows(
   };
   const sortKey = sortKeys[query.sort ?? "time"];
 
+  const references = query.references === undefined ? undefined : new Set(query.references.map(
+    (row) => JSON.stringify([row.symbol, row.t, row.signalId]),
+  ));
   const filtered = source
+    .filter((row) => references === undefined || references.has(JSON.stringify([row.symbol, row.t, row.sequences[0]?.id])))
     .filter((row) => datasetFilters.matches(row, query))
     .sort((a, b) => (sortKey(a) - sortKey(b)) * order);
 

@@ -14,6 +14,8 @@ const TOP_REJECTIONS = 8;
  * captured inputs through the gate: a row is accepted when `allow` is true,
  * and rejections are grouped by `message`. Unresolved rows count toward
  * `total`/`acceptanceRate` but are excluded from every score-based metric.
+ * The optional observer receives accepted resolved rows and their gate message
+ * from this same scoring pass, so diagnostics never rerun inference.
  */
 function scoreRows(
   gate: FeatureGate,
