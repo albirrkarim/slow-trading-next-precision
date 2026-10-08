@@ -308,6 +308,7 @@ describe("backtest leaderboards store", () => {
         const second = await leaderboardsStore.save({
             backtestConfig: {
                 description: "rerun",
+                produceDataset: true,
                 range: "6month",
                 settings: { marker: 3 },
                 upToDateDecisionBacktest: true,

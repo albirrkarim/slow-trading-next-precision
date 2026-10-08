@@ -69,6 +69,7 @@ function stableStringify(value: unknown): string {
 const CONFIG_IDENTITY_EXCLUDE = new Set([
   "description",
   "mode", // legacy engine selector — removed from BacktestConfig
+  "produceDataset", // artifact output flag — never changes trading behavior
   "upToDateDecisionBacktest",
   "upToDateKlines",
 ]);
