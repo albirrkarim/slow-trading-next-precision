@@ -1,6 +1,6 @@
 import type { VolatilityPoint } from "@/lib/system/types/market";
 import type { RuntimeFeatures } from "@/lib/features/types";
-import { FEATURE_GATE_BOUNDS } from "../feature_gate_v1";
+import { FEATURE_GATE_BOUNDS } from "../v1/feature_gate_v1";
 
 const keys = ["B0", "B1", "B2", "B3", "T0", "T1", "T2", "T3"] as const;
 const hierarchicalKeys = ["B", "T"].flatMap((side) => ["", "0", "1", "2+", "2", "3+"].flatMap((level) => ["", "L", "M", "H"].map((regime) => `${side}${level}${regime}`)));

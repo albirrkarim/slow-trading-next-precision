@@ -3,7 +3,7 @@ import type { FeatureGateResult } from "@/lib/strategies/feature-gates";
 import type { VolatilityPoint } from "@/lib/system/types/market";
 import {
     mapRange,
-} from "../../shared/utils";
+} from "../../../shared/utils";
 import { windowsMs } from "@/lib/system/constants";
 
 /**

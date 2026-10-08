@@ -1,7 +1,7 @@
 import type { RuntimeFeatures } from "@/lib/features/types";
 import type { VolatilityPoint } from "@/lib/system/types/market";
 
-import v1 from "../feature_gate_v1";
+import v1 from "../v1/feature_gate_v1";
 import { vwapBounds } from "../v2/vwap";
 import { closeToExtreme, isCurrentExtreme, isSuddenChange } from "../v2/price_norm";
 import regimes, { FEATURE_GATE_REGIME_BOUNDS } from "../v2/regimes";
