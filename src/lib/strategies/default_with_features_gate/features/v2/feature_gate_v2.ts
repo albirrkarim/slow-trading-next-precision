@@ -67,9 +67,9 @@ function rejectionReason(
     // }
 
 
-    // if (isCurrentExtreme(features, symbol)) {
-    //     return `Too much extreme`
-    // }
+    if (isCurrentExtreme(features, symbol)) {
+        return `Too much extreme`
+    }
 
 
     // BOTH:FEATURE_GATE_REGIMES — shared by backtest, sandbox and live.

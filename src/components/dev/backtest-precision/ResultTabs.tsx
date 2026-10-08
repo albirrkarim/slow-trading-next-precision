@@ -9,10 +9,11 @@ import type { useBacktestArtifacts } from "./use-backtest-artifacts";
 import BacktestBalanceChart from "./BalanceChart";
 import BacktestDailyPnlCalendar from "./DailyPnlCalendar";
 import DatasetTab from "./DatasetTab";
+import MonteCarloTab from "./MonteCarloTab";
 import type { BacktestConfig } from "./types";
 import VPointsResult from "./VPointsResult";
 
-type ResultTab = "dataset" | "result";
+type ResultTab = "dataset" | "monteCarlo" | "result";
 
 /**
  * Result-area tab switcher: the backtest report sections stay on the first
@@ -50,6 +51,7 @@ export default function ResultTabs({
             >
                 <Tab label="Backtest result" value="result" />
                 <Tab label="Dataset" value="dataset" />
+                <Tab label="Monte Carlo" value="monteCarlo" />
             </Tabs>
 
             {tab === "result" && data && (
@@ -81,6 +83,12 @@ export default function ResultTabs({
             )}
 
             {tab === "dataset" && <DatasetTab cacheKey={data?.cacheKey} />}
+            {tab === "monteCarlo" && data && (
+                <MonteCarloTab
+                    accounts={backtestConfig.settings?.accounts}
+                    positions={artifacts.positions}
+                />
+            )}
         </Box>
     );
 }
