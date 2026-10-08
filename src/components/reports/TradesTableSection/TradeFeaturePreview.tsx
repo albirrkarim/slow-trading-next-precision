@@ -4,6 +4,7 @@ import { Box, Typography } from "@mui/material";
 import moment from "moment";
 
 import { PriceNormalizedHistorySparkline } from "@/components/charts/PriceNormalizedHistorySparkline";
+import HintTooltip from "@/components/ui/HintTooltip";
 import type {
   CoinFeatures,
   CoinPriceNormalized,
@@ -171,6 +172,9 @@ function normColor(value: number): string {
   return value < 0 || value > 1 ? "warning.main" : "text.primary";
 }
 
+/** Alias keeps the vwap-token markup short. */
+const Hint = HintTooltip;
+
 /** Compact price-scale formatter: BTC-scale values collapse, sub-1 keeps sig figs. */
 function fmtPrice(value: number): string {
   if (!Number.isFinite(value)) return "—";
@@ -293,37 +297,66 @@ export default function TradeFeaturePreview({
                 component="span"
                 display="block"
                 sx={{ pl: "40px" }}
-                title={
-                  `Monthly-anchored VWAP at entry — σ = population stdev of ` +
-                  `typical price since the month boundary, dist = mark vs ` +
-                  `VWAP, env = ±2σ envelope width, dσ = entry signal's ` +
-                  `distance from VWAP in σ — green inside the gate's ` +
-                  `[${FEATURE_GATE_VWAP_BOUNDS.minSigma}, ` +
-                  `${FEATURE_GATE_VWAP_BOUNDS.maxSigma}]σ zone`
-                }
                 variant="caption"
               >
-                vwap {fmtPrice(vwap.price)}
-                {vwap.stdev !== undefined &&
-                  ` · σ ${fmtPrice(vwap.stdev)}`}
-                {vwap.distancePct !== undefined &&
-                  ` · ${vwap.distancePct > 0 ? "+" : ""}` +
-                  `${vwap.distancePct}%`}
-                {vwap.stretchPct !== undefined &&
-                  ` · env ${vwap.stretchPct}%`}
+                <Hint title="Monthly-anchored VWAP at entry — volume-weighted average of typical price since the UTC month boundary">
+                  vwap {fmtPrice(vwap.price)}
+                </Hint>
+                {vwap.stdev !== undefined && (
+                  <>
+                    {" · "}
+                    <Hint title="σ — population standard deviation of typical price since the month boundary; the VWAP envelope's unit of width">
+                      σ {fmtPrice(vwap.stdev)}
+                    </Hint>
+                  </>
+                )}
+                {vwap.distancePct !== undefined && (
+                  <>
+                    {" · "}
+                    <Hint title="Mark price's distance from the monthly VWAP — negative means trading below the month-to-date mean">
+                      {`${vwap.distancePct > 0 ? "+" : ""}${vwap.distancePct}%`}
+                    </Hint>
+                  </>
+                )}
+                {vwap.stretchPct !== undefined && (
+                  <>
+                    {" · "}
+                    <Hint
+                      title={
+                        `±2σ envelope width as % of VWAP — the gate rejects ` +
+                        `entries below ${FEATURE_GATE_VWAP_BOUNDS.minStretchPct}% ` +
+                        `(wave too narrow to mean-revert)`
+                      }
+                    >
+                      env {vwap.stretchPct}%
+                    </Hint>
+                  </>
+                )}
                 {dSigma !== undefined && (
-                  <Typography
-                    color={
-                      dSigma >= FEATURE_GATE_VWAP_BOUNDS.minSigma &&
-                        dSigma <= FEATURE_GATE_VWAP_BOUNDS.maxSigma
-                        ? "success.main"
-                        : "text.secondary"
-                    }
-                    component="span"
-                    variant="caption"
-                  >
-                    {` · dσ ${dSigma.toFixed(2)}`}
-                  </Typography>
+                  <>
+                    {" · "}
+                    <Hint
+                      title={
+                        `Entry signal's distance from the monthly VWAP in σ — ` +
+                        `green inside the gate's ` +
+                        `[${FEATURE_GATE_VWAP_BOUNDS.minSigma}, ` +
+                        `${FEATURE_GATE_VWAP_BOUNDS.maxSigma}]σ zone`
+                      }
+                    >
+                      <Typography
+                        color={
+                          dSigma >= FEATURE_GATE_VWAP_BOUNDS.minSigma &&
+                            dSigma <= FEATURE_GATE_VWAP_BOUNDS.maxSigma
+                            ? "success.main"
+                            : "text.secondary"
+                        }
+                        component="span"
+                        variant="caption"
+                      >
+                        dσ {dSigma.toFixed(2)}
+                      </Typography>
+                    </Hint>
+                  </>
                 )}
               </Typography>
             )}

@@ -61,7 +61,7 @@ function rejectionReason(
     }
 
 
-    // // Extreme condition
+    // Extreme condition
     // if (closeToExtreme(features, symbol, currentLevel, -5)) {
     //     return `Too close to extreme`
     // }
