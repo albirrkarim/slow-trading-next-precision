@@ -18,6 +18,7 @@ import {
 } from "recharts";
 
 import { formatUsdt } from "@/components/reports/DailyPnlCalendarDialog/utils";
+import HintTooltip from "@/components/ui/HintTooltip";
 import type { MonteCarloResult } from "@/lib/dev/backtestPrecision/monte-carlo";
 
 const axisTick = { fontSize: 12 };
@@ -37,10 +38,14 @@ export function MonteCarloDrawdownHistogram({
   return (
     <Paper variant="outlined" sx={{ p: 1 }}>
       <Typography color="text.secondary" fontWeight={600} variant="body2">
-        Max drawdown distribution — realized $
-        {formatUsdt(result.actual.maxDrawdownUsdt)} sits at the{" "}
-        {(result.actualDrawdownPercentile * 100).toFixed(0)}th percentile of
-        simulated paths
+        <HintTooltip title="Each bar: how many simulated paths had their worst equity dip (drawdown) in that range. The orange 'realized' line is what this backtest actually did.">
+          Max drawdown distribution
+        </HintTooltip>{" "}
+        — realized ${formatUsdt(result.actual.maxDrawdownUsdt)} sits at the{" "}
+        <HintTooltip title="Share of simulated paths that dipped less than the realized run — e.g. 60th percentile means 60% of orderings did better, so the real run was typical-to-unlucky.">
+          {(result.actualDrawdownPercentile * 100).toFixed(0)}th percentile
+        </HintTooltip>{" "}
+        of simulated paths
       </Typography>
       <Box sx={{ height: 240, mt: 1, width: "100%" }}>
         <ResponsiveContainer height="100%" width="100%">
@@ -103,7 +108,14 @@ export function MonteCarloEquityFan({
   return (
     <Paper variant="outlined" sx={{ p: 1 }}>
       <Typography color="text.secondary" fontWeight={600} variant="body2">
-        Equity fan — p5–p95 band over trade index vs the realized path
+        <HintTooltip title="Where each simulated account balance stood after N trades. Dashed line = the median path; orange = this backtest's actual path — sitting above the band means the real ordering was luckier than most.">
+          Equity fan
+        </HintTooltip>{" "}
+        —{" "}
+        <HintTooltip title="5th–95th percentile — the middle 90% of simulated outcomes at each trade number.">
+          p5–p95
+        </HintTooltip>{" "}
+        band over trade index vs the realized path
       </Typography>
       <Box sx={{ height: 280, mt: 1, width: "100%" }}>
         <ResponsiveContainer height="100%" width="100%">

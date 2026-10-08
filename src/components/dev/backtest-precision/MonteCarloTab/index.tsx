@@ -9,6 +9,7 @@ import {
   Button,
   CircularProgress,
   FormControl,
+  FormHelperText,
   InputLabel,
   MenuItem,
   Paper,
@@ -21,6 +22,7 @@ import {
   formatSignedUsdt,
   formatUsdt,
 } from "@/components/reports/DailyPnlCalendarDialog/utils";
+import HintTooltip from "@/components/ui/HintTooltip";
 import type { ConfigDraft } from "@/components/settings/settings-types";
 import monteCarlo from "@/lib/dev/backtestPrecision/monte-carlo";
 import type { Position } from "@/lib/system/trading";
@@ -113,19 +115,63 @@ export default function MonteCarloTab({
     );
   }
 
-  const stats: [string, string][] = result
+  const stats: { hint: string; label: string; value: string }[] = result
     ? [
-        ["Paths", result.iterations.toLocaleString()],
-        ["Trades / path", `${result.trades}`],
-        ["Start balance", formatUsdt(startBalanceUsdt)],
-        ["Median max DD", formatUsdt(result.drawdownUsdt.p50)],
-        ["p95 max DD", formatUsdt(result.drawdownUsdt.p95)],
-        ["Worst max DD", formatUsdt(result.drawdownUsdt.max)],
-        ["Median final PnL", formatSignedUsdt(result.finalPnlUsdt.p50)],
-        ["p5 final PnL", formatSignedUsdt(result.finalPnlUsdt.p5)],
-        ["Risk of ruin", `${(result.ruinRate * 100).toFixed(1)}%`],
-        ["Median losing streak", `${result.longestLosingStreak.p50}`],
-        ["Worst losing streak", `${result.longestLosingStreak.max}`],
+        {
+          hint: "How many alternate orderings of the same trades were simulated — each path is one replayed equity curve.",
+          label: "Paths",
+          value: result.iterations.toLocaleString(),
+        },
+        {
+          hint: "Closed trades replayed inside every simulated path.",
+          label: "Trades / path",
+          value: `${result.trades}`,
+        },
+        {
+          hint: "Sandbox starting balance of the selected account(s) — where every simulated equity curve begins.",
+          label: "Start balance",
+          value: formatUsdt(startBalanceUsdt),
+        },
+        {
+          hint: "Drawdown = the deepest dip from an equity peak to the following trough. Median = half the simulated paths dipped less than this.",
+          label: "Median max DD",
+          value: formatUsdt(result.drawdownUsdt.p50),
+        },
+        {
+          hint: "95% of simulated paths had a smaller worst dip — treat this as the plausible bad case, not the extreme.",
+          label: "p95 max DD",
+          value: formatUsdt(result.drawdownUsdt.p95),
+        },
+        {
+          hint: "Deepest dip any simulated path hit — the tail risk hiding inside this exact set of trades.",
+          label: "Worst max DD",
+          value: formatUsdt(result.drawdownUsdt.max),
+        },
+        {
+          hint: "Ending profit of the typical path. Same trades, different order → different ending; median is the midpoint of all endings.",
+          label: "Median final PnL",
+          value: formatSignedUsdt(result.finalPnlUsdt.p50),
+        },
+        {
+          hint: "Only 5% of simulated paths ended below this — the unlucky-tail outcome of the same trades.",
+          label: "p5 final PnL",
+          value: formatSignedUsdt(result.finalPnlUsdt.p5),
+        },
+        {
+          hint: "Share of paths where equity reached zero — the account would have been wiped out. Should be 0%; anything above means trade sizes are too large for this edge.",
+          label: "Risk of ruin",
+          value: `${(result.ruinRate * 100).toFixed(1)}%`,
+        },
+        {
+          hint: "Longest run of consecutive losing trades in a typical path — the streak length you'd normally have to sit through.",
+          label: "Median losing streak",
+          value: `${result.longestLosingStreak.p50}`,
+        },
+        {
+          hint: "Longest losing run in the unluckiest simulated path — a realistic worst case for consecutive losses.",
+          label: "Worst losing streak",
+          value: `${result.longestLosingStreak.max}`,
+        },
       ]
     : [];
 
@@ -155,13 +201,30 @@ export default function MonteCarloTab({
               onChange={(e) => setMethod(e.target.value as "block" | "shuffle")}
               value={method}
             >
-              <MenuItem value="block">Block bootstrap</MenuItem>
-              <MenuItem value="shuffle">Shuffle (iid)</MenuItem>
+              <MenuItem value="block">
+                <HintTooltip title="Redraws the same trades in consecutive chunks of the block size — keeps real winning/losing streaks intact, so drawdowns stay realistic. Usually the more honest (worse) answer.">
+                  Block bootstrap
+                </HintTooltip>
+              </MenuItem>
+              <MenuItem value="shuffle">
+                <HintTooltip title="Redraws the same trades one by one in fully random order — assumes every trade is independent, which breaks up real streaks. The optimistic estimate.">
+                  Shuffle (iid)
+                </HintTooltip>
+              </MenuItem>
             </Select>
+            <FormHelperText>
+              {method === "block"
+                ? "Chunks of consecutive trades stay together — realistic streaks."
+                : "Every trade reshuffled independently — breaks real streaks."}
+            </FormHelperText>
           </FormControl>
           {method === "block" && (
             <TextField
-              label="Block size (trades)"
+              label={
+                <HintTooltip title="How many consecutive trades are kept together per redrawn chunk — larger blocks preserve more of the real streak clustering.">
+                  Block size (trades)
+                </HintTooltip>
+              }
               onChange={(e) => setBlockSize(Math.max(1, Number(e.target.value) || 1))}
               size="small"
               sx={{ width: 140 }}
@@ -170,7 +233,11 @@ export default function MonteCarloTab({
             />
           )}
           <FormControl size="small" sx={{ minWidth: 130 }}>
-            <InputLabel>Iterations</InputLabel>
+            <InputLabel>
+              <HintTooltip title="How many alternate orderings are simulated — more gives a smoother distribution; the conclusion stops changing well before 10k.">
+                Iterations
+              </HintTooltip>
+            </InputLabel>
             <Select
               label="Iterations"
               onChange={(e) => setIterations(Number(e.target.value))}
@@ -184,7 +251,11 @@ export default function MonteCarloTab({
             </Select>
           </FormControl>
           <TextField
-            label="Seed (optional)"
+            label={
+              <HintTooltip title="A number that fixes the random draws — same seed, same result, useful for comparing settings. Empty rolls a random one; Reroll picks a new one.">
+                Seed (optional)
+              </HintTooltip>
+            }
             onChange={(e) => setSeed(e.target.value)}
             size="small"
             sx={{ width: 130 }}
@@ -201,9 +272,10 @@ export default function MonteCarloTab({
           </Button>
         </Box>
         <Typography color="text.secondary" sx={{ mt: 1 }} variant="caption">
-          Each path redraws the same {trades.length} closed trades — iid, or in
-          contiguous blocks that keep regime clustering — and replays the equity
-          curve. A fixed seed makes the run reproducible.
+          Each path redraws the same {trades.length} closed trades in a
+          different order and replays the account balance — showing whether
+          this backtest&rsquo;s equity curve was lucky or typical. Hover any dashed
+          label for an explanation.
         </Typography>
       </Paper>
 
@@ -222,13 +294,13 @@ export default function MonteCarloTab({
       {result && (
         <>
           <Paper variant="outlined" sx={{ display: "flex", flexWrap: "wrap", gap: 2, p: 1.5 }}>
-            {stats.map(([label, value]) => (
-              <Box key={label}>
+            {stats.map((stat) => (
+              <Box key={stat.label}>
                 <Typography color="text.secondary" variant="caption">
-                  {label}
+                  <HintTooltip title={stat.hint}>{stat.label}</HintTooltip>
                 </Typography>
                 <Typography fontWeight={600} variant="body2">
-                  {value}
+                  {stat.value}
                 </Typography>
               </Box>
             ))}
