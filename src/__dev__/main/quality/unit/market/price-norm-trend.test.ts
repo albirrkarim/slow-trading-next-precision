@@ -43,6 +43,19 @@ describe("priceNormTrend", () => {
     expect(Math.abs(score)).toBeLessThan(0.3);
   });
 
+  it("scores a sparse monotone trail clearly — the slow-BTC case", () => {
+    // Three deduped normalized steps, all rising: |net| = path → ±1.
+    expect(priceNormTrend(trail([-0.257, 0.317, 0.566]))).toBeCloseTo(1);
+    expect(priceNormTrend(trail([0.8, 0.4, 0.15]))).toBeCloseTo(-1);
+  });
+
+  it("damps a sparse trail that retraces", () => {
+    // Up-down-up: net +0.3 over path 0.5+0.4+0.2 → +0.27.
+    const score = priceNormTrend(trail([0.3, 0.8, 0.4, 0.6]));
+    expect(score).toBeGreaterThan(0);
+    expect(score).toBeLessThan(0.5);
+  });
+
   it("returns 0 for too-short or flat trails", () => {
     expect(priceNormTrend(trail([0.5, 0.9]))).toBe(0);
     expect(priceNormTrend(trail([0.5, 0.5, 0.5, 0.5, 0.5]))).toBe(0);

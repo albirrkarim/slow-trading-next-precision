@@ -78,9 +78,10 @@ export interface CoinPriceNormalized {
   history: FeatureHistoryPoint[];
 
   /**
-   * Trend clarity of `history` in [-1, +1] — `priceNormTrend` (r × span
-   * coverage): near ±1 is a clean traverse, ~0 is sideways. Optional for
-   * legacy snapshots recorded before the field existed.
+   * Trend clarity of `history` in [-1, +1] — `priceNormTrend` (efficiency
+   * ratio, net move over path): near ±1 is a clean traverse, ~0 is
+   * sideways. Optional for legacy snapshots recorded before the field
+   * existed.
    */
   trend?: number;
 }

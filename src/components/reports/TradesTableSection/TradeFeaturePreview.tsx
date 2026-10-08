@@ -264,7 +264,7 @@ export default function TradeFeaturePreview({
               {trend !== undefined && (
                 <>
                   {" · "}
-                  <Hint title="priceNormalized trail trend clarity, −1…+1 — Pearson correlation over time scaled by how much of the observed span the move traverses: near ±1 clearly trending, near 0 sideways">
+                  <Hint title="priceNormalized trail trend clarity, −1…+1 — efficiency ratio: net move over total path traveled; near ±1 clearly trending, near 0 sideways">
                     <Typography
                       color={
                         trend >= 0.5
