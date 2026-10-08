@@ -2,9 +2,10 @@ import type { RuntimeFeatures } from "@/lib/features/types";
 import type { VolatilityPoint } from "@/lib/system/types/market";
 
 import v1 from "../feature_gate_v1";
+import { vwapBounds } from "../v2/vwap";
+import { closeToExtreme, isCurrentExtreme, isSuddenChange } from "../v2/price_norm";
+import regimes, { FEATURE_GATE_REGIME_BOUNDS } from "../v2/regimes";
 import v2, { FEATURE_GATE_VWAP_BOUNDS, } from "../v2/feature_gate_v2";
-import regimes, { FEATURE_GATE_REGIME_BOUNDS } from "../v2/feature_gate_regimes";
-import { closeToExtreme, isCurrentExtreme } from "../v2/feature_gate_price_norm";
 
 /** Existing gate policies or their unchanged extreme-range vetoes; evaluated only with capture-time inputs. */
 const HARD_RULES = ["v1", "v2", "v2-regimes", "v2-current-range", "v2-overstretched", "v2-quiet-overstretched", "v2-quiet-overstretched-low-level", "v1-btc-extended", "min-level-2", "min-level-3"] as const;
@@ -13,12 +14,27 @@ export type NeuralHardRule = typeof HARD_RULES[number];
 /** Returns the first hard veto after neural acceptance. No outcome or future sequence enters these checks. */
 function rejection(policy: readonly NeuralHardRule[], t: number, features: RuntimeFeatures | undefined, signal: VolatilityPoint): string | undefined {
 
-  if (closeToExtreme(features, signal.symbol ?? "", signal.lvl, -2)) {
-    return `Too close to extreme`
-  }
+  // if (closeToExtreme(features, signal.symbol ?? "", signal.lvl, -2)) {
+  //   return `Too close to extreme`
+  // }
 
   if (isCurrentExtreme(features, signal.symbol ?? "")) {
     return `Too much extreme`
+  }
+
+  if (isSuddenChange(features, signal.symbol ?? "")) {
+    return `Sudden change`
+  }
+
+  const vwapResult = vwapBounds(t, features, signal, {
+    minStretchPct: 6,
+    minSigma: 1.2,
+    maxSigma: 2,
+    maxSignalAgeMs: 12 * 60 * 60 * 1000,
+  });
+
+  if (vwapResult) {
+    return vwapResult;
   }
 
 

@@ -224,27 +224,27 @@ export default function TradeFeaturePreview({
         const dSigma =
           row.own === true
             ? vwapSigmaDistance(
-                vPoint?.p,
-                vwap?.price,
-                vwap?.stdev,
-              )
+              vPoint?.p,
+              vwap?.price,
+              vwap?.stdev,
+            )
             : undefined;
         const vPointT = vPoint?.t;
         const vPointAgeMs =
           row.own === true &&
-          typeof vPointT === "number" &&
-          Number.isFinite(vPointT) &&
-          typeof entryTimeMs === "number" &&
-          Number.isFinite(entryTimeMs)
+            typeof vPointT === "number" &&
+            Number.isFinite(vPointT) &&
+            typeof entryTimeMs === "number" &&
+            Number.isFinite(entryTimeMs)
             ? entryTimeMs - vPointT
             : undefined;
         const trail =
           bounds !== undefined
             ? `${bounds.samples} trail samples` +
-              (bounds.firstT !== undefined && bounds.lastT !== undefined
-                ? ` · ${moment(bounds.firstT).format("DD MMM YYYY")} → ` +
-                  moment(bounds.lastT).format("DD MMM YYYY")
-                : "")
+            (bounds.firstT !== undefined && bounds.lastT !== undefined
+              ? ` · ${moment(bounds.firstT).format("DD MMM YYYY")} → ` +
+              moment(bounds.lastT).format("DD MMM YYYY")
+              : "")
             : "";
         return (
           <Box
@@ -308,14 +308,14 @@ export default function TradeFeaturePreview({
                   ` · σ ${fmtPrice(vwap.stdev)}`}
                 {vwap.distancePct !== undefined &&
                   ` · ${vwap.distancePct > 0 ? "+" : ""}` +
-                    `${vwap.distancePct}%`}
+                  `${vwap.distancePct}%`}
                 {vwap.stretchPct !== undefined &&
                   ` · env ${vwap.stretchPct}%`}
                 {dSigma !== undefined && (
                   <Typography
                     color={
                       dSigma >= FEATURE_GATE_VWAP_BOUNDS.minSigma &&
-                      dSigma <= FEATURE_GATE_VWAP_BOUNDS.maxSigma
+                        dSigma <= FEATURE_GATE_VWAP_BOUNDS.maxSigma
                         ? "success.main"
                         : "text.secondary"
                     }
@@ -346,6 +346,16 @@ export default function TradeFeaturePreview({
                 vPoint → entry {format.duration(vPointAgeMs)}
               </Typography>
             )}
+
+            <Typography variant="body1" gutterBottom>
+              Sudden Changes:{" "}
+              {(
+                (row.coin?.priceNormalized.history.at(-1)?.p ?? 0) -
+                (row.coin?.priceNormalized.history.at(-2)?.p ?? 0)
+              ).toFixed(2)}
+            </Typography>
+
+
             <PriceNormalizedHistorySparkline
               current={current}
               entryTimeMs={entryTimeMs}

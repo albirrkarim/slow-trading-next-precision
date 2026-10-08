@@ -37,3 +37,15 @@ export function isCurrentExtreme(features: RuntimeFeatures | undefined, symbol: 
 
     return false;
 }
+
+
+export function isSuddenChange(features: RuntimeFeatures | undefined, symbol: string, threshold = 0.2) {
+
+    const ofBtc = Math.abs((features?.coins["BTC"]?.priceNormalized.history.at(-1)?.p ?? 0) -
+        (features?.coins["BTC"]?.priceNormalized.history.at(-2)?.p ?? 0))
+
+    const theSymbol = Math.abs((features?.coins[symbol.toUpperCase()]?.priceNormalized.history.at(-1)?.p ?? 0) -
+        (features?.coins[symbol.toUpperCase()]?.priceNormalized.history.at(-2)?.p ?? 0))
+
+    return ofBtc > threshold || theSymbol > threshold
+}
