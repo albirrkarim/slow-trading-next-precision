@@ -60,7 +60,12 @@ export function vwapBounds(currentTime: number,
         return "reject entry - no VWAP σ data";
     }
 
-    const dSigma = Math.abs(signal.p - vwap) / stdev;
+    // The feature update stamps `dSigma` for the coin's latest vPoint —
+    // the signal an entry decision evaluates is always that point.
+    const dSigma = coin?.vwap?.dSigma;
+    if (typeof dSigma !== "number" || !Number.isFinite(dSigma)) {
+        return "reject entry - no signal σ distance";
+    }
 
     if (dSigma < bounds.minSigma) {
         return (

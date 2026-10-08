@@ -86,31 +86,6 @@ function coinVwap(coin: CoinFeatures | undefined): CoinVwap | undefined {
   return raw;
 }
 
-/**
- * σ-distance of a signal price from the monthly VWAP — the same
- * `|signal − vwap| / σ` reading `feature_gate_v2` enforces inside
- * `[minSigma, maxSigma]`. Returns undefined unless every input is a
- * finite number and σ > 0.
- */
-export function vwapSigmaDistance(
-  signalPrice?: number,
-  vwap?: number,
-  stdev?: number,
-): number | undefined {
-  if (
-    typeof signalPrice !== "number" ||
-    !Number.isFinite(signalPrice) ||
-    typeof vwap !== "number" ||
-    !Number.isFinite(vwap) ||
-    typeof stdev !== "number" ||
-    !Number.isFinite(stdev) ||
-    stdev <= 0
-  ) {
-    return undefined;
-  }
-  return Math.abs(signalPrice - vwap) / stdev;
-}
-
 function historyBounds(
   coin: CoinFeatures | undefined,
 ): FeaturePreviewRow["bounds"] {
@@ -221,18 +196,14 @@ export default function TradeFeaturePreview({
       {rows.map((row) => {
         const bounds = row.bounds;
         const current = priceNormCurrent(row.coin);
+        // Stamped by the feature update — absent on snapshots recorded
+        // before the field existed.
+        const trend = row.coin?.priceNormalized?.trend;
         const vwap = coinVwap(row.coin);
         const vPoint = row.own ? (signal ?? row.coin?.latestVpoint) : row.coin?.latestVpoint;
         // The trade's own row only: σ-distance of the entry-time signal
         // point from the monthly VWAP — same dσ the vwap gate enforces.
-        const dSigma =
-          row.own === true
-            ? vwapSigmaDistance(
-              vPoint?.p,
-              vwap?.price,
-              vwap?.stdev,
-            )
-            : undefined;
+        const dSigma = row.own === true ? vwap?.dSigma : undefined;
         const vPointT = vPoint?.t;
         const vPointAgeMs =
           row.own === true &&
@@ -289,6 +260,28 @@ export default function TradeFeaturePreview({
                   [{bounds.min.toFixed(2)}…{bounds.max.toFixed(2)}] ×
                   {bounds.samples}
                 </Typography>
+              )}
+              {trend !== undefined && (
+                <>
+                  {" · "}
+                  <Hint title="priceNormalized trail trend clarity, −1…+1 — Pearson correlation over time scaled by how much of the observed span the move traverses: near ±1 clearly trending, near 0 sideways">
+                    <Typography
+                      color={
+                        trend >= 0.5
+                          ? "success.main"
+                          : trend <= -0.5
+                            ? "error.main"
+                            : "text.secondary"
+                      }
+                      component="span"
+                      fontWeight={600}
+                      variant="caption"
+                    >
+                      trend {trend > 0 ? "+" : ""}
+                      {trend.toFixed(2)}
+                    </Typography>
+                  </Hint>
+                </>
               )}
             </Box>
             {vwap?.price !== undefined && (

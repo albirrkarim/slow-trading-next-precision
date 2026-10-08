@@ -5,6 +5,7 @@ import {
   isSameNormalizedValue,
   replayPriceNormalizedHistory,
 } from "./price-normalized";
+import { priceNormTrend } from "./price-norm-trend";
 import prune from "./prune";
 import vwap from "./vwap";
 import vwapFeed from "./vwap-feed";
@@ -43,6 +44,7 @@ function update(context: RuntimeContext): void {
     const vwapFields = vwap.derive(
       context.state.features?.vwap?.[symbol],
       context.state.markPriceMap?.[symbol]?.price,
+      points?.at(-1)?.p,
     );
     // Step-series trail: append only when the value changed; reuse the
     // previous array when nothing moved so changedCoins stays sparse.
@@ -74,12 +76,15 @@ function update(context: RuntimeContext): void {
     }
     // Reuse the previous group object when neither member moved —
     // changedCoins diffs nested objects by identity, so a fresh wrapper
-    // would list every coin on every pass.
+    // would list every coin on every pass. A missing `trend` (legacy
+    // snapshot) forces a rebuild so the field gets stamped.
+    const trend = priceNormTrend(history);
     const priceNormalizedGroup =
       isSameNormalizedValue(previousGroup?.current, priceNormalized) &&
-      previousGroup?.history === history
+      previousGroup?.history === history &&
+      previousGroup.trend === trend
         ? previousGroup
-        : { current: priceNormalized, history };
+        : { current: priceNormalized, history, trend };
     coins[symbol] = {
       latestVpoint: points?.at(-1),
       priceNormalized: priceNormalizedGroup,

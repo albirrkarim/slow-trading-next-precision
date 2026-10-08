@@ -76,6 +76,13 @@ export interface CoinPriceNormalized {
    * when older than the window so "unchanged since t" stays readable.
    */
   history: FeatureHistoryPoint[];
+
+  /**
+   * Trend clarity of `history` in [-1, +1] — `priceNormTrend` (r × span
+   * coverage): near ±1 is a clean traverse, ~0 is sideways. Optional for
+   * legacy snapshots recorded before the field existed.
+   */
+  trend?: number;
 }
 
 /**
@@ -111,8 +118,17 @@ export interface CoinVwap {
    */
   stretchPct?: number;
 
+
   /** UTC month-start (ms) the VWAP run belongs to. */
   anchorT?: number;
+
+  /**
+   * σ-distance of the coin's `latestVpoint` from `price`:
+   * `|latestVpoint.p − price| / stdev`, quantized to 0.01 steps. Absent
+   * without σ data or a valid point — gates and previews read it directly
+   * instead of recomputing.
+   */
+  dSigma?: number;
 }
 
 /**

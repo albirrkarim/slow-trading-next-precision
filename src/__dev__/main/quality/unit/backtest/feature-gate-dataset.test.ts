@@ -114,7 +114,7 @@ describe("feature-gate dataset collector", () => {
         AAA: {
           latestVpoint: signal,
           priceNormalized: { current: 0.5, history: [{ t: now, p: 0.5 }] },
-          vwap: { price: 100, stdev: 10, stretchPct: 20 },
+          vwap: { dSigma: 1.4, price: 100, stdev: 10, stretchPct: 20 },
         },
         BTC: {
           priceNormalized: { current: 0.5, history: [{ t: now, p: 0.05 }] },

@@ -57,6 +57,7 @@ function foldKline(acc: VwapAccumulator, kline: Kline): void {
 function derive(
   acc: VwapAccumulator | undefined,
   markPrice?: number,
+  signalPrice?: number,
 ): CoinVwap | undefined {
   if (!acc) return undefined;
   if (acc.v <= 0 || acc.n <= 0) return { anchorT: acc.aT };
@@ -78,6 +79,15 @@ function derive(
     fields.distancePct = Number(
       ((((markPrice as number) - price) / price) * 100).toFixed(1),
     );
+  }
+
+  if (
+    typeof signalPrice === "number" &&
+    Number.isFinite(signalPrice) &&
+    signalPrice > 0 &&
+    stdev > 0
+  ) {
+    fields.dSigma = Number((Math.abs(signalPrice - price) / stdev).toFixed(2));
   }
 
   return fields;

@@ -37,7 +37,7 @@ beforeEach(() => {
         feature: { shared: {}, coins: {
           [symbol]: {
             priceNormalized: { current: 0.5, history: [] },
-            vwap: { price: 100, stdev: 10 },
+            vwap: { dSigma: 1.4, price: 100, stdev: 10 },
             latestVpoint: { id: "newer", p: 200, t: 500 },
           },
           BTC: { priceNormalized: { current: 0.4, history: [] } },
@@ -71,8 +71,8 @@ describe("feature-gate dataset selection", () => {
     ]);
     expect(screen.getByText("priceNorm @ entry")).toBeTruthy();
     // The dataset starting signal is 114, despite snapshot.latestVpoint.p = 200.
-    expect(screen.getByText("· dσ 1.40", { exact: false })).toBeTruthy();
-    expect(screen.queryByText("· dσ 10.00", { exact: false })).toBeNull();
+    expect(screen.getByText("dσ 1.40", { exact: false })).toBeTruthy();
+    expect(screen.queryByText("dσ 10.00", { exact: false })).toBeNull();
     const panel = screen.getByRole("region", { name: "Feature gate evaluation" });
     expect(within(panel).getByText("Evaluation metrics")).toBeTruthy();
     expect(within(panel).getByText(/Select a gate and click Evaluate/)).toBeTruthy();

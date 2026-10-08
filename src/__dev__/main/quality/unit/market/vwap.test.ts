@@ -111,6 +111,19 @@ describe("vwap.derive", () => {
     expect(derived?.price).toBeCloseTo(10);
     expect(derived?.distancePct).toBeUndefined();
   });
+
+  it("stamps dSigma for the signal vPoint and omits it without one", () => {
+    const acc = vwap.accumulator.create(MONTH);
+    vwap.accumulator.foldKline(acc, kline(MONTH, 100, 90, 90, 10));
+    vwap.accumulator.foldKline(
+      acc,
+      kline(MONTH + CANDLE_MS, 120, 100, 110, 10),
+    );
+    // vwap ≈ 101.7, σ ≈ 8.333 → |110 − 101.7| / 8.333 ≈ 1.00σ.
+    const withSignal = vwap.derive(acc, undefined, 110);
+    expect(withSignal?.dSigma).toBeCloseTo(1.0, 1);
+    expect(vwap.derive(acc)?.dSigma).toBeUndefined();
+  });
 });
 
 describe("month boundary", () => {
