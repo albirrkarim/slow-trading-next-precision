@@ -177,7 +177,15 @@ export default function MonteCarloTab({
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, m: 1 }}>
-      <Paper variant="outlined" sx={{ p: 1.5 }}>
+      <Box sx={{ alignItems: "stretch", display: "flex", flexWrap: "wrap", gap: 1.5 }}>
+        <Alert severity="info" sx={{ flex: "0 1 380px", maxWidth: 380 }} variant="outlined">
+          Monte Carlo answers &ldquo;was this backtest lucky?&rdquo; — it
+          takes this run&rsquo;s closed trades and replays them thousands of
+          times in different random orders, then measures how deep the
+          drawdowns and how long the losing streaks could have been. Same
+          trades, different luck.
+        </Alert>
+        <Paper variant="outlined" sx={{ flex: "1 1 720px", p: 1.5 }}>
         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5 }}>
           <FormControl size="small" sx={{ minWidth: 140 }}>
             <InputLabel>Account</InputLabel>
@@ -277,7 +285,8 @@ export default function MonteCarloTab({
           this backtest&rsquo;s equity curve was lucky or typical. Hover any dashed
           label for an explanation.
         </Typography>
-      </Paper>
+        </Paper>
+      </Box>
 
       {trades.length < 5 && (
         <Alert severity="info">
