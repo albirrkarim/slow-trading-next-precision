@@ -1,7 +1,7 @@
 import defaultDecision from "@/lib/precision/defaultDecision";
-import type { RuntimeEntryDecision } from "@/lib/precision/types";
 import type { StrategyAPI } from "../types";
 import featureGate from "./features";
+import { RuntimeEntryDecision } from "@/lib/precision";
 
 const defaultWithFeaturesGate: StrategyAPI = {
   name: "default_with_features_gate",

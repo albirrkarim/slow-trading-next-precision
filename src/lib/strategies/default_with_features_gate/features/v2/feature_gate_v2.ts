@@ -61,15 +61,15 @@ function rejectionReason(
     }
 
 
-    // Extreme condition
-    if (closeToExtreme(features, symbol, currentLevel, -5)) {
-        return `Too close to extreme`
-    }
+    // // Extreme condition
+    // if (closeToExtreme(features, symbol, currentLevel, -5)) {
+    //     return `Too close to extreme`
+    // }
 
 
-    if (isCurrentExtreme(features, symbol)) {
-        return `Too much extreme`
-    }
+    // if (isCurrentExtreme(features, symbol)) {
+    //     return `Too much extreme`
+    // }
 
 
     // BOTH:FEATURE_GATE_REGIMES — shared by backtest, sandbox and live.
