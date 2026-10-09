@@ -197,9 +197,11 @@ export default function TradeFeaturePreview({
       {rows.map((row) => {
         const bounds = row.bounds;
         const current = priceNormCurrent(row.coin);
-        
+
         //row.coin?.priceNormalized?.exhaustion ??
         const exhaustion =  priceNormExhaustion.score(priceNormHistory(row.coin));
+        const history = priceNormHistory(row.coin);
+        const suddenChange = (history.at(-1)?.p ?? 0) - (history.at(-2)?.p ?? 0);
         // Stamped by the feature update — absent on snapshots recorded
         // before the field existed.
         const trend = row.coin?.priceNormalized?.trend;
@@ -337,7 +339,8 @@ export default function TradeFeaturePreview({
                         `Entry signal's distance from the monthly VWAP in σ — ` +
                         `green inside the gate's ` +
                         `[${FEATURE_GATE_VWAP_BOUNDS.minSigma}, ` +
-                        `${FEATURE_GATE_VWAP_BOUNDS.maxSigma}]σ zone`
+                        `${FEATURE_GATE_VWAP_BOUNDS.maxSigma}]σ zone; ` +
+                        `orange below it and red above it`
                       }
                     >
                       <Typography
@@ -345,10 +348,12 @@ export default function TradeFeaturePreview({
                           dSigma >= FEATURE_GATE_VWAP_BOUNDS.minSigma &&
                             dSigma <= FEATURE_GATE_VWAP_BOUNDS.maxSigma
                             ? "success.main"
-                            : "text.secondary"
+                            : dSigma > FEATURE_GATE_VWAP_BOUNDS.maxSigma
+                              ? "error.main"
+                              : "warning.main"
                         }
                         component="span"
-                        variant="caption"
+                        variant="body1"
                       >
                         dσ {dSigma.toFixed(2)}
                       </Typography>
@@ -377,17 +382,22 @@ export default function TradeFeaturePreview({
               </Typography>
             )}
 
-            <Typography gutterBottom variant="body1">
+            <Typography
+              color={exhaustion !== undefined && exhaustion > 0.5 ? "warning.main" : undefined}
+              gutterBottom
+              variant="body1"
+            >
               <Hint title="Research score, 0–1: a stalled priceNorm extreme, an early turn, or a range breaking away from repeatedly tested highs or lows. Up and down are scored the same. A dash means the trail is too short; this is not an entry rule.">
                 Exhaustion {exhaustion === undefined ? "—" : exhaustion.toFixed(2)}
               </Hint>
             </Typography>
-            <Typography variant="body1" gutterBottom>
+            <Typography
+              color={Math.abs(suddenChange) > 0.2 ? "warning.main" : undefined}
+              gutterBottom
+              variant="body1"
+            >
               Sudden Changes:{" "}
-              {(
-                (row.coin?.priceNormalized.history.at(-1)?.p ?? 0) -
-                (row.coin?.priceNormalized.history.at(-2)?.p ?? 0)
-              ).toFixed(2)}
+              {suddenChange.toFixed(2)}
             </Typography>
 
 
