@@ -4,14 +4,18 @@ import { Box, Button, MenuItem, TextField } from "@mui/material";
 
 import MetricCondition from "@/components/ui/MetricCondition";
 import datasetFilters from "@/lib/dev/feature-gate/filters";
+import type { FeatureGateInfo } from "@/lib/dev/feature-gate";
 
 import filterStorage from "./filter-storage";
 import type { DatasetFilterValues } from "./filter-storage";
 
-export default function DatasetFilters({ filters, onChange, symbols }: {
+export default function DatasetFilters({ filters, onChange, symbols, gates, slug, onSlugChange }: {
   filters: DatasetFilterValues;
   onChange: (filters: DatasetFilterValues) => void;
   symbols: string[];
+  gates: FeatureGateInfo[];
+  slug: string;
+  onSlugChange: (slug: string) => void;
 }) {
   const hasFilters = filters.symbol || filters.from || filters.to || filters.value ||
     filters.metric !== filterStorage.defaults.metric || filters.operator !== filterStorage.defaults.operator;
@@ -35,6 +39,10 @@ export default function DatasetFilters({ filters, onChange, symbols }: {
         onValueChange={(value) => onChange({ ...filters, value })}
         operator={filters.operator} value={filters.value} />
       {hasFilters && <Button size="small" onClick={() => onChange(filterStorage.defaults)}>Clear</Button>}
+      <TextField label="Feature gate" select size="small" sx={{ minWidth: 230 }} value={slug}
+        onChange={(event) => onSlugChange(event.target.value)}>
+        {gates.map((gate) => <MenuItem key={gate.slug} value={gate.slug}>{gate.label}</MenuItem>)}
+      </TextField>
     </Box>
   );
 }

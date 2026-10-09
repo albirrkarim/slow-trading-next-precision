@@ -9,6 +9,7 @@ import type {
     FeatureGateDatasetOption,
     FeatureGateDatasetRow,
 } from "@/lib/dev/feature-gate";
+import type { FeatureGateResult } from "@/lib/strategies/feature-gates";
 import format from "@/lib/system/utils/format";
 
 import DatasetChartDialog from "./DatasetChartDialog";
@@ -23,12 +24,16 @@ export default function DatasetRow({
     hash,
     option,
     approvalMessage,
+    entry,
+    evaluated,
 }: {
     row: FeatureGateDatasetRow;
     hash: string;
     option?: FeatureGateDatasetOption;
     /** Explanation from the gate invocation that accepted this row during evaluation. */
     approvalMessage?: string;
+    entry?: FeatureGateResult;
+    evaluated?: boolean;
 }) {
     const signal = row.sequences[0];
 
@@ -63,10 +68,18 @@ export default function DatasetRow({
             </TableCell>
             <TableCell sx={{ verticalAlign: "top" }}>
                 <Typography
+                    aria-label={sequenceLabel(row)}
                     title={row.sequences.map((point) => point.id).join(" → ")}
                     variant="body1"
                 >
-                    {sequenceLabel(row)}
+                    {row.sequences.map((point, index) => (
+                        <Box component="span" key={`${point.id}:${index}`}>
+                            {index > 0 && <Box component="span" sx={{ color: "text.secondary" }}>→</Box>}
+                            <Box component="span" sx={{ color: point.l === "T" ? "success.main" : "error.main", fontWeight: 700 }}>
+                                {point.l}{point.lvl}
+                            </Box>
+                        </Box>
+                    ))}
                 </Typography>
             </TableCell>
             <TableCell align="right" sx={{ verticalAlign: "top" }}>
@@ -78,6 +91,15 @@ export default function DatasetRow({
                 >
                     {row.resolved ? row.missScore : "…"}
                 </Typography>
+            </TableCell>
+            <TableCell sx={{ verticalAlign: "top" }}>
+                <Typography color={entry?.allow ? "success.main" : entry ? "error.main" : "text.secondary"}
+                    fontWeight={700} variant="body2">
+                    {entry ? entry.allow ? "Pass" : "Block" : evaluated ? "Skipped" : "…"}
+                </Typography>
+                {entry && <Typography color="text.secondary" sx={{ overflowWrap: "anywhere" }} variant="caption">
+                    {entry.message}
+                </Typography>}
             </TableCell>
             <TableCell sx={{ verticalAlign: "top" }}>
                 <Box sx={{ alignItems: "center", display: "flex", gap: 0.5 }}>

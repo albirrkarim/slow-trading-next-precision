@@ -1,4 +1,4 @@
-import type { FeatureGate } from "@/lib/strategies/feature-gates";
+import type { FeatureGate, FeatureGateResult } from "@/lib/strategies/feature-gates";
 
 import type {
   FeatureGateDatasetRow,
@@ -21,6 +21,7 @@ function scoreRows(
   gate: FeatureGate,
   rows: FeatureGateDatasetRow[],
   onAcceptedResolved?: (row: FeatureGateDatasetRow, message: string) => void,
+  onDecision?: (row: FeatureGateDatasetRow, result: FeatureGateResult) => void,
 ): FeatureGateMetrics {
   const bySymbol: Record<string, FeatureGateSymbolCounts> = {};
   const distribution: FeatureGateScoreDistribution = {};
@@ -49,6 +50,7 @@ function scoreRows(
       continue;
     }
     const result = gate(row.t, row.feature, { ...signal, symbol: row.symbol });
+    onDecision?.(row, result);
     const isAccepted = result.allow;
 
     total += 1;

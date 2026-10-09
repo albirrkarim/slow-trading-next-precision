@@ -1,9 +1,7 @@
 "use client";
 
 import {
-    Alert,
     Box,
-    CircularProgress,
     Table,
     TableBody,
     TableCell,
@@ -14,236 +12,127 @@ import {
     TableSortLabel,
     Typography,
 } from "@mui/material";
-import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
 
-import { endpoints } from "@/components/endpoints";
-import type {
-    FeatureGateAcceptedHighScoreRow,
-    FeatureGateDatasetOption,
-    FeatureGateRowPage,
-} from "@/lib/dev/feature-gate";
+import datasetFilters from "@/lib/dev/feature-gate/filters";
+import type { FeatureGateDatasetOption, FeatureGateDatasetRow, FeatureGateInfo, FeatureGateRowQuery } from "@/lib/dev/feature-gate";
+import type { FeatureGateResult } from "@/lib/strategies/feature-gates";
 
 import DatasetFilters from "./DatasetFilters";
 import DatasetRow from "./DatasetRow";
 import filterStorage from "./filter-storage";
 
 const PAGE_SIZES = [25, 50, 100];
+type SortKey = "entry" | "missScore" | "sequence" | "time";
 
-/**
- * Server-paginated dataset table — every fetch addresses the run's
- * `dataset/*.json` through the dataset-rows endpoint; filters and pages
- * resolve server-side so the run size stays off the client.
- */
-type SortKey = "missScore" | "sequence" | "time";
+/** Stable row identity across sorting and filtering of one captured run. */
+export function rowKey(row: FeatureGateDatasetRow): string {
+    return JSON.stringify([row.symbol, row.t, row.sequences[0]?.id]);
+}
 
+/** Filters, sorts and paginates the already loaded run without another dataset request. */
 export default function DatasetTable({
     cacheKey,
+    rows,
     option,
-    references,
+    gates,
+    slug,
+    onSlugChange,
+    decisions,
 }: {
-    cacheKey?: string;
+    cacheKey: string;
+    rows: FeatureGateDatasetRow[];
     option?: FeatureGateDatasetOption;
-    references?: FeatureGateAcceptedHighScoreRow[];
+    gates: FeatureGateInfo[];
+    slug: string;
+    onSlugChange: (slug: string) => void;
+    decisions?: Map<string, FeatureGateResult>;
 }) {
     const [page, setPage] = useState(0);
     const [pageSize, setPageSize] = useState(50);
     const [sort, setSort] = useState<SortKey>("time");
     const [order, setOrder] = useState<"asc" | "desc">("asc");
-    const [filters, setFilters] = useState(() => references === undefined ? filterStorage.read() : filterStorage.defaults);
-    // Match the original evaluation message by symbol, capture tick and starting point.
-    const approvalMessages = useMemo(() => new Map((references ?? []).map((reference) => [
-        JSON.stringify([reference.symbol, reference.t, reference.signalId]),
-        reference.message,
-    ])), [references]);
+    const [filters, setFilters] = useState(() => filterStorage.read());
 
-    useEffect(() => {
-        if (references === undefined) filterStorage.write(filters);
-    }, [filters, references]);
+    useEffect(() => { filterStorage.write(filters); }, [filters]);
 
-    // The resolved page keyed by its query — a query change exposes empty
-    // state for the new key until the fetch lands, so stale rows never
-    // render under fresh filters and the effect needs no synchronous reset.
-    const queryKey = JSON.stringify([
-        cacheKey,
-        page,
-        pageSize,
-        filters,
-        sort,
-        order,
-        references,
-    ]);
-    const [entry, setEntry] = useState<
-        { error?: string; key: string; value?: FeatureGateRowPage } | undefined
-    >();
-    const current = entry?.key === queryKey ? entry : undefined;
-    const loading = cacheKey !== undefined && current === undefined;
-
-    useEffect(() => {
-        if (!cacheKey) return undefined;
-        const controller = new AbortController();
-        const config = {
-            params: {
-                hash: cacheKey,
-                minMissScore: references === undefined ? undefined : 3,
-                ...(filters.value.trim() !== "" && Number.isFinite(Number(filters.value)) ? {
-                    metric: filters.metric,
-                    operator: filters.operator,
-                    value: Number(filters.value),
-                } : {}),
-                fromT: filters.from ? new Date(`${filters.from}T00:00:00`).getTime() : undefined,
-                toT: filters.to ? new Date(`${filters.to}T23:59:59.999`).getTime() : undefined,
-                page: page + 1,
-                pageSize,
-                order: order === "desc" ? "desc" : undefined,
-                sort: sort === "time" ? undefined : sort,
-                symbol: filters.symbol || undefined,
-            },
-            signal: controller.signal,
+    const symbols = useMemo(() => [...new Set(rows.map((row) => row.symbol))].sort(), [rows]);
+    const filtered = useMemo(() => {
+        const query: FeatureGateRowQuery = {
+            hash: cacheKey,
+            symbol: filters.symbol || undefined,
+            fromT: filters.from ? new Date(`${filters.from}T00:00:00`).getTime() : undefined,
+            toT: filters.to ? new Date(`${filters.to}T23:59:59.999`).getTime() : undefined,
+            ...(filters.value.trim() !== "" && Number.isFinite(Number(filters.value)) ? {
+                metric: filters.metric,
+                operator: filters.operator,
+                value: Number(filters.value),
+            } : {}),
         };
-        const request = references === undefined
-            ? axios.get<FeatureGateRowPage>(endpoints.dev.featureGateDatasetRows, config)
-            : axios.post<FeatureGateRowPage>(endpoints.dev.featureGateDatasetRows, {
-                references: references.map(({ symbol, t, signalId }) => ({ symbol, t, signalId })),
-            }, config);
-        request
-            .then((resp) =>
-                setEntry({ key: queryKey, value: resp.data }),
-            )
-            .catch((requestError) => {
-                if (axios.isCancel(requestError)) return;
-                setEntry({
-                    error: axios.isAxiosError(requestError)
-                        ? ((
-                                requestError.response?.data as
-                                    | { error?: string }
-                                    | undefined
-                            )?.error ?? requestError.message)
-                        : "Failed to load dataset rows",
-                    key: queryKey,
-                });
-            });
-        return () => controller.abort();
-    }, [cacheKey, filters, order, page, pageSize, queryKey, sort, references]);
+        const direction = order === "desc" ? -1 : 1;
+        const sortValue = (row: FeatureGateDatasetRow): number => {
+            if (sort === "sequence") return row.sequences.length;
+            if (sort === "missScore") return row.missScore ?? (direction === 1 ? Infinity : -Infinity);
+            if (sort === "entry") {
+                const decision = decisions?.get(rowKey(row));
+                return decision ? (decision.allow ? 1 : 0) : (direction === 1 ? Infinity : -Infinity);
+            }
+            return row.t ?? row.sequences[0]?.t ?? 0;
+        };
+        return rows.filter((row) => datasetFilters.matches(row, query))
+            .sort((a, b) => (sortValue(a) - sortValue(b)) * direction);
+    }, [cacheKey, rows, filters, sort, order, decisions]);
+    const visible = filtered.slice(page * pageSize, (page + 1) * pageSize);
 
     const toggleSort = (key: SortKey) => {
         setPage(0);
-        if (sort === key) {
-            setOrder(order === "asc" ? "desc" : "asc");
-            return;
-        }
-        setSort(key);
-        setOrder("asc");
+        if (sort === key) setOrder(order === "asc" ? "desc" : "asc");
+        else { setSort(key); setOrder("asc"); }
     };
-
     const sortableHeader = (key: SortKey, label: string) => (
-        <TableSortLabel
-            active={sort === key}
-            direction={sort === key ? order : "asc"}
-            onClick={() => toggleSort(key)}
-        >
-            {label}
-        </TableSortLabel>
+        <TableSortLabel active={sort === key} direction={sort === key ? order : "asc"}
+            onClick={() => toggleSort(key)}>{label}</TableSortLabel>
     );
-
-    const result = current?.value;
-    const error = current?.error;
-
-    if (!cacheKey) {
-        return (
-            <Typography color="text.secondary" variant="caption">
-                Run a backtest to view its dataset.
-            </Typography>
-        );
-    }
 
     return (
         <Box>
-            <DatasetFilters
-                filters={filters}
-                onChange={(next) => { setFilters(next); setPage(0); }}
-                symbols={entry?.value?.symbols ?? []}
-            />
-            <Box sx={{ alignItems: "center", display: "flex", gap: 1 }}>
-                {loading && <CircularProgress size={16} />}
-                {result && (
-                    <Typography color="text.secondary" variant="caption">
-                        {typeof result.datasetTotal === "number" &&
-                        result.datasetTotal !== result.total
-                            ? `${result.total.toLocaleString()} of ${result.datasetTotal.toLocaleString()} rows`
-                            : `${result.total.toLocaleString()} rows`}
-                    </Typography>
-                )}
-            </Box>
-
-            {error && <Alert severity="warning">{error}</Alert>}
-
-            {result && (
-                <>
-                    <TableContainer>
-                        <Table size="small" aria-label={references === undefined ? "Dataset rows" : "Accepted high-score dataset rows"}>
-                            <TableHead>
-                                <TableRow>
-                                    <TableCell>
-                                        {sortableHeader("time", "Time")}
-                                    </TableCell>
-                                    <TableCell>Feature</TableCell>
-                                    <TableCell>
-                                        {sortableHeader(
-                                            "sequence",
-                                            "Level sequence",
-                                        )}
-                                    </TableCell>
-                                    <TableCell align="right">
-                                        {sortableHeader(
-                                            "missScore",
-                                            "Miss score",
-                                        )}
-                                    </TableCell>
-                                    <TableCell>Debug</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {result.rows.map((row) => (
-                                    <DatasetRow
-                                        approvalMessage={approvalMessages.get(JSON.stringify([row.symbol, row.t, row.sequences[0]?.id]))}
-                                        hash={cacheKey}
-                                        key={`${row.symbol}:${row.sequences[0]?.id}`}
-                                        option={option}
-                                        row={row}
-                                    />
-                                ))}
-                                {result.rows.length === 0 && (
-                                    <TableRow>
-                                        <TableCell colSpan={5}>
-                                            <Typography
-                                                color="text.secondary"
-                                                sx={{ py: 2 }}
-                                                variant="body2"
-                                            >
-                                                No dataset rows match the
-                                                filters.
-                                            </Typography>
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
-                    <TablePagination
-                        component="div"
-                        count={result.total}
-                        onPageChange={(_, nextPage) => setPage(nextPage)}
-                        onRowsPerPageChange={(event) => {
-                            setPageSize(parseInt(event.target.value, 10));
-                            setPage(0);
-                        }}
-                        page={page}
-                        rowsPerPage={pageSize}
-                        rowsPerPageOptions={PAGE_SIZES}
-                    />
-                </>
-            )}
+            <DatasetFilters filters={filters} gates={gates} onChange={(next) => { setFilters(next); setPage(0); }}
+                onSlugChange={onSlugChange} slug={slug} symbols={symbols} />
+            <Typography color="text.secondary" variant="caption">
+                {filtered.length !== rows.length
+                    ? `${filtered.length.toLocaleString()} of ${rows.length.toLocaleString()} rows`
+                    : `${rows.length.toLocaleString()} rows`}
+            </Typography>
+            <TableContainer>
+                <Table aria-label="Dataset rows" size="small">
+                    <TableHead>
+                        <TableRow>
+                            <TableCell>{sortableHeader("time", "Time")}</TableCell>
+                            <TableCell>Feature</TableCell>
+                            <TableCell>{sortableHeader("sequence", "Level sequence")}</TableCell>
+                            <TableCell align="right">{sortableHeader("missScore", "Miss score")}</TableCell>
+                            <TableCell>{sortableHeader("entry", "Entry")}</TableCell>
+                            <TableCell>Debug</TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        {visible.map((row) => {
+                            const entry = decisions?.get(rowKey(row));
+                            return <DatasetRow approvalMessage={entry?.allow && (row.missScore ?? -1) >= 3 ? entry.message : undefined}
+                                entry={entry} evaluated={decisions !== undefined} hash={cacheKey}
+                                key={rowKey(row)} option={option} row={row} />;
+                        })}
+                        {visible.length === 0 && <TableRow><TableCell colSpan={6}>
+                            <Typography color="text.secondary" sx={{ py: 2 }} variant="body2">
+                                No dataset rows match the filters.
+                            </Typography>
+                        </TableCell></TableRow>}
+                    </TableBody>
+                </Table>
+            </TableContainer>
+            <TablePagination component="div" count={filtered.length} page={page} rowsPerPage={pageSize}
+                rowsPerPageOptions={PAGE_SIZES} onPageChange={(_, next) => setPage(next)}
+                onRowsPerPageChange={(event) => { setPageSize(Number(event.target.value)); setPage(0); }} />
         </Box>
     );
 }
