@@ -119,7 +119,7 @@ export function vwapFilter(
     }
 
 
-    const vwapResult = vwapBounds(currentTime, features, signal);
+    const vwapResult = vwapBounds(currentTime, features, signal, bounds);
     if (vwapResult) {
         return vwapResult;
     }

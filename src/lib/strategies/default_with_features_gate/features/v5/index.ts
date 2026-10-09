@@ -20,7 +20,14 @@ export const subGates = {
 } as const;
 
 /** Preserve the six original checks for omitted selections and live-safe defaults. */
-export const defaultSubGates = ["vwap", "exhaustion", "trend", "suddenChange", "currentExtreme", "regimes"] as const;
+export const defaultSubGates = [
+    "vwap",
+    "exhaustion",
+    //  "trend", 
+    //  "suddenChange",
+    "currentExtreme",
+    //   "regimes"
+] as const;
 
 /**
  * Bounds this strategy enforces on the monthly-anchored VWAP feature —
@@ -77,8 +84,8 @@ function rejectionReason(
     if (enabled.has("vwap")) {
         const vwapResult = vwapFilter(currentTime, features, signal, {
             minStretchPct: 6,
-            minSigma: 0.5,
-            maxSigma: 2,
+            minSigma: 1.2,
+            maxSigma: 1.7,
             // 5y backtest (726 trades): 7/16 losers vs 59/710 winners entered on
             // a vPoint >12h old; tightening from 24h nets ≈ +426 USDT, positive in
             // both halves of the run.
@@ -90,7 +97,7 @@ function rejectionReason(
             // an entry opened now loses the envelope it was judged on within ~48h.
             blockBeforeMonthEndMs: 2 * 24 * 60 * 60 * 1000,
         });
-        if (vwapResult && currentLevel < 3) { return vwapResult };
+        if (vwapResult && currentLevel < 5) { return vwapResult };
     }
 
 

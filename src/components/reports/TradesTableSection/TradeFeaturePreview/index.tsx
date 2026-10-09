@@ -20,8 +20,9 @@ import type { VolatilityPoint } from "@/lib/system/types/market";
 import movementCorrelation from "@/lib/features/price-norm-movement";
 
 export interface FeaturePreviewRow {
-  /** Min/max/span over the coin's `priceNormalized.history` plus its current value. */
+  /** Min/max over the trail plus current; average over recorded trail samples only. */
   bounds?: {
+    avg?: number;
     firstT?: number;
     lastT?: number;
     max: number;
@@ -89,6 +90,7 @@ function coinVwap(coin: CoinFeatures | undefined): CoinVwap | undefined {
   return raw;
 }
 
+/** Summarizes finite recorded priceNorm points; the current reading only extends min/max. */
 function historyBounds(
   coin: CoinFeatures | undefined,
 ): FeaturePreviewRow["bounds"] {
@@ -104,6 +106,9 @@ function historyBounds(
   if (values.length === 0) return undefined;
   const times = history.map((point) => point.t);
   return {
+    avg: history.length > 0
+      ? history.reduce((sum, point) => sum + point.p, 0) / history.length
+      : undefined,
     firstT: times.length > 0 ? Math.min(...times) : undefined,
     lastT: times.length > 0 ? Math.max(...times) : undefined,
     max: Math.max(...values),
@@ -295,6 +300,14 @@ export default function TradeFeaturePreview({
                 >
                   [{bounds.min.toFixed(2)}…{bounds.max.toFixed(2)}] ×
                   {bounds.samples}
+                  {bounds.avg !== undefined && (
+                    <>
+                      {" · "}
+                      <Hint title="Arithmetic mean of the recorded priceNormalized history values; the current entry reading is not added again">
+                        avg {bounds.avg.toFixed(3)}
+                      </Hint>
+                    </>
+                  )}
                 </Typography>
               )}
               {trend !== undefined && (
