@@ -54,9 +54,9 @@ export default function MetricsCard({ metrics, title }: { metrics: FeatureGateMe
             <ScoreDistribution distribution={distribution} />
             {metrics.topRejections.length > 0 && (
                 <Box sx={{ mt: 1.5 }}>
-                    <Typography fontWeight={700} variant="body2">Top rejections</Typography>
+                    <Typography fontWeight={700} variant="body1">Top rejections</Typography>
                     {metrics.topRejections.map((rejection) => (
-                        <Typography key={rejection.reason} component="div" color="text.secondary" variant="caption" display="block" sx={{ overflowWrap: "anywhere" }}>
+                        <Typography key={rejection.reason} component="div" color="text.secondary" variant="body1" display="block" sx={{ overflowWrap: "anywhere" }}>
                             <MetricValue detail={`Grouped reason (measured values normalized to #). One real example: "${rejection.sample}"`}>{rejection.count}×</MetricValue>{" "}
                             {rejection.reason}
                         </Typography>

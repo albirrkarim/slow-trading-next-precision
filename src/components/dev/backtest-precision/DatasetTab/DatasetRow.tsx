@@ -94,10 +94,10 @@ export default function DatasetRow({
             </TableCell>
             <TableCell sx={{ verticalAlign: "top" }}>
                 <Typography color={entry?.allow ? "success.main" : entry ? "error.main" : "text.secondary"}
-                    fontWeight={700} variant="body2">
+                    fontWeight={700} variant="body1">
                     {entry ? entry.allow ? "Pass" : "Block" : evaluated ? "Skipped" : "…"}
                 </Typography>
-                {entry && <Typography color="text.secondary" sx={{ overflowWrap: "anywhere" }} variant="caption">
+                {entry && <Typography color="text.secondary" sx={{ overflowWrap: "anywhere" }} variant="body1">
                     {entry.message}
                 </Typography>}
             </TableCell>
