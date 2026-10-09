@@ -87,9 +87,12 @@ function rejectionReason(
         return "Too much extreme";
     }
 
-
     // BOTH:FEATURE_GATE_REGIMES — shared by backtest, sandbox and live.
-    return enabled.has("regimes") ? featureGateRegimes(currentTime, features, signal) : undefined;
+    if (enabled.has("regimes")) {
+        return featureGateRegimes(currentTime, features, signal)
+    }
+
+    return undefined
 }
 
 
