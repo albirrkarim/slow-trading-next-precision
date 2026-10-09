@@ -106,11 +106,9 @@ function rejectionReason(
     }
 
     if (enabled.has("exhaustion")) {
-        const pCurrent = features?.coins[symbol]?.priceNormalized?.current ?? 0;
-
-        const history = features?.coins[symbol]?.priceNormalized?.history ?? [];
-
-        const ex = priceNormExhaustion.score(history)
+        const normalized = features?.coins[symbol]?.priceNormalized;
+        const pCurrent = normalized?.current ?? 0;
+        const ex = normalized?.exhaustion ?? priceNormExhaustion.score(normalized?.history);
 
         if (ex && ex > 0.7 && Math.abs(pCurrent) > 0.8) {
             return "Exhausted"

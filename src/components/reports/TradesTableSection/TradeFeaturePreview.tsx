@@ -197,7 +197,9 @@ export default function TradeFeaturePreview({
       {rows.map((row) => {
         const bounds = row.bounds;
         const current = priceNormCurrent(row.coin);
-        const exhaustion = row.own ? priceNormExhaustion.score(priceNormHistory(row.coin)) : undefined;
+        const exhaustion = row.own
+          ? row.coin?.priceNormalized?.exhaustion ?? priceNormExhaustion.score(priceNormHistory(row.coin))
+          : undefined;
         // Stamped by the feature update — absent on snapshots recorded
         // before the field existed.
         const trend = row.coin?.priceNormalized?.trend;

@@ -55,9 +55,10 @@ export interface VwapAccumulator {
 }
 
 /**
- * Grouped `priceNormalized` feature — the current envelope reading plus its
- * recorded change trail. `update` reuses the previous group object when both
- * members are unchanged so `changedCoins` identity-diffing stays sparse.
+ * Grouped `priceNormalized` feature — the current envelope reading, its
+ * recorded change trail, and scores derived from that trail. `update` reuses
+ * the previous group when these values are unchanged so `changedCoins`
+ * identity-diffing stays sparse.
  */
 export interface CoinPriceNormalized {
   /**
@@ -84,6 +85,13 @@ export interface CoinPriceNormalized {
    * existed.
    */
   trend?: number;
+
+  /**
+   * Direction-agnostic exhaustion of the recorded history in [0, 1] —
+   * repeated visits near an earlier extreme without much new progress.
+   * Undefined until the trail is long enough; optional in older snapshots.
+   */
+  exhaustion?: number;
 }
 
 /**

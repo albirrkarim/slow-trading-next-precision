@@ -5,6 +5,7 @@ import {
   isSameNormalizedValue,
   replayPriceNormalizedHistory,
 } from "./price-normalized";
+import priceNormExhaustion from "./price-norm-exhaustion";
 import { priceNormTrend } from "./price-norm-trend";
 import prune from "./prune";
 import vwap from "./vwap";
@@ -76,15 +77,21 @@ function update(context: RuntimeContext): void {
     }
     // Reuse the previous group object when neither member moved —
     // changedCoins diffs nested objects by identity, so a fresh wrapper
-    // would list every coin on every pass. A missing `trend` (legacy
-    // snapshot) forces a rebuild so the field gets stamped.
+    // would list every coin on every pass. Missing derived values in an old
+    // snapshot are calculated on the first refresh.
     const trend = priceNormTrend(history);
+    // BOTH:FEATURE_GATE_INPUTS — shared by backtest, sandbox, and live.
+    const exhaustion = previousGroup?.history === history &&
+      Object.hasOwn(previousGroup, "exhaustion")
+        ? previousGroup.exhaustion
+        : priceNormExhaustion.score(history);
     const priceNormalizedGroup =
       isSameNormalizedValue(previousGroup?.current, priceNormalized) &&
       previousGroup?.history === history &&
-      previousGroup.trend === trend
+      previousGroup.trend === trend &&
+      previousGroup.exhaustion === exhaustion
         ? previousGroup
-        : { current: priceNormalized, history, trend };
+        : { current: priceNormalized, exhaustion, history, trend };
     coins[symbol] = {
       latestVpoint: points?.at(-1),
       priceNormalized: priceNormalizedGroup,
