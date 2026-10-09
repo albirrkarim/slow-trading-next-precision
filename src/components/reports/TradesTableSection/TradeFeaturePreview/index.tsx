@@ -155,6 +155,14 @@ function trendColor(value: number): string {
   return Math.abs(value) > 0.5 ? "warning.main" : "success.main";
 }
 
+/** Colors VWAP distance by its magnitude, regardless of direction. */
+function vwapDistanceColor(value: number): string {
+  const distance = Math.abs(value);
+  if (distance < 5) return "success.main";
+  if (distance < 10) return "warning.main";
+  return "error.main";
+}
+
 /** Separates inverse, weak, and matching BTC movement without implying a trade decision. */
 function correlationColor(value: number | undefined): string {
   if (value === undefined) return "text.secondary";
@@ -338,8 +346,10 @@ export default function TradeFeaturePreview({
                 {vwap.distancePct !== undefined && (
                   <>
                     {" · "}
-                    <Hint title="Mark price's distance from the monthly VWAP — negative means trading below the month-to-date mean">
-                      {`${vwap.distancePct > 0 ? "+" : ""}${vwap.distancePct}%`}
+                    <Hint title="Mark price's distance from the monthly VWAP — negative means trading below the month-to-date mean; under 5% green, under 10% orange, otherwise red">
+                      <Typography color={vwapDistanceColor(vwap.distancePct)} component="span" variant="body1">
+                        {`${vwap.distancePct > 0 ? "+" : ""}${vwap.distancePct}%`}
+                      </Typography>
                     </Hint>
                   </>
                 )}

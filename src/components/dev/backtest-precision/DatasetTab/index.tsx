@@ -84,9 +84,11 @@ export default function DatasetTab({ cacheKey }: { cacheKey?: string }) {
             .then((response) => setDataset({ hash, rows: response.data.rows }))
             .catch((error) => {
                 if (axios.isCancel(error)) return;
-                setDataset({ hash, error: axios.isAxiosError(error)
-                    ? (error.response?.data as { error?: string } | undefined)?.error ?? error.message
-                    : "Failed to load dataset" });
+                setDataset({
+                    hash, error: axios.isAxiosError(error)
+                        ? (error.response?.data as { error?: string } | undefined)?.error ?? error.message
+                        : "Failed to load dataset"
+                });
             });
         return () => controller.abort();
     }, [hash]);
@@ -141,7 +143,7 @@ export default function DatasetTab({ cacheKey }: { cacheKey?: string }) {
 
     return (
         <Grid alignItems="flex-start" container spacing={2} sx={{ p: 1 }}>
-            <Grid size={{ xs: 12, lg: 8 }} sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
+            <Grid size={{ xs: 12, md: 9, lg: 8, }} sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
                 <Box sx={{ alignItems: "center", display: "flex", gap: 0.5 }}>
                     <FormControl fullWidth size="small">
                         <InputLabel id={`${labelId}-dataset`}>Dataset run</InputLabel>
@@ -164,8 +166,10 @@ export default function DatasetTab({ cacheKey }: { cacheKey?: string }) {
                     </IconButton>
                 </Box>
                 {hash && <Box sx={{ alignItems: "center", display: "flex", gap: 0.5, minWidth: 0 }}>
-                    <Typography color="text.secondary" component="span" sx={{ fontFamily: "monospace",
-                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                    <Typography color="text.secondary" component="span" sx={{
+                        fontFamily: "monospace",
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
+                    }}
                         title={hash} variant="caption">{hash}</Typography>
                     <IconButton aria-label="Copy dataset hash" color={copied ? "success" : "default"}
                         onClick={() => void copyHash()} size="small" title={copied ? "Copied" : "Copy dataset hash"}>
@@ -178,7 +182,7 @@ export default function DatasetTab({ cacheKey }: { cacheKey?: string }) {
                 {!hash && <Typography color="text.secondary" variant="body2">Run a backtest to view its dataset.</Typography>}
                 {hash && !rows && (dataset?.hash !== hash || !dataset.error) &&
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <CircularProgress size={16} /><Typography variant="body2">Loading dataset…</Typography>
+                        <CircularProgress size={16} /><Typography variant="body2">Loading dataset…</Typography>
                     </Box>}
                 {dataset?.hash === hash && dataset.error && <Alert severity="warning">{dataset.error}</Alert>}
                 {rows && <DatasetTable cacheKey={hash} decisions={currentEvaluation?.result ? decisions : undefined}
@@ -186,7 +190,7 @@ export default function DatasetTab({ cacheKey }: { cacheKey?: string }) {
                     onSubGatesChange={changeSubGates}
                     option={datasets.find((run) => run.hash === hash)} rows={rows} slug={slug} />}
             </Grid>
-            <Grid aria-label="Feature gate evaluation" component="section" size={{ xs: 12, lg: 4 }}
+            <Grid aria-label="Feature gate evaluation" component="section" size={{ xs: 12, md: 3, lg: 4 }}
                 sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
                 <HeaderMetrics defaultExpanded headerCanBeClicked
                     rememberExpand="backtest-precision:feature-gate-evaluation"
