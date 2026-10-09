@@ -1,4 +1,6 @@
-import { subGates } from "@/lib/strategies/default_with_features_gate/features/v4";
+import featureGate from "@/lib/strategies/default_with_features_gate/features";
+
+const subGateKeys = Object.keys(featureGate.subGates);
 
 const gateKey = "precision-backtest-dataset-gate";
 const subGatesKey = "precision-backtest-dataset-v4-subgates";
@@ -42,16 +44,16 @@ function writeGate(slug: string): void {
 function readSubGates(): string[] {
   try {
     const raw = window.localStorage.getItem(subGatesKey);
-    if (raw === null) return [...subGates];
+    if (raw === null) return [...subGateKeys];
     const stored: unknown = JSON.parse(raw);
-    if (!Array.isArray(stored)) return [...subGates];
-    return subGates.filter((gate) => stored.includes(gate));
-  } catch { return [...subGates]; }
+    if (!Array.isArray(stored)) return [...subGateKeys];
+    return subGateKeys.filter((gate) => stored.includes(gate));
+  } catch { return [...subGateKeys]; }
 }
 
 /** Saves the v4 check combination in its canonical order. */
 function writeSubGates(enabled: string[]): void {
-  try { window.localStorage.setItem(subGatesKey, JSON.stringify(subGates.filter((gate) => enabled.includes(gate)))); }
+  try { window.localStorage.setItem(subGatesKey, JSON.stringify(subGateKeys.filter((gate) => enabled.includes(gate)))); }
   catch { /* Storage can be unavailable. */ }
 }
 

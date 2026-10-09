@@ -4,8 +4,17 @@ import type { VolatilityPoint } from "@/lib/system/types/market";
 import { vwapFilter } from "../v2/vwap";
 import { isCurrentExtreme, isSuddenChange } from "../v2/price_norm";
 import featureGateRegimes from "../v2/regimes";
+import priceNormExhaustion from "@/lib/features/price-norm-exhaustion";
 
-export const subGates = ["vwap", "trend", "suddenChange", "currentExtreme", "regimes"] as const;
+/** Ordered v4 check ids and their UI names. */
+export const subGates = {
+    vwap: "Monthly VWAP",
+    exhaustion: "PriceNorm exhaustion",
+    trend: "Sideways trend",
+    suddenChange: "Sudden change",
+    currentExtreme: "Current extreme",
+    regimes: "Normalized-range regimes",
+} as const;
 
 /**
  * Bounds this strategy enforces on the monthly-anchored VWAP feature —
@@ -96,18 +105,28 @@ function rejectionReason(
         }
     }
 
+    if (enabled.has("exhaustion")) {
+        const history = features?.coins[symbol]?.priceNormalized?.history ?? [];
+
+        const ex = priceNormExhaustion.score(history)
+
+        if (ex && ex > 0.7) {
+            return "Exhausted"
+        }
+    }
+
     return undefined
 }
 
 
 /** Applies the selected v4 checks; live and backtest callers default to all checks. */
-export default function featureGateV4(currentTime: number, features: RuntimeFeatures | undefined, signal: VolatilityPoint, enabledSubGates: string[] = [...subGates]): FeatureGateResult {
+export default function featureGateV4(currentTime: number, features: RuntimeFeatures | undefined, signal: VolatilityPoint, enabledSubGates: string[] = Object.keys(subGates)): FeatureGateResult {
     const reason = rejectionReason(currentTime, features, signal, enabledSubGates);
-    const allEnabled = subGates.every((gate) => enabledSubGates.includes(gate));
+    const allEnabled = Object.keys(subGates).every((gate) => enabledSubGates.includes(gate));
     const allowed = allEnabled
         ? (!Number.isFinite(signal.p) || signal.p <= 0
             ? "v4: VWAP presence and width checks passed; invalid signal price skips distance checks"
             : "v4: monthly VWAP stretch and normalized-range regime checks passed")
-        : `v4: selected checks passed (${subGates.filter((gate) => enabledSubGates.includes(gate)).join(", ") || "none enabled"})`;
+        : `v4: selected checks passed (${Object.keys(subGates).filter((gate) => enabledSubGates.includes(gate)).join(", ") || "none enabled"})`;
     return { allow: reason === undefined, message: reason ?? allowed };
 }

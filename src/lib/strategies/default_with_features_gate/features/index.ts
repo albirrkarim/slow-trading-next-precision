@@ -1,7 +1,7 @@
 import type { RuntimeContext } from "@/lib/precision/types";
 import type { FeatureGateResult, FeatureGateSession } from "@/lib/strategies/feature-gates";
 import type { VolatilityPoint } from "@/lib/system/types";
-import featureGateV4 from "./v4";
+import featureGateV4, { subGates } from "./v4";
 
 interface SessionSlot {
   pending: Promise<FeatureGateSession>;
@@ -40,5 +40,5 @@ async function dispose(context: RuntimeContext): Promise<void> {
   // session?.dispose();
 }
 
-const featureGate = { dispose, gate, warmup } as const;
+const featureGate = { dispose, gate, subGates, warmup } as const;
 export default featureGate;

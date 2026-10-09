@@ -5,18 +5,10 @@ import { Box, Button, Checkbox, FormControlLabel, FormGroup, MenuItem, TextField
 import MetricCondition from "@/components/ui/MetricCondition";
 import datasetFilters from "@/lib/dev/feature-gate/filters";
 import type { FeatureGateInfo } from "@/lib/dev/feature-gate";
-import { subGates } from "@/lib/strategies/default_with_features_gate/features/v4";
+import featureGate from "@/lib/strategies/default_with_features_gate/features";
 
 import filterStorage from "./filter-storage";
 import type { DatasetFilterValues } from "./filter-storage";
-
-const subGateLabels: Record<(typeof subGates)[number], string> = {
-  vwap: "Monthly VWAP",
-  trend: "Sideways trend",
-  suddenChange: "Sudden change",
-  currentExtreme: "Current extreme",
-  regimes: "Normalized-range regimes",
-};
 
 export default function DatasetFilters({ filters, onChange, symbols, gates, slug, onSlugChange, enabledSubGates, onSubGatesChange, entryReasons }: {
   filters: DatasetFilterValues;
@@ -77,9 +69,9 @@ export default function DatasetFilters({ filters, onChange, symbols, gates, slug
       {slug === "v4" && <Box sx={{ width: "100%" }}>
         <Typography color="text.secondary" variant="body2">V4 subgates</Typography>
         <FormGroup aria-label="V4 subgates" row sx={{ columnGap: 1, rowGap: 0 }}>
-          {subGates.map((gate) => <FormControlLabel key={gate} label={subGateLabels[gate]}
+          {Object.entries(featureGate.subGates).map(([gate, label]) => <FormControlLabel key={gate} label={label}
             control={<Checkbox checked={enabledSubGates.includes(gate)} size="small"
-              onChange={(_, checked) => onSubGatesChange(subGates.filter((item) =>
+              onChange={(_, checked) => onSubGatesChange(Object.keys(featureGate.subGates).filter((item) =>
                 item === gate ? checked : enabledSubGates.includes(item)))} />}
             sx={{ mr: 1 }} />)}
         </FormGroup>

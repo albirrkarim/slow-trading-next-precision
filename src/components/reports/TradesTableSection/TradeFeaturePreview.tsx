@@ -5,6 +5,7 @@ import moment from "moment";
 
 import { PriceNormalizedHistorySparkline } from "@/components/charts/PriceNormalizedHistorySparkline";
 import HintTooltip from "@/components/ui/HintTooltip";
+import priceNormExhaustion from "@/lib/features/price-norm-exhaustion";
 import type {
   CoinFeatures,
   CoinPriceNormalized,
@@ -196,6 +197,7 @@ export default function TradeFeaturePreview({
       {rows.map((row) => {
         const bounds = row.bounds;
         const current = priceNormCurrent(row.coin);
+        const exhaustion = row.own ? priceNormExhaustion.score(priceNormHistory(row.coin)) : undefined;
         // Stamped by the feature update — absent on snapshots recorded
         // before the field existed.
         const trend = row.coin?.priceNormalized?.trend;
@@ -373,6 +375,13 @@ export default function TradeFeaturePreview({
               </Typography>
             )}
 
+            {row.own && (
+              <Typography gutterBottom variant="body1">
+                <Hint title="Research score, 0–1: an earlier priceNorm move followed by repeated visits near the same extreme without much new progress. Up and down are scored the same. A dash means the trail is too short; this is not an entry rule.">
+                  Exhaustion {exhaustion === undefined ? "—" : exhaustion.toFixed(2)}
+                </Hint>
+              </Typography>
+            )}
             <Typography variant="body1" gutterBottom>
               Sudden Changes:{" "}
               {(
