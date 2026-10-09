@@ -1,5 +1,6 @@
 import v1 from "@/lib/strategies/default_with_features_gate/features/v1/feature_gate_v1";
 import v2 from "@/lib/strategies/default_with_features_gate/features/v2/feature_gate_v2";
+import v4 from "@/lib/strategies/default_with_features_gate/features/v4";
 import neuralSession from "@/lib/strategies/default_with_features_gate/features/v3/session";
 import type { NeuralGateArtifact } from "@/lib/strategies/default_with_features_gate/features/v3/types";
 import streakV1 from "@/lib/strategies/streak_with_feature_gate/feature_gate_streak_v1";
@@ -21,7 +22,7 @@ export interface ClientEvaluationResult {
 
 /** Scores the complete captured run in a browser worker with the shared gate and metric functions. */
 async function evaluate(input: ClientEvaluationInput): Promise<ClientEvaluationResult> {
-  const rules: Record<string, FeatureGate> = { streak_v1: streakV1, v1, v2 };
+  const rules: Record<string, FeatureGate> = { streak_v1: streakV1, v1, v2, v4 };
   let session: FeatureGateSession | undefined;
   if (input.slug === "v3") {
     const response = await fetch(input.modelUrl, { cache: "no-store" });

@@ -10,11 +10,14 @@ export interface DatasetFilterValues {
   metric: FeatureGateRowMetric;
   operator: NumericFilterOperator;
   value: string;
+  entryStatus: "" | "pass" | "blocked";
+  entryReason: string;
 }
 
 const key = "precision-backtest-dataset-filters";
 const defaults: DatasetFilterValues = {
   symbol: "", from: "", to: "", metric: "missScore", operator: "eq", value: "",
+  entryStatus: "", entryReason: "",
 };
 
 /** Restores a date input only when it is a valid YYYY-MM-DD calendar date. */
@@ -39,6 +42,8 @@ function read(): DatasetFilterValues {
       metric: typeof values.metric === "string" && Object.hasOwn(datasetFilters.metrics, values.metric) ? values.metric as FeatureGateRowMetric : defaults.metric,
       operator: typeof values.operator === "string" && Object.hasOwn(numericFilter.operators, values.operator) ? values.operator as NumericFilterOperator : defaults.operator,
       value: typeof values.value === "string" && (values.value === "" || (values.value.trim() !== "" && Number.isFinite(Number(values.value)))) ? values.value : defaults.value,
+      entryStatus: values.entryStatus === "pass" || values.entryStatus === "blocked" ? values.entryStatus : "",
+      entryReason: typeof values.entryReason === "string" && values.entryReason.length <= 1000 ? values.entryReason : "",
     };
   } catch {
     return { ...defaults };

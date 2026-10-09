@@ -3,6 +3,7 @@ import type { VolatilityPoint } from "@/lib/system/types/market";
 
 import featureGateV1 from "./default_with_features_gate/features/v1/feature_gate_v1";
 import featureGateV2 from "./default_with_features_gate/features/v2/feature_gate_v2";
+import featureGateV4 from "./default_with_features_gate/features/v4";
 import featureGateStreakV1 from "./streak_with_feature_gate/feature_gate_streak_v1";
 
 /** Gate decision and its explanation, including why an entry was allowed. */
@@ -50,6 +51,10 @@ export const FEATURE_GATE_REGISTRY = {
   v3: {
     label: "v3 — neural miss-score risk gate",
     prepare: async () => (await import("./default_with_features_gate/features/v3")).default.load(),
+  },
+  v4: {
+    gate: featureGateV4,
+    label: "v4 — monthly VWAP + sideways regime checks",
   },
 } as const satisfies Record<string, FeatureGateEntry>;
 

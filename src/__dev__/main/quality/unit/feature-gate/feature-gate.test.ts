@@ -160,7 +160,7 @@ describe("feature-gate evaluate", () => {
 });
 
 describe("feature-gate registry", () => {
-  it("lists every gate version and wires the strategy to prepared v3 sessions", () => {
+  it("lists every gate version and wires the strategy gate session", () => {
     expect(featureGate.list()).toEqual([
       {
         label: FEATURE_GATE_REGISTRY.streak_v1.label,
@@ -169,9 +169,11 @@ describe("feature-gate registry", () => {
       { label: FEATURE_GATE_REGISTRY.v1.label, slug: "v1" },
       { label: FEATURE_GATE_REGISTRY.v2.label, slug: "v2" },
       { label: FEATURE_GATE_REGISTRY.v3.label, slug: "v3" },
+      { label: FEATURE_GATE_REGISTRY.v4.label, slug: "v4" },
     ]);
     expect(defaultStrategy.warmup).toBe(gateDefault.warmup);
     expect(defaultStrategy.dispose).toBe(gateDefault.dispose);
     expect(FEATURE_GATE_REGISTRY.v2.gate).toBeTypeOf("function");
+    expect(FEATURE_GATE_REGISTRY.v4.gate).toBeTypeOf("function");
   });
 });

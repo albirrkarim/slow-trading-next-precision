@@ -6,6 +6,7 @@ import type {
   FeatureGateScoreDistribution,
   FeatureGateSymbolCounts,
 } from "./types";
+import reasons from "./reasons";
 
 const TOP_REJECTIONS = 8;
 
@@ -61,7 +62,7 @@ function scoreRows(
       // Reasons embed measured values ("envelope is only 3.9% wide") —
       // bucket on the number-stripped template so variants group, and keep
       // one real example for the tooltip.
-      const bucket = reason.replace(/-?\d+(?:\.\d+)?(?:e[+-]?\d+)?%?/gi, "#");
+      const bucket = reasons.template(reason);
       const entry = rejections.get(bucket) ?? { count: 0, sample: reason };
       entry.count += 1;
       rejections.set(bucket, entry);

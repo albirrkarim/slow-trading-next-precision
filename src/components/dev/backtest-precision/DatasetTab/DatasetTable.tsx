@@ -15,6 +15,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 import datasetFilters from "@/lib/dev/feature-gate/filters";
+import reasons from "@/lib/dev/feature-gate/reasons";
 import type { FeatureGateDatasetOption, FeatureGateDatasetRow, FeatureGateInfo, FeatureGateRowQuery } from "@/lib/dev/feature-gate";
 import type { FeatureGateResult } from "@/lib/strategies/feature-gates";
 
@@ -57,7 +58,7 @@ export default function DatasetTable({
     useEffect(() => { filterStorage.write(filters); }, [filters]);
 
     const symbols = useMemo(() => [...new Set(rows.map((row) => row.symbol))].sort(), [rows]);
-    const filtered = useMemo(() => {
+    const baseRows = useMemo(() => {
         const query: FeatureGateRowQuery = {
             hash: cacheKey,
             symbol: filters.symbol || undefined,
@@ -69,6 +70,24 @@ export default function DatasetTable({
                 value: Number(filters.value),
             } : {}),
         };
+        return rows.filter((row) => datasetFilters.matches(row, query));
+    }, [cacheKey, rows, filters.symbol, filters.from, filters.to, filters.metric, filters.operator, filters.value]);
+
+    const entryReasons = useMemo(() => {
+        const counts = new Map<string, number>();
+        // Offer reasons from the whole evaluated run. Other filters still combine when displaying rows.
+        for (const row of rows) {
+            const decision = decisions?.get(rowKey(row));
+            if (!decision || (filters.entryStatus === "pass" && !decision.allow) ||
+                (filters.entryStatus === "blocked" && decision.allow)) continue;
+            const reason = reasons.template(decision.message);
+            counts.set(reason, (counts.get(reason) ?? 0) + 1);
+        }
+        return [...counts].map(([reason, count]) => ({ reason, count }))
+            .sort((a, b) => b.count - a.count || a.reason.localeCompare(b.reason));
+    }, [rows, decisions, filters.entryStatus]);
+
+    const filtered = useMemo(() => {
         const direction = order === "desc" ? -1 : 1;
         const sortValue = (row: FeatureGateDatasetRow): number => {
             if (sort === "sequence") return row.sequences.length;
@@ -79,9 +98,15 @@ export default function DatasetTable({
             }
             return row.t ?? row.sequences[0]?.t ?? 0;
         };
-        return rows.filter((row) => datasetFilters.matches(row, query))
+        return baseRows.filter((row) => {
+            if (!filters.entryStatus && !filters.entryReason) return true;
+            const decision = decisions?.get(rowKey(row));
+            if (!decision || (filters.entryStatus === "pass" && !decision.allow) ||
+                (filters.entryStatus === "blocked" && decision.allow)) return false;
+            return !filters.entryReason || reasons.template(decision.message) === filters.entryReason;
+        })
             .sort((a, b) => (sortValue(a) - sortValue(b)) * direction);
-    }, [cacheKey, rows, filters, sort, order, decisions]);
+    }, [baseRows, filters.entryStatus, filters.entryReason, sort, order, decisions]);
     const visible = filtered.slice(page * pageSize, (page + 1) * pageSize);
 
     const toggleSort = (key: SortKey) => {
@@ -96,8 +121,10 @@ export default function DatasetTable({
 
     return (
         <Box>
-            <DatasetFilters filters={filters} gates={gates} onChange={(next) => { setFilters(next); setPage(0); }}
-                onSlugChange={onSlugChange} slug={slug} symbols={symbols} />
+            <DatasetFilters entryReasons={entryReasons} filters={filters} gates={gates}
+                onChange={(next) => { setFilters(next); setPage(0); }}
+                onSlugChange={(next) => { setFilters((current) => ({ ...current, entryReason: "" })); setPage(0); onSlugChange(next); }}
+                slug={slug} symbols={symbols} />
             <Typography color="text.secondary" variant="caption">
                 {filtered.length !== rows.length
                     ? `${filtered.length.toLocaleString()} of ${rows.length.toLocaleString()} rows`
