@@ -5,6 +5,8 @@ import { vwapFilter } from "../v2/vwap";
 import { isCurrentExtreme, isSuddenChange } from "../v2/price_norm";
 import featureGateRegimes from "../v2/regimes";
 
+export const subGates = ["vwap", "trend", "suddenChange", "currentExtreme", "regimes"] as const;
+
 /**
  * Bounds this strategy enforces on the monthly-anchored VWAP feature —
  * strategy-owned policy, deliberately hardcoded here instead of living in
@@ -38,7 +40,7 @@ export const FEATURE_GATE_VWAP_BOUNDS = {
 };
 
 /**
- * Feature Gate V2: VWAP stretch followed by normalized-range regime checks.
+ * Feature Gate V4: selected VWAP and normalized-range regime checks.
  *
  * Judges the signal point's distance from the monthly-anchored VWAP:
  * `|signal.p − vwap|` measured in σ must land inside the
@@ -50,14 +52,15 @@ function rejectionReason(
     currentTime: number,
     features: RuntimeFeatures | undefined,
     signal: VolatilityPoint,
+    enabledSubGates: string[],
 ): string | undefined {
     // BOTH:FEATURE_GATE_INPUTS — shared pure inputs for runtime and inference.
     const symbol = signal.symbol ?? "";
-    const currentLevel = Math.abs(signal?.lvl ?? 0);
+    const enabled = new Set(enabledSubGates);
 
-    const vwapResult = vwapFilter(currentTime, features, signal);
-    if (vwapResult) {
-        return vwapResult;
+    if (enabled.has("vwap")) {
+        const vwapResult = vwapFilter(currentTime, features, signal);
+        if (vwapResult) return vwapResult;
     }
 
 
@@ -66,33 +69,38 @@ function rejectionReason(
     //     return `Too close to extreme`
     // }
 
-    const btcTrend = features?.coins["BTC"].priceNormalized.trend ?? 0
-    const symbolTrend = features?.coins[symbol].priceNormalized.trend ?? 0
+    if (enabled.has("trend")) {
+        const btcTrend = features?.coins["BTC"]?.priceNormalized?.trend ?? 0;
+        const symbolTrend = features?.coins[symbol]?.priceNormalized?.trend ?? 0;
 
-    if (Math.abs(btcTrend) > 0.5 || Math.abs(symbolTrend) > 0.5) {
-        return `Too clear trend, our strategy prefer sideway`
+        if (Math.abs(btcTrend) > 0.5 || Math.abs(symbolTrend) > 0.5) {
+            return "Too clear trend, our strategy prefer sideway";
+        }
     }
 
-    if (isSuddenChange(features, signal.symbol ?? "")) {
-        return `Sudden change`
+    if (enabled.has("suddenChange") && isSuddenChange(features, symbol)) {
+        return "Sudden change";
     }
 
 
-    if (isCurrentExtreme(features, symbol)) {
-        return `Too much extreme`
+    if (enabled.has("currentExtreme") && isCurrentExtreme(features, symbol)) {
+        return "Too much extreme";
     }
 
 
     // BOTH:FEATURE_GATE_REGIMES — shared by backtest, sandbox and live.
-    return featureGateRegimes(currentTime, features, signal);
+    return enabled.has("regimes") ? featureGateRegimes(currentTime, features, signal) : undefined;
 }
 
 
-/** Returns the v2 decision with an explanation for either outcome. */
-export default function featureGateV4(currentTime: number, features: RuntimeFeatures | undefined, signal: VolatilityPoint): FeatureGateResult {
-    const reason = rejectionReason(currentTime, features, signal);
-    const allowed = !Number.isFinite(signal.p) || signal.p <= 0
-        ? "v4: VWAP presence and width checks passed; invalid signal price skips distance checks"
-        : "v4: monthly VWAP stretch and normalized-range regime checks passed";
+/** Applies the selected v4 checks; live and backtest callers default to all checks. */
+export default function featureGateV4(currentTime: number, features: RuntimeFeatures | undefined, signal: VolatilityPoint, enabledSubGates: string[] = [...subGates]): FeatureGateResult {
+    const reason = rejectionReason(currentTime, features, signal, enabledSubGates);
+    const allEnabled = subGates.every((gate) => enabledSubGates.includes(gate));
+    const allowed = allEnabled
+        ? (!Number.isFinite(signal.p) || signal.p <= 0
+            ? "v4: VWAP presence and width checks passed; invalid signal price skips distance checks"
+            : "v4: monthly VWAP stretch and normalized-range regime checks passed")
+        : `v4: selected checks passed (${subGates.filter((gate) => enabledSubGates.includes(gate)).join(", ") || "none enabled"})`;
     return { allow: reason === undefined, message: reason ?? allowed };
 }

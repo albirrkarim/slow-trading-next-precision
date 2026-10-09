@@ -1,21 +1,32 @@
 "use client";
 
-import { Box, Button, MenuItem, TextField } from "@mui/material";
+import { Box, Button, Checkbox, MenuItem, TextField } from "@mui/material";
 
 import MetricCondition from "@/components/ui/MetricCondition";
 import datasetFilters from "@/lib/dev/feature-gate/filters";
 import type { FeatureGateInfo } from "@/lib/dev/feature-gate";
+import { subGates } from "@/lib/strategies/default_with_features_gate/features/v4";
 
 import filterStorage from "./filter-storage";
 import type { DatasetFilterValues } from "./filter-storage";
 
-export default function DatasetFilters({ filters, onChange, symbols, gates, slug, onSlugChange, entryReasons }: {
+const subGateLabels: Record<(typeof subGates)[number], string> = {
+  vwap: "Monthly VWAP",
+  trend: "Sideways trend",
+  suddenChange: "Sudden change",
+  currentExtreme: "Current extreme",
+  regimes: "Normalized-range regimes",
+};
+
+export default function DatasetFilters({ filters, onChange, symbols, gates, slug, onSlugChange, enabledSubGates, onSubGatesChange, entryReasons }: {
   filters: DatasetFilterValues;
   onChange: (filters: DatasetFilterValues) => void;
   symbols: string[];
   gates: FeatureGateInfo[];
   slug: string;
   onSlugChange: (slug: string) => void;
+  enabledSubGates: string[];
+  onSubGatesChange: (gates: string[]) => void;
   entryReasons: { reason: string; count: number }[];
 }) {
   const hasFilters = filters.symbol || filters.from || filters.to || filters.value ||
@@ -63,6 +74,21 @@ export default function DatasetFilters({ filters, onChange, symbols, gates, slug
         onChange={(event) => onSlugChange(event.target.value)}>
         {gates.map((gate) => <MenuItem key={gate.slug} value={gate.slug}>{gate.label}</MenuItem>)}
       </TextField>
+      {slug === "v4" && <TextField label="V4 subgates" select size="small" sx={{ minWidth: 230 }}
+        slotProps={{ select: { multiple: true, renderValue: (selected) => {
+          const values = selected as string[];
+          return values.length === 0 ? "None" : `${values.length} of ${subGates.length} enabled`;
+        } } }}
+        value={enabledSubGates}
+        onChange={(event) => {
+          const values = event.target.value;
+          const selected = typeof values === "string" ? values.split(",") : values;
+          onSubGatesChange(subGates.filter((gate) => selected.includes(gate)));
+        }}>
+        {subGates.map((gate) => <MenuItem key={gate} value={gate}>
+          <Checkbox checked={enabledSubGates.includes(gate)} size="small" />{subGateLabels[gate]}
+        </MenuItem>)}
+      </TextField>}
     </Box>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { Box, Tab, Tabs } from "@mui/material";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { BacktestPrecisionResponse } from "@/lib/dev/backtestPrecision/api/precision-api-types";
 
@@ -14,6 +14,15 @@ import type { BacktestConfig } from "./types";
 import VPointsResult from "./VPointsResult";
 
 type ResultTab = "dataset" | "monteCarlo" | "result";
+const tabStorageKey = "precision-backtest-result-tab";
+
+/** Restores the last selected result view from browser storage. */
+function readTab(): ResultTab {
+    try {
+        const stored = window.localStorage.getItem(tabStorageKey);
+        return stored === "dataset" || stored === "monteCarlo" ? stored : "result";
+    } catch { return "result"; }
+}
 
 /**
  * Result-area tab switcher: the backtest report sections stay on the first
@@ -31,11 +40,21 @@ export default function ResultTabs({
 }) {
     const [tab, setTab] = useState<ResultTab>("result");
 
+    useEffect(() => {
+        const timer = window.setTimeout(() => setTab(readTab()), 0);
+        return () => window.clearTimeout(timer);
+    }, []);
+
+    const changeTab = (next: ResultTab) => {
+        setTab(next);
+        try { window.localStorage.setItem(tabStorageKey, next); } catch { /* Storage can be unavailable. */ }
+    };
+
     return (
         <Box>
             <Tabs
                 aria-label="Backtest result views"
-                onChange={(_, next: ResultTab) => setTab(next)}
+                onChange={(_, next: ResultTab) => changeTab(next)}
                 sx={{
                     bgcolor: "action.hover",
                     borderBottom: 1,

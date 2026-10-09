@@ -13,6 +13,7 @@ export interface ClientEvaluationInput {
   rows: FeatureGateDatasetRow[];
   slug: string;
   modelUrl: string;
+  enabledSubGates?: string[];
 }
 
 export interface ClientEvaluationResult {
@@ -29,7 +30,9 @@ async function evaluate(input: ClientEvaluationInput): Promise<ClientEvaluationR
     if (!response.ok) throw new Error(`Failed to load v3 model (${response.status}).`);
     session = neuralSession.create(await response.json() as NeuralGateArtifact);
   }
-  const gate = session?.gate ?? rules[input.slug];
+  const gate: FeatureGate | undefined = input.slug === "v4"
+    ? ((time, features, signal) => v4(time, features, signal, input.enabledSubGates))
+    : session?.gate ?? rules[input.slug];
   if (!gate) throw new Error(`Unknown feature gate: ${input.slug}`);
   const indices = new Map(input.rows.map((row, index) => [row, index]));
   const decisions: ClientEvaluationResult["decisions"] = Array(input.rows.length).fill(null);

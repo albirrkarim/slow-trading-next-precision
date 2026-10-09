@@ -26,12 +26,14 @@ import type { FeatureGateResult } from "@/lib/strategies/feature-gates";
 import DatasetTable, { rowKey } from "./DatasetTable";
 import type { EvaluationMessage } from "./evaluation.worker";
 import MetricsCard from "./MetricsCard";
+import viewStorage from "./view-storage";
 
 export default function DatasetTab({ cacheKey }: { cacheKey?: string }) {
     const labelId = useId();
     const [gates, setGates] = useState<FeatureGateInfo[]>([]);
     const [datasets, setDatasets] = useState<FeatureGateDatasetOption[]>([]);
-    const [slug, setSlug] = useState("");
+    const [slug, setSlug] = useState(viewStorage.readGate);
+    const [enabledSubGates, setEnabledSubGates] = useState(viewStorage.readSubGates);
     const [hash, setHash] = useState("");
     const [dataset, setDataset] = useState<{ hash: string; rows?: FeatureGateDatasetRow[]; error?: string }>();
     const [evaluation, setEvaluation] = useState<{ key: string; rows: FeatureGateDatasetRow[]; result?: ClientEvaluationResult; error?: string }>();
@@ -52,7 +54,8 @@ export default function DatasetTab({ cacheKey }: { cacheKey?: string }) {
             .then((response) => {
                 const list = response.data.gates ?? [];
                 setGates(list);
-                setSlug((current) => current || list.find((gate) => gate.slug === "v2")?.slug || list.at(-1)?.slug || "");
+                setSlug((current) => list.some((gate) => gate.slug === current) ? current : list.find((gate) => gate.slug === "v4")?.slug ||
+                    list.find((gate) => gate.slug === "v2")?.slug || list.at(-1)?.slug || "");
             })
             .catch(() => setGates([]));
         axios.get<{ datasets: FeatureGateDatasetOption[] }>(endpoints.dev.featureGateDatasets, { signal: controller.signal })
@@ -84,7 +87,8 @@ export default function DatasetTab({ cacheKey }: { cacheKey?: string }) {
     }, [hash]);
 
     const rows = dataset?.hash === hash ? dataset.rows : undefined;
-    const evaluationKey = `${hash}:${slug}`;
+    const subGateKey = enabledSubGates.join(",");
+    const evaluationKey = `${hash}:${slug}:${slug === "v4" ? subGateKey : ""}`;
     useEffect(() => {
         if (!rows || !slug) return undefined;
         const worker = new Worker(new URL("./evaluation.worker.ts", import.meta.url));
@@ -96,9 +100,12 @@ export default function DatasetTab({ cacheKey }: { cacheKey?: string }) {
             setEvaluation({ key: evaluationKey, rows, error: error.message || "Feature gate evaluation failed" });
             worker.terminate();
         };
-        worker.postMessage({ rows, slug, modelUrl: endpoints.dev.featureGateModel });
+        worker.postMessage({ rows, slug, modelUrl: endpoints.dev.featureGateModel, enabledSubGates });
         return () => worker.terminate();
-    }, [rows, slug, evaluationKey]);
+    }, [rows, slug, evaluationKey, enabledSubGates]);
+
+    const changeSlug = (next: string) => { setSlug(next); viewStorage.writeGate(next); };
+    const changeSubGates = (next: string[]) => { setEnabledSubGates(next); viewStorage.writeSubGates(next); };
 
     const currentEvaluation = evaluation?.key === evaluationKey && evaluation.rows === rows ? evaluation : undefined;
     const decisions = useMemo(() => {
@@ -159,7 +166,8 @@ export default function DatasetTab({ cacheKey }: { cacheKey?: string }) {
                     </Box>}
                 {dataset?.hash === hash && dataset.error && <Alert severity="warning">{dataset.error}</Alert>}
                 {rows && <DatasetTable cacheKey={hash} decisions={currentEvaluation?.result ? decisions : undefined}
-                    gates={gates} key={hash} onSlugChange={setSlug}
+                    enabledSubGates={enabledSubGates} gates={gates} key={hash} onSlugChange={changeSlug}
+                    onSubGatesChange={changeSubGates}
                     option={datasets.find((run) => run.hash === hash)} rows={rows} slug={slug} />}
             </Box>
             <Box aria-label="Feature gate evaluation" component="section"

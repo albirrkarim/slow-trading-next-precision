@@ -39,6 +39,8 @@ export default function DatasetTable({
     gates,
     slug,
     onSlugChange,
+    enabledSubGates,
+    onSubGatesChange,
     decisions,
 }: {
     cacheKey: string;
@@ -47,6 +49,8 @@ export default function DatasetTable({
     gates: FeatureGateInfo[];
     slug: string;
     onSlugChange: (slug: string) => void;
+    enabledSubGates: string[];
+    onSubGatesChange: (gates: string[]) => void;
     decisions?: Map<string, FeatureGateResult>;
 }) {
     const [page, setPage] = useState(0);
@@ -122,8 +126,10 @@ export default function DatasetTable({
     return (
         <Box>
             <DatasetFilters entryReasons={entryReasons} filters={filters} gates={gates}
+                enabledSubGates={enabledSubGates}
                 onChange={(next) => { setFilters(next); setPage(0); }}
                 onSlugChange={(next) => { setFilters((current) => ({ ...current, entryReason: "" })); setPage(0); onSlugChange(next); }}
+                onSubGatesChange={(next) => { setFilters((current) => ({ ...current, entryReason: "" })); setPage(0); onSubGatesChange(next); }}
                 slug={slug} symbols={symbols} />
             <Typography color="text.secondary" variant="caption">
                 {filtered.length !== rows.length
