@@ -37,14 +37,19 @@ export default function ResultTabs({
                 aria-label="Backtest result views"
                 onChange={(_, next: ResultTab) => setTab(next)}
                 sx={{
+                    bgcolor: "action.hover",
                     borderBottom: 1,
                     borderColor: "divider",
                     minHeight: 36,
                     px: 1,
                     "& .MuiTab-root": {
+                        borderRadius: "6px 6px 0 0",
                         minHeight: 36,
                         minWidth: "auto",
                         px: { xs: 1, sm: 2 },
+                    },
+                    "& .MuiTab-root.Mui-selected": {
+                        bgcolor: "background.paper",
                     },
                 }}
                 value={tab}
