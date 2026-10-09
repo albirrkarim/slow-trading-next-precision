@@ -88,7 +88,8 @@ export interface CoinPriceNormalized {
 
   /**
    * Direction-agnostic exhaustion of the recorded history in [0, 1] —
-   * repeated visits near an earlier extreme without much new progress.
+   * stalled extremes, early turns, or a repeatedly visited range breaking
+   * away from its extreme.
    * Undefined until the trail is long enough; optional in older snapshots.
    */
   exhaustion?: number;

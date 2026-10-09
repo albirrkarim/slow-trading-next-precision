@@ -5,10 +5,67 @@ function unit(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
+/** Scores a recent extreme followed by a sustained turn away from it. */
+function turnScore(points: FeatureHistoryPoint[], values: number[], span: number): number {
+  const latest = values.at(-1)!;
+  const lastT = points.at(-1)!.t;
+  let low = values[0];
+  let lowIndex = 0;
+  let best = 0;
+  for (let index = 1; index < points.length - 3; index += 1) {
+    const value = values[index];
+    if (value < low) { low = value; lowIndex = index; continue; }
+    if (points[index].t < points[0].t + span * 0.5 || lastT - points[index].t < span * 0.05) continue;
+    const move = value - low;
+    if (move < 0.25 || index - lowIndex < 3) continue;
+
+    let path = 0;
+    for (let step = lowIndex + 1; step <= index; step += 1) path += Math.abs(values[step] - values[step - 1]);
+    const later = values.slice(index + 1);
+    const laterHigh = Math.max(...later);
+    if (path === 0 || laterHigh > value + move * 0.08) continue;
+
+    const rebound = (value - latest) / move;
+    const turn = unit((rebound - 0.08) / 0.25) * (1 - unit((rebound - 0.85) / 0.3));
+    const range = Math.max(...later) - Math.min(...later);
+    const containment = 1 - unit((range / move - 0.4) / 0.7);
+    best = Math.max(best, unit(move / 0.3) * unit((move / path) / 0.35) * turn * containment);
+  }
+  return best;
+}
+
+/** Scores a repeatedly visited upper range that later resolves away from it. */
+function rangeBreakScore(points: FeatureHistoryPoint[], values: number[], span: number): number {
+  const latest = values.at(-1)!;
+  let best = 0;
+  for (const fraction of [0.45, 0.55, 0.65]) {
+    const splitT = points[0].t + span * fraction;
+    const prefix = values.filter((_, index) => points[index].t <= splitT);
+    if (prefix.length < 5 || points.length - prefix.length < 3) continue;
+    const high = Math.max(...prefix);
+    const low = Math.min(...prefix);
+    const range = high - low;
+    const departure = high - latest;
+    if (departure < 0.18 || latest >= low - 0.05) continue;
+
+    const near = high - Math.max(0.04, range * 0.25);
+    const away = high - Math.max(0.07, range * 0.45);
+    let leftHigh = false;
+    let revisits = 0;
+    for (const value of prefix) {
+      if (value <= away) leftHigh = true;
+      else if (leftHigh && value >= near) { revisits += 1; leftHigh = false; }
+    }
+    const stall = Math.max(unit(revisits / 2), 1 - unit(range / 0.25));
+    const breakdown = unit((low - latest) / 0.2);
+    best = Math.max(best, stall * unit(departure / 0.3) * (0.4 + 0.6 * breakdown));
+  }
+  return best;
+}
+
 /**
- * Scores an earlier move toward an extreme followed by repeated visits near
- * that extreme with little further progress. Mirroring the trail yields the
- * same score, so upward and downward moves share this calculation.
+ * Scores stalled extremes, early turns, and range breaks. Mirroring the trail
+ * yields the same score, so upward and downward moves share the calculation.
  * Uses only the supplied history and returns undefined when it is too short.
  */
 function score(history: FeatureHistoryPoint[] | undefined): number | undefined {
@@ -25,6 +82,7 @@ function score(history: FeatureHistoryPoint[] | undefined): number | undefined {
   let best = 0;
   for (const direction of [1, -1]) {
     const values = points.map((point) => point.p * direction);
+    best = Math.max(best, turnScore(points, values, span), rangeBreakScore(points, values, span));
     const latest = values.at(-1)!;
     const lastT = points.at(-1)!.t;
     const latestQuarterT = lastT - span * 0.25;

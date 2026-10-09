@@ -376,7 +376,7 @@ export default function TradeFeaturePreview({
             )}
 
             <Typography gutterBottom variant="body1">
-              <Hint title="Research score, 0–1: an earlier priceNorm move followed by repeated visits near the same extreme without much new progress. Up and down are scored the same. A dash means the trail is too short; this is not an entry rule.">
+              <Hint title="Research score, 0–1: a stalled priceNorm extreme, an early turn, or a range breaking away from repeatedly tested highs or lows. Up and down are scored the same. A dash means the trail is too short; this is not an entry rule.">
                 Exhaustion {exhaustion === undefined ? "—" : exhaustion.toFixed(2)}
               </Hint>
             </Typography>
