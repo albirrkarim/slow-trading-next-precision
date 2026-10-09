@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { FeatureGateDatasetRow } from "@/lib/dev/backtestPrecision/feature-gate-dataset";
 import featureGate from "@/lib/dev/feature-gate";
+import clientFeatureGate from "@/lib/dev/feature-gate/client";
 import type { RuntimeFeatures } from "@/lib/features/types";
 import type { VolatilityPoint } from "@/lib/system/types";
 import gateDefault from "@/lib/strategies/default_with_features_gate/features";
@@ -69,6 +70,38 @@ describe("feature-gate evaluate", () => {
     expect(vwapReport.metrics.accepted).toBe(0);
   });
 
+  it("keeps the cloned v5 decisions equal to v4 while reporting v5 messages", async () => {
+    vi.spyOn(featureGate.dataset, "readRows").mockResolvedValue({
+      AAA: [row({ feature: featuresWith("AAA", 0.5), missScore: 0, symbol: "AAA" })],
+    });
+
+    const v4 = await featureGate.evaluate({ hash: MISSING_HASH, slug: "v4", enabledSubGates: [] });
+    const v5 = await featureGate.evaluate({ hash: MISSING_HASH, slug: "v5", enabledSubGates: [] });
+    expect(v5.enabledSubGates).toEqual([]);
+    expect(v5.metrics).toEqual(v4.metrics);
+    expect(v5.acceptedHighScoreRows).toEqual(v4.acceptedHighScoreRows);
+    const signal = { ...point("B_0", "B"), symbol: "AAA" };
+    expect(FEATURE_GATE_REGISTRY.v4.gate(1000, featuresWith("AAA", 0.5), signal, []).message).toMatch(/^v4:/);
+    expect(FEATURE_GATE_REGISTRY.v5.gate(1000, featuresWith("AAA", 0.5), signal, []).message).toMatch(/^v5:/);
+
+    const v5Default = await featureGate.evaluate({ hash: MISSING_HASH, slug: "v5" });
+    expect(v5Default.enabledSubGates).toEqual(Object.keys(FEATURE_GATE_REGISTRY.v5.subGates));
+    expect(v5Default.metrics.accepted).toBe(0);
+  });
+
+  it("routes v5 subgate selections through browser evaluation", async () => {
+    const input = {
+      rows: [row({ feature: featuresWith("AAA", 0.5), missScore: 0, symbol: "AAA" })],
+      slug: "v5",
+      modelUrl: "unused",
+    };
+    const selected = await clientFeatureGate.evaluate({ ...input, enabledSubGates: [] });
+    const defaults = await clientFeatureGate.evaluate(input);
+    expect(selected.metrics.accepted).toBe(1);
+    expect(selected.decisions[0]?.message).toMatch(/^v5:/);
+    expect(defaults.metrics.accepted).toBe(0);
+  });
+
   it("rejects invalid subgate selections before loading the dataset", async () => {
     const readRows = vi.spyOn(featureGate.dataset, "readRows");
     for (const enabledSubGates of ["vwap", ["unknown"], ["vwap", "vwap"]]) {
@@ -76,7 +109,7 @@ describe("feature-gate evaluate", () => {
         .rejects.toThrow(/enabledSubGates/);
     }
     await expect(featureGate.evaluate({ hash: MISSING_HASH, slug: "v2", enabledSubGates: [] }))
-      .rejects.toThrow(/only supported for v4/);
+      .rejects.toThrow(/only supported for gates with selectable checks/);
     expect(readRows).not.toHaveBeenCalled();
   });
 
@@ -200,10 +233,12 @@ describe("feature-gate registry", () => {
       { label: FEATURE_GATE_REGISTRY.v2.label, slug: "v2" },
       { label: FEATURE_GATE_REGISTRY.v3.label, slug: "v3" },
       { label: FEATURE_GATE_REGISTRY.v4.label, slug: "v4", subGates: FEATURE_GATE_REGISTRY.v4.subGates },
+      { label: FEATURE_GATE_REGISTRY.v5.label, slug: "v5", subGates: FEATURE_GATE_REGISTRY.v5.subGates },
     ]);
     expect(defaultStrategy.warmup).toBe(gateDefault.warmup);
     expect(defaultStrategy.dispose).toBe(gateDefault.dispose);
     expect(FEATURE_GATE_REGISTRY.v2.gate).toBeTypeOf("function");
     expect(FEATURE_GATE_REGISTRY.v4.gate).toBeTypeOf("function");
+    expect(FEATURE_GATE_REGISTRY.v5.gate).toBeTypeOf("function");
   });
 });

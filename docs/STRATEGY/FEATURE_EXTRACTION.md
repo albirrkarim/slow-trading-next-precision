@@ -162,10 +162,10 @@ Only evaluable rows are persisted: rows still pending at run end (no reversal ev
 
 The agent's experiment loop — propose a gate change, evaluate on the train hash, verify on the test hash, compare metrics. `src/lib/dev/feature-gate` already holds the logic; these tools just expose it like the `backtest_*` family in `src/lib/dev/backtestPrecision/mcp.ts`.
 
-- `feature_gate_list` — gate slugs + labels from the registry (`src/lib/strategies/feature-gates.ts`), including v4's selectable subgate ids and labels.
+- `feature_gate_list` — gate slugs + labels from the registry (`src/lib/strategies/feature-gates.ts`), including v4/v5 selectable subgate ids and labels.
 - `feature_gate_datasets` — runs that produced a `dataset/` artifact: `hash`, `coins`, `datasetSymbols`, `range`, `datasetWindow`, `exchangeType`, `marketType`, `strategy`, `createdAt` (wraps `dataset.listRuns`).
 - `feature_gate_rows` — paginated filtered rows for one `cacheKey`: `symbol`, `fromT`/`toT`, `metric`/`operator`/`value`, `sort`/`order`, `page`/`pageSize` (wraps `dataset.queryRows`). `slim: true` strips the heavy `feature` snapshot when the agent only needs outcomes.
-- `feature_gate_evaluate` — `{cacheKey, slug, enabledSubGates?}` → the metric block above, plus `topRejections` and `bySymbol`. For v4, omit `enabledSubGates` for all checks, pass selected ids from `feature_gate_list`, or pass `[]` for none. Wraps `evaluate`; runs fresh every call — no cache.
+- `feature_gate_evaluate` — `{cacheKey, slug, enabledSubGates?}` → the metric block above, plus `topRejections` and `bySymbol`. For v4/v5, omit `enabledSubGates` for all checks, pass selected ids from `feature_gate_list`, or pass `[]` for none. Wraps `evaluate`; runs fresh every call — no cache.
 
 Two upgrades make the loop real:
 

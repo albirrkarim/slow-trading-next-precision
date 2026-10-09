@@ -5,7 +5,6 @@ import { Box, Button, Checkbox, FormControlLabel, FormGroup, MenuItem, TextField
 import MetricCondition from "@/components/ui/MetricCondition";
 import datasetFilters from "@/lib/dev/feature-gate/filters";
 import type { FeatureGateInfo } from "@/lib/dev/feature-gate";
-import featureGate from "@/lib/strategies/default_with_features_gate/features";
 
 import filterStorage from "./filter-storage";
 import type { DatasetFilterValues } from "./filter-storage";
@@ -27,6 +26,8 @@ export default function DatasetFilters({ filters, onChange, symbols, gates, slug
   const symbolOptions = filters.symbol && !symbols.includes(filters.symbol) ? [filters.symbol, ...symbols] : symbols;
   const reasonOptions = filters.entryReason && !entryReasons.some((item) => item.reason === filters.entryReason)
     ? [{ reason: filters.entryReason, count: 0 }, ...entryReasons] : entryReasons;
+  const subGates = gates.find((gate) => gate.slug === slug)?.subGates;
+  const subGateKeys = Object.keys(subGates ?? {});
   return (
     <Box sx={{ alignItems: { xs: "stretch", sm: "center" }, display: "flex", flexDirection: { xs: "column", sm: "row" }, flexWrap: "wrap", gap: 1, mb: 1.5 }}>
       <TextField label="Symbol" select size="small" sx={{ minWidth: 120 }} value={filters.symbol}
@@ -66,12 +67,12 @@ export default function DatasetFilters({ filters, onChange, symbols, gates, slug
         onChange={(event) => onSlugChange(event.target.value)}>
         {gates.map((gate) => <MenuItem key={gate.slug} value={gate.slug}>{gate.label}</MenuItem>)}
       </TextField>
-      {slug === "v4" && <Box sx={{ width: "100%" }}>
-        <Typography color="text.secondary" variant="body2">V4 subgates</Typography>
-        <FormGroup aria-label="V4 subgates" row sx={{ columnGap: 1, rowGap: 0 }}>
-          {Object.entries(featureGate.subGates).map(([gate, label]) => <FormControlLabel key={gate} label={label}
+      {subGates && <Box sx={{ width: "100%" }}>
+        <Typography color="text.secondary" variant="body2">{slug.toUpperCase()} subgates</Typography>
+        <FormGroup aria-label={`${slug.toUpperCase()} subgates`} row sx={{ columnGap: 1, rowGap: 0 }}>
+          {Object.entries(subGates).map(([gate, label]) => <FormControlLabel key={gate} label={label}
             control={<Checkbox checked={enabledSubGates.includes(gate)} size="small"
-              onChange={(_, checked) => onSubGatesChange(Object.keys(featureGate.subGates).filter((item) =>
+              onChange={(_, checked) => onSubGatesChange(subGateKeys.filter((item) =>
                 item === gate ? checked : enabledSubGates.includes(item)))} />}
             sx={{ mr: 1 }} />)}
         </FormGroup>

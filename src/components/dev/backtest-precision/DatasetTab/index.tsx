@@ -34,7 +34,7 @@ export default function DatasetTab({ cacheKey }: { cacheKey?: string }) {
     const [gates, setGates] = useState<FeatureGateInfo[]>([]);
     const [datasets, setDatasets] = useState<FeatureGateDatasetOption[]>([]);
     const [slug, setSlug] = useState(viewStorage.readGate);
-    const [enabledSubGates, setEnabledSubGates] = useState(viewStorage.readSubGates);
+    const [subGateSelections, setSubGateSelections] = useState<Record<string, string[]>>({});
     const [hash, setHash] = useState(viewStorage.readHash);
     const [dataset, setDataset] = useState<{ hash: string; rows?: FeatureGateDatasetRow[]; error?: string }>();
     const [evaluation, setEvaluation] = useState<{ key: string; rows: FeatureGateDatasetRow[]; result?: ClientEvaluationResult; error?: string }>();
@@ -92,10 +92,16 @@ export default function DatasetTab({ cacheKey }: { cacheKey?: string }) {
     }, [hash]);
 
     const rows = dataset?.hash === hash ? dataset.rows : undefined;
+    const selectedGate = gates.find((gate) => gate.slug === slug);
+    const subGateKeys = Object.keys(selectedGate?.subGates ?? {});
+    const enabledSubGates = useMemo(
+        () => subGateSelections[slug] ?? viewStorage.readSubGates(slug, Object.keys(selectedGate?.subGates ?? {})),
+        [subGateSelections, slug, selectedGate],
+    );
     const subGateKey = enabledSubGates.join(",");
-    const evaluationKey = `${hash}:${slug}:${slug === "v4" ? subGateKey : ""}`;
+    const evaluationKey = `${hash}:${slug}:${selectedGate?.subGates ? subGateKey : ""}`;
     useEffect(() => {
-        if (!rows || !slug) return undefined;
+        if (!rows || !selectedGate) return undefined;
         const worker = new Worker(new URL("./evaluation.worker.ts", import.meta.url));
         worker.onmessage = (event: MessageEvent<EvaluationMessage>) => {
             setEvaluation({ key: evaluationKey, rows, ...event.data });
@@ -107,10 +113,13 @@ export default function DatasetTab({ cacheKey }: { cacheKey?: string }) {
         };
         worker.postMessage({ rows, slug, modelUrl: endpoints.dev.featureGateModel, enabledSubGates });
         return () => worker.terminate();
-    }, [rows, slug, evaluationKey, enabledSubGates]);
+    }, [rows, slug, selectedGate, evaluationKey, enabledSubGates]);
 
     const changeSlug = (next: string) => { setSlug(next); viewStorage.writeGate(next); };
-    const changeSubGates = (next: string[]) => { setEnabledSubGates(next); viewStorage.writeSubGates(next); };
+    const changeSubGates = (next: string[]) => {
+        setSubGateSelections((current) => ({ ...current, [slug]: next }));
+        viewStorage.writeSubGates(slug, next, subGateKeys);
+    };
 
     const currentEvaluation = evaluation?.key === evaluationKey && evaluation.rows === rows ? evaluation : undefined;
     const decisions = useMemo(() => {

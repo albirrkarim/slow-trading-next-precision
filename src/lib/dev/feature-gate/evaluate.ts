@@ -13,22 +13,24 @@ function allRows(bySymbol: Record<string, FeatureGateDatasetRow[]>) {
   return Object.values(bySymbol).flat();
 }
 
-/** Validates a v4 check selection and resolves its default to every check. */
+/** Validates a selectable gate's checks and resolves its default to every check. */
 function selectedSubGates(slug: string, value: unknown): string[] | undefined {
+  const entry = FEATURE_GATE_REGISTRY[slug as FeatureGateSlug];
+  const subGates = entry && "subGates" in entry ? entry.subGates : undefined;
   if (value === undefined) {
-    return slug === "v4" ? Object.keys(FEATURE_GATE_REGISTRY.v4.subGates) : undefined;
+    return subGates ? Object.keys(subGates) : undefined;
   }
-  if (slug !== "v4") {
-    throw new Error('"enabledSubGates" is only supported for v4.');
+  if (!subGates) {
+    throw new Error('"enabledSubGates" is only supported for gates with selectable checks.');
   }
-  const available = Object.keys(FEATURE_GATE_REGISTRY.v4.subGates);
+  const available = Object.keys(subGates);
   if (
     !Array.isArray(value) ||
     value.some((key) => typeof key !== "string" || !available.includes(key)) ||
     new Set(value).size !== value.length
   ) {
     throw new Error(
-      `"enabledSubGates" must contain unique v4 check ids: ${available.join(", ")}.`,
+      `"enabledSubGates" must contain unique ${slug} check ids: ${available.join(", ")}.`,
     );
   }
   return value as string[];
@@ -65,6 +67,9 @@ async function evaluate(params: {
     const gate: FeatureGate = params.slug === "v4"
       ? ((time, features, signal) =>
           FEATURE_GATE_REGISTRY.v4.gate(time, features, signal, enabledSubGates))
+      : params.slug === "v5"
+        ? ((time, features, signal) =>
+            FEATURE_GATE_REGISTRY.v5.gate(time, features, signal, enabledSubGates))
       : session.gate;
     const acceptedHighScoreRows: FeatureGateAcceptedHighScoreRow[] = [];
     const scored = metrics.scoreRows(gate, allRows(rows), (row, message) => {

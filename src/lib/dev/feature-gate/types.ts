@@ -78,7 +78,7 @@ export interface FeatureGateReport {
   hash: string;
   metrics: FeatureGateMetrics;
   slug: string;
-  /** Effective v4 checks, including defaults when no selection was supplied. */
+  /** Effective selectable checks, including defaults when no selection was supplied. */
   enabledSubGates?: string[];
 }
 
