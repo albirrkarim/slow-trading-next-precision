@@ -18,4 +18,11 @@ describe("dataset subgate selections", () => {
     expect(viewStorage.readSubGates("v5", checks)).toEqual([]);
     expect(viewStorage.readSubGates("v4", checks)).toEqual(["trend"]);
   });
+
+  it("uses version defaults when no v5 selection has been stored", () => {
+    const available = [...checks, "btcDislocation", "coupledWithoutExhaustion"];
+    expect(viewStorage.readSubGates("v5", available, checks)).toEqual(checks);
+    viewStorage.writeSubGates("v5", [...checks, "btcDislocation"], available);
+    expect(viewStorage.readSubGates("v5", available, checks)).toEqual([...checks, "btcDislocation"]);
+  });
 });

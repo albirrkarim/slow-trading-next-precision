@@ -5,6 +5,7 @@ import { vwapFilter } from "../v2/vwap";
 import { isCurrentExtreme, isSuddenChange } from "../v2/price_norm";
 import featureGateRegimes from "../v2/regimes";
 import priceNormExhaustion from "@/lib/features/price-norm-exhaustion";
+import movementCorrelation from "@/lib/features/price-norm-movement";
 
 /** Ordered v5 check ids and their UI names. */
 export const subGates = {
@@ -14,7 +15,12 @@ export const subGates = {
     suddenChange: "Sudden change",
     currentExtreme: "Current extreme",
     regimes: "Normalized-range regimes",
+    btcDislocation: "BTC move + coin dislocation",
+    coupledWithoutExhaustion: "Coupled move without exhaustion",
 } as const;
+
+/** Preserve the six original checks for omitted selections and live-safe defaults. */
+export const defaultSubGates = ["vwap", "exhaustion", "trend", "suddenChange", "currentExtreme", "regimes"] as const;
 
 /**
  * Bounds this strategy enforces on the monthly-anchored VWAP feature —
@@ -69,8 +75,22 @@ function rejectionReason(
     const currentLevel = signal.lvl ?? 0
 
     if (enabled.has("vwap")) {
-        const vwapResult = vwapFilter(currentTime, features, signal);
-        if (vwapResult && currentLevel < 3) return vwapResult;
+        const vwapResult = vwapFilter(currentTime, features, signal, {
+            minStretchPct: 6,
+            minSigma: 0.5,
+            maxSigma: 2,
+            // 5y backtest (726 trades): 7/16 losers vs 59/710 winners entered on
+            // a vPoint >12h old; tightening from 24h nets ≈ +426 USDT, positive in
+            // both halves of the run.
+            maxSignalAgeMs: 12 * 60 * 60 * 1000,
+            // First 2 days of the UTC month: the anchor just reset, so stdev rests
+            // on too few candles — the σ envelope is thin and unstable.
+            blockAfterMonthStartMs: 2 * 24 * 60 * 60 * 1000,
+            // Last 2 days of the UTC month: the VWAP anchor is about to reset, so
+            // an entry opened now loses the envelope it was judged on within ~48h.
+            blockBeforeMonthEndMs: 2 * 24 * 60 * 60 * 1000,
+        });
+        if (vwapResult && currentLevel < 3) { return vwapResult };
     }
 
 
@@ -115,15 +135,42 @@ function rejectionReason(
         }
     }
 
+    const btcNorm = features?.coins.BTC?.priceNormalized;
+    const coinNorm = features?.coins[symbol]?.priceNormalized;
+    if (symbol !== "BTC" && btcNorm && coinNorm) {
+        const btcHistory = btcNorm.history;
+        const coinHistory = coinNorm.history;
+        if (enabled.has("btcDislocation")) {
+            const btcChange = movementCorrelation.lastChange(btcHistory);
+            const recentCorr = movementCorrelation.recentCorrelation(btcHistory, coinHistory);
+            const gap = btcNorm.current !== undefined && coinNorm.current !== undefined
+                ? Math.abs(coinNorm.current - btcNorm.current) : undefined;
+            if (btcChange !== undefined && btcChange >= 0.10 &&
+                (recentCorr !== undefined && recentCorr <= 0.5 ||
+                    btcChange >= 0.15 && gap !== undefined && gap >= 0.3)) {
+                return `v5 BTC dislocation: BTC priceNorm step ${btcChange.toFixed(2)}, recent correlation ${recentCorr?.toFixed(2) ?? "n/a"}, gap ${gap?.toFixed(2) ?? "n/a"}`;
+            }
+        }
+        if (enabled.has("coupledWithoutExhaustion")) {
+            const exhaustion = coinNorm.exhaustion ?? priceNormExhaustion.score(coinHistory);
+            const correlation = movementCorrelation.score(btcHistory, coinHistory);
+            if (exhaustion !== undefined && exhaustion <= 0.3 &&
+                correlation !== undefined && correlation >= 0.9) {
+                return `v5 coupled without exhaustion: correlation ${correlation.toFixed(2)}, exhaustion ${exhaustion.toFixed(2)}`;
+            }
+        }
+    }
+
     return undefined
 }
 
 
-/** Applies the selected v5 checks; callers default to all checks. */
-export default function featureGateV5(currentTime: number, features: RuntimeFeatures | undefined, signal: VolatilityPoint, enabledSubGates: string[] = Object.keys(subGates)): FeatureGateResult {
+/** Applies the selected v5 checks; omitted selections keep the original six. */
+export default function featureGateV5(currentTime: number, features: RuntimeFeatures | undefined, signal: VolatilityPoint, enabledSubGates: string[] = [...defaultSubGates]): FeatureGateResult {
     const reason = rejectionReason(currentTime, features, signal, enabledSubGates);
-    const allEnabled = Object.keys(subGates).every((gate) => enabledSubGates.includes(gate));
-    const allowed = allEnabled
+    const originalSelection = enabledSubGates.length === defaultSubGates.length &&
+        defaultSubGates.every((gate) => enabledSubGates.includes(gate));
+    const allowed = originalSelection
         ? (!Number.isFinite(signal.p) || signal.p <= 0
             ? "v5: VWAP presence and width checks passed; invalid signal price skips distance checks"
             : "v5: monthly VWAP stretch and normalized-range regime checks passed")

@@ -17,7 +17,7 @@ import { FEATURE_GATE_VWAP_BOUNDS } from "@/lib/strategies/default_with_features
 import format from "@/lib/system/utils/format";
 import type { VolatilityPoint } from "@/lib/system/types/market";
 
-import movementCorrelation from "./movement-correlation";
+import movementCorrelation from "@/lib/features/price-norm-movement";
 
 export interface FeaturePreviewRow {
   /** Min/max/span over the coin's `priceNormalized.history` plus its current value. */

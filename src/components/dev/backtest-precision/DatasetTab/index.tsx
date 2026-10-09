@@ -97,7 +97,7 @@ export default function DatasetTab({ cacheKey }: { cacheKey?: string }) {
     const selectedGate = gates.find((gate) => gate.slug === slug);
     const subGateKeys = Object.keys(selectedGate?.subGates ?? {});
     const enabledSubGates = useMemo(
-        () => subGateSelections[slug] ?? viewStorage.readSubGates(slug, Object.keys(selectedGate?.subGates ?? {})),
+        () => subGateSelections[slug] ?? viewStorage.readSubGates(slug, Object.keys(selectedGate?.subGates ?? {}), selectedGate?.defaultSubGates),
         [subGateSelections, slug, selectedGate],
     );
     const subGateKey = enabledSubGates.join(",");

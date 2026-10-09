@@ -37,14 +37,15 @@ function writeGate(slug: string): void {
 }
 
 /** Restores valid checks for one gate, including an intentionally empty selection. */
-function readSubGates(slug: string, subGateKeys: string[]): string[] {
+function readSubGates(slug: string, subGateKeys: string[], defaults: readonly string[] = subGateKeys): string[] {
+  const fallback = subGateKeys.filter((gate) => defaults.includes(gate));
   try {
     const raw = window.localStorage.getItem(subGatesKey(slug));
-    if (raw === null) return [...subGateKeys];
+    if (raw === null) return fallback;
     const stored: unknown = JSON.parse(raw);
-    if (!Array.isArray(stored)) return [...subGateKeys];
+    if (!Array.isArray(stored)) return fallback;
     return subGateKeys.filter((gate) => stored.includes(gate));
-  } catch { return [...subGateKeys]; }
+  } catch { return fallback; }
 }
 
 /** Saves one gate's check combination in its canonical order. */

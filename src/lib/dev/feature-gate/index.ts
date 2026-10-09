@@ -11,6 +11,7 @@ function list(): FeatureGateInfo[] {
     label: entry.label,
     slug,
     ...("subGates" in entry && { subGates: entry.subGates }),
+    ...("defaultSubGates" in entry && { defaultSubGates: [...entry.defaultSubGates] }),
   }));
 }
 

@@ -1,7 +1,8 @@
 import type { RuntimeContext } from "@/lib/precision/types";
 import type { FeatureGateResult, FeatureGateSession } from "@/lib/strategies/feature-gates";
 import type { VolatilityPoint } from "@/lib/system/types";
-import featureGateV4, { subGates } from "./v4";
+// import featureGateV4, { subGates } from "./v4";
+import featureGateV5,{ subGates } from "./v5";
 
 interface SessionSlot {
   pending: Promise<FeatureGateSession>;
@@ -27,7 +28,7 @@ function gate(context: RuntimeContext, signal: VolatilityPoint): FeatureGateResu
   // if (!session) return { allow: false, message: "v3 NN: model is not warmed up" };
   // return session.gate(context.state.currentTime, context.state.features, signal);
 
-  return featureGateV4(context.state.currentTime, context.state.features, signal)
+  return featureGateV5(context.state.currentTime, context.state.features, signal)
 }
 
 /** Releases only this engine's session; repeated cleanup and failed loads are harmless. */

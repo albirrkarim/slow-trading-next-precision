@@ -85,8 +85,29 @@ describe("feature-gate evaluate", () => {
     expect(FEATURE_GATE_REGISTRY.v5.gate(1000, featuresWith("AAA", 0.5), signal, []).message).toMatch(/^v5:/);
 
     const v5Default = await featureGate.evaluate({ hash: MISSING_HASH, slug: "v5" });
-    expect(v5Default.enabledSubGates).toEqual(Object.keys(FEATURE_GATE_REGISTRY.v5.subGates));
+    expect(v5Default.enabledSubGates).toEqual(FEATURE_GATE_REGISTRY.v5.defaultSubGates);
     expect(v5Default.metrics.accepted).toBe(0);
+  });
+
+  it("keeps experimental v5 checks opt-in and explains their rejections", () => {
+    const day = 24 * 60 * 60 * 1000;
+    const btcValues = [0.1, 0.2, 0.15, 0.25, 0.2, 0.3, 0.3, 0.42];
+    const history = (values: number[]) => values.map((p, index) => ({ p, t: index * day }));
+    const signal = { ...point("B_0", "B"), symbol: "AAA" };
+    const dislocated: RuntimeFeatures = { coins: {
+      BTC: { priceNormalized: { current: 0.42, history: history(btcValues) } },
+      AAA: { priceNormalized: { current: 0.28, history: history(btcValues.map((value) => 0.7 - value)) } },
+    }, shared: {} };
+    expect(FEATURE_GATE_REGISTRY.v5.gate(7 * day, dislocated, signal, []).allow).toBe(true);
+    expect(FEATURE_GATE_REGISTRY.v5.gate(7 * day, dislocated, signal, ["btcDislocation"]))
+      .toMatchObject({ allow: false, message: expect.stringContaining("BTC dislocation") });
+
+    const coupled: RuntimeFeatures = { coins: {
+      BTC: { priceNormalized: { current: 0.7, history: history([0.1, 0.3, 0.2, 0.5, 0.3, 0.6, 0.4, 0.7]) } },
+      AAA: { priceNormalized: { current: 0.7, exhaustion: 0.1, history: history([0.1, 0.3, 0.2, 0.5, 0.3, 0.6, 0.4, 0.7]) } },
+    }, shared: {} };
+    expect(FEATURE_GATE_REGISTRY.v5.gate(7 * day, coupled, signal, ["coupledWithoutExhaustion"]))
+      .toMatchObject({ allow: false, message: expect.stringContaining("coupled without exhaustion") });
   });
 
   it("routes v5 subgate selections through browser evaluation", async () => {
@@ -233,7 +254,8 @@ describe("feature-gate registry", () => {
       { label: FEATURE_GATE_REGISTRY.v2.label, slug: "v2" },
       { label: FEATURE_GATE_REGISTRY.v3.label, slug: "v3" },
       { label: FEATURE_GATE_REGISTRY.v4.label, slug: "v4", subGates: FEATURE_GATE_REGISTRY.v4.subGates },
-      { label: FEATURE_GATE_REGISTRY.v5.label, slug: "v5", subGates: FEATURE_GATE_REGISTRY.v5.subGates },
+      { label: FEATURE_GATE_REGISTRY.v5.label, slug: "v5", subGates: FEATURE_GATE_REGISTRY.v5.subGates,
+        defaultSubGates: [...FEATURE_GATE_REGISTRY.v5.defaultSubGates] },
     ]);
     expect(defaultStrategy.warmup).toBe(gateDefault.warmup);
     expect(defaultStrategy.dispose).toBe(gateDefault.dispose);

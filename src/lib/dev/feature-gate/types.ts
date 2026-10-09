@@ -12,6 +12,8 @@ export interface FeatureGateInfo {
   label: string;
   /** Selectable checks, keyed by the ids accepted by evaluation. */
   subGates?: Record<string, string>;
+  /** Checks used when the caller has not chosen a combination. */
+  defaultSubGates?: string[];
 }
 
 /**

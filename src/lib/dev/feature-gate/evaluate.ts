@@ -13,12 +13,12 @@ function allRows(bySymbol: Record<string, FeatureGateDatasetRow[]>) {
   return Object.values(bySymbol).flat();
 }
 
-/** Validates a selectable gate's checks and resolves its default to every check. */
+/** Validates a selectable gate's checks and resolves its versioned default. */
 function selectedSubGates(slug: string, value: unknown): string[] | undefined {
   const entry = FEATURE_GATE_REGISTRY[slug as FeatureGateSlug];
   const subGates = entry && "subGates" in entry ? entry.subGates : undefined;
   if (value === undefined) {
-    return subGates ? Object.keys(subGates) : undefined;
+    return subGates ? ("defaultSubGates" in entry ? [...entry.defaultSubGates] : Object.keys(subGates)) : undefined;
   }
   if (!subGates) {
     throw new Error('"enabledSubGates" is only supported for gates with selectable checks.');

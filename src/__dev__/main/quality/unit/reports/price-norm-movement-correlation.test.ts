@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import movementCorrelation from "@/components/reports/TradesTableSection/TradeFeaturePreview/movement-correlation";
+import movementCorrelation from "@/lib/features/price-norm-movement";
 import type { FeatureHistoryPoint } from "@/lib/features/types";
 
 const HOUR = 60 * 60 * 1000;

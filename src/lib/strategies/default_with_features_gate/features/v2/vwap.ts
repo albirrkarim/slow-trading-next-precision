@@ -88,9 +88,8 @@ export function vwapFilter(
     currentTime: number,
     features: RuntimeFeatures | undefined,
     signal: VolatilityPoint,
+    bounds = FEATURE_GATE_VWAP_BOUNDS,
 ): string | undefined {
-
-    const bounds = FEATURE_GATE_VWAP_BOUNDS;
     const currentLevel = Math.abs(signal.lvl ?? 0);
 
     // Calendar rule, signal-independent: the VWAP anchor is monthly (UTC),

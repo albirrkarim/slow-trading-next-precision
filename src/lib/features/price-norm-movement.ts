@@ -12,10 +12,10 @@ function ordered(history: FeatureHistoryPoint[]): FeatureHistoryPoint[] {
 }
 
 /** Reads the last recorded step at each shared sample time. */
-function sample(points: FeatureHistoryPoint[], start: number, end: number): number[] {
+function sample(points: FeatureHistoryPoint[], start: number, end: number, intervals = INTERVALS): number[] {
   let cursor = 0;
-  return Array.from({ length: INTERVALS + 1 }, (_, index) => {
-    const t = start + ((end - start) * index) / INTERVALS;
+  return Array.from({ length: intervals + 1 }, (_, index) => {
+    const t = start + ((end - start) * index) / intervals;
     while (cursor + 1 < points.length && points[cursor + 1].t <= t) cursor += 1;
     return points[cursor].p;
   });
@@ -35,11 +35,16 @@ function score(btcHistory: FeatureHistoryPoint[], coinHistory: FeatureHistoryPoi
 
   const btcValues = sample(btc, start, end);
   const coinValues = sample(coin, start, end);
+  return correlate(btcValues, coinValues, MOVEMENT_LAG);
+}
+
+/** Maps the Pearson correlation of sampled movements into [0, 1]. */
+function correlate(btcValues: number[], coinValues: number[], lag: number): number | undefined {
   const btcMoves: number[] = [];
   const coinMoves: number[] = [];
-  for (let index = MOVEMENT_LAG; index < btcValues.length; index += 1) {
-    btcMoves.push(btcValues[index] - btcValues[index - MOVEMENT_LAG]);
-    coinMoves.push(coinValues[index] - coinValues[index - MOVEMENT_LAG]);
+  for (let index = lag; index < btcValues.length; index += 1) {
+    btcMoves.push(btcValues[index] - btcValues[index - lag]);
+    coinMoves.push(coinValues[index] - coinValues[index - lag]);
   }
 
   const btcMean = btcMoves.reduce((sum, value) => sum + value, 0) / btcMoves.length;
@@ -59,5 +64,25 @@ function score(btcHistory: FeatureHistoryPoint[], coinHistory: FeatureHistoryPoi
   return Math.max(0, Math.min(1, (correlation + 1) / 2));
 }
 
-const movementCorrelation = { score } as const;
+/** Last observed step, used to detect an abrupt BTC move. */
+function lastChange(history: FeatureHistoryPoint[] | undefined): number | undefined {
+  if (!history || history.length < 2) return undefined;
+  const points = ordered(history);
+  return points.length < 2 ? undefined : points.at(-1)!.p - points.at(-2)!.p;
+}
+
+/** Seven-day correlation requires a complete observed window on both coins. */
+function recentCorrelation(btcHistory: FeatureHistoryPoint[], coinHistory: FeatureHistoryPoint[]): number | undefined {
+  const btc = ordered(btcHistory);
+  const coin = ordered(coinHistory);
+  if (btc.length < 3 || coin.length < 3) return undefined;
+  const end = Math.min(btc.at(-1)!.t, coin.at(-1)!.t);
+  const start = end - 7 * 24 * 60 * 60 * 1000;
+  if (btc[0].t > start || coin[0].t > start) return undefined;
+  if (btc.filter((point) => point.t > start && point.t <= end).length < 2 ||
+    coin.filter((point) => point.t > start && point.t <= end).length < 2) return undefined;
+  return correlate(sample(btc, start, end, 16), sample(coin, start, end, 16), 2);
+}
+
+const movementCorrelation = { lastChange, recentCorrelation, score } as const;
 export default movementCorrelation;
