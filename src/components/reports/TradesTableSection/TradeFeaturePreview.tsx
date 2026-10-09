@@ -237,7 +237,7 @@ export default function TradeFeaturePreview({
                 color="text.secondary"
                 component="span"
                 sx={{ minWidth: 32 }}
-                variant="caption"
+                variant="body1"
               >
                 {row.key}
               </Typography>
@@ -249,7 +249,7 @@ export default function TradeFeaturePreview({
                 }
                 component="span"
                 fontWeight={600}
-                variant="caption"
+                variant="body1"
               >
                 {current !== undefined ? current.toFixed(3) : "—"}
               </Typography>
@@ -257,7 +257,7 @@ export default function TradeFeaturePreview({
                 <Typography
                   color="text.secondary"
                   component="span"
-                  variant="caption"
+                  variant="body1"
                 >
                   [{bounds.min.toFixed(2)}…{bounds.max.toFixed(2)}] ×
                   {bounds.samples}
