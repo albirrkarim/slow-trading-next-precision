@@ -275,7 +275,7 @@ export default function TradeFeaturePreview({
                       }
                       component="span"
                       fontWeight={600}
-                      variant="caption"
+                      variant="body1"
                     >
                       trend {trend > 0 ? "+" : ""}
                       {trend.toFixed(2)}
@@ -290,7 +290,7 @@ export default function TradeFeaturePreview({
                 component="span"
                 display="block"
                 sx={{ pl: "40px" }}
-                variant="caption"
+                variant="body1"
               >
                 <Hint title="Monthly-anchored VWAP at entry — volume-weighted average of typical price since the UTC month boundary">
                   vwap {fmtPrice(vwap.price)}
@@ -367,7 +367,7 @@ export default function TradeFeaturePreview({
                   `Time from the signal vPoint (${vPoint?.id}) ` +
                   `forming to the entry fill`
                 }
-                variant="caption"
+                variant="body1"
               >
                 vPoint → entry {format.duration(vPointAgeMs)}
               </Typography>

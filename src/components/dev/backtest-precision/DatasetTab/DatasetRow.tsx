@@ -44,7 +44,7 @@ export default function DatasetRow({
                     title={row.t !== undefined ? format.timeForLog(row.t) : "not captured"}
                     variant="body1"
                 >
-                    {row.t !== undefined ? format.timeMsToReadable(row.t, "DD MMM HH:mm") : "—"}
+                    {row.t !== undefined ? format.timeMsToReadable(row.t, "DD MMM YYYY HH:mm") : "—"}
                 </Typography>
             </TableCell>
             <TableCell>

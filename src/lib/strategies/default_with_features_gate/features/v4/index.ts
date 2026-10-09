@@ -57,10 +57,11 @@ function rejectionReason(
     // BOTH:FEATURE_GATE_INPUTS — shared pure inputs for runtime and inference.
     const symbol = signal.symbol ?? "";
     const enabled = new Set(enabledSubGates);
+    const currentLevel = signal.lvl ?? 0
 
     if (enabled.has("vwap")) {
         const vwapResult = vwapFilter(currentTime, features, signal);
-        if (vwapResult) return vwapResult;
+        if (vwapResult && currentLevel < 3) return vwapResult;
     }
 
 
@@ -89,7 +90,10 @@ function rejectionReason(
 
     // BOTH:FEATURE_GATE_REGIMES — shared by backtest, sandbox and live.
     if (enabled.has("regimes")) {
-        return featureGateRegimes(currentTime, features, signal)
+        const res = featureGateRegimes(currentTime, features, signal)
+        if (res) {
+            return res
+        }
     }
 
     return undefined
