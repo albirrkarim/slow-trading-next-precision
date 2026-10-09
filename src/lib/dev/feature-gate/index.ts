@@ -10,6 +10,7 @@ function list(): FeatureGateInfo[] {
   return Object.entries(FEATURE_GATE_REGISTRY).map(([slug, entry]) => ({
     label: entry.label,
     slug,
+    ...("subGates" in entry && { subGates: entry.subGates }),
   }));
 }
 

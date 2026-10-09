@@ -1,5 +1,6 @@
 import {
   FEATURE_GATE_REGISTRY,
+  type FeatureGate,
   type FeatureGateSlug,
 } from "@/lib/strategies/feature-gates";
 
@@ -12,6 +13,27 @@ function allRows(bySymbol: Record<string, FeatureGateDatasetRow[]>) {
   return Object.values(bySymbol).flat();
 }
 
+/** Validates a v4 check selection and resolves its default to every check. */
+function selectedSubGates(slug: string, value: unknown): string[] | undefined {
+  if (value === undefined) {
+    return slug === "v4" ? Object.keys(FEATURE_GATE_REGISTRY.v4.subGates) : undefined;
+  }
+  if (slug !== "v4") {
+    throw new Error('"enabledSubGates" is only supported for v4.');
+  }
+  const available = Object.keys(FEATURE_GATE_REGISTRY.v4.subGates);
+  if (
+    !Array.isArray(value) ||
+    value.some((key) => typeof key !== "string" || !available.includes(key)) ||
+    new Set(value).size !== value.length
+  ) {
+    throw new Error(
+      `"enabledSubGates" must contain unique v4 check ids: ${available.join(", ")}.`,
+    );
+  }
+  return value as string[];
+}
+
 /**
  * Replays a gate version over one run's dataset: the hash loads its
  * `<cache>/dataset/*.json` rows (train or test — the caller decides which
@@ -22,6 +44,7 @@ function allRows(bySymbol: Record<string, FeatureGateDatasetRow[]>) {
 async function evaluate(params: {
   hash: string;
   slug: string;
+  enabledSubGates?: unknown;
 }): Promise<FeatureGateReport> {
   const entry = Object.hasOwn(FEATURE_GATE_REGISTRY, params.slug)
     ? FEATURE_GATE_REGISTRY[params.slug as FeatureGateSlug]
@@ -33,12 +56,18 @@ async function evaluate(params: {
     );
   }
 
+  const enabledSubGates = selectedSubGates(params.slug, params.enabledSubGates);
+
   const rows = await dataset.readRows(params.hash);
   // BTEST:FEATURE_NN — prepare once before scoring, release even if scoring fails.
   const session = "prepare" in entry ? await entry.prepare() : { gate: entry.gate, dispose: () => undefined };
   try {
+    const gate: FeatureGate = params.slug === "v4"
+      ? ((time, features, signal) =>
+          FEATURE_GATE_REGISTRY.v4.gate(time, features, signal, enabledSubGates))
+      : session.gate;
     const acceptedHighScoreRows: FeatureGateAcceptedHighScoreRow[] = [];
-    const scored = metrics.scoreRows(session.gate, allRows(rows), (row, message) => {
+    const scored = metrics.scoreRows(gate, allRows(rows), (row, message) => {
       if ((row.missScore ?? -1) < 3) return;
       acceptedHighScoreRows.push({
         t: row.t!,
@@ -54,6 +83,7 @@ async function evaluate(params: {
       hash: params.hash,
       metrics: scored,
       slug: params.slug,
+      ...(enabledSubGates && { enabledSubGates }),
     };
   } finally {
     session.dispose();

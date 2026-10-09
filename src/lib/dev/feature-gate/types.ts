@@ -10,6 +10,8 @@ export type { FeatureGateDatasetRow };
 export interface FeatureGateInfo {
   slug: string;
   label: string;
+  /** Selectable checks, keyed by the ids accepted by evaluation. */
+  subGates?: Record<string, string>;
 }
 
 /**
@@ -76,6 +78,8 @@ export interface FeatureGateReport {
   hash: string;
   metrics: FeatureGateMetrics;
   slug: string;
+  /** Effective v4 checks, including defaults when no selection was supplied. */
+  enabledSubGates?: string[];
 }
 
 /** Compact reference to one accepted outcome that needs manual inspection. */

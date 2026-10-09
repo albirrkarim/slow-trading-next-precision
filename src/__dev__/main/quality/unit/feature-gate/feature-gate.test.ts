@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { FeatureGateDatasetRow } from "@/lib/dev/backtestPrecision/feature-gate-dataset";
 import featureGate from "@/lib/dev/feature-gate";
@@ -50,6 +50,36 @@ const stubGate: FeatureGate = (_currentTime, features, signal) => {
 
 // Feature-gate evaluation metrics — docs/STRATEGY/FEATURE_EXTRACTION.md.
 describe("feature-gate evaluate", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("applies only selected v4 subgates and reports the effective selection", async () => {
+    vi.spyOn(featureGate.dataset, "readRows").mockResolvedValue({
+      AAA: [row({ feature: featuresWith("AAA", 0.5), missScore: 0, symbol: "AAA" })],
+    });
+
+    const defaultReport = await featureGate.evaluate({ hash: MISSING_HASH, slug: "v4" });
+    const noneReport = await featureGate.evaluate({ hash: MISSING_HASH, slug: "v4", enabledSubGates: [] });
+    const vwapReport = await featureGate.evaluate({ hash: MISSING_HASH, slug: "v4", enabledSubGates: ["vwap"] });
+
+    expect(defaultReport.enabledSubGates).toEqual(Object.keys(FEATURE_GATE_REGISTRY.v4.subGates));
+    expect(defaultReport.metrics.accepted).toBe(0);
+    expect(noneReport.enabledSubGates).toEqual([]);
+    expect(noneReport.metrics.accepted).toBe(1);
+    expect(vwapReport.enabledSubGates).toEqual(["vwap"]);
+    expect(vwapReport.metrics.accepted).toBe(0);
+  });
+
+  it("rejects invalid subgate selections before loading the dataset", async () => {
+    const readRows = vi.spyOn(featureGate.dataset, "readRows");
+    for (const enabledSubGates of ["vwap", ["unknown"], ["vwap", "vwap"]]) {
+      await expect(featureGate.evaluate({ hash: MISSING_HASH, slug: "v4", enabledSubGates }))
+        .rejects.toThrow(/enabledSubGates/);
+    }
+    await expect(featureGate.evaluate({ hash: MISSING_HASH, slug: "v2", enabledSubGates: [] }))
+      .rejects.toThrow(/only supported for v4/);
+    expect(readRows).not.toHaveBeenCalled();
+  });
+
   it("uses allow explicitly and groups scientific-notation rejection values", () => {
     const messages = ["allowed even with a message", "v3 NN: risk 1e-7 >= cutoff 1e-8", "v3 NN: risk 0.1 >= cutoff 0.001"];
     let index = 0;
@@ -169,7 +199,7 @@ describe("feature-gate registry", () => {
       { label: FEATURE_GATE_REGISTRY.v1.label, slug: "v1" },
       { label: FEATURE_GATE_REGISTRY.v2.label, slug: "v2" },
       { label: FEATURE_GATE_REGISTRY.v3.label, slug: "v3" },
-      { label: FEATURE_GATE_REGISTRY.v4.label, slug: "v4" },
+      { label: FEATURE_GATE_REGISTRY.v4.label, slug: "v4", subGates: FEATURE_GATE_REGISTRY.v4.subGates },
     ]);
     expect(defaultStrategy.warmup).toBe(gateDefault.warmup);
     expect(defaultStrategy.dispose).toBe(gateDefault.dispose);

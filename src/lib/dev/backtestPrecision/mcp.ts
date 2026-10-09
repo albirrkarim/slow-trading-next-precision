@@ -522,6 +522,7 @@ async function featureGateEvaluate(args: Record<string, unknown>) {
   return featureGate.evaluate({
     hash: requireKey(args),
     slug: String(args.slug ?? ""),
+    enabledSubGates: args.enabledSubGates,
   });
 }
 

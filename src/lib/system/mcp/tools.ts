@@ -482,7 +482,7 @@ const toolDefinitions: RuntimeMcpToolDefinition[] = [
   {
     name: "feature_gate_list",
     description:
-      "LOCALHOST DEV INSTANCE ONLY. List registered feature-gate versions (slug + label) usable with feature_gate_evaluate.",
+      "LOCALHOST DEV INSTANCE ONLY. List registered feature-gate versions and selectable subgate ids for feature_gate_evaluate.",
     permission: "backtest.read",
     devOnly: true,
     readOnlyHint: true,
@@ -535,7 +535,7 @@ const toolDefinitions: RuntimeMcpToolDefinition[] = [
   {
     name: "feature_gate_evaluate",
     description:
-      "LOCALHOST DEV INSTANCE ONLY. Replay a feature-gate version over one run's dataset and return the experiment metrics — acceptance rate, accepted quality, good opportunities retained, bad opportunities blocked, per-score distribution, top rejections, per-symbol counts. Fresh evaluation on every call — tune on a train dataset, then verify once on the test dataset.",
+      "LOCALHOST DEV INSTANCE ONLY. Replay a feature-gate version over one run's dataset and return experiment metrics. For v4, enabledSubGates selects any combination of checks; omit it to enable all, or pass [] to disable all. Get valid ids from feature_gate_list. Fresh evaluation on every call — tune on a train dataset, then verify once on the test dataset.",
     permission: "backtest.read",
     devOnly: true,
     readOnlyHint: true,
@@ -548,6 +548,12 @@ const toolDefinitions: RuntimeMcpToolDefinition[] = [
         slug: {
           type: "string",
           description: "Feature gate slug from feature_gate_list.",
+        },
+        enabledSubGates: {
+          type: "array",
+          items: { type: "string" },
+          uniqueItems: true,
+          description: "Optional v4 subgate ids to enable. Omit for all; [] disables all. Get ids from feature_gate_list.",
         },
       },
       ["cacheKey", "slug"],

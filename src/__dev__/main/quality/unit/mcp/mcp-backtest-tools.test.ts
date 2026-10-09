@@ -37,6 +37,10 @@ describe("MCP backtest tool gating", () => {
     expect(names).toContain("feature_gate_datasets");
     expect(names).toContain("feature_gate_rows");
     expect(names).toContain("feature_gate_evaluate");
+    const evaluationSchema = runtimeMcpTools.list(reader).find((tool) => tool.name === "feature_gate_evaluate")?.inputSchema;
+    expect((evaluationSchema?.properties as Record<string, unknown>)?.enabledSubGates).toEqual(
+      expect.objectContaining({ type: "array", uniqueItems: true }),
+    );
     // Write-permission tools stay hidden from a read-only token.
     expect(names).not.toContain("backtest_precision_run");
     expect(names).not.toContain("backtest_leaderboard_save");

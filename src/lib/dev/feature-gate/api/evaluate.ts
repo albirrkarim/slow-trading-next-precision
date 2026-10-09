@@ -15,7 +15,7 @@ const pickHash = (value: unknown): string | undefined =>
     : undefined;
 
 /**
- * POST /api/dev/feature-gate/evaluate — `{slug, hash}`; replays the gate
+ * POST /api/dev/feature-gate/evaluate — `{slug, hash, enabledSubGates?}`; replays the gate
  * version over the run's dataset rows and reports the feature-extraction
  * metrics. The caller decides which run plays train vs test.
  */
@@ -46,7 +46,7 @@ export default async function featureGateEvaluateHandler(
   }
 
   try {
-    res.json(await featureGate.evaluate({ hash, slug }));
+    res.json(await featureGate.evaluate({ hash, slug, enabledSubGates: body.enabledSubGates }));
   } catch (error) {
     const message =
       error instanceof Error ? error.message : String(error);
