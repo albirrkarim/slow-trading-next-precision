@@ -4,7 +4,8 @@ import numericFilter from "@/lib/system/utils/numeric-filter";
 import type { NumericFilterOperator } from "@/lib/system/utils/numeric-filter";
 
 export interface DatasetFilterValues {
-  symbol: string;
+  /** Null selects every symbol; an empty list selects none. */
+  symbols: string[] | null;
   from: string;
   to: string;
   metric: FeatureGateRowMetric;
@@ -16,7 +17,7 @@ export interface DatasetFilterValues {
 
 const key = "precision-backtest-dataset-filters";
 const defaults: DatasetFilterValues = {
-  symbol: "", from: "", to: "", metric: "missScore", operator: "eq", value: "",
+  symbols: null, from: "", to: "", metric: "missScore", operator: "eq", value: "",
   entryStatus: "", entryReason: "",
 };
 
@@ -25,6 +26,16 @@ function dateValue(value: unknown): string {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return "";
   const date = new Date(`${value}T00:00:00Z`);
   return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value ? value : "";
+}
+
+/** Restores multi-symbol selections and migrates the earlier single-symbol filter. */
+function symbolsValue(values: Record<string, unknown>): string[] | null {
+  if (values.symbols === null) return null;
+  if (Array.isArray(values.symbols)) {
+    if (!values.symbols.every((symbol) => typeof symbol === "string" && symbol.length > 0 && symbol.length <= 100)) return null;
+    return [...new Set(values.symbols)];
+  }
+  return typeof values.symbol === "string" && values.symbol ? [values.symbol] : null;
 }
 
 /** Restores filter selections, falling back safely for malformed or unavailable storage. */
@@ -36,7 +47,7 @@ function read(): DatasetFilterValues {
     if (!stored || typeof stored !== "object" || Array.isArray(stored)) return { ...defaults };
     const values = stored as Record<string, unknown>;
     return {
-      symbol: typeof values.symbol === "string" ? values.symbol : defaults.symbol,
+      symbols: symbolsValue(values),
       from: dateValue(values.from),
       to: dateValue(values.to),
       metric: typeof values.metric === "string" && Object.hasOwn(datasetFilters.metrics, values.metric) ? values.metric as FeatureGateRowMetric : defaults.metric,

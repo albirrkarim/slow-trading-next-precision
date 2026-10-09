@@ -17,6 +17,8 @@ import { FEATURE_GATE_VWAP_BOUNDS } from "@/lib/strategies/default_with_features
 import format from "@/lib/system/utils/format";
 import type { VolatilityPoint } from "@/lib/system/types/market";
 
+import movementCorrelation from "./movement-correlation";
+
 export interface FeaturePreviewRow {
   /** Min/max/span over the coin's `priceNormalized.history` plus its current value. */
   bounds?: {
@@ -148,6 +150,19 @@ function normColor(value: number): string {
   return value < 0 || value > 1 ? "warning.main" : "text.primary";
 }
 
+/** Marks a clear trend in either direction once its magnitude exceeds 0.5. */
+function trendColor(value: number): string {
+  return Math.abs(value) > 0.5 ? "warning.main" : "success.main";
+}
+
+/** Separates inverse, weak, and matching BTC movement without implying a trade decision. */
+function correlationColor(value: number | undefined): string {
+  if (value === undefined) return "text.secondary";
+  if (value < 1 / 3) return "warning.main";
+  if (value > 2 / 3) return "success.main";
+  return "text.secondary";
+}
+
 /** Alias keeps the vwap-token markup short. */
 const Hint = HintTooltip;
 
@@ -183,6 +198,13 @@ export default function TradeFeaturePreview({
 }) {
   const rows = summarizeFeaturePreview(feature, symbol);
   if (!rows) return null;
+  const ownRow = rows.find((row) => row.own && row.key !== "BTC");
+  const correlation = ownRow
+    ? movementCorrelation.score(
+        priceNormHistory(rows.find((row) => row.key === "BTC")?.coin),
+        priceNormHistory(ownRow.coin),
+      )
+    : undefined;
 
   return (
     <Box sx={{ mt: 0.75 }}>
@@ -270,21 +292,25 @@ export default function TradeFeaturePreview({
               {trend !== undefined && (
                 <>
                   {" · "}
-                  <Hint title="priceNormalized trail trend clarity, −1…+1 — efficiency ratio: net move over total path traveled; near ±1 clearly trending, near 0 sideways">
+                  <Hint title="priceNormalized trail trend clarity, −1…+1 — efficiency ratio: net move over total path traveled; green from −0.5 to +0.5 means sideways, orange outside that range means clearly trending">
                     <Typography
-                      color={
-                        trend >= 0.5
-                          ? "success.main"
-                          : trend <= -0.5
-                            ? "error.main"
-                            : "text.secondary"
-                      }
+                      color={trendColor(trend)}
                       component="span"
                       fontWeight={600}
                       variant="body1"
                     >
                       trend {trend > 0 ? "+" : ""}
                       {trend.toFixed(2)}
+                    </Typography>
+                  </Hint>
+                </>
+              )}
+              {row.own && row.key !== "BTC" && (
+                <>
+                  {" · "}
+                  <Hint title="BTC/coin priceNorm movement correlation over the shared history: below 0.33 = opposite (orange), 0.33–0.67 = weak or unrelated (muted), above 0.67 = moving together (green). A dash means there is too little overlapping movement.">
+                    <Typography color={correlationColor(correlation)} component="span" fontWeight={600} variant="body1">
+                      corr BTC {correlation === undefined ? "—" : correlation.toFixed(2)}
                     </Typography>
                   </Hint>
                 </>

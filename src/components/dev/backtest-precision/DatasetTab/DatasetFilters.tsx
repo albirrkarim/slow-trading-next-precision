@@ -1,6 +1,6 @@
 "use client";
 
-import { Box, Button, Checkbox, FormControlLabel, FormGroup, MenuItem, TextField, Typography } from "@mui/material";
+import { Box, Button, Checkbox, FormControl, FormControlLabel, FormGroup, InputLabel, ListItemText, MenuItem, Select, TextField, Typography } from "@mui/material";
 
 import MetricCondition from "@/components/ui/MetricCondition";
 import datasetFilters from "@/lib/dev/feature-gate/filters";
@@ -20,21 +20,32 @@ export default function DatasetFilters({ filters, onChange, symbols, gates, slug
   onSubGatesChange: (gates: string[]) => void;
   entryReasons: { reason: string; count: number }[];
 }) {
-  const hasFilters = filters.symbol || filters.from || filters.to || filters.value ||
+  const hasFilters = filters.symbols !== null || filters.from || filters.to || filters.value ||
     filters.entryStatus || filters.entryReason ||
     filters.metric !== filterStorage.defaults.metric || filters.operator !== filterStorage.defaults.operator;
-  const symbolOptions = filters.symbol && !symbols.includes(filters.symbol) ? [filters.symbol, ...symbols] : symbols;
+  const symbolOptions = [...new Set([...symbols, ...(filters.symbols ?? [])])].sort();
+  const selectedSymbols = filters.symbols ?? symbolOptions;
   const reasonOptions = filters.entryReason && !entryReasons.some((item) => item.reason === filters.entryReason)
     ? [{ reason: filters.entryReason, count: 0 }, ...entryReasons] : entryReasons;
   const subGates = gates.find((gate) => gate.slug === slug)?.subGates;
   const subGateKeys = Object.keys(subGates ?? {});
   return (
     <Box sx={{ alignItems: { xs: "stretch", sm: "center" }, display: "flex", flexDirection: { xs: "column", sm: "row" }, flexWrap: "wrap", gap: 1, mb: 1.5 }}>
-      <TextField label="Symbol" select size="small" sx={{ minWidth: 120 }} value={filters.symbol}
-        onChange={(event) => onChange({ ...filters, symbol: event.target.value })}>
-        <MenuItem value="">All symbols</MenuItem>
-        {symbolOptions.map((symbol) => <MenuItem key={symbol} value={symbol}>{symbol}</MenuItem>)}
-      </TextField>
+      <FormControl size="small" sx={{ minWidth: 150 }}>
+        <InputLabel id="dataset-symbol-label">Symbol</InputLabel>
+        <Select<string[]> label="Symbol" labelId="dataset-symbol-label" multiple value={selectedSymbols}
+          renderValue={(selected) => selected.length === symbolOptions.length ? "All symbols" :
+            selected.length === 0 ? "No symbols" : `${selected.length} of ${symbolOptions.length} symbols`}
+          onChange={(event) => {
+            const selected = typeof event.target.value === "string" ? event.target.value.split(",") : event.target.value;
+            onChange({ ...filters, symbols: selected.includes("__all__") || selected.length === symbolOptions.length ? null : selected });
+          }}>
+          <MenuItem value="__all__"><Checkbox checked={selectedSymbols.length === symbolOptions.length} size="small" /><ListItemText primary="All symbols" /></MenuItem>
+          {symbolOptions.map((symbol) => <MenuItem key={symbol} value={symbol}>
+            <Checkbox checked={selectedSymbols.includes(symbol)} size="small" /><ListItemText primary={symbol} />
+          </MenuItem>)}
+        </Select>
+      </FormControl>
       <TextField label="Capture from" type="date" size="small" slotProps={{ inputLabel: { shrink: true } }}
         sx={{ width: { xs: "100%", sm: 150 } }} value={filters.from}
         onChange={(event) => onChange({ ...filters, from: event.target.value })} />

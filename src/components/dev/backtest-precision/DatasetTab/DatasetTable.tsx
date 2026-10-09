@@ -65,7 +65,6 @@ export default function DatasetTable({
     const baseRows = useMemo(() => {
         const query: FeatureGateRowQuery = {
             hash: cacheKey,
-            symbol: filters.symbol || undefined,
             fromT: filters.from ? new Date(`${filters.from}T00:00:00`).getTime() : undefined,
             toT: filters.to ? new Date(`${filters.to}T23:59:59.999`).getTime() : undefined,
             ...(filters.value.trim() !== "" && Number.isFinite(Number(filters.value)) ? {
@@ -74,8 +73,8 @@ export default function DatasetTable({
                 value: Number(filters.value),
             } : {}),
         };
-        return rows.filter((row) => datasetFilters.matches(row, query));
-    }, [cacheKey, rows, filters.symbol, filters.from, filters.to, filters.metric, filters.operator, filters.value]);
+        return rows.filter((row) => (filters.symbols === null || filters.symbols.includes(row.symbol)) && datasetFilters.matches(row, query));
+    }, [cacheKey, rows, filters.symbols, filters.from, filters.to, filters.metric, filters.operator, filters.value]);
 
     const entryReasons = useMemo(() => {
         const counts = new Map<string, number>();
