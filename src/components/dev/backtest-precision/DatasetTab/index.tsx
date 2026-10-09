@@ -8,6 +8,7 @@ import {
     Box,
     CircularProgress,
     FormControl,
+    Grid,
     IconButton,
     InputLabel,
     MenuItem,
@@ -34,7 +35,7 @@ export default function DatasetTab({ cacheKey }: { cacheKey?: string }) {
     const [datasets, setDatasets] = useState<FeatureGateDatasetOption[]>([]);
     const [slug, setSlug] = useState(viewStorage.readGate);
     const [enabledSubGates, setEnabledSubGates] = useState(viewStorage.readSubGates);
-    const [hash, setHash] = useState("");
+    const [hash, setHash] = useState(viewStorage.readHash);
     const [dataset, setDataset] = useState<{ hash: string; rows?: FeatureGateDatasetRow[]; error?: string }>();
     const [evaluation, setEvaluation] = useState<{ key: string; rows: FeatureGateDatasetRow[]; result?: ClientEvaluationResult; error?: string }>();
     const [copied, setCopied] = useState(false);
@@ -65,8 +66,12 @@ export default function DatasetTab({ cacheKey }: { cacheKey?: string }) {
     }, []);
 
     useEffect(() => {
-        if (!cacheKey) return undefined;
-        const timer = window.setTimeout(() => setHash(cacheKey), 0);
+        if (!cacheKey || viewStorage.readResultHash() === cacheKey) return undefined;
+        const timer = window.setTimeout(() => {
+            setHash(cacheKey);
+            viewStorage.writeHash(cacheKey);
+            viewStorage.writeResultHash(cacheKey);
+        }, 0);
         return () => window.clearTimeout(timer);
     }, [cacheKey]);
 
@@ -126,14 +131,16 @@ export default function DatasetTab({ cacheKey }: { cacheKey?: string }) {
     };
 
     return (
-        <Box sx={{ alignItems: "start", display: "grid", gap: 2,
-            gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "minmax(0, 2fr) minmax(300px, 1fr)" }, p: 1 }}>
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
+        <Grid alignItems="flex-start" container spacing={2} sx={{ p: 1 }}>
+            <Grid size={{ xs: 12, lg: 8 }} sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
                 <Box sx={{ alignItems: "center", display: "flex", gap: 0.5 }}>
                     <FormControl fullWidth size="small">
                         <InputLabel id={`${labelId}-dataset`}>Dataset run</InputLabel>
                         <Select label="Dataset run" labelId={`${labelId}-dataset`}
-                            onChange={(event) => setHash(event.target.value)} value={hash}>
+                            onChange={(event) => {
+                                setHash(event.target.value);
+                                viewStorage.writeHash(event.target.value);
+                            }} value={hash}>
                             {datasets.map((run) => <MenuItem key={run.hash} value={run.hash}>
                                 {`${run.coins.join(", ") || "?"} · ${run.range ?? "custom"} · ${run.createdAt
                                     ? new Date(run.createdAt).toISOString().slice(5, 16).replace("T", " ") : "?"} · ${run.hash.slice(0, 8)}`}
@@ -169,8 +176,8 @@ export default function DatasetTab({ cacheKey }: { cacheKey?: string }) {
                     enabledSubGates={enabledSubGates} gates={gates} key={hash} onSlugChange={changeSlug}
                     onSubGatesChange={changeSubGates}
                     option={datasets.find((run) => run.hash === hash)} rows={rows} slug={slug} />}
-            </Box>
-            <Box aria-label="Feature gate evaluation" component="section"
+            </Grid>
+            <Grid aria-label="Feature gate evaluation" component="section" size={{ xs: 12, lg: 4 }}
                 sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
                 <HeaderMetrics defaultExpanded headerCanBeClicked
                     rememberExpand="backtest-precision:feature-gate-evaluation"
@@ -187,7 +194,7 @@ export default function DatasetTab({ cacheKey }: { cacheKey?: string }) {
                         </Typography>}
                     </Box>}
                 </HeaderMetrics>
-            </Box>
-        </Box>
+            </Grid>
+        </Grid>
     );
 }

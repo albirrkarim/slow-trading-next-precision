@@ -1,6 +1,6 @@
 "use client";
 
-import { Box, Button, Checkbox, MenuItem, TextField } from "@mui/material";
+import { Box, Button, Checkbox, FormControlLabel, FormGroup, MenuItem, TextField, Typography } from "@mui/material";
 
 import MetricCondition from "@/components/ui/MetricCondition";
 import datasetFilters from "@/lib/dev/feature-gate/filters";
@@ -74,21 +74,16 @@ export default function DatasetFilters({ filters, onChange, symbols, gates, slug
         onChange={(event) => onSlugChange(event.target.value)}>
         {gates.map((gate) => <MenuItem key={gate.slug} value={gate.slug}>{gate.label}</MenuItem>)}
       </TextField>
-      {slug === "v4" && <TextField label="V4 subgates" select size="small" sx={{ minWidth: 230 }}
-        slotProps={{ select: { multiple: true, renderValue: (selected) => {
-          const values = selected as string[];
-          return values.length === 0 ? "None" : `${values.length} of ${subGates.length} enabled`;
-        } } }}
-        value={enabledSubGates}
-        onChange={(event) => {
-          const values = event.target.value;
-          const selected = typeof values === "string" ? values.split(",") : values;
-          onSubGatesChange(subGates.filter((gate) => selected.includes(gate)));
-        }}>
-        {subGates.map((gate) => <MenuItem key={gate} value={gate}>
-          <Checkbox checked={enabledSubGates.includes(gate)} size="small" />{subGateLabels[gate]}
-        </MenuItem>)}
-      </TextField>}
+      {slug === "v4" && <Box sx={{ width: "100%" }}>
+        <Typography color="text.secondary" variant="body2">V4 subgates</Typography>
+        <FormGroup aria-label="V4 subgates" row sx={{ columnGap: 1, rowGap: 0 }}>
+          {subGates.map((gate) => <FormControlLabel key={gate} label={subGateLabels[gate]}
+            control={<Checkbox checked={enabledSubGates.includes(gate)} size="small"
+              onChange={(_, checked) => onSubGatesChange(subGates.filter((item) =>
+                item === gate ? checked : enabledSubGates.includes(item)))} />}
+            sx={{ mr: 1 }} />)}
+        </FormGroup>
+      </Box>}
     </Box>
   );
 }
