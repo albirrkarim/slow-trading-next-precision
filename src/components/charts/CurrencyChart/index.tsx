@@ -75,6 +75,11 @@ export default function CurrencyChart({ data, markers, activePosition, aimPositi
             timeScale: {
                 timeVisible: true,
                 secondsVisible: true,
+                // Default 0.5px caps zoom-out at ~2 days of 1m candles; allow
+                // TradingView-style zoom across the whole loaded window and
+                // let the library merge sub-pixel bars so it stays fast.
+                minBarSpacing: 0.01,
+                enableConflation: true,
             },
         });
 
