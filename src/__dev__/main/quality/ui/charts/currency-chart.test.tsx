@@ -63,6 +63,14 @@ vi.mock("lightweight-charts", () => ({
 
 describe("CurrencyChart", () => {
   beforeEach(() => {
+    // jsdom has no ResizeObserver; the chart only uses it to track width.
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        disconnect() {}
+      },
+    );
     vi.clearAllMocks();
   });
 
