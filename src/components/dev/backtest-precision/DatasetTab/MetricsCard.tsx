@@ -2,14 +2,12 @@
 
 import { Box, Table, TableBody, TableCell, TableContainer, TableRow, Typography } from "@mui/material";
 
-import type { FeatureGateMetrics } from "@/lib/dev/feature-gate";
+import type { FeatureGateCorrectness, FeatureGateMetrics } from "@/lib/dev/feature-gate";
 
+import AccuracyCards from "./AccuracyCards";
 import MetricValue from "./MetricValue";
+import pct from "./percent";
 import ScoreDistribution from "./ScoreDistribution";
-
-/** Displays a ratio as a percentage, preserving unavailable denominators. */
-const pct = (value: number | undefined): string =>
-    value === undefined ? "n/a" : `${(value * 100).toFixed(1)}%`;
 
 function MetricLine({ label, value, detail }: { label: string; value: string; detail: string }) {
     return (
@@ -26,11 +24,18 @@ function MetricLine({ label, value, detail }: { label: string; value: string; de
     );
 }
 
+function CandidateLines({ correctness }: { correctness: FeatureGateCorrectness }) {
+    const { correct, incorrect, maxScore } = correctness;
+    return (
+        <>
+            <MetricLine label={`Correct candidates (score ≤ ${maxScore})`} value={String(correct)} detail={`Resolved rows with miss score ≤ ${maxScore} — entries the gate should accept. Unresolved rows are excluded.`} />
+            <MetricLine label={`Wrong candidates (score > ${maxScore})`} value={String(incorrect)} detail={`Resolved rows with miss score > ${maxScore} — entries the gate should reject.`} />
+        </>
+    );
+}
+
 export default function MetricsCard({ metrics, title }: { metrics: FeatureGateMetrics; title: string }) {
     const distribution = metrics.acceptedScoreDistribution;
-    const acceptedResolved = Object.keys(distribution)
-        .filter((key) => Number.isInteger(Number(key)))
-        .reduce((sum, key) => sum + (distribution[key] ?? 0), 0);
     return (
         <Box>
             <Typography fontWeight={700} variant="body2">{title}</Typography>
@@ -45,12 +50,11 @@ export default function MetricsCard({ metrics, title }: { metrics: FeatureGateMe
                 <Table size="small" aria-label="Feature gate metrics" sx={{ "& .MuiTableCell-root": { px: 1 } }}>
                     <TableBody>
                         <MetricLine label="Acceptance rate" value={`${pct(metrics.acceptanceRate)} (${metrics.accepted}/${metrics.total})`} detail={`Accepted rows / evaluable rows × 100 = ${metrics.accepted} / ${metrics.total} × 100. Includes unresolved rows; returns 0% if no rows are evaluable.`} />
-                        <MetricLine label="Accepted quality" value={pct(metrics.acceptedQuality)} detail={`Accepted score-zero rows / accepted resolved rows × 100 = ${distribution["0"]} / ${acceptedResolved} × 100. Unresolved rows are excluded; n/a when no accepted rows are resolved.`} />
-                        <MetricLine label="Good opportunities retained" value={pct(metrics.goodRetained)} detail="Accepted score-zero rows / all evaluable resolved score-zero rows × 100. The denominator includes accepted and rejected rows; n/a when there are no score-zero rows." />
-                        <MetricLine label="Bad opportunities blocked" value={pct(metrics.badBlocked)} detail="Rejected score-positive rows / all evaluable resolved score-positive rows × 100. Positive means miss score greater than zero; n/a when there are no score-positive rows." />
+                        <CandidateLines correctness={metrics.correctness} />
                     </TableBody>
                 </Table>
             </TableContainer>
+            <AccuracyCards correctness={metrics.correctness} />
             <ScoreDistribution distribution={distribution} />
             {metrics.topRejections.length > 0 && (
                 <Box sx={{ mt: 1.5 }}>

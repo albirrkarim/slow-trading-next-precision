@@ -39,10 +39,38 @@ export interface FeatureGateSymbolCounts {
 }
 
 /**
+ * Threshold-based correctness of resolved rows: a row is correct when its
+ * missScore is at most `maxScore`, wrong otherwise. Rates stay undefined
+ * when their candidate pool is empty.
+ */
+export interface FeatureGateCorrectness {
+  /** Highest missScore still counted as correct. */
+  maxScore: number;
+  /** Resolved rows with missScore <= maxScore — candidates the gate should accept. */
+  correct: number;
+  /** Resolved rows with missScore > maxScore — candidates the gate should reject. */
+  incorrect: number;
+  /** Accepted rows among `correct`. */
+  acceptedCorrect: number;
+  /** Rejected rows among `incorrect`. */
+  rejectedIncorrect: number;
+  /** Accepted resolved rows, correct and wrong — the pass pool. */
+  acceptedResolved: number;
+  /** acceptedCorrect / correct. */
+  acceptedCorrectRate?: number;
+  /** rejectedIncorrect / incorrect. */
+  rejectedIncorrectRate?: number;
+  /** Mean of acceptedCorrectRate and rejectedIncorrectRate; undefined unless both exist. */
+  effectiveness?: number;
+  /** acceptedCorrect / acceptedResolved — how many passes were correct. */
+  passCorrectRate?: number;
+}
+
+/**
  * Metrics for one dataset scored against one gate — the evaluation
  * vocabulary from docs/STRATEGY/FEATURE_EXTRACTION.md. Ratios stay
- * undefined when their denominator is zero (no resolved/ score-0/score+
- * rows) so the UI can render "n/a" instead of a misleading 0 or 1.
+ * undefined when their denominator is zero (no correct or
+ * wrong candidates) so the UI can render "n/a" instead of a misleading 0 or 1.
  */
 export interface FeatureGateMetrics {
   /** Rows without capture inputs or with invalid outcome labels. */
@@ -57,12 +85,8 @@ export interface FeatureGateMetrics {
   rejected: number;
   /** accepted / total. */
   acceptanceRate: number;
-  /** accepted score-0 rows / accepted resolved rows. */
-  acceptedQuality?: number;
-  /** accepted score-0 rows / all score-0 rows. */
-  goodRetained?: number;
-  /** rejected score-positive rows / all score-positive rows. */
-  badBlocked?: number;
+  /** Accept-correct / reject-wrong accuracy at the missScore threshold. */
+  correctness: FeatureGateCorrectness;
   acceptedScoreDistribution: FeatureGateScoreDistribution;
   bySymbol: Record<string, FeatureGateSymbolCounts>;
   /**

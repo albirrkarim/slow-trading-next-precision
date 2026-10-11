@@ -151,9 +151,11 @@ I need to ask how we doing the evaluation?
 Report these metrics
 
 Acceptance rate: accepted rows / all rows.
-Accepted quality: accepted score-zero rows / accepted resolved rows.
-Good opportunities retained: accepted score-zero rows / all score-zero rows.
-Bad opportunities blocked: rejected score-positive rows / all score-positive rows.
+Correct / wrong candidates: resolved rows with missScore ≤ 3 / > 3.
+Accept-correct accuracy: accepted correct rows / correct candidates.
+Reject-wrong accuracy: rejected wrong rows / wrong candidates.
+Correct-pass accuracy: accepted correct rows / accepted resolved rows.
+Effectiveness: (accept-correct accuracy + reject-wrong accuracy) / 2.
 Accepted score distribution: counts per exact score (0, 1, 2, … up to the highest present), plus average and worst score.
 
 Only evaluable rows are persisted: rows still pending at run end (no reversal ever formed) and rows that opened and closed inside one capture gap (never captured — no `t`/`feature`) are dropped at flush.

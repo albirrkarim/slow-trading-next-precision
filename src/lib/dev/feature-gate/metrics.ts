@@ -9,6 +9,8 @@ import type {
 import reasons from "./reasons";
 
 const TOP_REJECTIONS = 8;
+/** Highest missScore still counted as a correct entry; anything above is wrong. */
+const CORRECT_MAX_SCORE = 3;
 
 /**
  * BTEST:FEATURE_GATE_DATASET — skips uncaptured or invalid rows, then scores
@@ -33,10 +35,9 @@ function scoreRows(
   let resolved = 0;
   let accepted = 0;
   let acceptedResolved = 0;
-  let acceptedScoreZero = 0;
-  let scoreZero = 0;
-  let scorePositive = 0;
-  let rejectedScorePositive = 0;
+  let correct = 0;
+  let acceptedCorrect = 0;
+  let rejectedIncorrect = 0;
   let scoreSum = 0;
   let worstScore = 0;
 
@@ -81,24 +82,24 @@ function scoreRows(
     bucket.resolved += 1;
 
     const score = row.missScore ?? 0;
-    if (score === 0) {
-      scoreZero += 1;
-    } else {
-      scorePositive += 1;
-    }
+    const isCorrect = score <= CORRECT_MAX_SCORE;
+    if (isCorrect) correct += 1;
+    if (isAccepted && isCorrect) acceptedCorrect += 1;
+    if (!isAccepted && !isCorrect) rejectedIncorrect += 1;
 
     if (isAccepted) {
       acceptedResolved += 1;
       onAcceptedResolved?.(row, result.message);
-      if (score === 0) acceptedScoreZero += 1;
       scoreSum += score;
       if (score > worstScore) worstScore = score;
       const key = String(score);
       distribution[key] = (distribution[key] ?? 0) + 1;
-    } else if (score > 0) {
-      rejectedScorePositive += 1;
     }
   }
+
+  const acceptedCorrectRate = correct > 0 ? acceptedCorrect / correct : undefined;
+  const rejectedIncorrectRate =
+    resolved > correct ? rejectedIncorrect / (resolved - correct) : undefined;
 
   if (acceptedResolved > 0) {
     distribution.avgScore = scoreSum / acceptedResolved;
@@ -108,13 +109,24 @@ function scoreRows(
   return {
     acceptanceRate: total > 0 ? accepted / total : 0,
     accepted,
-    acceptedQuality:
-      acceptedResolved > 0 ? acceptedScoreZero / acceptedResolved : undefined,
     acceptedScoreDistribution: distribution,
-    badBlocked:
-      scorePositive > 0 ? rejectedScorePositive / scorePositive : undefined,
     bySymbol,
-    goodRetained: scoreZero > 0 ? acceptedScoreZero / scoreZero : undefined,
+    correctness: {
+      acceptedCorrect,
+      acceptedCorrectRate,
+      acceptedResolved,
+      correct,
+      incorrect: resolved - correct,
+      maxScore: CORRECT_MAX_SCORE,
+      rejectedIncorrect,
+      effectiveness:
+        acceptedCorrectRate !== undefined && rejectedIncorrectRate !== undefined
+          ? (acceptedCorrectRate + rejectedIncorrectRate) / 2
+          : undefined,
+      rejectedIncorrectRate,
+      passCorrectRate:
+        acceptedResolved > 0 ? acceptedCorrect / acceptedResolved : undefined,
+    },
     rejected: total - accepted,
     resolved,
     skipped,

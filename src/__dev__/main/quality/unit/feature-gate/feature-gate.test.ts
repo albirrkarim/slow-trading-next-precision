@@ -179,12 +179,19 @@ describe("feature-gate evaluate", () => {
     expect(report.rejected).toBe(3);
     expect(report.acceptanceRate).toBeCloseTo(4 / 7);
 
-    // accepted score-0 / accepted resolved = 1/3
-    expect(report.acceptedQuality).toBeCloseTo(1 / 3);
-    // accepted score-0 / all score-0 (rows 1, 2, 7) = 1/3
-    expect(report.goodRetained).toBeCloseTo(1 / 3);
-    // rejected score>0 / all score>0 (rows 3, 4, 5) = 1/3
-    expect(report.badBlocked).toBeCloseTo(1 / 3);
+    // correct = score <= 3 (rows 1, 2, 3, 4, 7), wrong = score > 3 (row 5)
+    expect(report.correctness).toEqual({
+      acceptedCorrect: 2,
+      acceptedCorrectRate: 2 / 5,
+      acceptedResolved: 3,
+      correct: 5,
+      effectiveness: (2 / 5 + 0) / 2,
+      incorrect: 1,
+      maxScore: 3,
+      rejectedIncorrect: 0,
+      rejectedIncorrectRate: 0,
+      passCorrectRate: 2 / 3,
+    });
 
     expect(report.acceptedScoreDistribution).toEqual({
       "0": 1,
@@ -218,16 +225,17 @@ describe("feature-gate evaluate", () => {
     expect(report.skipped).toBe(3);
     expect(report.total).toBe(1);
     expect(report.resolved).toBe(1);
-    expect(report.acceptedQuality).toBe(1);
+    expect(report.correctness.acceptedCorrectRate).toBe(1);
   });
 
   it("leaves ratio metrics undefined on empty denominators", () => {
     const report = featureGate.metrics.scoreRows(stubGate, []);
     expect(report.total).toBe(0);
     expect(report.acceptanceRate).toBe(0);
-    expect(report.acceptedQuality).toBeUndefined();
-    expect(report.goodRetained).toBeUndefined();
-    expect(report.badBlocked).toBeUndefined();
+    expect(report.correctness.acceptedCorrectRate).toBeUndefined();
+    expect(report.correctness.rejectedIncorrectRate).toBeUndefined();
+    expect(report.correctness.passCorrectRate).toBeUndefined();
+    expect(report.correctness.effectiveness).toBeUndefined();
     expect(report.acceptedScoreDistribution.avgScore).toBeUndefined();
     expect(report.acceptedScoreDistribution.worstScore).toBeUndefined();
   });

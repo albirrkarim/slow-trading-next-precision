@@ -42,8 +42,14 @@ class MockWorker {
       metrics: {
         total: input.rows.length, resolved: input.rows.length, skipped: 0,
         accepted: allow ? input.rows.length : 0, rejected: allow ? 0 : input.rows.length,
-        acceptanceRate: allow ? 1 : 0, acceptedQuality: allow ? 0 : undefined,
-        goodRetained: undefined, badBlocked: allow ? 0 : 1,
+        acceptanceRate: allow ? 1 : 0,
+        correctness: {
+          maxScore: 3, correct: input.rows.length, incorrect: 0,
+          acceptedCorrect: allow ? input.rows.length : 0, rejectedIncorrect: 0,
+          acceptedCorrectRate: allow ? 1 : 0, rejectedIncorrectRate: undefined,
+          acceptedResolved: allow ? input.rows.length : 0, passCorrectRate: allow ? 1 : undefined,
+          effectiveness: undefined,
+        },
         acceptedScoreDistribution: allow ? { "3": input.rows.length, avgScore: 3, worstScore: 3 } : {},
         topRejections: [], bySymbol: {},
       },
