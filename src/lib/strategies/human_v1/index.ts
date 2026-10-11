@@ -6,8 +6,8 @@ import humanState from "./state";
 
 /**
  * human_v1 — trend following on configured indicators, no vPoints:
- * enter when price crosses the first enabled EMA, then clears it by at
- * least 1% in the direction every Supertrend agrees on; exit on any shared
+ * enter when price crosses the first enabled EMA, then clears it by
+ * `HUMAN_V1_MIN_EMA_DISTANCE_PCT` in the direction every Supertrend agrees on; exit on any shared
  * exit rule or when price crosses that EMA back. Never averages.
  */
 const humanV1: StrategyAPI = {

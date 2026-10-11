@@ -102,7 +102,7 @@ Read through `indicators.read`, never the raw path:
 
 - Strategy **human_v1** (`src/lib/strategies/human_v1`, README there) trades
   the indicators directly, without vPoints: a fresh cross of the first
-  enabled EMA arms that direction; enter once price is ≥ 1% beyond the EMA
+  enabled EMA arms that direction; enter once price is at least `HUMAN_V1_MIN_EMA_DISTANCE_PCT` (currently 2%) beyond the EMA
   with every Supertrend agreeing (`BOTH:HUMAN_V1_ENTRY`),
   exit on any shared rule or the EMA cross-back (`BOTH:HUMAN_V1_EMA_EXIT`,
   close reason `STRATEGY_EXIT`), never average (`BOTH:HUMAN_V1_NO_AVERAGING`).

@@ -53,7 +53,7 @@ export default function CurrencyChart({ data, markers, activePosition, aimPositi
     const [trajectoryHover, setTrajectoryHover] = useState<TrajectoryHoverState | null>(null);
     const [markerHover, setMarkerHover] = useState<MarkerHoverState | null>(null);
     const markerMetaRef = useRef<Marker[]>([]);
-    const previousDataWindowRef = useRef<{ firstTime: number; lastTime: number; count: number } | null>(null);
+    const previousDataWindowRef = useRef<{ firstTime: number; lastTime: number } | null>(null);
     const onNearLeftEdgeRef = useRef(onNearLeftEdge);
     useEffect(() => {
         onNearLeftEdgeRef.current = onNearLeftEdge;
@@ -212,32 +212,8 @@ export default function CurrencyChart({ data, markers, activePosition, aimPositi
                 typeof lastTime === "number" &&
                 previousDataWindow?.firstTime === firstTime &&
                 lastTime >= previousDataWindow.lastTime;
-            // History prepended (scroll-back): same tail, earlier head. The
-            // time scale is right-anchored, so `setData` already keeps the
-            // viewport on the same candles — touching the range would double
-            // the shift.
-            const prepended =
-                previousDataWindow !== null &&
-                typeof firstTime === "number" &&
-                firstTime < previousDataWindow.firstTime &&
-                typeof lastTime === "number" &&
-                lastTime >= previousDataWindow.lastTime;
-            const currentRange =
-                shouldPreserveVisibleRange
-                    ? chart?.timeScale().getVisibleLogicalRange() ?? null
-                    : null;
-            // Live tail: a viewport parked on the newest bar follows new ones.
-            const appendedBars =
-                followLatest && previousDataWindow && currentRange
-                    ? sortedData.length - previousDataWindow.count
-                    : 0;
-            const atRightEdge =
-                currentRange !== null &&
-                previousDataWindow !== null &&
-                currentRange.to >= previousDataWindow.count - 2;
-            const shift = atRightEdge && appendedBars > 0 ? appendedBars : 0;
-            const visibleLogicalRange = currentRange
-                ? { from: currentRange.from + shift, to: currentRange.to + shift }
+            const visibleLogicalRange = shouldPreserveVisibleRange
+                ? chart?.timeScale().getVisibleLogicalRange() ?? null
                 : null;
             const dataWindowChanged =
                 !previousDataWindow ||
@@ -283,8 +259,11 @@ export default function CurrencyChart({ data, markers, activePosition, aimPositi
             );
             volumeSeriesRef.current.setData(volumeData as any);
 
-            if (prepended) {
-                // Keep the right-anchored viewport as-is (see above).
+            if (followLatest) {
+                // Live mode: the right-anchored time scale already keeps the
+                // scroll position and right margin across updates, follows
+                // new bars, and holds the viewport when history is prepended
+                // (scroll-back) — re-applying a saved range would undo that.
             } else if (visibleLogicalRange && chart) {
                 chart.timeScale().setVisibleLogicalRange(visibleLogicalRange);
             } else if (chart && initialVisibleRange && dataWindowChanged) {
@@ -297,7 +276,7 @@ export default function CurrencyChart({ data, markers, activePosition, aimPositi
             }
 
             if (typeof firstTime === "number" && typeof lastTime === "number") {
-                previousDataWindowRef.current = { count: sortedData.length, firstTime, lastTime };
+                previousDataWindowRef.current = { firstTime, lastTime };
             }
             previousProjectedTimeRef.current = maxProjectedTime;
 

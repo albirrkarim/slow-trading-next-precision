@@ -3,11 +3,16 @@ import { describe, expect, it } from "vitest";
 import type { RuntimeFeatures } from "@/lib/features/types";
 import type { RuntimeContext, RuntimeEngineState, RuntimeEntryDecision } from "@/lib/precision/types";
 import humanV1 from "@/lib/strategies/human_v1";
+import { HUMAN_V1_MIN_EMA_DISTANCE_PCT } from "@/lib/strategies/human_v1/entry";
 import type { Position } from "@/lib/system/trading";
 
 import { createTestPosition } from "../../fixtures/position";
 
 const NOW = Date.UTC(2026, 5, 15, 12, 0);
+/** Entry distance the strategy requires; the fixture EMA is 100, so pct = price − 100. */
+const MIN = HUMAN_V1_MIN_EMA_DISTANCE_PCT;
+const above = (pct: number) => 100 + pct;
+const below = (pct: number) => 100 - pct;
 
 /** Features with one EMA (`ema50` = 100) and the given Supertrend directions for SUI. */
 function features(directions: Record<string, 1 | -1>, emaValue = 100): RuntimeFeatures {
@@ -82,11 +87,11 @@ describe("human_v1 entry", () => {
     const context = makeContext(99, features({ st1: 1, st2: 1 }));
     expect(await entryAt(context, 99)).toEqual([]); // first observation: below
     expect(await entryAt(context, 99.5)).toEqual([]); // still below
-    const [decision] = await entryAt(context, 101); // crossed above
+    const [decision] = await entryAt(context, above(MIN)); // crossed above, at the minimum distance
     expect(decision).toMatchObject({
       accountSlug: "acc",
       direction: "LONG",
-      entrySignal: { amountProbab: 0.5, l: "B", lvl: 1, p: 101 },
+      entrySignal: { amountProbab: 0.5, l: "B", lvl: 1, p: above(MIN) },
       strategy: { emaId: "ema50", v: "human_v1" },
       symbol: "SUI",
       type: "entry",
@@ -94,34 +99,34 @@ describe("human_v1 entry", () => {
     expect(decision.entrySignal.id).toMatch(/^H_SUI_/);
     expect(decision.message).toContain("st1, st2 all up");
     // Staying above is not a new cross.
-    expect(await entryAt(context, 102)).toEqual([]);
+    expect(await entryAt(context, above(MIN + 1))).toEqual([]);
   });
 
-  it("arms on the cross and enters only once price is at least 1% beyond the EMA", async () => {
+  it("arms on the cross and enters only once price is the minimum distance beyond the EMA", async () => {
     const context = makeContext(99, features({ st1: 1, st2: 1 }));
     await entryAt(context, 99);
-    expect(await entryAt(context, 100.4)).toEqual([]); // crossed, only +0.4%
-    expect(await entryAt(context, 100.9)).toEqual([]); // still under 1%
-    const [decision] = await entryAt(context, 101.5); // +1.5% — armed cross confirms
-    expect(decision).toMatchObject({ direction: "LONG", entrySignal: { p: 101.5 } });
-    expect(decision.message).toContain("(+1.50%)");
+    expect(await entryAt(context, above(MIN * 0.4))).toEqual([]); // crossed, too close
+    expect(await entryAt(context, above(MIN * 0.9))).toEqual([]); // still under the minimum
+    const [decision] = await entryAt(context, above(MIN * 1.5)); // armed cross confirms
+    expect(decision).toMatchObject({ direction: "LONG", entrySignal: { p: above(MIN * 1.5) } });
+    expect(decision.message).toContain(`(+${(MIN * 1.5).toFixed(2)}%)`);
     // The arm is consumed: no second entry while price stays above.
-    expect(await entryAt(context, 102)).toEqual([]);
+    expect(await entryAt(context, above(MIN * 2))).toEqual([]);
   });
 
-  it("drops the arm when price crosses back before reaching 1%", async () => {
+  it("drops the arm when price crosses back before reaching the minimum distance", async () => {
     const context = makeContext(99, features({ st1: 1, st2: 1 }));
     await entryAt(context, 99);
-    await entryAt(context, 100.5); // armed LONG
-    await entryAt(context, 99.8); // crossed back below — arms SHORT instead
-    expect(await entryAt(context, 101.5)).toMatchObject([{ direction: "LONG" }]); // fresh cross up again
+    await entryAt(context, above(MIN * 0.5)); // armed LONG
+    await entryAt(context, below(0.2)); // crossed back below — arms SHORT instead
+    expect(await entryAt(context, above(MIN * 1.5))).toMatchObject([{ direction: "LONG" }]); // fresh cross up again
   });
 
   it("waits while armed until every Supertrend agrees", async () => {
     const context = makeContext(99, features({ st1: 1, st2: -1 }));
     await entryAt(context, 99);
-    expect(await entryAt(context, 101.5)).toEqual([]); // armed, Supertrends split
-    expect(await entryAt(context, 101.6, features({ st1: 1, st2: 1 }))).toMatchObject([{ direction: "LONG" }]);
+    expect(await entryAt(context, above(MIN * 1.5))).toEqual([]); // armed, Supertrends split
+    expect(await entryAt(context, above(MIN * 1.6), features({ st1: 1, st2: 1 }))).toMatchObject([{ direction: "LONG" }]);
   });
 
   it("never enters mid-trend on boot", async () => {
@@ -131,34 +136,34 @@ describe("human_v1 entry", () => {
   });
 
   it("enters SHORT on a cross below with every Supertrend down", async () => {
-    const context = makeContext(101, features({ st1: -1, st2: -1 }));
-    await entryAt(context, 101);
-    const [decision] = await entryAt(context, 99);
+    const context = makeContext(above(MIN), features({ st1: -1, st2: -1 }));
+    await entryAt(context, above(MIN));
+    const [decision] = await entryAt(context, below(MIN));
     expect(decision).toMatchObject({ direction: "SHORT", entrySignal: { l: "T", lvl: -1 } });
   });
 
   it("skips a cross the Supertrends do not all confirm", async () => {
     const context = makeContext(99, features({ st1: 1, st2: -1 }));
     await entryAt(context, 99);
-    expect(await entryAt(context, 101)).toEqual([]);
+    expect(await entryAt(context, above(MIN * 2))).toEqual([]);
   });
 
   it("skips coins without an EMA or Supertrend reading", async () => {
     const noSupertrend = makeContext(99, features({}));
     await entryAt(noSupertrend, 99);
-    expect(await entryAt(noSupertrend, 101)).toEqual([]);
+    expect(await entryAt(noSupertrend, above(MIN * 2))).toEqual([]);
   });
 
   it("keeps one position per coin and no shorts in spot", async () => {
     const open = createTestPosition({ account: "acc", symbol: "SUI" });
     const busy = makeContext(99, features({ st1: 1, st2: 1 }), { openPositions: [open] as never });
     await entryAt(busy, 99);
-    expect(await entryAt(busy, 101)).toEqual([]);
+    expect(await entryAt(busy, above(MIN * 2))).toEqual([]);
 
     const spot = makeContext(101, features({ st1: -1, st2: -1 }));
     spot.state.config.management.tradingMode = "spot" as never;
     await entryAt(spot, 101);
-    expect(await entryAt(spot, 99)).toEqual([]);
+    expect(await entryAt(spot, below(MIN * 2))).toEqual([]);
   });
 });
 
@@ -224,13 +229,13 @@ describe("human_v1 diagnostics", () => {
       reason: expect.stringContaining("waiting for a fresh cross"),
       status: "blocked",
     });
-    const armed = makeContext(100.5, features({ st1: 1, st2: 1 }));
+    const armed = makeContext(above(MIN * 0.5), features({ st1: 1, st2: 1 }));
     armed.state.strategy = { armed: { SUI: 1 }, side: { SUI: 1 }, v: "human_v1" };
     expect(explain(armed)).toMatchObject({
-      reason: expect.stringContaining("0.50% beyond, needs 1%"),
+      reason: expect.stringContaining(`${(MIN * 0.5).toFixed(2)}% beyond, needs ${MIN}%`),
       status: "blocked",
     });
-    armed.state.markPriceMap.SUI.price = 101.2;
+    armed.state.markPriceMap.SUI.price = above(MIN * 1.2);
     expect(explain(armed)).toMatchObject({ status: "ready" });
   });
 });

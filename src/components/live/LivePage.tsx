@@ -3,6 +3,7 @@
 import { Box, MenuItem, Select, Typography } from "@mui/material";
 import { useState, useSyncExternalStore } from "react";
 
+import DarkToggle from "@/components/ui/DarkToggle";
 import SidebarButton from "@/components/ui/SidebarButton";
 import type { IntervalKlines } from "@/lib/exchange";
 
@@ -66,9 +67,10 @@ export default function LivePage() {
     <Box sx={{ p: 1 }}>
       <Box sx={{ alignItems: "center", display: "flex", gap: 1, mb: 1 }}>
         <SidebarButton />
-        <Typography fontWeight={700} variant="h6">
+        <Typography fontWeight={700} sx={{ flex: 1 }} variant="h6">
           Live Chart
         </Typography>
+        <DarkToggle />
       </Box>
       {selection && (
         <LiveChart

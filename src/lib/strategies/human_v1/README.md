@@ -14,8 +14,8 @@ Per configured coin (BTC excluded), each capture pass:
    pass (`state.strategy.side`) — **arms** that direction
    (`state.strategy.armed`). The first observation only seeds the memory, so a
    boot never enters mid-trend. A cross back re-arms the other direction.
-4. An armed direction enters once the mark is **at least 1% beyond the EMA**
-   that way (`HUMAN_V1_MIN_EMA_DISTANCE_PCT`) **and every Supertrend** points
+4. An armed direction enters once the mark is **at least
+   `HUMAN_V1_MIN_EMA_DISTANCE_PCT` (currently 2%) beyond the EMA** that way **and every Supertrend** points
    the same way (all `d === 1` for a LONG, all `d === −1` for a SHORT). The arm
    is consumed by the entry.
 
