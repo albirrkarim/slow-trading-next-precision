@@ -11,19 +11,30 @@ import type {
 import chartIndicators, {
   type VwapIndicatorConfig,
 } from "@/lib/system/utils/ui/chart-indicators";
-import vwap, { type VwapAnchor, type VwapCandle } from "@/lib/system/utils/ui/vwap";
+import vwapFeature from "@/lib/features/vwap";
+import vwap, {
+  type VwapAnchor,
+  type VwapCandle,
+  type VwapSeries,
+} from "@/lib/system/utils/ui/vwap";
+
+const GATE_INTERVAL_SEC = vwapFeature.INTERVAL_MS / 1000;
 
 /**
  * Builds overlay lines and band fills for every visible VWAP instance.
  * The Entry anchor falls back to Session when the chart has no position.
+ * "Match gate" instances fold `gateCandles` (the runtime's 5m klines) and
+ * are resampled onto chart candle times; they draw nothing until loaded.
  */
 export function useVwapOverlays({
   candles,
+  gateCandles,
   instances,
   entryAnchorMs,
   vPointTimes,
 }: {
   candles: VwapCandle[];
+  gateCandles?: VwapCandle[];
   instances: VwapIndicatorConfig[];
   entryAnchorMs?: number;
   vPointTimes: number[];
@@ -32,6 +43,8 @@ export function useVwapOverlays({
     const lines: OverlayLine[] = [];
     const bands: OverlayBand[] = [];
     if (candles.length === 0) return { bands, lines };
+    const chartIntervalSec = vwap.intervalSec(candles);
+    const times = candles.map((candle) => candle.time);
 
     for (const instance of instances) {
       if (!instance.visible) continue;
@@ -40,13 +53,26 @@ export function useVwapOverlays({
         instance.anchor === "entry" && entryAnchorMs === undefined
           ? "session"
           : instance.anchor;
-      const result = vwap.compute(candles, {
+      let result: VwapSeries;
+      if (chartIndicators.vwap.matchesGate(instance)) {
+        if (!gateCandles) continue;
+        result = vwap.resample(
+          vwap.compute(gateCandles, { anchor, bands: instance.bands }),
+          { times, chartIntervalSec, sourceIntervalSec: GATE_INTERVAL_SEC },
+        );
+      } else {
+        result = vwap.compute(candles, {
+          anchor,
+          anchorTimeMs: anchor === "entry" ? entryAnchorMs : undefined,
+          boundariesMs: vPointTimes,
+          bands: instance.bands,
+        });
+      }
+      const name = chartIndicators.vwap.label({
         anchor,
-        anchorTimeMs: anchor === "entry" ? entryAnchorMs : undefined,
-        boundariesMs: vPointTimes,
-        bands: instance.bands,
+        bands: [],
+        gate: instance.gate,
       });
-      const name = chartIndicators.vwap.label({ anchor, bands: [] });
 
       lines.push({
         name,
@@ -82,5 +108,5 @@ export function useVwapOverlays({
       }
     }
     return { bands, lines };
-  }, [candles, instances, entryAnchorMs, vPointTimes]);
+  }, [candles, gateCandles, instances, entryAnchorMs, vPointTimes]);
 }

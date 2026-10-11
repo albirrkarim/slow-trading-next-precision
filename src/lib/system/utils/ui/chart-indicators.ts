@@ -19,6 +19,12 @@ export interface VwapIndicatorConfig {
   color: string;
   /** Shade between each band pair. */
   fill: boolean;
+  /**
+   * Month anchor only: fold the runtime gate's own 5m candles from the
+   * month start instead of the chart's candles, so line and σ bands match
+   * what the feature gate measured.
+   */
+  gate: boolean;
 }
 
 export interface ChartIndicatorsConfig {
@@ -98,18 +104,28 @@ function createVwap(
       VWAP_COLORS.find((color) => !used.has(color)) ??
       VWAP_COLORS[existing.length % VWAP_COLORS.length],
     fill: true,
+    gate: false,
     ...patch,
   };
 }
 
-/** Compact legend/axis label, e.g. "VWAP M ±1,2σ". */
-function vwapLabel(config: Pick<VwapIndicatorConfig, "anchor" | "bands">) {
+/** True when the instance folds the gate's 5m candles (Month anchor only). */
+function matchesGate(config: Pick<VwapIndicatorConfig, "anchor" | "gate">) {
+  return config.gate && config.anchor === "month";
+}
+
+/** Compact legend/axis label, e.g. "VWAP M ±1,2σ" or "VWAP M·gate ±1σ". */
+function vwapLabel(
+  config: Pick<VwapIndicatorConfig, "anchor" | "bands"> &
+    Partial<Pick<VwapIndicatorConfig, "gate">>,
+) {
   const short =
     VWAP_ANCHORS.find((option) => option.value === config.anchor)?.short ??
     config.anchor;
+  const name = `VWAP ${short}${matchesGate({ anchor: config.anchor, gate: config.gate === true }) ? "·gate" : ""}`;
   return config.bands.length
-    ? `VWAP ${short} ±${config.bands.join(",")}σ`
-    : `VWAP ${short}`;
+    ? `${name} ±${config.bands.join(",")}σ`
+    : name;
 }
 
 /** Decodes one compact stored VWAP entry; undefined when malformed. */
@@ -127,6 +143,7 @@ function decodeVwap(raw: any): VwapIndicatorConfig | undefined {
         ? raw.c
         : VWAP_COLORS[0],
     fill: raw.f !== 0,
+    gate: raw.g === 1,
   };
 }
 
@@ -180,6 +197,7 @@ function save(config: ChartIndicatorsConfig) {
           b: item.bands,
           c: item.color,
           ...(item.fill ? {} : { f: 0 }),
+          ...(item.gate ? { g: 1 } : {}),
         })),
       }),
     );
@@ -195,6 +213,7 @@ const chartIndicators = {
   vwap: {
     create: createVwap,
     label: vwapLabel,
+    matchesGate,
     parseBands,
   },
 };

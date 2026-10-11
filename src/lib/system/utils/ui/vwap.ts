@@ -1,10 +1,12 @@
 /**
- * Anchored VWAP for the chart layer. Cumulative volume-weighted average
- * price (TradingView-style: `hlc3` source) that resets at each anchor
- * boundary, plus optional standard-deviation bands. Pure math over chart
- * candles — no exchange or runtime imports so callers can unit test it
- * and the output drops straight into line series.
+ * Anchored VWAP for the chart layer: buckets chart candles by anchor
+ * (session/week/month/…) and runs the runtime's `features/vwap` fold per
+ * bucket, so the chart and the gate share one formula. Pure — no exchange
+ * or runtime I/O; the output drops straight into line series.
  */
+
+import vwapFeature from "@/lib/features/vwap";
+import type { VwapAccumulator } from "@/lib/features/types";
 
 export type VwapAnchor =
   | "session"
@@ -76,10 +78,8 @@ function anchorKey(
     case "week":
       // Epoch fell on a Thursday — shift by 4d so buckets open Monday UTC.
       return Math.floor((timeMs - 4 * DAY_MS) / WEEK_MS);
-    case "month": {
-      const d = new Date(timeMs);
-      return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1);
-    }
+    case "month":
+      return vwapFeature.monthStartMs(timeMs);
     default:
       return -1;
   }
@@ -87,11 +87,11 @@ function anchorKey(
 
 /**
  * Computes the anchored VWAP line and stdev bands over chart candles.
- * VWAP = Σ(hlc3 × volume) / Σvolume since the last anchor boundary;
- * each band = vwap ± mult × σ where σ is the cumulative population
- * standard deviation of hlc3 since the same boundary
- * (`sqrt(Σsrc²/n − (Σsrc/n)²)` — TradingView's method). Candles with
- * non-positive volume extend the line unchanged (they move nothing).
+ * Each anchor bucket runs its own `features/vwap` accumulator — the exact
+ * fold the runtime gate uses — so VWAP = Σ(hlc3 × volume) / Σvolume and
+ * σ = population stdev of hlc3 since the bucket opened; each band =
+ * vwap ± mult × σ. Candles with non-positive volume extend the line
+ * unchanged (they move nothing).
  */
 function compute(
   candles: VwapCandle[],
@@ -114,61 +114,99 @@ function compute(
   const lower = bands.map(() => [] as VwapPoint[]);
 
   let currentKey: number | null = null;
-  let pv = 0;
-  let v = 0;
-  let sumSrc = 0;
-  let sumSrcSq = 0;
-  let n = 0;
+  let acc: VwapAccumulator | undefined;
   const boundaries =
     boundariesMs && boundariesMs.length > 1
       ? [...boundariesMs].sort((a, b) => a - b)
       : boundariesMs;
 
   for (const candle of candles) {
-    const key = anchorKey(candle.time * 1000, anchor, {
-      anchorTimeMs,
-      boundariesMs: boundaries,
-    });
+    const t = candle.time * 1000;
+    const key = anchorKey(t, anchor, { anchorTimeMs, boundariesMs: boundaries });
     if (key === -1) continue;
 
-    if (key !== currentKey) {
+    if (key !== currentKey || !acc) {
       currentKey = key;
-      pv = 0;
-      v = 0;
-      sumSrc = 0;
-      sumSrcSq = 0;
-      n = 0;
+      acc = vwapFeature.accumulator.create(key);
     }
+    vwapFeature.accumulator.fold(acc, { ...candle, t });
 
-    const src = (candle.high + candle.low + candle.close) / 3;
-    n += 1;
-    sumSrc += src;
-    sumSrcSq += src * src;
+    const values = vwapFeature.raw(acc);
+    if (!values) continue;
 
-    const vol = candle.volume;
-    if (Number.isFinite(vol) && vol > 0) {
-      pv += src * vol;
-      v += vol;
-    }
-
-    if (v <= 0) continue;
-
-    const value = pv / v;
-    const variance = Math.max(sumSrcSq / n - (sumSrc / n) ** 2, 0);
-    const stdev = Math.sqrt(variance);
-
-    vwap.push({ time: candle.time, value });
+    vwap.push({ time: candle.time, value: values.price });
     bands.forEach((mult, i) => {
-      upper[i].push({ time: candle.time, value: value + mult * stdev });
-      lower[i].push({ time: candle.time, value: value - mult * stdev });
+      upper[i].push({ time: candle.time, value: values.price + mult * values.stdev });
+      lower[i].push({ time: candle.time, value: values.price - mult * values.stdev });
     });
   }
 
   return { vwap, upper, lower };
 }
 
+/**
+ * Maps a series computed on another candle interval onto the chart's
+ * candle times: each chart candle takes the latest source point whose
+ * candle had closed by the chart candle's close — the value the runtime
+ * could see then (it folds closed candles only).
+ */
+function resample(
+  points: VwapPoint[],
+  times: number[],
+  chartIntervalSec: number,
+  sourceIntervalSec: number,
+): VwapPoint[] {
+  const out: VwapPoint[] = [];
+  let index = -1;
+  for (const time of times) {
+    const closeTime = time + chartIntervalSec;
+    while (
+      index + 1 < points.length &&
+      points[index + 1].time + sourceIntervalSec <= closeTime
+    ) {
+      index += 1;
+    }
+    if (index >= 0) out.push({ time, value: points[index].value });
+  }
+  return out;
+}
+
+/** Resamples every line of a VWAP series onto chart candle times. */
+function resampleSeries(
+  series: VwapSeries,
+  {
+    times,
+    chartIntervalSec,
+    sourceIntervalSec,
+  }: { times: number[]; chartIntervalSec: number; sourceIntervalSec: number },
+): VwapSeries {
+  const map = (points: VwapPoint[]) =>
+    resample(points, times, chartIntervalSec, sourceIntervalSec);
+  return {
+    vwap: map(series.vwap),
+    upper: series.upper.map(map),
+    lower: series.lower.map(map),
+  };
+}
+
+/**
+ * Candle interval (seconds) inferred from chart candle spacing — the
+ * smallest positive gap among the first candles, so an exchange gap can't
+ * inflate it. 0 with fewer than two candles.
+ */
+function intervalSec(candles: Pick<VwapCandle, "time">[]): number {
+  let min = Infinity;
+  for (let i = 1; i < Math.min(candles.length, 20); i++) {
+    const gap = candles[i].time - candles[i - 1].time;
+    if (gap > 0 && gap < min) min = gap;
+  }
+  return Number.isFinite(min) ? min : 0;
+}
+
 const vwap = {
   compute,
+  intervalSec,
+  resample: resampleSeries,
 };
 
 export default vwap;

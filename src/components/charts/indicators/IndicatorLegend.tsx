@@ -89,10 +89,13 @@ export default function IndicatorLegend({
   indicators,
   hasVPoints,
   hasEntryAnchor,
+  gateLoading,
 }: {
   indicators: ChartIndicatorsApi;
   hasVPoints: boolean;
   hasEntryAnchor: boolean;
+  /** "Match gate" 5m candles are still being fetched. */
+  gateLoading: boolean;
 }) {
   const [editing, setEditing] = useState<{
     id: string;
@@ -130,7 +133,11 @@ export default function IndicatorLegend({
         <LegendRow
           color={item.color}
           key={item.id}
-          label={chartIndicators.vwap.label(item)}
+          label={
+            gateLoading && chartIndicators.vwap.matchesGate(item)
+              ? `${chartIndicators.vwap.label(item)} · loading 5m…`
+              : chartIndicators.vwap.label(item)
+          }
           onLabelClick={(anchorEl) => setEditing({ id: item.id, anchorEl })}
           onToggle={() =>
             indicators.updateVwap(item.id, { visible: !item.visible })

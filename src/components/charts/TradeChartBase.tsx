@@ -24,9 +24,11 @@ import axios from "axios";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CurrencyChart from "./CurrencyChart";
+import chartIndicators from "@/lib/system/utils/ui/chart-indicators";
 import IndicatorLegend from "./indicators/IndicatorLegend";
 import IndicatorsMenu from "./indicators/IndicatorsMenu";
 import { useChartIndicators } from "./indicators/useChartIndicators";
+import { useGateVwapCandles } from "./indicators/useGateVwapCandles";
 import { useVwapOverlays } from "./indicators/useVwapOverlays";
 import { useFillHeight } from "./useFillHeight";
 import type { VolatilityPoint } from "@/lib/system/types";
@@ -298,8 +300,24 @@ export default function TradeChartBase({
     typeof entryAnchorMs === "number" &&
     Number.isFinite(entryAnchorMs) &&
     entryAnchorMs > 0;
+  const gateVwapEnabled = indicators.config.vwaps.some(
+    (item) => item.visible && chartIndicators.vwap.matchesGate(item),
+  );
+  const gateCandles = useGateVwapCandles({
+    enabled: gateVwapEnabled,
+    symbol,
+    exchange,
+    marketType,
+    fromMs: klines.length > 0 ? klines[0].time * 1000 : undefined,
+    toMs:
+      klines.length > 1
+        ? (klines[klines.length - 1].time * 2 - klines[klines.length - 2].time) *
+          1000
+        : undefined,
+  });
   const vwapOverlay = useVwapOverlays({
     candles: klines,
+    gateCandles,
     instances: indicators.config.vwaps,
     entryAnchorMs: hasEntryAnchor ? entryAnchorMs : undefined,
     vPointTimes,
@@ -367,6 +385,7 @@ export default function TradeChartBase({
 
       <Box ref={chartBoxRef} sx={{ position: "relative" }}>
         <IndicatorLegend
+          gateLoading={gateVwapEnabled && gateCandles === undefined}
           hasEntryAnchor={hasEntryAnchor}
           hasVPoints={hasVPoints}
           indicators={indicators}

@@ -7,6 +7,14 @@
 import type { Kline } from "@/lib/system/types/market";
 import type { CoinVwap, VwapAccumulator } from "./types";
 
+/**
+ * Candle interval the runtime VWAP folds — pinned to 5m even on 1m speedup
+ * passes so σ granularity stays consistent. The chart's "match gate" mode
+ * reads the same constant.
+ */
+const INTERVAL = "5m" as const;
+const INTERVAL_MS = 5 * 60_000;
+
 /** UTC month-start (ms) containing `timeMs` — the VWAP anchor boundary. */
 function monthStartMs(timeMs: number): number {
   const d = new Date(timeMs);
@@ -18,17 +26,24 @@ function createAccumulator(anchorMs: number): VwapAccumulator {
   return { aT: anchorMs, n: 0, pv: 0, s: 0, s2: 0, t: 0, v: 0 };
 }
 
+/** One candle's VWAP inputs — `t` is the open time in ms. */
+export interface VwapFoldCandle {
+  t: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
 /**
- * Folds one kline into the accumulator: `hlc3` feeds both the weighted
+ * Folds one candle into the accumulator: `hlc3` feeds both the weighted
  * mean (`pv`/`v`, volume-gated — a candle nobody traded cannot move the
  * average) and the population σ sums (`s`/`s2`/`n`). Advances `acc.t` to
- * the candle's open time.
+ * the candle's open time. The single VWAP fold shared by the runtime feed
+ * and the chart overlay.
  */
-function foldKline(acc: VwapAccumulator, kline: Kline): void {
-  const high = Number(kline[2]);
-  const low = Number(kline[3]);
-  const close = Number(kline[4]);
-  const volume = Number(kline[5]);
+function fold(acc: VwapAccumulator, candle: VwapFoldCandle): void {
+  const { high, low, close, volume } = candle;
   if (
     !Number.isFinite(high) ||
     !Number.isFinite(low) ||
@@ -44,7 +59,33 @@ function foldKline(acc: VwapAccumulator, kline: Kline): void {
     acc.pv += src * volume;
     acc.v += volume;
   }
-  acc.t = Number(kline[0]);
+  acc.t = candle.t;
+}
+
+/** Folds one exchange kline tuple (`[openTime, open, high, low, close, volume, …]`). */
+function foldKline(acc: VwapAccumulator, kline: Kline): void {
+  fold(acc, {
+    t: Number(kline[0]),
+    high: Number(kline[2]),
+    low: Number(kline[3]),
+    close: Number(kline[4]),
+    volume: Number(kline[5]),
+  });
+}
+
+/**
+ * Unquantized VWAP and population σ of hlc3
+ * (`sqrt(Σs²/n − mean²)`) from an accumulator; undefined while the run
+ * has no volume.
+ */
+function raw(
+  acc: VwapAccumulator,
+): { price: number; stdev: number } | undefined {
+  if (acc.v <= 0 || acc.n <= 0) return undefined;
+  const price = acc.pv / acc.v;
+  if (!Number.isFinite(price) || price <= 0) return undefined;
+  const variance = Math.max(acc.s2 / acc.n - (acc.s / acc.n) ** 2, 0);
+  return { price, stdev: Math.sqrt(variance) };
 }
 
 /**
@@ -60,13 +101,9 @@ function derive(
   signalPrice?: number,
 ): CoinVwap | undefined {
   if (!acc) return undefined;
-  if (acc.v <= 0 || acc.n <= 0) return { anchorT: acc.aT };
-
-  const price = acc.pv / acc.v;
-  if (!Number.isFinite(price) || price <= 0) return { anchorT: acc.aT };
-
-  const variance = Math.max(acc.s2 / acc.n - (acc.s / acc.n) ** 2, 0);
-  const stdev = Math.sqrt(variance);
+  const values = raw(acc);
+  if (!values) return { anchorT: acc.aT };
+  const { price, stdev } = values;
 
   const fields: CoinVwap = {
     anchorT: acc.aT,
@@ -94,11 +131,15 @@ function derive(
 }
 
 const vwap = {
+  INTERVAL,
+  INTERVAL_MS,
   monthStartMs,
   accumulator: {
     create: createAccumulator,
+    fold,
     foldKline,
   },
+  raw,
   derive,
 };
 

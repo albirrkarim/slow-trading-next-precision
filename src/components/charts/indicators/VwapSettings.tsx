@@ -92,6 +92,27 @@ export default function VwapSettings({
           </MenuItem>
         ))}
       </TextField>
+      {config.anchor === "month" && (
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={config.gate}
+              onChange={(_, gate) => onChange({ gate })}
+              size="small"
+            />
+          }
+          label={
+            <Box>
+              <Typography variant="body2">Match gate (5m)</Typography>
+              <Typography color="text.secondary" variant="caption">
+                Fold the runtime&apos;s 5m candles from the month start — the
+                exact VWAP and σ the feature gate measured
+              </Typography>
+            </Box>
+          }
+          sx={{ alignItems: "flex-start", "& .MuiCheckbox-root": { pt: 0.25 } }}
+        />
+      )}
       <TextField
         helperText="σ multipliers, e.g. 1, 2 or 1.2, 1.7 — empty for none"
         label="Bands"

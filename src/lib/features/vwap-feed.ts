@@ -15,9 +15,8 @@ import type { RuntimeContext } from "@/lib/precision/types";
 
 import vwap from "./vwap";
 
-/** VWAP is pinned to 5m candles even on 1m speedup passes — keeps σ granularity consistent. */
-const VWAP_INTERVAL = "5m" as const;
-const VWAP_INTERVAL_MS = 5 * 60_000;
+const VWAP_INTERVAL = vwap.INTERVAL;
+const VWAP_INTERVAL_MS = vwap.INTERVAL_MS;
 
 /**
  * Folds each newly closed 5m kline into `state.features.vwap`. Symbols
