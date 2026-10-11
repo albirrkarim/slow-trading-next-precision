@@ -29,7 +29,10 @@ import { useEntryOrderLines, usePriceLines } from "./usePriceLines";
 import { useTrajectorySeries } from "./useTrajectorySeries";
 import { useOverlayLines } from "./useOverlayLines";
 
-export default function CurrencyChart({ data, markers, activePosition, aimPosition, dashedEntryPriceLine = false, tpPrice, slPrice, betterToCloseAt, entryOrders, height = 400, trajectory, trajectoryAnchor, trajectoryDirection, initialVisibleRange, overlayLines, overlayBands }: ChartProps) {
+/** Right margin in live mode — wide enough for an indicator name badge. */
+const LIVE_RIGHT_MARGIN_PX = 120;
+
+export default function CurrencyChart({ data, markers, activePosition, aimPosition, dashedEntryPriceLine = false, tpPrice, slPrice, betterToCloseAt, entryOrders, height = 400, trajectory, trajectoryAnchor, trajectoryDirection, initialVisibleRange, overlayLines, overlayBands, onNearLeftEdge, followLatest = false }: ChartProps) {
     const theme = useTheme();
     const chartTextColor = theme.palette.text.secondary;
     const chartGridColor = theme.palette.divider;
@@ -50,7 +53,11 @@ export default function CurrencyChart({ data, markers, activePosition, aimPositi
     const [trajectoryHover, setTrajectoryHover] = useState<TrajectoryHoverState | null>(null);
     const [markerHover, setMarkerHover] = useState<MarkerHoverState | null>(null);
     const markerMetaRef = useRef<Marker[]>([]);
-    const previousDataWindowRef = useRef<{ firstTime: number; lastTime: number } | null>(null);
+    const previousDataWindowRef = useRef<{ firstTime: number; lastTime: number; count: number } | null>(null);
+    const onNearLeftEdgeRef = useRef(onNearLeftEdge);
+    useEffect(() => {
+        onNearLeftEdgeRef.current = onNearLeftEdge;
+    }, [onNearLeftEdge]);
     const previousProjectedTimeRef = useRef<number | null>(null);
 
     useEffect(() => {
@@ -125,6 +132,13 @@ export default function CurrencyChart({ data, markers, activePosition, aimPositi
 
         chart.subscribeCrosshairMove(handleCrosshairMove);
 
+        // Scroll-back: ask the owner for older history once the left edge of
+        // the loaded data comes within a few bars of the viewport.
+        const handleRangeChange = (range: { from: number; to: number } | null) => {
+            if (range && range.from < 30) onNearLeftEdgeRef.current?.();
+        };
+        chart.timeScale().subscribeVisibleLogicalRangeChange(handleRangeChange);
+
         // Track the container, not the window — a dialog toggling fullscreen
         // resizes the chart without any window resize event.
         const container = chartContainerRef.current;
@@ -136,6 +150,7 @@ export default function CurrencyChart({ data, markers, activePosition, aimPositi
         // eslint-disable-next-line consistent-return
         return () => {
             resizeObserver.disconnect();
+            chart.timeScale().unsubscribeVisibleLogicalRangeChange(handleRangeChange);
             chart.unsubscribeCrosshairMove(handleCrosshairMove);
             chart.remove();
             seriesRef.current = null;
@@ -150,6 +165,19 @@ export default function CurrencyChart({ data, markers, activePosition, aimPositi
     useEffect(() => {
         chartRef.current?.applyOptions({ height });
     }, [height]);
+
+    // Live mode (TradingView-like): a fixed pixel margin right of the newest
+    // candle keeps the indicator name badges off the price action, and the
+    // wheel zoom keeps the right bar in place instead of zooming around the
+    // cursor, so zooming out grows history leftward.
+    useEffect(() => {
+        chartRef.current?.applyOptions({
+            timeScale: {
+                rightBarStaysOnScroll: followLatest,
+                rightOffsetPixels: followLatest ? LIVE_RIGHT_MARGIN_PX : undefined,
+            },
+        });
+    }, [followLatest]);
 
     // Keep chart colors in sync with the MUI theme without recreating it.
     useEffect(() => {
@@ -184,8 +212,32 @@ export default function CurrencyChart({ data, markers, activePosition, aimPositi
                 typeof lastTime === "number" &&
                 previousDataWindow?.firstTime === firstTime &&
                 lastTime >= previousDataWindow.lastTime;
-            const visibleLogicalRange = shouldPreserveVisibleRange
-                ? chart?.timeScale().getVisibleLogicalRange() ?? null
+            // History prepended (scroll-back): same tail, earlier head. The
+            // time scale is right-anchored, so `setData` already keeps the
+            // viewport on the same candles — touching the range would double
+            // the shift.
+            const prepended =
+                previousDataWindow !== null &&
+                typeof firstTime === "number" &&
+                firstTime < previousDataWindow.firstTime &&
+                typeof lastTime === "number" &&
+                lastTime >= previousDataWindow.lastTime;
+            const currentRange =
+                shouldPreserveVisibleRange
+                    ? chart?.timeScale().getVisibleLogicalRange() ?? null
+                    : null;
+            // Live tail: a viewport parked on the newest bar follows new ones.
+            const appendedBars =
+                followLatest && previousDataWindow && currentRange
+                    ? sortedData.length - previousDataWindow.count
+                    : 0;
+            const atRightEdge =
+                currentRange !== null &&
+                previousDataWindow !== null &&
+                currentRange.to >= previousDataWindow.count - 2;
+            const shift = atRightEdge && appendedBars > 0 ? appendedBars : 0;
+            const visibleLogicalRange = currentRange
+                ? { from: currentRange.from + shift, to: currentRange.to + shift }
                 : null;
             const dataWindowChanged =
                 !previousDataWindow ||
@@ -231,7 +283,9 @@ export default function CurrencyChart({ data, markers, activePosition, aimPositi
             );
             volumeSeriesRef.current.setData(volumeData as any);
 
-            if (visibleLogicalRange && chart) {
+            if (prepended) {
+                // Keep the right-anchored viewport as-is (see above).
+            } else if (visibleLogicalRange && chart) {
                 chart.timeScale().setVisibleLogicalRange(visibleLogicalRange);
             } else if (chart && initialVisibleRange && dataWindowChanged) {
                 chart.timeScale().setVisibleRange({
@@ -243,7 +297,7 @@ export default function CurrencyChart({ data, markers, activePosition, aimPositi
             }
 
             if (typeof firstTime === "number" && typeof lastTime === "number") {
-                previousDataWindowRef.current = { firstTime, lastTime };
+                previousDataWindowRef.current = { count: sortedData.length, firstTime, lastTime };
             }
             previousProjectedTimeRef.current = maxProjectedTime;
 
@@ -275,7 +329,7 @@ export default function CurrencyChart({ data, markers, activePosition, aimPositi
             // We would need to track them. Ideally we would rebuild chart on position change or track strictly.
             // For now, let's proceed with adding it. If multiple lines heap up, we might need a ref to existingLine.
         }
-    }, [activePosition, betterToCloseAt, data, initialVisibleRange, markers, resolvedAimPosition, trajectory, trajectoryAnchor]);
+    }, [activePosition, betterToCloseAt, data, followLatest, initialVisibleRange, markers, resolvedAimPosition, trajectory, trajectoryAnchor]);
 
     const betterCloseLineX = useBetterCloseLine({
         chartRef,

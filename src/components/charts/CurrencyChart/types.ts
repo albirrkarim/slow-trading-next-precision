@@ -130,4 +130,12 @@ export interface ChartProps {
      * beneath `overlayLines`. Same memoized-reference contract applies.
      */
     overlayBands?: OverlayBand[];
+    /**
+     * Fired (repeatedly) while the viewport sits within a few bars of the
+     * oldest loaded candle — the owner prepends older history, and the
+     * chart keeps the viewport on the same candles.
+     */
+    onNearLeftEdge?: () => void;
+    /** Live mode: a viewport parked on the newest bar scrolls with new bars. */
+    followLatest?: boolean;
 }

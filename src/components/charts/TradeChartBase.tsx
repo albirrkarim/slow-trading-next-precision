@@ -24,14 +24,10 @@ import axios from "axios";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CurrencyChart from "./CurrencyChart";
-import chartIndicators from "@/lib/system/utils/ui/chart-indicators";
 import IndicatorLegend from "./indicators/IndicatorLegend";
 import IndicatorsMenu from "./indicators/IndicatorsMenu";
 import { useChartIndicators } from "./indicators/useChartIndicators";
-import { useEmaOverlays } from "./indicators/useEmaOverlays";
-import { useSourceCandles } from "./indicators/useSourceCandles";
-import { useSupertrendOverlays } from "./indicators/useSupertrendOverlays";
-import { useVwapOverlays } from "./indicators/useVwapOverlays";
+import { useChartOverlays } from "./indicators/useChartOverlays";
 import { useFillHeight } from "./useFillHeight";
 import type { VolatilityPoint } from "@/lib/system/types";
 import type { FeatureIndicatorDefs } from "@/lib/features/indicators";
@@ -306,41 +302,15 @@ export default function TradeChartBase({
     typeof entryAnchorMs === "number" &&
     Number.isFinite(entryAnchorMs) &&
     entryAnchorMs > 0;
-  const source = useSourceCandles({
-    requests:
-      klines.length > 0
-        ? chartIndicators.sourceRequests(indicators.config, klines[0].time * 1000)
-        : [],
+  const overlays = useChartOverlays({
+    indicators,
+    candles: klines,
     symbol,
     exchange,
     marketType,
-    endTime:
-      klines.length > 1
-        ? (klines[klines.length - 1].time * 2 - klines[klines.length - 2].time) *
-          1000
-        : undefined,
-  });
-  const vwapOverlay = useVwapOverlays({
-    candles: klines,
-    sourceCandles: source.candles,
-    instances: indicators.config.vwaps,
-    entryAnchorMs: hasEntryAnchor ? entryAnchorMs : undefined,
     vPointTimes,
+    entryAnchorMs: hasEntryAnchor ? entryAnchorMs : undefined,
   });
-  const supertrendLines = useSupertrendOverlays({
-    candles: klines,
-    sourceCandles: source.candles,
-    instances: indicators.config.supertrends,
-  });
-  const emaLines = useEmaOverlays({
-    candles: klines,
-    sourceCandles: source.candles,
-    instances: indicators.config.emas,
-  });
-  const overlayLines = useMemo(
-    () => [...vwapOverlay.lines, ...supertrendLines, ...emaLines],
-    [emaLines, supertrendLines, vwapOverlay.lines],
-  );
   const hasVPoints = vPointTimes.length > 0;
 
   if (loading) {
@@ -408,7 +378,7 @@ export default function TradeChartBase({
 
       <Box ref={chartBoxRef} sx={{ position: "relative" }}>
         <IndicatorLegend
-          sourceCandles={source.candles}
+          sourceCandles={overlays.sourceCandles}
           hasEntryAnchor={hasEntryAnchor}
           hasVPoints={hasVPoints}
           indicators={indicators}
@@ -424,8 +394,8 @@ export default function TradeChartBase({
           trajectory={trajectory}
           trajectoryAnchor={trajectoryAnchor}
           trajectoryDirection={trajectoryDirection}
-          overlayLines={overlayLines}
-          overlayBands={vwapOverlay.bands}
+          overlayLines={overlays.overlayLines}
+          overlayBands={overlays.overlayBands}
         />
       </Box>
 

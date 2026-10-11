@@ -1,5 +1,6 @@
 "use client";
 
+import CandlestickChartIcon from "@mui/icons-material/CandlestickChart";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import DifferenceIcon from "@mui/icons-material/Difference";
 import MenuIcon from "@mui/icons-material/Menu";
@@ -32,6 +33,12 @@ const sidebarSections = [
                 href: "/",
                 icon: <DashboardIcon />,
                 description: "Live dashboard for the standalone trading workflow.",
+            },
+            {
+                text: "Live Chart",
+                href: "/live",
+                icon: <CandlestickChartIcon />,
+                description: "Live candles for any coin with indicators, vPoints, and free scroll-back.",
             },
         ],
     },
