@@ -14,17 +14,20 @@ export interface Marker {
   price?: number;
   tooltipTitle?: string;
   tooltipText?: string;
+  /** Indicator layer that owns the marker — lets the chart toggle it. */
+  kind?: "vpoint";
 }
 
 export const convertVolatilityToMarkers = (
   vPoints: VolatilityPoint[],
 ): Marker[] =>
   vPoints.map((vPoint) => ({
+    kind: "vpoint",
     time: Math.floor(vPoint.t / 1000) as UTCTimestamp,
     position: vPoint.l === "B" ? "belowBar" : "aboveBar",
     color: vPoint.l === "B" ? "green" : "red",
     shape: vPoint.l === "B" ? "arrowUp" : "arrowDown",
-    text: `${vPoint.l === "B" ? "BOTTOM" : "TOP"}[${vPoint.lvl}] ${vPoint.pct ?? ""} - ${vPoint.id.split("_")[1]}`,
+    text: `${vPoint.l}[${vPoint.lvl}] ${vPoint.pct ?? ""} - ${vPoint.id.split("_")[1]}`,
   }));
 
 export interface LeveledMarkers {

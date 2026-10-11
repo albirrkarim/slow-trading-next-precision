@@ -120,24 +120,30 @@ export default function CurrencyChart({ data, markers, activePosition, aimPositi
 
         chart.subscribeCrosshairMove(handleCrosshairMove);
 
-        const handleResize = () => {
-            chart.applyOptions({
-                width: chartContainerRef.current?.clientWidth || 0,
-                height,
-            });
-        };
-
-        window.addEventListener("resize", handleResize);
+        // Track the container, not the window — a dialog toggling fullscreen
+        // resizes the chart without any window resize event.
+        const container = chartContainerRef.current;
+        const resizeObserver = new ResizeObserver(() => {
+            chart.applyOptions({ width: container.clientWidth || 0 });
+        });
+        resizeObserver.observe(container);
 
         // eslint-disable-next-line consistent-return
         return () => {
-            window.removeEventListener("resize", handleResize);
+            resizeObserver.disconnect();
             chart.unsubscribeCrosshairMove(handleCrosshairMove);
             chart.remove();
             seriesRef.current = null;
             volumeSeriesRef.current = null;
             markersPrimitiveRef.current = null;
         };
+        // Height is applied in place below — recreating the chart would drop
+        // the series data set by the other effects.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    useEffect(() => {
+        chartRef.current?.applyOptions({ height });
     }, [height]);
 
     // Keep chart colors in sync with the MUI theme without recreating it.

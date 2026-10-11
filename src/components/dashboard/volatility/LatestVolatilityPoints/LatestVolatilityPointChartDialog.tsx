@@ -33,6 +33,7 @@ export default function LatestVolatilityPointChartDialog({
     <ButtonDialog
       title="View Chart"
       titleLong={`${symbol} — Volatility Chart`}
+      allowFullscreen
       maxWidth="xl"
       size="small"
       variant="outlined"
@@ -48,9 +49,10 @@ export default function LatestVolatilityPointChartDialog({
         </IconButton>
       )}
     >
-      {() => (
+      {(_, { fullscreen }) => (
         <Box sx={{ p: 1, backgroundColor: "background.default" }}>
           <TradeChartBase
+            fillHeight={fullscreen}
             symbol={symbol}
             exchange={exchangeType}
             marketType={marketType}

@@ -5,12 +5,13 @@ import DialogBlur from './DialogBlur'
 
 // Extending ButtonProps to include specific props for ButtonDialog
 export interface ButtonDialogProps extends Omit<ButtonProps, 'children'> {
-    children: (props: any) => ReactNode
+    children: (handleClose: () => void, state: { fullscreen: boolean }) => ReactNode
     title: any
     titleLong?: string
     maxWidth?: DialogProps["maxWidth"]
     customButton?: (handleOpen: () => void) => ReactNode
     forceFullscreen?: boolean
+    allowFullscreen?: boolean
     useAppBar?: boolean
     defaultOpen?: boolean
     beforeClose?: () => void
@@ -28,6 +29,7 @@ export interface ButtonDialogProps extends Omit<ButtonProps, 'children'> {
  * @param {'xs' | 'sm' | 'md' | 'lg' | 'xl'} [maxWidth='sm'] - Maximum width of the dialog.
  * @param {(handleOpen: () => void) => ReactNode} [customButton] - A function that returns a custom button element. It receives a function to open the dialog.
  * @param {boolean} [forceFullscreen] - If true, the dialog will be fullscreen regardless of screen size.
+ * @param {boolean} [allowFullscreen] - If true, the header shows a fullscreen toggle before the close button.
  * @param {boolean} [useAppBar] - If true, the fullscreen dialog uses an app bar with its title and close action.
  * @param {boolean} [defaultOpen=false] - If true, the dialog will be open by default.
  * @param {() => void} [beforeClose] - A function that will be called before the dialog closes.
@@ -63,6 +65,7 @@ export default function ButtonDialog({
     maxWidth = 'sm',
     customButton,
     forceFullscreen,
+    allowFullscreen,
     useAppBar,
     defaultOpen = false,
     beforeClose,
@@ -71,12 +74,14 @@ export default function ButtonDialog({
     ...buttonProps // Collecting the rest of the props for the Button component
 }: ButtonDialogProps): React.JSX.Element {
     const [open, setOpen] = useState<boolean>(defaultOpen)
+    const [fullscreen, setFullscreen] = useState(false)
 
     const handleClose = (): void => {
         if (typeof beforeClose === 'function') {
             beforeClose()
         }
         setOpen(false)
+        setFullscreen(false)
     }
 
     const handleOpen = (): void => {
@@ -108,8 +113,8 @@ export default function ButtonDialog({
                 </Button>
             )}
 
-            <DialogBlur title={titleLong ?? title} open={open} maxWidth={maxWidth} onClose={handleClose} forceFullscreen={forceFullscreen} useAppBar={useAppBar} sx={boxSx} contentSx={contentSx}>
-                {open && <>{children ? children(handleClose) : <Alert severity="warning">ButtonDialog children must be a function</Alert>}</>}
+            <DialogBlur title={titleLong ?? title} open={open} maxWidth={maxWidth} onClose={handleClose} forceFullscreen={forceFullscreen} useAppBar={useAppBar} sx={boxSx} contentSx={contentSx} fullscreenToggle={allowFullscreen ? { active: fullscreen, onToggle: () => setFullscreen((prev) => !prev) } : undefined}>
+                {open && <>{children ? children(handleClose, { fullscreen }) : <Alert severity="warning">ButtonDialog children must be a function</Alert>}</>}
             </DialogBlur>
         </>
     )

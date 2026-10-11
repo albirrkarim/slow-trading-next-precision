@@ -13,10 +13,6 @@ import type { IntervalKlines } from "@/lib/exchange";
 
 import { systemLog } from "@/lib/system/logging";
 import type { Position } from "@/lib/system/trading";
-import vwap, {
-  type VwapAnchor,
-  type VwapIndicatorConfig,
-} from "@/lib/system/utils/ui/vwap";
 import {
   Box,
   CircularProgress,
@@ -25,12 +21,14 @@ import {
   Typography,
 } from "@mui/material";
 import axios from "axios";
-import { LineStyle } from "lightweight-charts";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CurrencyChart from "./CurrencyChart";
-import type { OverlayBand, OverlayLine } from "./CurrencyChart/types";
-import VwapControls from "./VwapControls";
+import IndicatorLegend from "./indicators/IndicatorLegend";
+import IndicatorsMenu from "./indicators/IndicatorsMenu";
+import { useChartIndicators } from "./indicators/useChartIndicators";
+import { useVwapOverlays } from "./indicators/useVwapOverlays";
+import { useFillHeight } from "./useFillHeight";
 import type { VolatilityPoint } from "@/lib/system/types";
 
 type TrajectoryPoint = {
@@ -100,6 +98,7 @@ export default function TradeChartBase({
   initialVisibleRangeMs,
   volatilitySource = "storage",
   customVolatilityPoints,
+  fillHeight = false,
 }: {
   activePosition?: TradeChartPosition;
   symbol: string;
@@ -123,6 +122,8 @@ export default function TradeChartBase({
   initialVisibleRangeMs?: { start: number; end: number };
   volatilitySource?: TradeChartVolatilitySource;
   customVolatilityPoints?: VolatilityPoint[];
+  /** Stretch the chart to the viewport bottom (fullscreen dialogs). */
+  fillHeight?: boolean;
 }) {
   const [klines, setKlines] = useState<any[]>([]);
   const [apiMarkers, setApiMarkers] = useState<Marker[]>([]);
@@ -136,19 +137,14 @@ export default function TradeChartBase({
   const [interval, setInterval] = useState<IntervalKlines>(defaultInterval);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [vwapCfg, setVwapCfg] = useState<VwapIndicatorConfig>(() =>
-    vwap.config.load(),
-  );
-
-  const updateVwapConfig = useCallback(
-    (patch: Partial<VwapIndicatorConfig>) =>
-      setVwapCfg((prev) => {
-        const next = { ...prev, ...patch };
-        vwap.config.save(next);
-        return next;
-      }),
-    [],
-  );
+  const indicators = useChartIndicators();
+  const chartBoxRef = useRef<HTMLDivElement>(null);
+  // Reserve room below for the collapsed Volatility Points header.
+  const chartHeight = useFillHeight(chartBoxRef, {
+    enabled: fillHeight,
+    fallback: 500,
+    reserve: 72,
+  });
 
   useEffect(() => {
     setInterval(defaultInterval);
@@ -273,7 +269,16 @@ export default function TradeChartBase({
     fetchKlines();
   }, [fetchKlines]);
 
-  const allMarkers = useMemo(() => [...apiMarkers, ...(markers ?? [])], [apiMarkers, markers]);
+  const showVPoints = indicators.config.vPoints;
+  const allMarkers = useMemo(
+    () => [
+      ...(showVPoints
+        ? apiMarkers
+        : apiMarkers.filter((marker) => marker.kind !== "vpoint")),
+      ...(markers ?? []),
+    ],
+    [apiMarkers, markers, showVPoints],
+  );
   const initialVisibleRange = useMemo(
     () =>
       initialVisibleRangeMs &&
@@ -293,62 +298,13 @@ export default function TradeChartBase({
     typeof entryAnchorMs === "number" &&
     Number.isFinite(entryAnchorMs) &&
     entryAnchorMs > 0;
-  // The Entry anchor is only meaningful with a position — fall back to
-  // Session on dialogs that don't carry one.
-  const effectiveVwapAnchor: VwapAnchor =
-    vwapCfg.anchor === "entry" && !hasEntryAnchor
-      ? "session"
-      : vwapCfg.anchor;
-
-  const vwapOverlay = useMemo<
-    { bands: OverlayBand[]; lines: OverlayLine[] } | undefined
-  >(() => {
-    if (!vwapCfg.enabled || klines.length === 0) return undefined;
-
-    const result = vwap.compute(klines, {
-      anchor: effectiveVwapAnchor,
-      anchorTimeMs:
-        effectiveVwapAnchor === "entry" ? entryAnchorMs : undefined,
-      boundariesMs: vPointTimes,
-      bands: vwapCfg.bands,
-    });
-
-    const lines: OverlayLine[] = [
-      { name: "VWAP", color: "#2962ff", lineWidth: 2, data: result.vwap },
-    ];
-    const bands: OverlayBand[] = [];
-    // Outermost bands first: nested translucent fills stack darker toward
-    // the VWAP line.
-    for (let index = vwapCfg.bands.length - 1; index >= 0; index--) {
-      const mult = vwapCfg.bands[index];
-      bands.push({
-        name: `VWAP ±${mult}σ`,
-        color: "rgba(144, 164, 174, 0.16)",
-        data: result.upper[index].map((point, i) => ({
-          time: point.time,
-          upper: point.value,
-          lower: result.lower[index][i]?.value,
-        })),
-      });
-      lines.push(
-        {
-          name: `VWAP +${mult}σ`,
-          color: "#90a4ae",
-          lineWidth: 1,
-          lineStyle: LineStyle.Dashed,
-          data: result.upper[index],
-        },
-        {
-          name: `VWAP −${mult}σ`,
-          color: "#90a4ae",
-          lineWidth: 1,
-          lineStyle: LineStyle.Dashed,
-          data: result.lower[index],
-        },
-      );
-    }
-    return { bands, lines };
-  }, [klines, vwapCfg, effectiveVwapAnchor, entryAnchorMs, vPointTimes]);
+  const vwapOverlay = useVwapOverlays({
+    candles: klines,
+    instances: indicators.config.vwaps,
+    entryAnchorMs: hasEntryAnchor ? entryAnchorMs : undefined,
+    vPointTimes,
+  });
+  const hasVPoints = vPointTimes.length > 0;
 
   if (loading) {
     return (
@@ -392,12 +348,7 @@ export default function TradeChartBase({
           flexWrap: "wrap",
         }}
       >
-        <VwapControls
-          anchor={effectiveVwapAnchor}
-          config={vwapCfg}
-          hasEntryAnchor={hasEntryAnchor}
-          onChange={updateVwapConfig}
-        />
+        <IndicatorsMenu hasVPoints={hasVPoints} indicators={indicators} />
         <Select
           value={interval}
           onChange={(event) => setInterval(event.target.value as IntervalKlines)}
@@ -414,29 +365,32 @@ export default function TradeChartBase({
         </Select>
       </Box>
 
-      <CurrencyChart
-        data={klines}
-        markers={allMarkers}
-        activePosition={activePosition}
-        dashedEntryPriceLine={dashedEntryPriceLine}
-        entryOrders={[]}
-        height={500}
-        initialVisibleRange={initialVisibleRange}
-        trajectory={trajectory}
-        trajectoryAnchor={trajectoryAnchor}
-        trajectoryDirection={trajectoryDirection}
-        overlayLines={vwapOverlay?.lines}
-        overlayBands={vwapOverlay?.bands}
-      />
+      <Box ref={chartBoxRef} sx={{ position: "relative" }}>
+        <IndicatorLegend
+          hasEntryAnchor={hasEntryAnchor}
+          hasVPoints={hasVPoints}
+          indicators={indicators}
+        />
+        <CurrencyChart
+          data={klines}
+          markers={allMarkers}
+          activePosition={activePosition}
+          dashedEntryPriceLine={dashedEntryPriceLine}
+          entryOrders={[]}
+          height={chartHeight}
+          initialVisibleRange={initialVisibleRange}
+          trajectory={trajectory}
+          trajectoryAnchor={trajectoryAnchor}
+          trajectoryDirection={trajectoryDirection}
+          overlayLines={vwapOverlay.lines}
+          overlayBands={vwapOverlay.bands}
+        />
+      </Box>
 
       {vPointsSeries && (
         <HeaderMetrics
           defaultExpanded={defaultShowVolatility}
-          title={
-            <Typography sx={{ mx: 1 }} variant="h6" gutterBottom>
-              Volatility Points ({vPointsSeries.series[0]?.length ?? 0})
-            </Typography>
-          }
+          title={<>Volatility Points ({vPointsSeries.series[0]?.length ?? 0})</>}
           sx={{ my: 2 }}
         >
           {(expanded) => (

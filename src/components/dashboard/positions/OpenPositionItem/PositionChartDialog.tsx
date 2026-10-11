@@ -18,6 +18,7 @@ export default function PositionChartDialog({
     <ButtonDialog
       title="View Chart"
       titleLong={`${position.symbol} — Trade Chart`}
+      allowFullscreen
       maxWidth="xl"
       size="small"
       variant="outlined"
@@ -35,9 +36,10 @@ export default function PositionChartDialog({
         </Button>
       )}
     >
-      {() => (
+      {(_, { fullscreen }) => (
         <Box sx={{ p: 1, backgroundColor: "background.default" }}>
           <TradeChartBase
+            fillHeight={fullscreen}
             activePosition={position}
             defaultInterval="1m"
             symbol={position.symbol}

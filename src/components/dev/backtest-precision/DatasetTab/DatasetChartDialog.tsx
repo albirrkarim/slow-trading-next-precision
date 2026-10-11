@@ -57,7 +57,9 @@ function DatasetChartContent({
     hash,
     exchangeType,
     marketType,
+    fullscreen,
 }: {
+    fullscreen: boolean;
     row: FeatureGateDatasetRow;
     hash: string;
     exchangeType?: string;
@@ -122,6 +124,7 @@ function DatasetChartContent({
                 defaultInterval="15m"
                 endTimeMs={signal.t + SIGNAL_CONTEXT_MS}
                 exchange={exchangeType ?? "binance"}
+                fillHeight={fullscreen}
                 header={
                     <>
                         <Typography variant="body2">
@@ -179,13 +182,15 @@ export default function DatasetChartDialog({
                     <ShowChartIcon fontSize="small" />
                 </IconButton>
             )}
+            allowFullscreen
             maxWidth="xl"
             title="Chart"
             titleLong={`${row.symbol} — Dataset vPoint`}
         >
-            {() => (
+            {(_, { fullscreen }) => (
                 <DatasetChartContent
                     exchangeType={exchangeType}
+                    fullscreen={fullscreen}
                     hash={hash}
                     marketType={marketType}
                     row={row}

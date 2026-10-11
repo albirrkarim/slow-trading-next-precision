@@ -1,4 +1,6 @@
 import CloseIcon from '@mui/icons-material/Close'
+import FullscreenIcon from '@mui/icons-material/Fullscreen'
+import FullscreenExitIcon from '@mui/icons-material/FullscreenExit'
 import type { DialogProps } from '@mui/material';
 import { AppBar, Box, Dialog, DialogContent, IconButton, Toolbar, Typography, useMediaQuery, useTheme } from '@mui/material'
 import { type SxProps, type Theme } from '@mui/system'
@@ -18,6 +20,7 @@ export interface DialogBlurProps {
   centerDialog?: boolean // If true, vertically centers the dialog
   sx?: SxProps<Theme> // Custom styles
   contentSx?: SxProps<Theme> // Custom styles for the dialog content area
+  fullscreenToggle?: { active: boolean; onToggle: () => void } // Shows a fullscreen toggle before the close button
   [key: string]: any // Any other props
 }
 
@@ -41,7 +44,7 @@ export interface DialogBlurProps {
  *   <Button variant="contained" onClick={handleAction}>Yes, I'm sure</Button>
  * </DialogBlur>
  */
-const DialogBlur = ({ id, title, open, onClose, maxWidth = 'md', breakpoints = 'sm', useAppBar = false, forceFullscreen = null, children, sx = {}, contentSx = {}, ...rest }: DialogBlurProps) => {
+const DialogBlur = ({ id, title, open, onClose, maxWidth = 'md', breakpoints = 'sm', useAppBar = false, forceFullscreen = null, children, sx = {}, contentSx = {}, fullscreenToggle, ...rest }: DialogBlurProps) => {
   const theme = useTheme()
   const fullScreen = useMediaQuery(theme.breakpoints.down(breakpoints))
 
@@ -54,7 +57,7 @@ const DialogBlur = ({ id, title, open, onClose, maxWidth = 'md', breakpoints = '
 
   return (
     <Dialog
-      fullScreen={forceFullscreen ?? fullScreen}
+      fullScreen={forceFullscreen ?? (fullscreenToggle?.active || fullScreen)}
       fullWidth
       maxWidth={maxWidth}
       open={open}
@@ -131,9 +134,20 @@ const DialogBlur = ({ id, title, open, onClose, maxWidth = 'md', breakpoints = '
         <Box id={id}>
           <Box sx={{ display: "flex", justifyContent: "space-between", p: 1, pb: 0 }}>
             <Typography variant="h6" component="div">{title}</Typography>
-            <IconButton onClick={onClose} title="Close dialog" size="small">
-              <CloseIcon />
-            </IconButton>
+            <Box>
+              {fullscreenToggle && (
+                <IconButton
+                  onClick={fullscreenToggle.onToggle}
+                  title={fullscreenToggle.active ? 'Exit fullscreen' : 'Fullscreen'}
+                  size="small"
+                >
+                  {fullscreenToggle.active ? <FullscreenExitIcon /> : <FullscreenIcon />}
+                </IconButton>
+              )}
+              <IconButton onClick={onClose} title="Close dialog" size="small">
+                <CloseIcon />
+              </IconButton>
+            </Box>
           </Box>
           <DialogContent
             sx={[

@@ -36,13 +36,6 @@ export interface VwapSeries {
   lower: VwapPoint[][];
 }
 
-export interface VwapIndicatorConfig {
-  enabled: boolean;
-  anchor: VwapAnchor;
-  /** Std-dev multipliers for the band envelope, e.g. [1, 2]. */
-  bands: number[];
-}
-
 const DAY_MS = 24 * 60 * 60_000;
 const WEEK_MS = 7 * DAY_MS;
 
@@ -174,67 +167,8 @@ function compute(
   return { vwap, upper, lower };
 }
 
-const STORAGE_KEY = "precision:trade-chart-vwap:v1";
-
-const DEFAULT_CONFIG: VwapIndicatorConfig = {
-  enabled: false,
-  anchor: "session",
-  bands: [1, 2],
-};
-
-const ANCHORS: VwapAnchor[] = [
-  "session",
-  "week",
-  "month",
-  "all",
-  "entry",
-  "vpoint",
-];
-
-/**
- * Reads the persisted indicator config; falls back to defaults on absent
- * or malformed storage so a bad blob never breaks the chart.
- */
-function loadConfig(): VwapIndicatorConfig {
-  try {
-    if (typeof window === "undefined") return DEFAULT_CONFIG;
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_CONFIG;
-    const parsed = JSON.parse(raw);
-    return {
-      enabled: parsed?.e === true,
-      anchor: ANCHORS.includes(parsed?.a) ? parsed.a : DEFAULT_CONFIG.anchor,
-      bands:
-        Array.isArray(parsed?.b) &&
-        parsed.b.every((x: unknown) => Number.isFinite(x))
-          ? parsed.b
-          : DEFAULT_CONFIG.bands,
-    };
-  } catch {
-    return DEFAULT_CONFIG;
-  }
-}
-
-/** Persists the indicator config (compact keys — UI preference only). */
-function saveConfig(config: VwapIndicatorConfig) {
-  try {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ e: config.enabled, a: config.anchor, b: config.bands }),
-    );
-  } catch {
-    // localStorage unavailable — config simply won't persist.
-  }
-}
-
 const vwap = {
   compute,
-  config: {
-    DEFAULT: DEFAULT_CONFIG,
-    load: loadConfig,
-    save: saveConfig,
-  },
 };
 
 export default vwap;
