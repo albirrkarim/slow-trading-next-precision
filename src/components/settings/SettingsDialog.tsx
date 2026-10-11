@@ -7,6 +7,7 @@ import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import AutoGraphIcon from "@mui/icons-material/AutoGraph";
 import BackupIcon from "@mui/icons-material/Backup";
 import HubIcon from "@mui/icons-material/Hub";
+import InsightsIcon from "@mui/icons-material/Insights";
 import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
 import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
@@ -24,6 +25,7 @@ import {
 } from "@mui/material";
 import SettingsDialogRuntimeTab from "./Runtime/SettingsDialogRuntimeTab";
 import SettingsDialogBackupTab from "./Backup/SettingsDialogBackupTab";
+import SettingsDialogFeaturesTab from "./Features/SettingsDialogFeaturesTab";
 import SettingsDialogBlackSwanTab from "./Backswan/SettingsDialogBlackSwanTab";
 import SettingsDialogManagementTab from "./Management/SettingsDialogManagementTab";
 import SettingsDialogMcpTab from "./MCP/SettingsDialogMcpTab";
@@ -35,6 +37,7 @@ import type { ConfigDraft, ConfigDraftSetter, DashboardState } from "./settings-
 export const SETTINGS_TABS = [
   { label: "Trading", value: "trading" },
   { label: "Management", value: "management" },
+  { label: "Features", value: "features" },
   { label: "Black Swan", value: "black-swan" },
   { label: "Runtime", value: "runtime" },
   { label: "Backup", value: "backup" },
@@ -53,6 +56,8 @@ function SettingsTabIcon({ tab }: { tab: SettingsTab }) {
       return <AutoGraphIcon fontSize="small" />;
     case "management":
       return <ManageAccountsIcon fontSize="small" />;
+    case "features":
+      return <InsightsIcon fontSize="small" />;
     case "black-swan":
       return <ShieldOutlinedIcon fontSize="small" />;
     case "runtime":
@@ -264,6 +269,13 @@ export default function SettingsDialog(props: {
                 setSelectedAccountSlug={setSelectedAccountSlug}
               />
             ) : null}
+
+            {activeTab === "features" && (
+              <SettingsDialogFeaturesTab
+                configDraft={configDraft}
+                setConfigDraft={setConfigDraft}
+              />
+            )}
 
             {(activeTab === "black-swan" && dashboardState) ? (
               <SettingsDialogBlackSwanTab

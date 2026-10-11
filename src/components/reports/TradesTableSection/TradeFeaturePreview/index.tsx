@@ -5,11 +5,11 @@ import moment from "moment";
 
 import { PriceNormalizedHistorySparkline } from "@/components/charts/PriceNormalizedHistorySparkline";
 import HintTooltip from "@/components/ui/HintTooltip";
-import priceNormExhaustion from "@/lib/features/price-norm-exhaustion";
+import indicators from "@/lib/features/indicators";
+import priceNorm from "@/lib/features/price-norm";
 import type {
   CoinFeatures,
   CoinPriceNormalized,
-  CoinVwap,
   FeatureHistoryPoint,
   RuntimeFeatures,
 } from "@/lib/features/types";
@@ -17,7 +17,8 @@ import { FEATURE_GATE_VWAP_BOUNDS } from "@/lib/strategies/default_with_features
 import format from "@/lib/system/utils/format";
 import type { VolatilityPoint } from "@/lib/system/types/market";
 
-import movementCorrelation from "@/lib/features/price-norm-movement";
+
+import IndicatorReadings from "./IndicatorReadings";
 
 export interface FeaturePreviewRow {
   /** Min/max over the trail plus current; average over recorded trail samples only. */
@@ -70,24 +71,6 @@ function priceNormHistory(
     ? grouped
     : coin?.priceNormalizedHistory;
   return Array.isArray(history) ? history : [];
-}
-
-/**
- * `vwap` group across store shapes — the `{price, stdev, …}` group now,
- * flat `vwap*` fields on snapshots recorded before the group existed.
- */
-function coinVwap(coin: CoinFeatures | undefined): CoinVwap | undefined {
-  const raw = coin?.vwap as CoinVwap | number | undefined;
-  if (typeof raw === "number") {
-    return {
-      anchorT: coin?.vwapAnchorT,
-      distancePct: coin?.vwapDistancePct,
-      price: raw,
-      stdev: coin?.vwapStdev,
-      stretchPct: coin?.vwapStretchPct,
-    };
-  }
-  return raw;
 }
 
 /** Summarizes finite recorded priceNorm points; the current reading only extends min/max. */
@@ -213,7 +196,7 @@ export default function TradeFeaturePreview({
   if (!rows) return null;
   const ownRow = rows.find((row) => row.own && row.key !== "BTC");
   const correlation = ownRow
-    ? movementCorrelation.score(
+    ? priceNorm.movement.score(
         priceNormHistory(rows.find((row) => row.key === "BTC")?.coin),
         priceNormHistory(ownRow.coin),
       )
@@ -234,13 +217,13 @@ export default function TradeFeaturePreview({
         const current = priceNormCurrent(row.coin);
 
         //row.coin?.priceNormalized?.exhaustion ??
-        const exhaustion =  priceNormExhaustion.score(priceNormHistory(row.coin));
+        const exhaustion =  priceNorm.exhaustion.score(priceNormHistory(row.coin));
         const history = priceNormHistory(row.coin);
         const suddenChange = (history.at(-1)?.p ?? 0) - (history.at(-2)?.p ?? 0);
         // Stamped by the feature update — absent on snapshots recorded
         // before the field existed.
         const trend = row.coin?.priceNormalized?.trend;
-        const vwap = coinVwap(row.coin);
+        const vwap = indicators.read.vwap(row.coin);
         const vPoint = row.own ? (signal ?? row.coin?.latestVpoint) : row.coin?.latestVpoint;
         // The trade's own row only: σ-distance of the entry-time signal
         // point from the monthly VWAP — same dσ the vwap gate enforces.
@@ -411,6 +394,11 @@ export default function TradeFeaturePreview({
                 )}
               </Typography>
             )}
+            <IndicatorReadings
+              coin={row.coin}
+              defs={(feature as RuntimeFeatures | undefined)?.defs}
+              entryTimeMs={entryTimeMs}
+            />
             {vPointAgeMs !== undefined && (
               <Typography
                 color={

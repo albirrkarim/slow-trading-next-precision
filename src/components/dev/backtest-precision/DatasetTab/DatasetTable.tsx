@@ -62,6 +62,7 @@ export default function DatasetTable({
     useEffect(() => { filterStorage.write(filters); }, [filters]);
 
     const symbols = useMemo(() => [...new Set(rows.map((row) => row.symbol))].sort(), [rows]);
+    const metrics = useMemo(() => datasetFilters.metricsFor(datasetFilters.rowDefs(rows)), [rows]);
     const baseRows = useMemo(() => {
         const query: FeatureGateRowQuery = {
             hash: cacheKey,
@@ -124,7 +125,7 @@ export default function DatasetTable({
 
     return (
         <Box>
-            <DatasetFilters entryReasons={entryReasons} filters={filters} gates={gates}
+            <DatasetFilters entryReasons={entryReasons} filters={filters} gates={gates} metrics={metrics}
                 enabledSubGates={enabledSubGates}
                 onChange={(next) => { setFilters(next); setPage(0); }}
                 onSlugChange={(next) => { setFilters((current) => ({ ...current, entryReason: "" })); setPage(0); onSlugChange(next); }}

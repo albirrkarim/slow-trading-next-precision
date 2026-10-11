@@ -11,30 +11,31 @@ import type {
 import chartIndicators, {
   type VwapIndicatorConfig,
 } from "@/lib/system/utils/ui/chart-indicators";
-import vwapFeature from "@/lib/features/vwap";
+import { INDICATOR_INTERVAL_MS } from "@/lib/features/indicators";
 import vwap, {
   type VwapAnchor,
   type VwapCandle,
   type VwapSeries,
-} from "@/lib/system/utils/ui/vwap";
+} from "@/lib/system/utils/ui/chart-vwap";
 
-const GATE_INTERVAL_SEC = vwapFeature.INTERVAL_MS / 1000;
+import type { SourceCandles } from "./useSourceCandles";
 
 /**
  * Builds overlay lines and band fills for every visible VWAP instance.
  * The Entry anchor falls back to Session when the chart has no position.
- * "Match gate" instances fold `gateCandles` (the runtime's 5m klines) and
- * are resampled onto chart candle times; they draw nothing until loaded.
+ * Gate-mode instances fold their source interval's closed candles (as the
+ * runtime does) and are resampled onto chart candle times; they draw
+ * nothing until those candles load.
  */
 export function useVwapOverlays({
   candles,
-  gateCandles,
+  sourceCandles,
   instances,
   entryAnchorMs,
   vPointTimes,
 }: {
   candles: VwapCandle[];
-  gateCandles?: VwapCandle[];
+  sourceCandles: SourceCandles;
   instances: VwapIndicatorConfig[];
   entryAnchorMs?: number;
   vPointTimes: number[];
@@ -54,11 +55,17 @@ export function useVwapOverlays({
           ? "session"
           : instance.anchor;
       let result: VwapSeries;
-      if (chartIndicators.vwap.matchesGate(instance)) {
-        if (!gateCandles) continue;
+      const source = chartIndicators.vwap.source(instance);
+      if (source) {
+        const candlesAtSource = sourceCandles[source];
+        if (!candlesAtSource) continue;
         result = vwap.resample(
-          vwap.compute(gateCandles, { anchor, bands: instance.bands }),
-          { times, chartIntervalSec, sourceIntervalSec: GATE_INTERVAL_SEC },
+          vwap.compute(candlesAtSource, { anchor, bands: instance.bands }),
+          {
+            times,
+            chartIntervalSec,
+            sourceIntervalSec: INDICATOR_INTERVAL_MS[source] / 1000,
+          },
         );
       } else {
         result = vwap.compute(candles, {
@@ -72,6 +79,7 @@ export function useVwapOverlays({
         anchor,
         bands: [],
         gate: instance.gate,
+        src: instance.src,
       });
 
       lines.push({
@@ -108,5 +116,5 @@ export function useVwapOverlays({
       }
     }
     return { bands, lines };
-  }, [candles, gateCandles, instances, entryAnchorMs, vPointTimes]);
+  }, [candles, sourceCandles, instances, entryAnchorMs, vPointTimes]);
 }

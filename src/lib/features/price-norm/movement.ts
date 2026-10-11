@@ -1,4 +1,4 @@
-import type { FeatureHistoryPoint } from "@/lib/features/types";
+import type { FeatureHistoryPoint } from "../types";
 
 const INTERVALS = 32;
 const MOVEMENT_LAG = 4;

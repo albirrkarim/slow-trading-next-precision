@@ -1,3 +1,4 @@
+import indicators from "@/lib/features/indicators";
 import type { RuntimeFeatures } from "@/lib/features/types";
 import type { VolatilityPoint } from "@/lib/system/types/market";
 
@@ -52,10 +53,10 @@ function rejection(policy: readonly NeuralHardRule[], t: number, features: Runti
         reason = "normalized price is outside the current range [0, 1]";
       }
     } else if (rule === "v2-overstretched" || rule === "v2-quiet-overstretched" || rule === "v2-quiet-overstretched-low-level") {
-      const btcStretch = features?.coins.BTC?.vwap?.stretchPct;
+      const btcStretch = indicators.read.vwap(features?.coins.BTC)?.stretchPct;
       if (rule !== "v2-overstretched" && (typeof btcStretch !== "number" || !Number.isFinite(btcStretch) || btcStretch > FEATURE_GATE_REGIME_BOUNDS.maxBreakdownBtcStretchPct)) continue;
       if (rule === "v2-quiet-overstretched-low-level" && Math.abs(signal.lvl) >= 3) continue;
-      const vwap = features?.coins[(signal.symbol ?? "").toUpperCase()]?.vwap;
+      const vwap = indicators.read.vwap(features?.coins[(signal.symbol ?? "").toUpperCase()]);
       if (!vwap || typeof vwap.price !== "number" || !Number.isFinite(vwap.price) || vwap.price <= 0 ||
         typeof vwap.stdev !== "number" || !Number.isFinite(vwap.stdev) || vwap.stdev <= 0) {
         reason = "monthly VWAP or sigma is unavailable";

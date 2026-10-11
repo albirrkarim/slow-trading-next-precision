@@ -10,6 +10,13 @@
 
 import type { VolatilityPoint } from "@/lib/system/types/market";
 
+import type {
+  CoinIndicators,
+  CoinVwap,
+  FeatureIndicatorDefs,
+  IndicatorAccumulator,
+} from "./indicators/types";
+
 /**
  * Pivot envelope window every pivot-derived feature reads from
  * `state.vPointsMap`. Matches the ~2-month volatility warm-up lookback
@@ -28,30 +35,6 @@ export const FEATURES_HISTORY_WINDOW_MS = 20 * 24 * 60 * 60 * 1000;
 export interface FeatureHistoryPoint {
   t: number;
   p: number;
-}
-
-/**
- * Running fold of hlc3 candles for the monthly-anchored VWAP — the raw
- * substrate the derived `vwap` group is computed from. Written by the
- * feature feed (`features.vwap-feed` inside `refresh`), never by
- * `features.update`: accumulators must survive the per-pass `coins`
- * rebuild. Sums restart at each UTC month boundary.
- */
-export interface VwapAccumulator {
-  /** UTC month-start (ms) the sums belong to. */
-  aT: number;
-  /** Σ hlc3·volume since anchor. */
-  pv: number;
-  /** Σ volume since anchor. */
-  v: number;
-  /** Σ hlc3 since anchor (σ input). */
-  s: number;
-  /** Σ hlc3² since anchor (σ input). */
-  s2: number;
-  /** Candles folded since anchor. */
-  n: number;
-  /** Open time (ms) of the last folded candle — incremental cursor. */
-  t: number;
 }
 
 /**
@@ -79,7 +62,7 @@ export interface CoinPriceNormalized {
   history: FeatureHistoryPoint[];
 
   /**
-   * Trend clarity of `history` in [-1, +1] — `priceNormTrend` (efficiency
+   * Trend clarity of `history` in [-1, +1] — `priceNorm.trend` (efficiency
    * ratio, net move over path): near ±1 is a clean traverse, ~0 is
    * sideways. Optional for legacy snapshots recorded before the field
    * existed.
@@ -93,52 +76,6 @@ export interface CoinPriceNormalized {
    * Undefined until the trail is long enough; optional in older snapshots.
    */
   exhaustion?: number;
-}
-
-/**
- * Grouped monthly-anchored VWAP feature — derived each pass from the
- * `RuntimeFeatures.vwap` accumulator. The mark-driven fields move every
- * pass, so `changedCoins` excludes the whole group: it rides along in any
- * record a real change triggers but never triggers one itself.
- */
-export interface CoinVwap {
-  /**
-   * Monthly-anchored VWAP (Σ hlc3·vol / Σvol since `anchorT`). Quantized to
-   * 4 significant digits so it records as a step function in the delta
-   * stream. Absent until the accumulator carries volume.
-   */
-  price?: number;
-
-  /**
-   * Population standard deviation of hlc3 since `anchorT`
-   * (`sqrt(Σs²/n − mean²)`) — the σ the VWAP-band distances are measured
-   * in. Same quantization cadence as `price`.
-   */
-  stdev?: number;
-
-  /**
-   * Signed distance of the latest mark price from `price`, percent:
-   * `(mark − price)/price × 100`. Quantized to 0.1 steps.
-   */
-  distancePct?: number;
-
-  /**
-   * Envelope width: `2σ/price × 100` — how stretched the monthly VWAP
-   * bands are as a share of price. Quantized to 0.1 steps.
-   */
-  stretchPct?: number;
-
-
-  /** UTC month-start (ms) the VWAP run belongs to. */
-  anchorT?: number;
-
-  /**
-   * σ-distance of the coin's `latestVpoint` from `price`:
-   * `|latestVpoint.p − price| / stdev`, quantized to 0.01 steps. Absent
-   * without σ data or a valid point — gates and previews read it directly
-   * instead of recomputing.
-   */
-  dSigma?: number;
 }
 
 /**
@@ -156,6 +93,18 @@ export interface CoinFeatures {
 
   priceNormalized: CoinPriceNormalized;
 
+  /**
+   * Dynamic indicator readings, `ind.<type>.<id>` (e.g.
+   * `ind.supertrend.st15.d`). Ids and params come from
+   * `management.indicators`; the matching definitions ride along in
+   * `RuntimeFeatures.defs`.
+   */
+  ind?: CoinIndicators;
+
+  /**
+   * @deprecated Pre-indicator monthly VWAP group, kept only on snapshots
+   * recorded before `ind` existed. Read via `indicators.read.vwap`.
+   */
   vwap?: CoinVwap;
 
   [feature: string]: any;
@@ -168,9 +117,15 @@ export interface RuntimeFeatures {
   /** Per-symbol features keyed by base symbol (same keys as vPointsMap). */
   coins: Record<string, CoinFeatures>;
   /**
-   * VWAP accumulators keyed by base symbol. Written by the feature feed
-   * (`vwap-feed` kline I/O), read by `features.update` — kept outside
-   * `coins` because that map is rebuilt wholesale every pass.
+   * Indicator running state: `acc[paramsKey][symbol]`. Written by the
+   * indicator feed, read by `features.update` — kept outside `coins`
+   * because that map is rebuilt wholesale every pass. Keyed by params (not
+   * id) so renames never re-warm. Dropped from position snapshots.
    */
-  vwap?: Record<string, VwapAccumulator>;
+  acc?: Record<string, Record<string, IndicatorAccumulator>>;
+  /**
+   * Enabled indicator definitions keyed by id — what each `ind.<type>.<id>`
+   * meant when it was computed. Copied into every entry snapshot.
+   */
+  defs?: FeatureIndicatorDefs;
 }

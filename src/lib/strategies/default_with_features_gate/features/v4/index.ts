@@ -4,7 +4,7 @@ import type { VolatilityPoint } from "@/lib/system/types/market";
 import { vwapFilter } from "../v2/vwap";
 import { isCurrentExtreme, isSuddenChange } from "../v2/price_norm";
 import featureGateRegimes from "../v2/regimes";
-import priceNormExhaustion from "@/lib/features/price-norm-exhaustion";
+import priceNorm from "@/lib/features/price-norm";
 
 /** Ordered v4 check ids and their UI names. */
 export const subGates = {
@@ -108,7 +108,7 @@ function rejectionReason(
     if (enabled.has("exhaustion")) {
         const normalized = features?.coins[symbol]?.priceNormalized;
         const pCurrent = normalized?.current ?? 0;
-        const ex = normalized?.exhaustion ?? priceNormExhaustion.score(normalized?.history);
+        const ex = normalized?.exhaustion ?? priceNorm.exhaustion.score(normalized?.history);
 
         if (ex && ex > 0.7 && Math.abs(pCurrent) > 0.8) {
             return "Exhausted"

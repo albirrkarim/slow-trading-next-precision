@@ -12,10 +12,7 @@
 import fs from "fs-extra";
 
 import backtestArtifacts from "@/lib/dev/backtestPrecision/backtest/artifacts";
-import {
-  computePriceNormalized,
-  replayPriceNormalizedHistory,
-} from "@/lib/features/price-normalized";
+import priceNorm from "@/lib/features/price-norm";
 import type { FeatureHistoryPoint } from "@/lib/features/types";
 import type { VolatilityPoint } from "@/lib/system/types";
 
@@ -50,11 +47,11 @@ function trailStats(trail: FeatureHistoryPoint[]) {
 function coinFeaturesAt(now: number, points: VolatilityPoint[]) {
   return {
     priceNormalized: {
-      current: computePriceNormalized({ now, points }),
-      history: replayPriceNormalizedHistory({ now, points }),
+      current: priceNorm.compute({ now, points }),
+      history: priceNorm.replay({ now, points }),
       // Extended trail for mining only — runtime persists 10d; the study
       // gets 30d so long-window excursions stay visible.
-      historyExtended: replayPriceNormalizedHistory({
+      historyExtended: priceNorm.replay({
         historyWindowMs: EXTENDED_HISTORY_MS,
         now,
         points,

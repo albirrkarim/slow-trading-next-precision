@@ -108,6 +108,7 @@ export function makeConfigDraft(state: DashboardState): ConfigDraft {
       volatilityRetracePct: state.config.volatilityRetracePct,
       volatilityThreshold: state.config.volatilityThreshold,
       blackSwan: structuredClone(state.config.blackSwan),
+      indicators: structuredClone(state.config.indicators),
     },
     runtime,
     accounts: state.accounts.map((account) => structuredClone(account)),

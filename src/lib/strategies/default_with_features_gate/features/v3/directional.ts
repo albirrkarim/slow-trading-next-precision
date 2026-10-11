@@ -1,3 +1,4 @@
+import indicators from "@/lib/features/indicators";
 import type { CoinFeatures, RuntimeFeatures } from "@/lib/features/types";
 import type { VolatilityPoint } from "@/lib/system/types";
 
@@ -30,9 +31,9 @@ function coinValues(coin: CoinFeatures | undefined, t: number, side: number): Ar
     const prior = history.findLast((point) => point.t <= t - hours * 3_600_000);
     return current === undefined || !prior ? undefined : side * (current - prior.p);
   };
-  const price = finite(coin?.vwap?.price);
-  const sigma = finite(coin?.vwap?.stdev);
-  const distance = finite(coin?.vwap?.distancePct);
+  const price = finite(indicators.read.vwap(coin)?.price);
+  const sigma = finite(indicators.read.vwap(coin)?.stdev);
+  const distance = finite(indicators.read.vwap(coin)?.distancePct);
   const sigmaPct = price !== undefined && price > 0 && sigma !== undefined && sigma > 0 ? sigma / price * 100 : undefined;
   return [
     current === undefined ? undefined : side * (current - 0.5),
@@ -54,8 +55,8 @@ function read(t: number, features: RuntimeFeatures | undefined, signal: Volatili
   const anchor = coinValues(btc, t, side);
   const point = btc?.latestVpoint;
   const observedPoint = point && Number.isFinite(point.t) && point.t <= t ? point : undefined;
-  const price = finite(own?.vwap?.price);
-  const sigma = finite(own?.vwap?.stdev);
+  const price = finite(indicators.read.vwap(own)?.price);
+  const sigma = finite(indicators.read.vwap(own)?.stdev);
   return [
     side, Math.abs(signal.lvl), side * signal.lvl, finite(signal.pct), Math.log1p(Math.max(0, t - signal.t) / 3_600_000),
     finite(signal.maxUpPct), finite(signal.maxDownPct),

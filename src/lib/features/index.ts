@@ -1,22 +1,9 @@
 import type { RuntimeContext } from "@/lib/precision/types";
 
-import {
-  computePriceNormalized,
-  isSameNormalizedValue,
-  replayPriceNormalizedHistory,
-} from "./price-normalized";
-import priceNormExhaustion from "./price-norm-exhaustion";
-import { priceNormTrend } from "./price-norm-trend";
+import indicators from "./indicators";
+import priceNorm from "./price-norm";
 import prune from "./prune";
-import vwap from "./vwap";
-import vwapFeed from "./vwap-feed";
-import {
-  FEATURES_HISTORY_WINDOW_MS,
-  type CoinFeatures,
-  type FeatureHistoryPoint,
-} from "./types";
-
-const EMPTY_HISTORY: FeatureHistoryPoint[] = [];
+import type { CoinFeatures } from "./types";
 
 /**
  * Recomputes `state.features` from the current runtime state for every
@@ -34,101 +21,70 @@ const EMPTY_HISTORY: FeatureHistoryPoint[] = [];
  */
 function update(context: RuntimeContext): void {
   const now = context.state.currentTime;
-  const cutoff = now - FEATURES_HISTORY_WINDOW_MS;
+  const instances = indicators.config.resolve(
+    context.state.config.management.indicators,
+  );
+  const acc = context.state.features?.acc;
   const coins: Record<string, CoinFeatures> = {};
   for (const symbol of Object.keys(context.state.vPointsMap)) {
     const points = context.state.vPointsMap[symbol];
-    const priceNormalized = computePriceNormalized({ now, points });
-    // Monthly-anchored VWAP: derive the coin-facing `vwap` group from
-    // the market-stage accumulator (lives at features.vwap — outside this
-    // rebuilt map so the fold survives every pass).
-    const vwapFields = vwap.derive(
-      context.state.features?.vwap?.[symbol],
-      context.state.markPriceMap?.[symbol]?.price,
-      points?.at(-1)?.p,
-    );
-    // Step-series trail: append only when the value changed; reuse the
-    // previous array when nothing moved so changedCoins stays sparse.
-    // Legacy stores carried the trail flat (`priceNormalizedHistory`) —
-    // the `.history` read simply misses there and the replay below
-    // reseeds the group.
-    const previousGroup =
-      context.state.features?.coins[symbol]?.priceNormalized;
-    let history = previousGroup?.history ?? EMPTY_HISTORY;
-    if (history.length === 0 && priceNormalized !== undefined) {
-      // No persisted trail (first boot, fresh symbol): reconstruct what
-      // live ticks would have captured by replaying the pivot timeline.
-      history = replayPriceNormalizedHistory({ now, points });
-    }
-    const last = history[history.length - 1];
-    if (
-      priceNormalized !== undefined &&
-      !isSameNormalizedValue(last?.p, priceNormalized)
-    ) {
-      history = [...history, { p: priceNormalized, t: now }];
-    }
-    // Points append chronologically, so only the head can fall out of the
-    // window — and keep the latest survivor so "unchanged since t" reads.
-    if (history.length > 1 && history[0].t < cutoff) {
-      history = history.filter(
-        (point, index) =>
-          point.t >= cutoff || index === history.length - 1,
-      );
-    }
-    // Reuse the previous group object when neither member moved —
-    // changedCoins diffs nested objects by identity, so a fresh wrapper
-    // would list every coin on every pass. Missing derived values in an old
-    // snapshot are calculated on the first refresh.
-    const trend = priceNormTrend(history);
-    // BOTH:FEATURE_GATE_INPUTS — shared by backtest, sandbox, and live.
-    const exhaustion = previousGroup?.history === history &&
-      Object.hasOwn(previousGroup, "exhaustion")
-        ? previousGroup.exhaustion
-        : priceNormExhaustion.score(history);
-    const priceNormalizedGroup =
-      isSameNormalizedValue(previousGroup?.current, priceNormalized) &&
-      previousGroup?.history === history &&
-      previousGroup.trend === trend &&
-      previousGroup.exhaustion === exhaustion
-        ? previousGroup
-        : { current: priceNormalized, exhaustion, history, trend };
+    const previous = context.state.features?.coins[symbol];
+    // Dynamic indicators (VWAP, Supertrend, …) derive from the feed's
+    // running state (features.acc — outside this rebuilt map so the folds
+    // survive every pass).
+    const ind = indicators.derive({
+      acc,
+      context: {
+        markPrice: context.state.markPriceMap?.[symbol]?.price,
+        signalPrice: points?.at(-1)?.p,
+      },
+      instances,
+      previous: previous?.ind,
+      symbol,
+    });
     coins[symbol] = {
       latestVpoint: points?.at(-1),
-      priceNormalized: priceNormalizedGroup,
-      ...(vwapFields && { vwap: vwapFields }),
+      priceNormalized: priceNorm.derive({
+        now,
+        points,
+        previous: previous?.priceNormalized,
+      }),
+      ...(ind && { ind }),
     };
   }
   // Accumulators are inputs, not derived values — carry them through the
   // wholesale rebuild untouched.
   context.state.features = {
+    acc,
     coins,
+    defs: indicators.config.defs(instances),
     shared: {},
-    vwap: context.state.features?.vwap,
   };
 }
 
 /**
  * Adapter-facing feature refresh — the body every `onFeatureUpdate` hook
  * should run before it diffs/persists. Feeds feature-scoped market inputs
- * (`vwap-feed` folds closed klines through `context.adapter.market`) then
- * runs the pure `update`. Keeps the runtime engine free of
+ * (the indicator feed folds closed klines through `context.adapter.market`)
+ * then runs the pure `update`. Keeps the runtime engine free of
  * feature-specific data paths: the engine calls the hook, the feature
  * pipeline owns what it needs.
  */
 async function refresh(context: RuntimeContext): Promise<void> {
-  await vwapFeed.update(context);
+  await indicators.feed.update(context);
   update(context);
 }
 
 /**
- * Top-level coin keys excluded from `changedCoins` diffs — the whole
- * `vwap` group (mark/candle-driven fields move on nearly every pass) and
- * `latestVpoint` (the point object mutates in place on mark-price passes
- * and entry markers). They ride along in every written record but never
- * trigger one — otherwise the backtest stream and production
- * `features.json` flush would write each tick.
+ * Top-level coin keys excluded from identity diffs in `changedCoins` —
+ * `latestVpoint` (mutates in place on mark-price passes and entry markers)
+ * and the legacy `vwap` group. `ind` is compared by each indicator's
+ * `changeKey` instead (a Supertrend flip counts; VWAP never does). They
+ * ride along in every written record but never trigger one on their own —
+ * otherwise the backtest stream and production `features.json` flush would
+ * write each tick.
  */
-const PER_PASS_KEYS = new Set<string>(["latestVpoint", "vwap"]);
+const PER_PASS_KEYS = new Set<string>(["ind", "latestVpoint", "vwap"]);
 
 /**
  * Lists symbols whose coin-feature values differ between two snapshots
@@ -150,6 +106,10 @@ function changedCoins(
       changed.push(symbol);
       continue;
     }
+    if (indicators.changed(before.ind, after.ind)) {
+      changed.push(symbol);
+      continue;
+    }
     const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
     for (const key of keys) {
       if (!PER_PASS_KEYS.has(key) && before[key] !== after[key]) {
@@ -163,6 +123,8 @@ function changedCoins(
 
 const features = {
   changedCoins,
+  indicators,
+  priceNorm,
   prune,
   refresh,
   update,

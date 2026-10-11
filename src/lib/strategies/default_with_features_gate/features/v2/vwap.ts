@@ -1,3 +1,4 @@
+import indicators from "@/lib/features/indicators";
 import { RuntimeFeatures } from "@/lib/features";
 import { FEATURE_GATE_VWAP_BOUNDS } from "./feature_gate_v2";
 import { VolatilityPoint } from "@/lib/system";
@@ -15,9 +16,10 @@ export function vwapBounds(currentTime: number,
     const symbol = signal.symbol ?? "";
 
     const coin = features?.coins[symbol.toUpperCase()];
-    const vwap = coin?.vwap?.price;
-    const stdev = coin?.vwap?.stdev;
-    const stretchPct = coin?.vwap?.stretchPct;
+    const reading = indicators.read.vwap(coin);
+    const vwap = reading?.price;
+    const stdev = reading?.stdev;
+    const stretchPct = reading?.stretchPct;
 
     if (typeof vwap !== "number" || !Number.isFinite(vwap) || vwap <= 0) {
         return "reject entry - no monthly VWAP feature";
@@ -62,7 +64,7 @@ export function vwapBounds(currentTime: number,
 
     // The feature update stamps `dSigma` for the coin's latest vPoint —
     // the signal an entry decision evaluates is always that point.
-    const dSigma = coin?.vwap?.dSigma;
+    const dSigma = reading?.dSigma;
     if (typeof dSigma !== "number" || !Number.isFinite(dSigma)) {
         return "reject entry - no signal σ distance";
     }

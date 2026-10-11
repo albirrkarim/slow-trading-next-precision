@@ -500,7 +500,7 @@ const toolDefinitions: RuntimeMcpToolDefinition[] = [
   {
     name: "feature_gate_rows",
     description:
-      "LOCALHOST DEV INSTANCE ONLY. Paginated dataset rows for one run — capture time, level sequence, missScore, captured features. Filters combine with AND: symbol, fromT/toT capture-time bounds (ms), metric/operator/value (metrics: missScore, signalLevel, reversalLevel, sequenceLength, signalPct, signalMaxUpPct, signalAgeMinutes, priceNormalized, btcPriceNormalized, vwapDistancePct, vwapStretchPct), sort=time|missScore|sequence with order=asc|desc. slim=true strips the heavy feature snapshot.",
+      "LOCALHOST DEV INSTANCE ONLY. Paginated dataset rows for one run — capture time, level sequence, missScore, captured features. Filters combine with AND: symbol, fromT/toT capture-time bounds (ms), metric/operator/value (metrics: missScore, signalLevel, reversalLevel, sequenceLength, signalPct, signalMaxUpPct, signalAgeMinutes, priceNormalized, btcPriceNormalized, vwapDistancePct, vwapStretchPct, vwapDSigma, vwapMonthDay, or a captured indicator field ind:<type>:<id>:<field> such as ind:supertrend:st1:d / ind:supertrend:st1:dPct / ind:supertrend:st1:flipAgeMin / ind:vwap:vwap_w:dSigma / ind:ema:ema200:dPct / ind:ema:ema200:sPct), sort=time|missScore|sequence with order=asc|desc. slim=true strips the heavy feature snapshot.",
     permission: "backtest.read",
     devOnly: true,
     readOnlyHint: true,

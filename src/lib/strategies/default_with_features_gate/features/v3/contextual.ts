@@ -1,3 +1,4 @@
+import indicators from "@/lib/features/indicators";
 import type { CoinFeatures, RuntimeFeatures } from "@/lib/features/types";
 import type { VolatilityPoint } from "@/lib/system/types/market";
 
@@ -16,8 +17,9 @@ function finite(value: unknown): number | undefined {
 
 /** Converts the captured VWAP context to scale-independent price/volatility observations. */
 function context(coin: CoinFeatures | undefined, t: number) {
-  const price = finite(coin?.vwap?.price), sigma = finite(coin?.vwap?.stdev);
-  const distance = finite(coin?.vwap?.distancePct), anchor = finite(coin?.vwap?.anchorT);
+  const vwap = indicators.read.vwap(coin);
+  const price = finite(vwap?.price), sigma = finite(vwap?.stdev);
+  const distance = finite(vwap?.distancePct), anchor = finite(vwap?.anchorT);
   return {
     mark: price !== undefined && price > 0 && distance !== undefined ? price * (1 + distance / 100) : undefined,
     sigmaPct: price !== undefined && price > 0 && sigma !== undefined && sigma > 0 ? sigma / price * 100 : undefined,
@@ -38,7 +40,7 @@ function read(t: number, features: RuntimeFeatures | undefined, signal: Volatili
   const date = new Date(t);
   const nextAnchor = Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1);
   const wave = finite(signal.pct), btcWave = finite(observed?.pct);
-  const price = finite(own?.vwap?.price);
+  const price = finite(indicators.read.vwap(own)?.price);
   return [...directional.read(t, features, signal),
     finite(signal.vb > 0 && signal.vq > 0 && signal.p > 0 ? side * (signal.vq / (signal.vb * signal.p) - 1) * 100 : undefined),
     finite(observed && observed.vb > 0 && observed.vq > 0 && observed.p > 0 ? side * (observed.vq / (observed.vb * observed.p) - 1) * 100 : undefined),

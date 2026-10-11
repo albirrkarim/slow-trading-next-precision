@@ -50,7 +50,7 @@ function read(): DatasetFilterValues {
       symbols: symbolsValue(values),
       from: dateValue(values.from),
       to: dateValue(values.to),
-      metric: typeof values.metric === "string" && Object.hasOwn(datasetFilters.metrics, values.metric) ? values.metric as FeatureGateRowMetric : defaults.metric,
+      metric: typeof values.metric === "string" && datasetFilters.resolve(values.metric) ? values.metric as FeatureGateRowMetric : defaults.metric,
       operator: typeof values.operator === "string" && Object.hasOwn(numericFilter.operators, values.operator) ? values.operator as NumericFilterOperator : defaults.operator,
       value: typeof values.value === "string" && (values.value === "" || (values.value.trim() !== "" && Number.isFinite(Number(values.value)))) ? values.value : defaults.value,
       entryStatus: values.entryStatus === "pass" || values.entryStatus === "blocked" ? values.entryStatus : "",

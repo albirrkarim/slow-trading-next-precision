@@ -9,39 +9,64 @@ the `onFeatureUpdate` adapter hook (warmup and before every entry
 capture); everything the feature store requires — including its own
 market data — is owned by this module.
 
+Behavior spec: `docs/SPECS/INDICATORS.md`.
+
 ## Directory structure
 
 ```text
 features/
-  index.ts            Public API: update (pure), refresh (orchestration), changedCoins
-  types.ts            RuntimeFeatures / CoinFeatures / VwapAccumulator contracts
-  price-normalized.ts Pivot-envelope normalization + history replay (pure)
-  prune.ts            Entry-commit snapshot pruner (pure)
-  vwap.ts             Monthly-anchored VWAP fold and σ derivation (pure)
-  vwap-feed.ts        Kline I/O feeding the VWAP accumulators
+  index.ts             features = { update, refresh, changedCoins, prune, priceNorm, indicators }
+  types.ts             Store contracts: RuntimeFeatures, CoinFeatures, CoinPriceNormalized
+  prune.ts             Entry-commit snapshot pruner (pure)
+  price-norm/          Pivot-envelope family (pure)
+    index.ts           priceNorm = { compute, derive, replay, isSame, trend, exhaustion, movement }
+    normalized.ts      Envelope reading + pivot-timeline replay
+    derive.ts          Next priceNormalized group (reading + trail + scores)
+    trend.ts           Efficiency-ratio trend score
+    exhaustion.ts      Exhaustion score
+    movement.ts        BTC ↔ coin trail correlation
+  indicators/          Configurable indicators (`management.indicators`)
+    index.ts           indicators = { config, registry, feed, derive, changed, read, candles, math }
+    types.ts           Shared contracts: config union, IndicatorDefinition, readings map
+    constants.ts       Intervals, id rule, limits (leaf — no runtime imports)
+    registry.ts        Type → definition map
+    config.ts          Defaults, normalize (field-driven), resolve, defs, key
+    read.ts            Readers with legacy-shape fallbacks
+    feed/
+      index.ts         Kline I/O: base 1m/5m read → aggregate → fold (the only I/O)
+      candles.ts       Base-candle aggregation onto UTC boundaries (pure)
+    vwap/              One folder per indicator type:
+      index.ts           vwap = { ...math, definition }
+      types.ts           config, running state, reading
+      math.ts            pure fold / derive
+      definition.ts      IndicatorDefinition for the registry
+    supertrend/        (same shape)
+    ema/               (same shape)
+```
+
+Import the grouped entities, never module internals:
+
+```ts
+import features from "@/lib/features";
+import indicators from "@/lib/features/indicators";
+import priceNorm from "@/lib/features/price-norm";
 ```
 
 ## Public API
 
-```ts
-import features from "@/lib/features";
-```
-
-- `features.update(context)` — **pure**. Reads `vPointsMap`,
-  `markPriceMap`, and the raw accumulators on `state.features`; writes a
-  fresh `coins` map. Never performs I/O, never imports an adapter.
+- `features.update(context)` — **pure**. Per symbol in `vPointsMap`:
+  `priceNorm.derive` + `indicators.derive`, written to a fresh `coins`
+  map; carries `acc` through and stamps `defs`. Never performs I/O.
 - `features.refresh(context)` — **orchestration**, the body every
-  `onFeatureUpdate` implementation should run: feeds feature-scoped
-  market inputs (`vwapFeed`) then calls `update`.
-- `features.changedCoins(prev, next)` — shallow per-symbol diff used by
-  adapters to keep feature persistence sparse (nested groups compare by
-  identity — `update` reuses unchanged group objects). The `vwap` and
-  `latestVpoint` keys are excluded from the diff: they ride along in any
-  record a real change triggers but never trigger one themselves.
-- `features.prune.forPosition(store, symbol)` — **pure**. Entry-commit
-  snapshot pruner: deep-clones the store down to `shared` plus the BTC
-  anchor and the position's own coin; the `vwap` accumulator layer is
-  dropped (raw substrate, not entry context).
+  `onFeatureUpdate` implementation runs: `indicators.feed.update` (candle
+  I/O through `context.adapter.market`), then `update`.
+- `features.changedCoins(prev, next)` — per-symbol diff that keeps
+  persistence sparse. Groups compare by identity (derivers reuse
+  unchanged objects); `ind` compares each instance's `changeKey`;
+  `latestVpoint` never triggers a write.
+- `features.prune.forPosition(store, symbol)` — **pure**. Deep-clones the
+  store down to `shared`, `defs`, and the BTC anchor + the position's own
+  coin; running state (`acc`) is dropped.
 
 Adapter wiring:
 
@@ -57,57 +82,54 @@ onFeatureUpdate: async (context) => {
 
 ```ts
 state.features = {
-  shared: Record<string, number>,            // cross-coin features
-  coins: Record<symbol, CoinFeatures>,       // derived, gate-facing values
-  vwap: Record<symbol, VwapAccumulator>,     // raw substrate (input)
+  shared: Record<string, number>,                          // cross-coin features
+  coins: Record<symbol, CoinFeatures>,                     // derived, gate-facing values
+  acc: Record<paramsKey, Record<symbol, IndicatorAccumulator>>, // running state (input)
+  defs: Record<id, FeatureIndicatorConfig>,                // enabled indicator definitions
 };
 
 CoinFeatures = {
-  latestVpoint?: VolatilityPoint,            // newest pivot (mutates in place)
-  priceNormalized: { current?: number; history: FeatureHistoryPoint[] },
-  vwap?: { price, stdev, distancePct, stretchPct, anchorT },
+  latestVpoint?: VolatilityPoint,                          // newest pivot (mutates in place)
+  priceNormalized: { current?, history, trend?, exhaustion? },
+  ind?: { vwap?: Record<id, CoinVwap>, supertrend?: Record<id, CoinSupertrend>, ema?: Record<id, CoinEma> },
 };
 ```
 
-Two layers per feature, deliberately:
+Two layers, deliberately:
 
-- **Accumulator** (`features.vwap[s]`) — foldable state that survives
-  between passes (`{aT, pv, v, s, s2, n, t}`). Written by the feed, read
-  by `update`. It lives *outside* `coins` because `update` rebuilds that
-  map wholesale every pass — anything stored inside `coins` is destroyed.
-- **Derived** (`coins[s]`) — grouped feature objects: `priceNormalized`
-  carries the current reading plus its change trail, `vwap` carries the
-  quantized monthly-anchored numbers, and `latestVpoint` mirrors the
-  newest pivot so entry snapshots freeze the signal point. The `vwap`
-  mark-driven fields and the in-place-mutating `latestVpoint` move every
-  pass, so `changedCoins` ignores both keys — they are written alongside
-  any record a pivot-driven change triggers but never trigger a write
-  themselves, keeping the backtest artifact stream and production
-  `features.json` flush sparse.
-
-Symbols follow `vPointsMap` keys — the canonical tracked set (configured
-coins, open-position coins, BTC context) already maintained by the
-engine's market stage. Position snapshots stored at entry are pruned:
-BTC + the position's own coin, no accumulators.
+- **Running state** (`acc`) — foldable state that survives between
+  passes. Written by the feed, read by `update`. It lives *outside*
+  `coins` because `update` rebuilds that map wholesale every pass.
+- **Derived** (`coins[s]`) — quantized, gate-facing groups. Absent means
+  "no opinion" (warm-up, missing data), never `0`.
 
 ## Invariants
 
-- `update` is deterministic state-in/state-out. All I/O lives in feeds
-  run by `refresh` — reachable only through `context.adapter.market`
-  (live kline buffer first, REST backfill on buffer miss), so the same
-  math runs on backtest data, sandbox, and live.
-- A feature absent must read as "no opinion", not `0` — gates fail
-  closed on missing data and pass when the feature genuinely cannot be
-  judged (same contract as `priceNormalized`).
-- Quantize derived values (4 sig digits for prices, 0.1 for percents) so
-  the backtest feature-delta stream stays sparse.
+- `update` is deterministic state-in/state-out. All I/O lives in the
+  indicator feed — reachable only through `context.adapter.market` (live
+  kline buffer first, REST/dataset backfill on miss), so the same math
+  runs on backtest data, sandbox, and live.
+- Gates read through `indicators.read`, which falls back to the shapes
+  older snapshots were recorded in.
+- Quantize derived values (4–5 sig digits for prices, 0.1 for percents)
+  so the backtest feature-delta stream stays sparse.
 
-## Adding a feature
+## Adding an indicator type
 
-1. Raw state that must persist between passes → a top-level slot on
-   `RuntimeFeatures` (never inside `coins`).
-2. Pure math → a module like `vwap.ts` (fold + derive, no I/O).
-3. Needs candles or other market data → a `*-feed.ts` that reads
-   `context.adapter.market`; the engine must not learn about it.
-4. Derive into `CoinFeatures` groups inside `update`; wire the feed
-   call inside `refresh`.
+1. `indicators/<type>/` — copy the `supertrend/` shape:
+   - `types.ts`: config (extends `FeatureIndicatorBase`), running state,
+     reading;
+   - `math.ts`: pure fold + derive;
+   - `definition.ts`: the `IndicatorDefinition` — `fields` (drive
+     validation and the settings form), `defaults`, `key`, `summary`,
+     `state` (create / warmupStartMs / stale / fold), `derive`,
+     `changeKey`, `metrics` (dataset filters);
+   - `index.ts`: `{ ...math, definition }`.
+2. In `indicators/types.ts`: add the type to `FeatureIndicatorType`, the
+   config/state/reading unions, `CoinIndicators`, and re-export its types.
+3. Register it in `indicators/registry.ts`.
+4. Optional UI: a reading row in `TradeFeaturePreview/IndicatorReadings`
+   and a chart overlay under `components/charts/indicators`.
+
+The feed, config normalization, settings form, entry snapshots, and
+dataset filters pick it up without changes.

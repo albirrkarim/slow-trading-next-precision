@@ -1,19 +1,12 @@
 /**
- * Monthly-anchored VWAP feature math — pure functions, no I/O. The
- * feature feed (`features/vwap-feed`) folds closed klines into the
- * `state.features.vwap` accumulator; `features.update` derives the
- * per-coin `vwap` group consumed by gates and snapshots.
+ * Anchored VWAP indicator — hlc3, volume-weighted, with population σ of
+ * hlc3, reset at UTC session/week/month boundaries. Pure math; the
+ * runtime feed and the chart overlay fold the same accumulator.
  */
 import type { Kline } from "@/lib/system/types/market";
-import type { CoinVwap, VwapAccumulator } from "./types";
 
-/**
- * Candle interval the runtime VWAP folds — pinned to 5m even on 1m speedup
- * passes so σ granularity stays consistent. The chart's "match gate" mode
- * reads the same constant.
- */
-const INTERVAL = "5m" as const;
-const INTERVAL_MS = 5 * 60_000;
+import type { FoldCandle } from "../types";
+import type { CoinVwap, VwapAccumulator } from "./types";
 
 /** UTC month-start (ms) containing `timeMs` — the VWAP anchor boundary. */
 function monthStartMs(timeMs: number): number {
@@ -21,18 +14,32 @@ function monthStartMs(timeMs: number): number {
   return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1);
 }
 
+const DAY_MS = 24 * 60 * 60_000;
+const WEEK_MS = 7 * DAY_MS;
+
+/**
+ * UTC start (ms) of the anchor period containing `timeMs`: the day
+ * (session), the Monday-opened week, or the month. Crypto trades 24/7, so
+ * every boundary is UTC midnight.
+ */
+function anchorStartMs(
+  timeMs: number,
+  anchor: "session" | "week" | "month",
+): number {
+  switch (anchor) {
+    case "session":
+      return Math.floor(timeMs / DAY_MS) * DAY_MS;
+    case "week":
+      // Epoch fell on a Thursday — shift by 4d so weeks open Monday UTC.
+      return Math.floor((timeMs - 4 * DAY_MS) / WEEK_MS) * WEEK_MS + 4 * DAY_MS;
+    default:
+      return monthStartMs(timeMs);
+  }
+}
+
 /** Fresh zeroed accumulator anchored at `anchorMs`. */
 function createAccumulator(anchorMs: number): VwapAccumulator {
   return { aT: anchorMs, n: 0, pv: 0, s: 0, s2: 0, t: 0, v: 0 };
-}
-
-/** One candle's VWAP inputs — `t` is the open time in ms. */
-export interface VwapFoldCandle {
-  t: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
 }
 
 /**
@@ -42,7 +49,7 @@ export interface VwapFoldCandle {
  * the candle's open time. The single VWAP fold shared by the runtime feed
  * and the chart overlay.
  */
-function fold(acc: VwapAccumulator, candle: VwapFoldCandle): void {
+function fold(acc: VwapAccumulator, candle: FoldCandle): void {
   const { high, low, close, volume } = candle;
   if (
     !Number.isFinite(high) ||
@@ -131,8 +138,7 @@ function derive(
 }
 
 const vwap = {
-  INTERVAL,
-  INTERVAL_MS,
+  anchorStartMs,
   monthStartMs,
   accumulator: {
     create: createAccumulator,

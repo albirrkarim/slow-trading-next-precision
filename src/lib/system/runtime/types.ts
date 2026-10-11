@@ -14,6 +14,7 @@ import type {
   NotificationTypeConfig,
 } from "../notification/config";
 import type { ExchangeType } from "../types/market";
+import type { FeatureIndicatorConfig } from "@/lib/features/indicators/types";
 import type {
   TradingMode,
   UnifiedFuturesPositionMode,
@@ -265,6 +266,13 @@ export interface RuntimeManagementConfig {
    * fallback and forward-only semantics as `volatilityThreshold`.
    */
   volatilityRetracePct?: number;
+  /**
+   * Dynamic indicator instances computed as entry features (VWAP,
+   * Supertrend, …) — see `features/indicators`. Absent means the default
+   * monthly 5m VWAP (`id: "vwap"`) the feature gates read; an empty array
+   * disables every indicator. Normalized on save.
+   */
+  indicators?: FeatureIndicatorConfig[];
 }
 
 /** Global runtime controls shared by every runtime environment. */

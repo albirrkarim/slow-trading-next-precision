@@ -1,3 +1,4 @@
+import indicators from "@/lib/features/indicators";
 import type { CoinFeatures, RuntimeFeatures } from "@/lib/features/types";
 import type { VolatilityPoint } from "@/lib/system/types";
 
@@ -26,7 +27,7 @@ function coinValues(coin: CoinFeatures | undefined, currentTime: number): Array<
   const values = history.map((point) => point.p);
   const min = values.length ? Math.min(...values) : undefined;
   const max = values.length ? Math.max(...values) : undefined;
-  const vwap = coin?.vwap;
+  const vwap = indicators.read.vwap(coin);
   const price = finite(vwap?.price);
   const sigma = finite(vwap?.stdev);
   return [
@@ -54,8 +55,8 @@ function read(currentTime: number, features: RuntimeFeatures | undefined, signal
   if (profile === "contextual") return contextual.read(currentTime, features, signal);
   const symbol = (signal.symbol ?? "").toUpperCase().replace(/_USDT$/, "");
   const coin = features?.coins[symbol];
-  const price = finite(coin?.vwap?.price);
-  const sigma = finite(coin?.vwap?.stdev);
+  const price = finite(indicators.read.vwap(coin)?.price);
+  const sigma = finite(indicators.read.vwap(coin)?.stdev);
   const signalPrice = finite(signal.p);
   const signalT = finite(signal.t);
   const level = finite(signal.lvl);

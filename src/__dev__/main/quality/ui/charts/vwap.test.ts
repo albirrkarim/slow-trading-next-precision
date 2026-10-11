@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import vwap from "@/lib/system/utils/ui/vwap";
-import type { VwapCandle } from "@/lib/system/utils/ui/vwap";
+import vwap from "@/lib/system/utils/ui/chart-vwap";
+import type { VwapCandle } from "@/lib/system/utils/ui/chart-vwap";
 
 /** 1-minute candles; `time` is chart seconds. */
 function candle(

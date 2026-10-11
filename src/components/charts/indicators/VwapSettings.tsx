@@ -10,45 +10,19 @@ import {
 } from "@mui/material";
 import { useState } from "react";
 
+import ColorSwatches from "./ColorSwatches";
+
+import {
+  INDICATOR_INTERVALS,
+  type FeatureIndicatorInterval,
+} from "@/lib/features/indicators";
+
 import chartIndicators, {
   VWAP_ANCHORS,
-  VWAP_COLORS,
   type VwapIndicatorConfig,
 } from "@/lib/system/utils/ui/chart-indicators";
 
-function ColorSwatches({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (color: string) => void;
-}) {
-  return (
-    <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap" }}>
-      {VWAP_COLORS.map((color) => (
-        <Box
-          component="button"
-          key={color}
-          onClick={() => onChange(color)}
-          title={color}
-          type="button"
-          sx={{
-            width: 22,
-            height: 22,
-            p: 0,
-            borderRadius: "50%",
-            cursor: "pointer",
-            backgroundColor: color,
-            border: 2,
-            borderColor: color === value ? "text.primary" : "transparent",
-            outline: "1px solid",
-            outlineColor: "divider",
-          }}
-        />
-      ))}
-    </Box>
-  );
-}
+const GATE_ANCHORS: VwapIndicatorConfig["anchor"][] = ["session", "week", "month"];
 
 export default function VwapSettings({
   config,
@@ -92,7 +66,7 @@ export default function VwapSettings({
           </MenuItem>
         ))}
       </TextField>
-      {config.anchor === "month" && (
+      {GATE_ANCHORS.includes(config.anchor) && (
         <FormControlLabel
           control={
             <Checkbox
@@ -103,15 +77,30 @@ export default function VwapSettings({
           }
           label={
             <Box>
-              <Typography variant="body2">Match gate (5m)</Typography>
+              <Typography variant="body2">Match runtime candles</Typography>
               <Typography color="text.secondary" variant="caption">
-                Fold the runtime&apos;s 5m candles from the month start — the
-                exact VWAP and σ the feature gate measured
+                Fold closed {config.src ?? "5m"} candles from the anchor start —
+                the exact VWAP and σ the runtime feature measured
               </Typography>
             </Box>
           }
           sx={{ alignItems: "flex-start", "& .MuiCheckbox-root": { pt: 0.25 } }}
         />
+      )}
+      {config.gate && GATE_ANCHORS.includes(config.anchor) && (
+        <TextField
+          label="Runtime candles"
+          onChange={(event) => onChange({ src: event.target.value as FeatureIndicatorInterval })}
+          select
+          size="small"
+          value={config.src ?? "5m"}
+        >
+          {INDICATOR_INTERVALS.map((interval) => (
+            <MenuItem key={interval} value={interval}>
+              {interval}
+            </MenuItem>
+          ))}
+        </TextField>
       )}
       <TextField
         helperText="σ multipliers, e.g. 1, 2 or 1.2, 1.7 — empty for none"

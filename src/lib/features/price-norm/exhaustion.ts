@@ -1,4 +1,4 @@
-import type { FeatureHistoryPoint } from "./types";
+import type { FeatureHistoryPoint } from "../types";
 
 /** Clamps a ratio to the score's 0–1 range. */
 function unit(value: number): number {

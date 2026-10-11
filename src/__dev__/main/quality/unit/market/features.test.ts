@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import features, { FEATURES_VPOINT_WINDOW_MS } from "@/lib/features";
-import { computePriceNormalized } from "@/lib/features/price-normalized";
-import vwap from "@/lib/features/vwap";
+import priceNorm from "@/lib/features/price-norm";
+import indicators from "@/lib/features/indicators";
 import type { RuntimeFeatures } from "@/lib/features/types";
 import type { RuntimeContext } from "@/lib/precision/types";
 import vpoints from "@/lib/system/utils/vpoints";
 import type { Position } from "@/lib/system/trading";
 import type { VolatilityPoint } from "@/lib/system/types";
+
+const vwap = indicators.math.vwap;
 
 const NOW = Date.UTC(2026, 9, 1, 12, 0);
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -48,7 +50,7 @@ function contextWith(params: {
   } as unknown as RuntimeContext;
 }
 
-describe("computePriceNormalized", () => {
+describe("priceNorm.compute", () => {
   it("normalizes the latest pivot inside the earlier-pivot envelope", () => {
     const points = [
       point(NOW - 40 * DAY_MS, 80),
@@ -57,7 +59,7 @@ describe("computePriceNormalized", () => {
       point(NOW - DAY_MS, 110),
     ];
     // latest 110 sits at (110-80)/(120-80) = 0.75 of the prior envelope
-    expect(computePriceNormalized({ now: NOW, points })).toBeCloseTo(0.75);
+    expect(priceNorm.compute({ now: NOW, points })).toBeCloseTo(0.75);
   });
 
   it("excludes the latest pivot from its own range so breakouts exceed 1", () => {
@@ -68,7 +70,7 @@ describe("computePriceNormalized", () => {
       point(NOW - DAY_MS, 150),
     ];
     // envelope is [80,120] — the newest pivot at 150 reads > 1
-    const value = computePriceNormalized({ now: NOW, points });
+    const value = priceNorm.compute({ now: NOW, points });
     expect(value).toBeGreaterThan(1);
   });
 
@@ -81,7 +83,7 @@ describe("computePriceNormalized", () => {
     ];
     // windowed envelope is [110,120]; without the stale point at 1 the
     // latest pivot reads 0, not ~0.9.
-    expect(computePriceNormalized({ now: NOW, points })).toBeCloseTo(0);
+    expect(priceNorm.compute({ now: NOW, points })).toBeCloseTo(0);
   });
 
   it("returns 0.5 for a flat range and undefined on thin history", () => {
@@ -90,16 +92,16 @@ describe("computePriceNormalized", () => {
       point(NOW - 20 * DAY_MS, 100),
       point(NOW - DAY_MS, 100),
     ];
-    expect(computePriceNormalized({ now: NOW, points: flat })).toBe(0.5);
+    expect(priceNorm.compute({ now: NOW, points: flat })).toBe(0.5);
 
     expect(
-      computePriceNormalized({
+      priceNorm.compute({
         now: NOW,
         points: [point(NOW - DAY_MS, 100)],
       }),
     ).toBeUndefined();
     expect(
-      computePriceNormalized({ now: NOW, points: undefined }),
+      priceNorm.compute({ now: NOW, points: undefined }),
     ).toBeUndefined();
   });
 });
@@ -323,7 +325,7 @@ describe("features.update vwap", () => {
     ] as never);
 
     const context = contextWith({
-      features: { coins: {}, shared: {}, vwap: { SUI: acc } },
+      features: { acc: { "vwap:5m:month": { SUI: acc } }, coins: {}, shared: {} },
       vPointsMap: {
         SUI: [
           point(NOW - 30 * DAY_MS, 8),
@@ -339,12 +341,51 @@ describe("features.update vwap", () => {
     features.update(context);
 
     const coin = context.state.features!.coins.SUI;
-    expect(coin.vwap?.price).toBeCloseTo(16);
-    expect(coin.vwap?.stdev).toBeCloseTo(5);
-    expect(coin.vwap?.distancePct).toBeCloseTo(18.8, 1);
-    expect(coin.vwap?.anchorT).toBe(Date.UTC(2026, 9, 1));
+    // Default config: the gates' monthly 5m VWAP under id "vwap".
+    const reading = coin.ind?.vwap?.vwap;
+    expect(reading?.price).toBeCloseTo(16);
+    expect(reading?.stdev).toBeCloseTo(5);
+    expect(reading?.distancePct).toBeCloseTo(18.8, 1);
+    expect(reading?.anchorT).toBe(Date.UTC(2026, 9, 1));
+    expect(features.indicators.read.vwap(coin)).toBe(reading);
     // The accumulator is an input — it survives the coins rebuild untouched.
-    expect(context.state.features!.vwap!.SUI).toBe(acc);
+    expect(context.state.features!.acc!["vwap:5m:month"].SUI).toBe(acc);
+    expect(context.state.features!.defs).toEqual({
+      vwap: { anchor: "month", id: "vwap", interval: "5m", type: "vwap" },
+    });
+  });
+
+  it("reads renamed instances from the same params-keyed accumulator", () => {
+    const acc = vwap.accumulator.create(Date.UTC(2026, 9, 1));
+    vwap.accumulator.foldKline(acc, [NOW - 5 * 60_000, "10", "10", "10", "10", "1", NOW] as never);
+    const context = contextWith({
+      features: { acc: { "vwap:5m:month": { SUI: acc } }, coins: {}, shared: {} },
+      vPointsMap: { SUI: [point(NOW - DAY_MS, 10)] },
+    });
+    context.state.config.management.indicators = [
+      { anchor: "month", id: "monthly", interval: "5m", type: "vwap" },
+    ];
+
+    features.update(context);
+
+    const coin = context.state.features!.coins.SUI;
+    expect(coin.ind?.vwap?.monthly?.price).toBeCloseTo(10);
+    // The gates' id is gone — no fallback to another instance.
+    expect(features.indicators.read.vwap(coin)).toBeUndefined();
+  });
+
+  it("falls back to the legacy coin.vwap group on old snapshots", () => {
+    const legacy = { anchorT: 1, price: 12, stdev: 2 };
+    expect(
+      features.indicators.read.vwap({ priceNormalized: { history: [] }, vwap: legacy }),
+    ).toBe(legacy);
+    expect(
+      features.indicators.read.vwap({
+        priceNormalized: { history: [] },
+        vwap: 12,
+        vwapStdev: 2,
+      } as never)?.stdev,
+    ).toBe(2);
   });
 
   it("emits no vwap group for a coin without an accumulator", () => {
@@ -359,7 +400,31 @@ describe("features.update vwap", () => {
     });
     features.update(context);
     const coin = context.state.features!.coins.SUI;
-    expect(coin.vwap).toBeUndefined();
+    expect(coin.ind).toBeUndefined();
+  });
+});
+
+describe("features.changedCoins indicators", () => {
+  const base = { priceNormalized: { current: 0.5, history: [] } };
+
+  it("flags a Supertrend flip but not a moving line or VWAP", () => {
+    const before = {
+      SUI: { ...base, ind: { supertrend: { st1: { d: 1 as const, l: 10, fT: 1 } }, vwap: { vwap: { price: 10 } } } },
+    };
+    const moved = {
+      SUI: { ...base, ind: { supertrend: { st1: { d: 1 as const, l: 11, fT: 1 } }, vwap: { vwap: { price: 12 } } } },
+    };
+    const flipped = {
+      SUI: { ...base, ind: { supertrend: { st1: { d: -1 as const, l: 12, fT: 2 } } } },
+    };
+    expect(features.changedCoins(before, moved)).toEqual([]);
+    expect(features.changedCoins(moved, flipped)).toEqual(["SUI"]);
+  });
+
+  it("flags a Supertrend that finished warming up", () => {
+    const before = { SUI: { ...base } };
+    const after = { SUI: { ...base, ind: { supertrend: { st1: { d: -1 as const, l: 10 } } } } };
+    expect(features.changedCoins(before, after)).toEqual(["SUI"]);
   });
 });
 
@@ -460,15 +525,18 @@ describe("features.prune.forPosition", () => {
       },
     },
     shared: { regime: 1 },
-    vwap: { SUI: { aT: NOW, n: 1, pv: 10, s: 10, s2: 100, t: NOW, v: 1 } },
+    acc: { "vwap:5m:month": { SUI: { aT: NOW, n: 1, pv: 10, s: 10, s2: 100, t: NOW, v: 1 } } },
+    defs: { vwap: { anchor: "month", id: "vwap", interval: "5m", type: "vwap" } },
   });
 
   it("keeps the BTC anchor and the position's own coin, drops the rest", () => {
     const pruned = features.prune.forPosition(store(), "sui")!;
     expect(Object.keys(pruned.coins).sort()).toEqual(["BTC", "SUI"]);
     expect(pruned.shared).toEqual({ regime: 1 });
-    // Accumulators are working state — never serialized into a position.
-    expect("vwap" in pruned).toBe(false);
+    // Accumulators are working state — never serialized into a position;
+    // the definitions ride along so `ind.<type>.<id>` stays interpretable.
+    expect("acc" in pruned).toBe(false);
+    expect(pruned.defs?.vwap?.type).toBe("vwap");
   });
 
   it("keeps a single BTC entry when the position symbol is BTC", () => {

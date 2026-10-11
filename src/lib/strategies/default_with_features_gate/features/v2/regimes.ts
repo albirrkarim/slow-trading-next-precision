@@ -1,3 +1,4 @@
+import indicators from "@/lib/features/indicators";
 import type { CoinPriceNormalized, RuntimeFeatures } from "@/lib/features/types";
 import type { VolatilityPoint } from "@/lib/system/types/market";
 
@@ -73,7 +74,7 @@ export default function featureGateRegimes(
     return "reject entry - rebound already spent while BTC is near its range floor";
   }
 
-  const btcStretchPct = coins?.BTC?.vwap?.stretchPct;
+  const btcStretchPct = indicators.read.vwap(coins?.BTC)?.stretchPct;
   if (
     typeof btcStretchPct === "number" && Number.isFinite(btcStretchPct) &&
     btcStretchPct <= bounds.maxBreakdownBtcStretchPct &&

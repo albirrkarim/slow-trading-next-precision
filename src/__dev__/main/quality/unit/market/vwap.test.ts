@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import vwap from "@/lib/features/vwap";
+import indicators from "@/lib/features/indicators";
 import type { Kline } from "@/lib/system/types/market";
+
+const vwap = indicators.math.vwap;
 
 const MONTH = Date.UTC(2026, 0, 1);
 const NEXT_MONTH = Date.UTC(2026, 1, 1);

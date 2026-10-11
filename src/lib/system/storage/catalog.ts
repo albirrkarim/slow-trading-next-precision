@@ -2,6 +2,7 @@ import fs from "fs-extra";
 
 import type { ExchangeType } from "../types";
 import { normalizeDashboardNotificationConfig } from "../notification/config";
+import indicatorConfig from "@/lib/features/indicators/config";
 import blackSwan from "../trading/black-swan";
 import runtimeAccountConfig from "../runtime/account-config";
 import runtimeAccounts from "../runtime/accounts";
@@ -457,6 +458,9 @@ async function update(
       ),
       blackSwan: blackSwan.config.normalize(
         input.config.blackSwan ?? effective.blackSwan,
+      ),
+      indicators: indicatorConfig.normalize(
+        input.config.indicators ?? effective.indicators,
       ),
     };
     config.management = runtimeAccountConfig.shared.fromEffective(

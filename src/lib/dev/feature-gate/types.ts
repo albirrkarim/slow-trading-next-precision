@@ -138,8 +138,14 @@ export interface FeatureGateDatasetOption {
   strategy?: string;
 }
 
-/** Filter/pagination input for the dataset-rows endpoint. */
-export type FeatureGateRowMetric = keyof typeof datasetFilters.metrics;
+/** Built-in row/feature metrics. */
+export type FeatureGateStaticMetric = keyof typeof datasetFilters.metrics;
+
+/**
+ * Condition metric: a built-in key or a dynamic indicator field
+ * `ind:<type>:<id>:<field>` (e.g. `ind:supertrend:st15:d`).
+ */
+export type FeatureGateRowMetric = FeatureGateStaticMetric | `ind:${string}`;
 
 /** Filter/pagination input for the dataset-rows endpoint. Conditions combine with AND. */
 export interface FeatureGateRowQuery {

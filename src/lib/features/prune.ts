@@ -10,8 +10,10 @@ import type { CoinFeatures, RuntimeFeatures } from "./types";
  * Returns the position-facing slice of the live feature store:
  * `position.strategy.entry.feature` stores only the BTC anchor plus the
  * position's own coin; the rest of the store is cross-symbol working
- * state, not entry context. The `vwap` accumulator layer is dropped
- * entirely — raw feed substrate, not gate-facing context.
+ * state, not entry context. Indicator definitions (`defs`) ride along so
+ * each `ind.<type>.<id>` stays interpretable after the config changes; the
+ * running-state layer (`acc`) is dropped entirely — raw feed substrate,
+ * not gate-facing context.
  *
  * The result is a deep clone (`structuredClone`):
  * `CoinFeatures.latestVpoint` is a live object that mutates in place, so
@@ -31,7 +33,11 @@ function forPosition(
     const coin = features.coins[key];
     if (coin) coins[key] = coin;
   }
-  return structuredClone({ coins, shared: features.shared });
+  return structuredClone({
+    coins,
+    shared: features.shared,
+    ...(features.defs && { defs: features.defs }),
+  });
 }
 
 const prune = { forPosition } as const;

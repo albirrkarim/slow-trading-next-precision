@@ -404,7 +404,7 @@ are refreshed by `context.helper.market` before stage bodies run.
 `state.features` is different: it belongs to the replaceable feature
 pipeline in `src/lib/features`, refreshed through the `onFeatureUpdate`
 adapter hook (warmup and before every entry capture). Feature-scoped
-market inputs — e.g. the VWAP candle fold in `features/vwap-feed` — are
+market inputs — e.g. the indicator candle fold in `features/indicators/feed` — are
 fed by the feature pipeline itself through `context.adapter.market`,
 never by engine stage bodies or the market helper. A new feature that
 needs data the core snapshot does not carry brings its own feed inside

@@ -28,10 +28,13 @@ import chartIndicators from "@/lib/system/utils/ui/chart-indicators";
 import IndicatorLegend from "./indicators/IndicatorLegend";
 import IndicatorsMenu from "./indicators/IndicatorsMenu";
 import { useChartIndicators } from "./indicators/useChartIndicators";
-import { useGateVwapCandles } from "./indicators/useGateVwapCandles";
+import { useEmaOverlays } from "./indicators/useEmaOverlays";
+import { useSourceCandles } from "./indicators/useSourceCandles";
+import { useSupertrendOverlays } from "./indicators/useSupertrendOverlays";
 import { useVwapOverlays } from "./indicators/useVwapOverlays";
 import { useFillHeight } from "./useFillHeight";
 import type { VolatilityPoint } from "@/lib/system/types";
+import type { FeatureIndicatorDefs } from "@/lib/features/indicators";
 
 type TrajectoryPoint = {
   price: number;
@@ -101,6 +104,7 @@ export default function TradeChartBase({
   volatilitySource = "storage",
   customVolatilityPoints,
   fillHeight = false,
+  featureDefs,
 }: {
   activePosition?: TradeChartPosition;
   symbol: string;
@@ -126,6 +130,8 @@ export default function TradeChartBase({
   customVolatilityPoints?: VolatilityPoint[];
   /** Stretch the chart to the viewport bottom (fullscreen dialogs). */
   fillHeight?: boolean;
+  /** Indicator definitions captured with the trade/row — "Add from features". */
+  featureDefs?: FeatureIndicatorDefs;
 }) {
   const [klines, setKlines] = useState<any[]>([]);
   const [apiMarkers, setApiMarkers] = useState<Marker[]>([]);
@@ -300,16 +306,15 @@ export default function TradeChartBase({
     typeof entryAnchorMs === "number" &&
     Number.isFinite(entryAnchorMs) &&
     entryAnchorMs > 0;
-  const gateVwapEnabled = indicators.config.vwaps.some(
-    (item) => item.visible && chartIndicators.vwap.matchesGate(item),
-  );
-  const gateCandles = useGateVwapCandles({
-    enabled: gateVwapEnabled,
+  const source = useSourceCandles({
+    requests:
+      klines.length > 0
+        ? chartIndicators.sourceRequests(indicators.config, klines[0].time * 1000)
+        : [],
     symbol,
     exchange,
     marketType,
-    fromMs: klines.length > 0 ? klines[0].time * 1000 : undefined,
-    toMs:
+    endTime:
       klines.length > 1
         ? (klines[klines.length - 1].time * 2 - klines[klines.length - 2].time) *
           1000
@@ -317,11 +322,25 @@ export default function TradeChartBase({
   });
   const vwapOverlay = useVwapOverlays({
     candles: klines,
-    gateCandles,
+    sourceCandles: source.candles,
     instances: indicators.config.vwaps,
     entryAnchorMs: hasEntryAnchor ? entryAnchorMs : undefined,
     vPointTimes,
   });
+  const supertrendLines = useSupertrendOverlays({
+    candles: klines,
+    sourceCandles: source.candles,
+    instances: indicators.config.supertrends,
+  });
+  const emaLines = useEmaOverlays({
+    candles: klines,
+    sourceCandles: source.candles,
+    instances: indicators.config.emas,
+  });
+  const overlayLines = useMemo(
+    () => [...vwapOverlay.lines, ...supertrendLines, ...emaLines],
+    [emaLines, supertrendLines, vwapOverlay.lines],
+  );
   const hasVPoints = vPointTimes.length > 0;
 
   if (loading) {
@@ -366,7 +385,11 @@ export default function TradeChartBase({
           flexWrap: "wrap",
         }}
       >
-        <IndicatorsMenu hasVPoints={hasVPoints} indicators={indicators} />
+        <IndicatorsMenu
+          featureDefs={featureDefs}
+          hasVPoints={hasVPoints}
+          indicators={indicators}
+        />
         <Select
           value={interval}
           onChange={(event) => setInterval(event.target.value as IntervalKlines)}
@@ -385,7 +408,7 @@ export default function TradeChartBase({
 
       <Box ref={chartBoxRef} sx={{ position: "relative" }}>
         <IndicatorLegend
-          gateLoading={gateVwapEnabled && gateCandles === undefined}
+          sourceCandles={source.candles}
           hasEntryAnchor={hasEntryAnchor}
           hasVPoints={hasVPoints}
           indicators={indicators}
@@ -401,7 +424,7 @@ export default function TradeChartBase({
           trajectory={trajectory}
           trajectoryAnchor={trajectoryAnchor}
           trajectoryDirection={trajectoryDirection}
-          overlayLines={vwapOverlay.lines}
+          overlayLines={overlayLines}
           overlayBands={vwapOverlay.bands}
         />
       </Box>

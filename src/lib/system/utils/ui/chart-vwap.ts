@@ -1,12 +1,13 @@
 /**
  * Anchored VWAP for the chart layer: buckets chart candles by anchor
- * (session/week/month/…) and runs the runtime's `features/vwap` fold per
+ * (session/week/month/…) and runs the runtime's `indicators.math.vwap` fold per
  * bucket, so the chart and the gate share one formula. Pure — no exchange
  * or runtime I/O; the output drops straight into line series.
  */
 
-import vwapFeature from "@/lib/features/vwap";
-import type { VwapAccumulator } from "@/lib/features/types";
+import indicators, { type VwapAccumulator } from "@/lib/features/indicators";
+
+const vwapFeature = indicators.math.vwap;
 
 export type VwapAnchor =
   | "session"
@@ -37,9 +38,6 @@ export interface VwapSeries {
   upper: VwapPoint[][];
   lower: VwapPoint[][];
 }
-
-const DAY_MS = 24 * 60 * 60_000;
-const WEEK_MS = 7 * DAY_MS;
 
 /**
  * Bucket key per candle: candles sharing a key accumulate into the same
@@ -74,12 +72,9 @@ function anchorKey(
       return lo;
     }
     case "session":
-      return Math.floor(timeMs / DAY_MS);
     case "week":
-      // Epoch fell on a Thursday — shift by 4d so buckets open Monday UTC.
-      return Math.floor((timeMs - 4 * DAY_MS) / WEEK_MS);
     case "month":
-      return vwapFeature.monthStartMs(timeMs);
+      return vwapFeature.anchorStartMs(timeMs, anchor);
     default:
       return -1;
   }
@@ -87,7 +82,7 @@ function anchorKey(
 
 /**
  * Computes the anchored VWAP line and stdev bands over chart candles.
- * Each anchor bucket runs its own `features/vwap` accumulator — the exact
+ * Each anchor bucket runs its own `indicators.math.vwap` accumulator — the exact
  * fold the runtime gate uses — so VWAP = Σ(hlc3 × volume) / Σvolume and
  * σ = population stdev of hlc3 since the bucket opened; each band =
  * vwap ± mult × σ. Candles with non-positive volume extend the line

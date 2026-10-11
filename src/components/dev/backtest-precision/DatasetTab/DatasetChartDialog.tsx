@@ -124,6 +124,7 @@ function DatasetChartContent({
                 defaultInterval="15m"
                 endTimeMs={signal.t + SIGNAL_CONTEXT_MS}
                 exchange={exchangeType ?? "binance"}
+                featureDefs={row.feature?.defs}
                 fillHeight={fullscreen}
                 header={
                     <>

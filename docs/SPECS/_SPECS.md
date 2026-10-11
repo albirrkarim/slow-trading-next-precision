@@ -43,6 +43,7 @@ sandbox, and live. The spec sections map to these roots:
 | Debugging (F) | `src/lib/dev/` surfaces behind `/dev/*` pages |
 | Decision engine (H) | Dissolved — Multi is the default strategy inside `src/lib/system/trading/` |
 | Production cycle (I) | `src/lib/production/stages.ts` + `src/lib/precision/monitoring/` |
+| Indicator features (J) | `src/lib/features/indicators/` (config, feed, registry, readers) |
 
 Tests live under `src/__dev__/main/quality/` (`unit/`, `specs/`, `ui/`,
 `precision/`). TC markers are still written in source and test files.
@@ -78,3 +79,7 @@ readmore `DECISION_ENGINE.md`
 ## I. Production Cycle Architecture
 
 readmore `CYCLE.md`
+
+## J. Indicator Features
+
+readmore `INDICATORS.md`

@@ -4,6 +4,7 @@ import ShowChartIcon from "@mui/icons-material/ShowChart";
 import { Box, Button, Typography } from "@mui/material";
 import ButtonDialog from "@/components/ui/ButtonDialog";
 import TradeChartBase from "@/components/charts/TradeChartBase";
+import type { RuntimeFeatures } from "@/lib/features/types";
 import type { RuntimeHistoryPosition } from "@/lib/system/trading";
 import type { RuntimeEffectiveConfig } from "@/lib/system/runtime";
 
@@ -40,6 +41,7 @@ export default function PositionChartDialog({
         <Box sx={{ p: 1, backgroundColor: "background.default" }}>
           <TradeChartBase
             fillHeight={fullscreen}
+            featureDefs={(position.strategy?.entry?.feature as RuntimeFeatures | undefined)?.defs}
             activePosition={position}
             defaultInterval="1m"
             symbol={position.symbol}

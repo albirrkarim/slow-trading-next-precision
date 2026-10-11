@@ -437,7 +437,7 @@ describe("entryMonitoring.executeDecision — pair dispatch", () => {
           SUI: { priceNormalized: { current: 0.8, history: [] } },
         },
         shared: {},
-        vwap: { SUI: { aT: 1, n: 1, pv: 1, s: 1, s2: 1, t: 1, v: 1 } },
+        acc: { "vwap:5m:month": { SUI: { aT: 1, n: 1, pv: 1, s: 1, s2: 1, t: 1, v: 1 } } },
       },
     });
     const fills = [pairedLeg("acc:SUI:A", "MAIN"), pairedLeg("acc:SUI:A", "COUNTER")];
@@ -460,12 +460,12 @@ describe("entryMonitoring.executeDecision — pair dispatch", () => {
       "COUNTER",
     );
     // The entry-feature snapshot is pruned to the BTC anchor plus the
-    // leg's own symbol — DOGE and the vwap accumulators are cross-symbol
+    // leg's own symbol — DOGE and the indicator accumulators are cross-symbol
     // working state, not entry context.
     for (const position of state.openPositions) {
       const feature = position.strategy.entry.feature as RuntimeFeatures;
       expect(Object.keys(feature.coins).sort()).toEqual(["BTC", "SUI"]);
-      expect("vwap" in feature).toBe(false);
+      expect("acc" in feature).toBe(false);
     }
     // Balances updated per leg.
     expect(state.balance.acc.locked).toBe(20);

@@ -4,7 +4,7 @@ import {
   FEATURES_HISTORY_WINDOW_MS,
   FEATURES_VPOINT_WINDOW_MS,
   type FeatureHistoryPoint,
-} from "./types";
+} from "../types";
 
 /**
  * Normalizes the latest pivot price into the envelope of earlier pivot

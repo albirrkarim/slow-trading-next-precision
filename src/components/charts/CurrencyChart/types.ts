@@ -42,6 +42,12 @@ export type TrajectoryDirection = "LONG" | "SHORT" | undefined;
 export type OverlayLinePoint = {
     time: number;
     value: number;
+    /**
+     * Per-point color. lightweight-charts colors each segment by its
+     * starting point, so a transparent point hides the segment after it
+     * (e.g. the jump at a Supertrend flip).
+     */
+    color?: string;
 };
 
 /** Indicator-style line drawn over the candles (e.g. VWAP, bands). */

@@ -4,8 +4,7 @@ import type { VolatilityPoint } from "@/lib/system/types/market";
 import { vwapFilter } from "../v2/vwap";
 import { isCurrentExtreme, isSuddenChange } from "../v2/price_norm";
 import featureGateRegimes from "../v2/regimes";
-import priceNormExhaustion from "@/lib/features/price-norm-exhaustion";
-import movementCorrelation from "@/lib/features/price-norm-movement";
+import priceNorm from "@/lib/features/price-norm";
 
 /** Ordered v5 check ids and their UI names. */
 export const subGates = {
@@ -135,7 +134,7 @@ function rejectionReason(
     if (enabled.has("exhaustion")) {
         const normalized = features?.coins[symbol]?.priceNormalized;
         const pCurrent = normalized?.current ?? 0;
-        const ex = normalized?.exhaustion ?? priceNormExhaustion.score(normalized?.history);
+        const ex = normalized?.exhaustion ?? priceNorm.exhaustion.score(normalized?.history);
 
         if (ex && ex > 0.7 && Math.abs(pCurrent) > 0.8) {
             return "Exhausted"
@@ -148,8 +147,8 @@ function rejectionReason(
         const btcHistory = btcNorm.history;
         const coinHistory = coinNorm.history;
         if (enabled.has("btcDislocation")) {
-            const btcChange = movementCorrelation.lastChange(btcHistory);
-            const recentCorr = movementCorrelation.recentCorrelation(btcHistory, coinHistory);
+            const btcChange = priceNorm.movement.lastChange(btcHistory);
+            const recentCorr = priceNorm.movement.recentCorrelation(btcHistory, coinHistory);
             const gap = btcNorm.current !== undefined && coinNorm.current !== undefined
                 ? Math.abs(coinNorm.current - btcNorm.current) : undefined;
             if (btcChange !== undefined && btcChange >= 0.10 &&
@@ -159,8 +158,8 @@ function rejectionReason(
             }
         }
         if (enabled.has("coupledWithoutExhaustion")) {
-            const exhaustion = coinNorm.exhaustion ?? priceNormExhaustion.score(coinHistory);
-            const correlation = movementCorrelation.score(btcHistory, coinHistory);
+            const exhaustion = coinNorm.exhaustion ?? priceNorm.exhaustion.score(coinHistory);
+            const correlation = priceNorm.movement.score(btcHistory, coinHistory);
             if (exhaustion !== undefined && exhaustion <= 0.3 &&
                 correlation !== undefined && correlation >= 0.9) {
                 return `v5 coupled without exhaustion: correlation ${correlation.toFixed(2)}, exhaustion ${exhaustion.toFixed(2)}`;

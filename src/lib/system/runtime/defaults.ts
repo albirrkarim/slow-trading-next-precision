@@ -1,3 +1,4 @@
+import indicatorConfig from "@/lib/features/indicators/config";
 import blackSwan from "../trading/black-swan";
 import { TradingMode } from "@/lib/exchange/types";
 import { createDefaultDashboardNotificationConfig } from "../notification/config";
@@ -26,6 +27,7 @@ function createManagement(): RuntimeManagementConfig {
     safePercentPerMonth: 0.1,
     minimalAssetOnTrade: 600,
     blackSwan: blackSwan.config.normalize(undefined),
+    indicators: indicatorConfig.normalize(undefined),
   };
 }
 

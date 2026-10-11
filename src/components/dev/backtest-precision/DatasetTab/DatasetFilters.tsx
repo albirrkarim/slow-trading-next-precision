@@ -3,14 +3,16 @@
 import { Box, Button, Checkbox, FormControl, FormControlLabel, FormGroup, InputLabel, ListItemText, MenuItem, Select, TextField, Typography } from "@mui/material";
 
 import MetricCondition from "@/components/ui/MetricCondition";
-import datasetFilters from "@/lib/dev/feature-gate/filters";
 import type { FeatureGateInfo } from "@/lib/dev/feature-gate";
+import type { FeatureGateRowMetric } from "@/lib/dev/feature-gate/types";
 
 import filterStorage from "./filter-storage";
 import type { DatasetFilterValues } from "./filter-storage";
 
-export default function DatasetFilters({ filters, onChange, symbols, gates, slug, onSlugChange, enabledSubGates, onSubGatesChange, entryReasons }: {
+export default function DatasetFilters({ filters, metrics, onChange, symbols, gates, slug, onSlugChange, enabledSubGates, onSubGatesChange, entryReasons }: {
   filters: DatasetFilterValues;
+  /** Static metrics plus the captured indicators' fields. */
+  metrics: Record<FeatureGateRowMetric, { label: string }>;
   onChange: (filters: DatasetFilterValues) => void;
   symbols: string[];
   gates: FeatureGateInfo[];
@@ -52,7 +54,7 @@ export default function DatasetFilters({ filters, onChange, symbols, gates, slug
       <TextField label="Capture to" type="date" size="small" slotProps={{ inputLabel: { shrink: true } }}
         sx={{ width: { xs: "100%", sm: 150 } }} value={filters.to}
         onChange={(event) => onChange({ ...filters, to: event.target.value })} />
-      <MetricCondition metricLabel="What" operatorLabel="Operator" metric={filters.metric} metrics={datasetFilters.metrics}
+      <MetricCondition metricLabel="What" operatorLabel="Operator" metric={filters.metric} metrics={metrics}
         onMetricChange={(metric) => onChange({ ...filters, metric })}
         onOperatorChange={(operator) => onChange({ ...filters, operator })}
         onValueChange={(value) => onChange({ ...filters, value })}
