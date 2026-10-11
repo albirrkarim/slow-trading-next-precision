@@ -30,7 +30,7 @@ function gate(context: RuntimeContext, signal: VolatilityPoint): FeatureGateResu
   // if (!session) return { allow: false, message: "v3 NN: model is not warmed up" };
   // return session.gate(context.state.currentTime, context.state.features, signal);
 
-  return featureGateV5(context.state.currentTime, context.state.features, signal)
+  return featureGateV4(context.state.currentTime, context.state.features, signal)
 }
 
 /** Releases only this engine's session; repeated cleanup and failed loads are harmless. */

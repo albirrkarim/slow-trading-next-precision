@@ -30,6 +30,12 @@ const metrics = {
   btcPriceNormalized: { label: "BTC price normalized", read: (row: FeatureGateDatasetRow) => row.feature?.coins.BTC?.priceNormalized?.current },
   vwapDistancePct: { label: "Coin VWAP distance pct", read: (row: FeatureGateDatasetRow) => row.feature?.coins[row.symbol]?.vwap?.distancePct },
   vwapStretchPct: { label: "Coin VWAP stretch pct", read: (row: FeatureGateDatasetRow) => row.feature?.coins[row.symbol]?.vwap?.stretchPct },
+  vwapDSigma: { label: "Coin VWAP distance (σ)", read: (row: FeatureGateDatasetRow) => row.feature?.coins[row.symbol]?.vwap?.dSigma },
+  vwapMonthDay: { label: "VWAP month-to-date (days)", read: (row: FeatureGateDatasetRow) => {
+    const t = finite(row.t);
+    const anchorT = finite(row.feature?.coins[row.symbol]?.vwap?.anchorT);
+    return t === undefined || anchorT === undefined ? undefined : (t - anchorT) / 86_400_000;
+  } },
 };
 
 /** Applies all dataset constraints with AND semantics before pagination. */

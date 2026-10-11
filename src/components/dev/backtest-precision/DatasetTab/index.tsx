@@ -28,6 +28,7 @@ import DatasetTable, { rowKey } from "./DatasetTable";
 import type { EvaluationMessage } from "./evaluation.worker";
 import MetricsCard from "./MetricsCard";
 import viewStorage from "./view-storage";
+import VwapSigmaScatter from "./VwapSigmaScatter";
 
 export default function DatasetTab({ cacheKey }: { cacheKey?: string }) {
     const labelId = useId();
@@ -202,6 +203,8 @@ export default function DatasetTab({ cacheKey }: { cacheKey?: string }) {
                         {currentEvaluation?.error && <Alert severity="error">{currentEvaluation.error}</Alert>}
                         {currentEvaluation?.result && <MetricsCard metrics={currentEvaluation.result.metrics}
                             title={`${slug} · ${hash.slice(0, 8)}`} />}
+                        {rows && currentEvaluation?.result && <VwapSigmaScatter decisions={decisions}
+                            defaultThreshold={currentEvaluation.result.metrics.correctness.maxScore} rows={rows} />}
                         {!rows && <Typography color="text.secondary" variant="body2">
                             Select a dataset to see gate decisions and metrics.
                         </Typography>}
