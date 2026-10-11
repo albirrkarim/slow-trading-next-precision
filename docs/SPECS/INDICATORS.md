@@ -92,6 +92,14 @@ Read through `indicators.read`, never the raw path:
   instance (VWAP, month, enabled) they reject for missing VWAP data; the
   Features tab warns about it.
 
+## Gates
+
+- Feature gate **v6** (`features/v6`, `BOTH:FEATURE_GATE_V6_SUPERTREND`) is
+  v5 plus the `supertrend` sub-gate (on by default): every
+  `ind.supertrend.<id>` of the signal's coin must point the trade's way —
+  a TOP signal (`l: "T"`, short) needs every `d === -1`, a BOTTOM (long)
+  every `d === 1`. Fails closed when the coin has no Supertrend reading.
+
 ## Surfaces
 
 - Trade feature preview lists every captured Supertrend, EMA, and extra VWAP.

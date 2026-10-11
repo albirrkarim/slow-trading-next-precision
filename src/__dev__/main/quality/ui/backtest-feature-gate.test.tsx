@@ -86,7 +86,7 @@ describe("feature-gate dataset selection", () => {
     expect(within(table).getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual([
       "Time", "Feature", "Level sequence", "Miss score", "Entry", "Debug",
     ]);
-    expect(within(table).getByText("priceNorm @ entry")).toBeTruthy();
+    expect(within(table).getByText("Features @ entry")).toBeTruthy();
     expect(within(table).getByText("dσ 1.40", { exact: false })).toBeTruthy();
     expect(within(table).queryByText("dσ 10.00", { exact: false })).toBeNull();
     expect(await within(table).findByText("Pass")).toBeTruthy();

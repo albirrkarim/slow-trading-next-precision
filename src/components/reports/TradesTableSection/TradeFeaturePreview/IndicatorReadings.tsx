@@ -1,90 +1,22 @@
 "use client";
 
-import { Box, Typography } from "@mui/material";
-
 import HintTooltip from "@/components/ui/HintTooltip";
-import indicators, {
-  GATE_VWAP_ID,
-  type CoinEma,
-  type CoinSupertrend,
-  type CoinVwap,
-  type FeatureIndicatorDefs,
-} from "@/lib/features/indicators";
+import indicators, { GATE_VWAP_ID, type FeatureIndicatorDefs } from "@/lib/features/indicators";
 import type { CoinFeatures } from "@/lib/features/types";
 import format from "@/lib/system/utils/format";
 
-/** Signed pct with an explicit plus. */
-function signedPct(value: number): string {
-  return `${value > 0 ? "+" : ""}${value}%`;
-}
+import PreviewRow, { Item } from "./PreviewRow";
+import { fmtPrice, signedPct } from "./VwapRow";
 
-function SupertrendReading({
-  id,
-  reading,
-  label,
-  entryTimeMs,
-}: {
-  id: string;
-  reading: CoinSupertrend;
-  label: string;
-  entryTimeMs?: number;
-}) {
-  const up = reading.d === 1;
-  const flipAgeMs =
-    reading.fT !== undefined && entryTimeMs !== undefined
-      ? entryTimeMs - reading.fT
-      : undefined;
-  return (
-    <Box component="span" display="block">
-      <HintTooltip title={`${label} — line ${reading.l}`}>
-        <span>{id} </span>
-      </HintTooltip>
-      <Typography color={up ? "success.main" : "error.main"} component="span" variant="body1">
-        {up ? "▲ up" : "▼ down"}
-      </Typography>
-      {reading.dPct !== undefined && ` · ${signedPct(reading.dPct)}`}
-      {flipAgeMs !== undefined && flipAgeMs >= 0 && ` · flip ${format.duration(flipAgeMs)} ago`}
-    </Box>
-  );
-}
-
-function VwapReading({ id, reading, label }: { id: string; reading: CoinVwap; label: string }) {
-  return (
-    <Box component="span" display="block">
-      <HintTooltip title={label}>
-        <span>{id} </span>
-      </HintTooltip>
-      {reading.price !== undefined && `vwap ${reading.price}`}
-      {reading.distancePct !== undefined && ` · ${signedPct(reading.distancePct)}`}
-      {reading.dSigma !== undefined && ` · dσ ${reading.dSigma.toFixed(2)}`}
-    </Box>
-  );
-}
-
-function EmaReading({ id, reading, label }: { id: string; reading: CoinEma; label: string }) {
-  return (
-    <Box component="span" display="block">
-      <HintTooltip title={label}>
-        <span>{id} </span>
-      </HintTooltip>
-      {`ema ${reading.v}`}
-      {reading.dPct !== undefined && ` · ${signedPct(reading.dPct)}`}
-      {reading.sPct !== undefined && (
-        <Typography
-          color={reading.sPct > 0 ? "success.main" : reading.sPct < 0 ? "error.main" : undefined}
-          component="span"
-          variant="body1"
-        >
-          {` · slope ${signedPct(reading.sPct)}`}
-        </Typography>
-      )}
-    </Box>
-  );
+/** Signed-value color: green up, red down. */
+function signColor(value: number | undefined): string | undefined {
+  if (value === undefined || value === 0) return undefined;
+  return value > 0 ? "success.main" : "error.main";
 }
 
 /**
- * Captured dynamic indicator readings (`coin.ind`) other than the gates'
- * monthly VWAP, which the preview already renders in detail.
+ * Captured dynamic indicator readings (`coin.ind`) — one row per type,
+ * one token per instance. The gates' monthly VWAP has its own row.
  */
 export default function IndicatorReadings({
   coin,
@@ -95,25 +27,70 @@ export default function IndicatorReadings({
   defs?: FeatureIndicatorDefs;
   entryTimeMs?: number;
 }) {
-  const supertrends = Object.entries(coin?.ind?.supertrend ?? {});
-  const vwaps = Object.entries(coin?.ind?.vwap ?? {}).filter(([id]) => id !== GATE_VWAP_ID);
-  const emas = Object.entries(coin?.ind?.ema ?? {});
-  if (supertrends.length === 0 && vwaps.length === 0 && emas.length === 0) return null;
-  const label = (id: string) => {
+  const summary = (id: string) => {
     const def = defs?.[id];
     return def ? indicators.config.summary(def) : id;
   };
+  const supertrends = Object.entries(coin?.ind?.supertrend ?? {});
+  const emas = Object.entries(coin?.ind?.ema ?? {});
+  const vwaps = Object.entries(coin?.ind?.vwap ?? {}).filter(([id]) => id !== GATE_VWAP_ID);
+
   return (
-    <Typography color="text.secondary" component="div" sx={{ pl: "40px" }} variant="body1">
-      {supertrends.map(([id, reading]) => (
-        <SupertrendReading entryTimeMs={entryTimeMs} id={id} key={id} label={label(id)} reading={reading} />
-      ))}
+    <>
+      {supertrends.length > 0 && (
+        <PreviewRow label="ST">
+          {supertrends.map(([id, reading]) => {
+            const up = reading.d === 1;
+            const flipAgeMs =
+              reading.fT !== undefined && entryTimeMs !== undefined ? entryTimeMs - reading.fT : undefined;
+            return (
+              <HintTooltip
+                key={id}
+                title={
+                  `${id}: ${summary(id)} — ${up ? "uptrend" : "downtrend"}, line ${reading.l}` +
+                  (reading.dPct !== undefined ? `, mark ${signedPct(reading.dPct)} from the line` : "") +
+                  (flipAgeMs !== undefined && flipAgeMs >= 0 ? `, flipped ${format.duration(flipAgeMs)} before entry` : "")
+                }
+              >
+                <Item color={up ? "success.main" : "error.main"}>
+                  {id} {up ? "▲" : "▼"}
+                  {flipAgeMs !== undefined && flipAgeMs >= 0 && ` ${format.duration(flipAgeMs)}`}
+                </Item>
+              </HintTooltip>
+            );
+          })}
+        </PreviewRow>
+      )}
       {emas.map(([id, reading]) => (
-        <EmaReading id={id} key={id} label={label(id)} reading={reading} />
+        <PreviewRow key={id} label="EMA">
+          <HintTooltip title={`${id}: ${summary(id)}`}>
+            <Item>
+              {id} {fmtPrice(reading.v)}
+            </Item>
+          </HintTooltip>
+          {reading.dPct !== undefined && (
+            <HintTooltip title="Mark price's distance from the EMA">
+              <Item>{signedPct(reading.dPct)}</Item>
+            </HintTooltip>
+          )}
+          {reading.sPct !== undefined && (
+            <HintTooltip title="Last candle's EMA change — the slope">
+              <Item color={signColor(reading.sPct)}>slope {signedPct(reading.sPct)}</Item>
+            </HintTooltip>
+          )}
+        </PreviewRow>
       ))}
       {vwaps.map(([id, reading]) => (
-        <VwapReading id={id} key={id} label={label(id)} reading={reading} />
+        <PreviewRow key={id} label="VWAP">
+          <HintTooltip title={`${id}: ${summary(id)}`}>
+            <Item>
+              {id} {reading.price !== undefined ? fmtPrice(reading.price) : "—"}
+            </Item>
+          </HintTooltip>
+          {reading.distancePct !== undefined && <Item>{signedPct(reading.distancePct)}</Item>}
+          {reading.dSigma !== undefined && <Item>dσ {reading.dSigma.toFixed(2)}</Item>}
+        </PreviewRow>
       ))}
-    </Typography>
+    </>
   );
 }

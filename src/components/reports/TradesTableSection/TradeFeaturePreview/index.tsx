@@ -1,184 +1,23 @@
 "use client";
 
 import { Box, Typography } from "@mui/material";
-import moment from "moment";
 
-import { PriceNormalizedHistorySparkline } from "@/components/charts/PriceNormalizedHistorySparkline";
-import HintTooltip from "@/components/ui/HintTooltip";
-import indicators from "@/lib/features/indicators";
 import priceNorm from "@/lib/features/price-norm";
-import type {
-  CoinFeatures,
-  CoinPriceNormalized,
-  FeatureHistoryPoint,
-  RuntimeFeatures,
-} from "@/lib/features/types";
-import { FEATURE_GATE_VWAP_BOUNDS } from "@/lib/strategies/default_with_features_gate/features/v2/feature_gate_v2";
-import format from "@/lib/system/utils/format";
+import type { RuntimeFeatures } from "@/lib/features/types";
 import type { VolatilityPoint } from "@/lib/system/types/market";
 
+import CoinFeatureBlock from "./CoinFeatureBlock";
+import { priceNormHistory, summarizeFeaturePreview } from "./data";
 
-import IndicatorReadings from "./IndicatorReadings";
-
-export interface FeaturePreviewRow {
-  /** Min/max over the trail plus current; average over recorded trail samples only. */
-  bounds?: {
-    avg?: number;
-    firstT?: number;
-    lastT?: number;
-    max: number;
-    min: number;
-    samples: number;
-  };
-  coin?: CoinFeatures;
-  key: string;
-  /**
-   * The trade's own coin row — the other row is the BTC market-anchor
-   * readout. Readouts that judge the entry signal (dσ) only render here.
-   */
-  own?: boolean;
-}
+export { summarizeFeaturePreview };
+export type { FeaturePreviewRow } from "./data";
 
 /**
- * Current `priceNormalized` reading across store shapes — grouped
- * `{current}` now, a flat number on feature snapshots recorded before the
- * group existed.
- */
-function priceNormCurrent(
-  coin: CoinFeatures | undefined,
-): number | undefined {
-  const raw = coin?.priceNormalized as
-    | CoinPriceNormalized
-    | number
-    | undefined;
-  return typeof raw === "number" ? raw : raw?.current;
-}
-
-/**
- * `priceNormalized` trail across store shapes — grouped `history` now,
- * flat `priceNormalizedHistory` on snapshots recorded before the group
- * existed.
- */
-function priceNormHistory(
-  coin: CoinFeatures | undefined,
-): FeatureHistoryPoint[] {
-  const raw = coin?.priceNormalized as
-    | CoinPriceNormalized
-    | number
-    | undefined;
-  const grouped = typeof raw === "number" ? undefined : raw?.history;
-  const history = Array.isArray(grouped)
-    ? grouped
-    : coin?.priceNormalizedHistory;
-  return Array.isArray(history) ? history : [];
-}
-
-/** Summarizes finite recorded priceNorm points; the current reading only extends min/max. */
-function historyBounds(
-  coin: CoinFeatures | undefined,
-): FeaturePreviewRow["bounds"] {
-  const history = priceNormHistory(coin).filter(
-    (point) =>
-      Number.isFinite(point?.p) && Number.isFinite(point?.t),
-  );
-  const values = history.map((point) => point.p);
-  const current = priceNormCurrent(coin);
-  if (current !== undefined) {
-    values.push(current);
-  }
-  if (values.length === 0) return undefined;
-  const times = history.map((point) => point.t);
-  return {
-    avg: history.length > 0
-      ? history.reduce((sum, point) => sum + point.p, 0) / history.length
-      : undefined,
-    firstT: times.length > 0 ? Math.min(...times) : undefined,
-    lastT: times.length > 0 ? Math.max(...times) : undefined,
-    max: Math.max(...values),
-    min: Math.min(...values),
-    samples: history.length,
-  };
-}
-
-function runtimeCoins(
-  feature: unknown,
-): Record<string, CoinFeatures> | undefined {
-  const coins = (feature as RuntimeFeatures | undefined)?.coins;
-  if (!coins || typeof coins !== "object" || Array.isArray(coins)) {
-    return undefined;
-  }
-  return coins;
-}
-
-/**
- * Row model for the entry-feature preview: the BTC market anchor first, then
- * the trade's own coin (deduped when the trade IS BTC). Returns undefined when
- * the payload is not a feature store or carries no `priceNormalized` data —
- * callers then show nothing.
- */
-export function summarizeFeaturePreview(
-  feature: unknown,
-  symbol: string,
-): FeaturePreviewRow[] | undefined {
-  const coins = runtimeCoins(feature);
-  if (!coins) return undefined;
-
-  const base = symbol.toUpperCase().replace(/_USDT$/, "");
-  const keys = base === "BTC" ? ["BTC"] : ["BTC", base];
-  const rows = keys.map((key) => ({
-    bounds: historyBounds(coins[key]),
-    coin: coins[key],
-    key,
-    own: key === base,
-  }));
-  return rows.some((row) => row.bounds !== undefined) ? rows : undefined;
-}
-
-function normColor(value: number): string {
-  return value < 0 || value > 1 ? "warning.main" : "text.primary";
-}
-
-/** Marks a clear trend in either direction once its magnitude exceeds 0.5. */
-function trendColor(value: number): string {
-  return Math.abs(value) > 0.5 ? "warning.main" : "success.main";
-}
-
-/** Colors VWAP distance by its magnitude, regardless of direction. */
-function vwapDistanceColor(value: number): string {
-  const distance = Math.abs(value);
-  if (distance < 5) return "success.main";
-  if (distance < 10) return "warning.main";
-  return "error.main";
-}
-
-/** Separates inverse, weak, and matching BTC movement without implying a trade decision. */
-function correlationColor(value: number | undefined): string {
-  if (value === undefined) return "text.secondary";
-  if (value < 1 / 3) return "warning.main";
-  if (value > 2 / 3) return "success.main";
-  return "text.secondary";
-}
-
-/** Alias keeps the vwap-token markup short. */
-const Hint = HintTooltip;
-
-/** Compact price-scale formatter: BTC-scale values collapse, sub-1 keeps sig figs. */
-function fmtPrice(value: number): string {
-  if (!Number.isFinite(value)) return "—";
-  const abs = Math.abs(value);
-  if (abs >= 1000) return value.toFixed(0);
-  if (abs >= 10) return value.toFixed(1);
-  if (abs >= 1) return value.toFixed(2);
-  return value.toPrecision(4);
-}
-
-/**
- * Compact entry-feature preview for a trade row: the cloned `RuntimeFeatures`
- * snapshot captured at entry, distilled to one line per coin — BTC market
- * anchor plus the trade's own coin — showing `priceNormalized` at entry and
- * the `[min…max]` of its ~20-day history trail. Self-gating: renders nothing
- * when the stored feature payload carries no coin features (e.g. manual
- * entries or non-feature strategies).
+ * Compact entry-feature preview for a trade row: the `RuntimeFeatures`
+ * snapshot captured at entry, one block per coin — BTC market anchor, then
+ * the trade's own coin — with one labeled row per topic. Self-gating:
+ * renders nothing when the stored payload carries no coin features (e.g.
+ * manual entries or non-feature strategies).
  */
 export default function TradeFeaturePreview({
   entryTimeMs,
@@ -201,251 +40,23 @@ export default function TradeFeaturePreview({
         priceNormHistory(ownRow.coin),
       )
     : undefined;
+  const defs = (feature as RuntimeFeatures | undefined)?.defs;
 
   return (
-    <Box sx={{ mt: 0.75 }}>
-      <Typography
-        color="text.secondary"
-        display="block"
-        fontWeight={600}
-        variant="caption"
-      >
-        priceNorm @ entry
+    <Box sx={{ display: "grid", gap: 0.75, mt: 0.75 }}>
+      <Typography color="text.secondary" fontWeight={600} variant="caption">
+        Features @ entry
       </Typography>
-      {rows.map((row) => {
-        const bounds = row.bounds;
-        const current = priceNormCurrent(row.coin);
-
-        //row.coin?.priceNormalized?.exhaustion ??
-        const exhaustion =  priceNorm.exhaustion.score(priceNormHistory(row.coin));
-        const history = priceNormHistory(row.coin);
-        const suddenChange = (history.at(-1)?.p ?? 0) - (history.at(-2)?.p ?? 0);
-        // Stamped by the feature update — absent on snapshots recorded
-        // before the field existed.
-        const trend = row.coin?.priceNormalized?.trend;
-        const vwap = indicators.read.vwap(row.coin);
-        const vPoint = row.own ? (signal ?? row.coin?.latestVpoint) : row.coin?.latestVpoint;
-        // The trade's own row only: σ-distance of the entry-time signal
-        // point from the monthly VWAP — same dσ the vwap gate enforces.
-        const dSigma = row.own === true ? vwap?.dSigma : undefined;
-        const vPointT = vPoint?.t;
-        const vPointAgeMs =
-          row.own === true &&
-            typeof vPointT === "number" &&
-            Number.isFinite(vPointT) &&
-            typeof entryTimeMs === "number" &&
-            Number.isFinite(entryTimeMs)
-            ? entryTimeMs - vPointT
-            : undefined;
-        const trail =
-          bounds !== undefined
-            ? `${bounds.samples} trail samples` +
-            (bounds.firstT !== undefined && bounds.lastT !== undefined
-              ? ` · ${moment(bounds.firstT).format("DD MMM YYYY")} → ` +
-              moment(bounds.lastT).format("DD MMM YYYY")
-              : "")
-            : "";
-        return (
-          <Box
-            key={row.key}
-            title={
-              trail
-                ? `${row.key} priceNormalized min/max over ${trail}`
-                : `${row.key} has no recorded priceNormalized trail`
-            }
-          >
-            <Box sx={{ alignItems: "baseline", display: "flex", gap: 0.75 }}>
-              <Typography
-                color="text.secondary"
-                component="span"
-                sx={{ minWidth: 32 }}
-                variant="body1"
-              >
-                {row.key}
-              </Typography>
-              <Typography
-                color={
-                  current !== undefined
-                    ? normColor(current)
-                    : "text.secondary"
-                }
-                component="span"
-                fontWeight={600}
-                variant="body1"
-              >
-                {current !== undefined ? current.toFixed(3) : "—"}
-              </Typography>
-              {bounds && (
-                <Typography
-                  color="text.secondary"
-                  component="span"
-                  variant="body1"
-                >
-                  [{bounds.min.toFixed(2)}…{bounds.max.toFixed(2)}] ×
-                  {bounds.samples}
-                  {bounds.avg !== undefined && (
-                    <>
-                      {" · "}
-                      <Hint title="Arithmetic mean of the recorded priceNormalized history values; the current entry reading is not added again">
-                        avg {bounds.avg.toFixed(3)}
-                      </Hint>
-                    </>
-                  )}
-                </Typography>
-              )}
-              {trend !== undefined && (
-                <>
-                  {" · "}
-                  <Hint title="priceNormalized trail trend clarity, −1…+1 — efficiency ratio: net move over total path traveled; green from −0.5 to +0.5 means sideways, orange outside that range means clearly trending">
-                    <Typography
-                      color={trendColor(trend)}
-                      component="span"
-                      fontWeight={600}
-                      variant="body1"
-                    >
-                      trend {trend > 0 ? "+" : ""}
-                      {trend.toFixed(2)}
-                    </Typography>
-                  </Hint>
-                </>
-              )}
-              {row.own && row.key !== "BTC" && (
-                <>
-                  {" · "}
-                  <Hint title="BTC/coin priceNorm movement correlation over the shared history: below 0.33 = opposite (orange), 0.33–0.67 = weak or unrelated (muted), above 0.67 = moving together (green). A dash means there is too little overlapping movement.">
-                    <Typography color={correlationColor(correlation)} component="span" fontWeight={600} variant="body1">
-                      corr BTC {correlation === undefined ? "—" : correlation.toFixed(2)}
-                    </Typography>
-                  </Hint>
-                </>
-              )}
-            </Box>
-            {vwap?.price !== undefined && (
-              <Typography
-                color="text.secondary"
-                component="span"
-                display="block"
-                sx={{ pl: "40px" }}
-                variant="body1"
-              >
-                <Hint title="Monthly-anchored VWAP at entry — volume-weighted average of typical price since the UTC month boundary">
-                  vwap {fmtPrice(vwap.price)}
-                </Hint>
-                {vwap.stdev !== undefined && (
-                  <>
-                    {" · "}
-                    <Hint title="σ — population standard deviation of typical price since the month boundary; the VWAP envelope's unit of width">
-                      σ {fmtPrice(vwap.stdev)}
-                    </Hint>
-                  </>
-                )}
-                {vwap.distancePct !== undefined && (
-                  <>
-                    {" · "}
-                    <Hint title="Mark price's distance from the monthly VWAP — negative means trading below the month-to-date mean; under 5% green, under 10% orange, otherwise red">
-                      <Typography color={vwapDistanceColor(vwap.distancePct)} component="span" variant="body1">
-                        {`${vwap.distancePct > 0 ? "+" : ""}${vwap.distancePct}%`}
-                      </Typography>
-                    </Hint>
-                  </>
-                )}
-                {vwap.stretchPct !== undefined && (
-                  <>
-                    {" · "}
-                    <Hint
-                      title={
-                        `±2σ envelope width as % of VWAP — the gate rejects ` +
-                        `entries below ${FEATURE_GATE_VWAP_BOUNDS.minStretchPct}% ` +
-                        `(wave too narrow to mean-revert)`
-                      }
-                    >
-                      env {vwap.stretchPct}%
-                    </Hint>
-                  </>
-                )}
-                {dSigma !== undefined && (
-                  <>
-                    {" · "}
-                    <Hint
-                      title={
-                        `Entry signal's distance from the monthly VWAP in σ — ` +
-                        `green inside the gate's ` +
-                        `[${FEATURE_GATE_VWAP_BOUNDS.minSigma}, ` +
-                        `${FEATURE_GATE_VWAP_BOUNDS.maxSigma}]σ zone; ` +
-                        `orange below it and red above it`
-                      }
-                    >
-                      <Typography
-                        color={
-                          dSigma >= FEATURE_GATE_VWAP_BOUNDS.minSigma &&
-                            dSigma <= FEATURE_GATE_VWAP_BOUNDS.maxSigma
-                            ? "success.main"
-                            : dSigma > FEATURE_GATE_VWAP_BOUNDS.maxSigma
-                              ? "error.main"
-                              : "warning.main"
-                        }
-                        component="span"
-                        variant="body1"
-                      >
-                        dσ {dSigma.toFixed(2)}
-                      </Typography>
-                    </Hint>
-                  </>
-                )}
-              </Typography>
-            )}
-            <IndicatorReadings
-              coin={row.coin}
-              defs={(feature as RuntimeFeatures | undefined)?.defs}
-              entryTimeMs={entryTimeMs}
-            />
-            {vPointAgeMs !== undefined && (
-              <Typography
-                color={
-                  vPointAgeMs > FEATURE_GATE_VWAP_BOUNDS.maxSignalAgeMs
-                    ? "warning.main"
-                    : "text.secondary"
-                }
-                component="span"
-                display="block"
-                sx={{ pl: "40px" }}
-                title={
-                  `Time from the signal vPoint (${vPoint?.id}) ` +
-                  `forming to the entry fill`
-                }
-                variant="body1"
-              >
-                vPoint → entry {format.duration(vPointAgeMs)}
-              </Typography>
-            )}
-
-            <Typography
-              color={exhaustion !== undefined && exhaustion > 0.5 ? "warning.main" : undefined}
-              gutterBottom
-              variant="body1"
-            >
-              <Hint title="Research score, 0–1: a stalled priceNorm extreme, an early turn, or a range breaking away from repeatedly tested highs or lows. Up and down are scored the same. A dash means the trail is too short; this is not an entry rule.">
-                Exhaustion {exhaustion === undefined ? "—" : exhaustion.toFixed(2)}
-              </Hint>
-            </Typography>
-            <Typography
-              color={Math.abs(suddenChange) > 0.2 ? "warning.main" : undefined}
-              gutterBottom
-              variant="body1"
-            >
-              Sudden Changes:{" "}
-              {suddenChange.toFixed(2)}
-            </Typography>
-
-
-            <PriceNormalizedHistorySparkline
-              current={current}
-              entryTimeMs={entryTimeMs}
-              history={priceNormHistory(row.coin)}
-            />
-          </Box>
-        );
-      })}
+      {rows.map((row) => (
+        <CoinFeatureBlock
+          correlation={row === ownRow ? correlation : undefined}
+          defs={defs}
+          entryTimeMs={entryTimeMs}
+          key={row.key}
+          row={row}
+          signal={signal}
+        />
+      ))}
     </Box>
   );
 }

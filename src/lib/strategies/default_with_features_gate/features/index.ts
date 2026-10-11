@@ -3,6 +3,7 @@ import type { FeatureGateResult, FeatureGateSession } from "@/lib/strategies/fea
 import type { VolatilityPoint } from "@/lib/system/types";
 import featureGateV4, { subGates } from "./v4";
 import featureGateV5 from "./v5";
+import featureGateV6 from "./v6";
 // import featureGateV5,{ subGates } from "./v5";
 // import featureGateV4 from "./v4";
 
@@ -30,7 +31,7 @@ function gate(context: RuntimeContext, signal: VolatilityPoint): FeatureGateResu
   // if (!session) return { allow: false, message: "v3 NN: model is not warmed up" };
   // return session.gate(context.state.currentTime, context.state.features, signal);
 
-  return featureGateV4(context.state.currentTime, context.state.features, signal,["vwap"])
+  return featureGateV6(context.state.currentTime, context.state.features, signal,["supertrend"])
 }
 
 /** Releases only this engine's session; repeated cleanup and failed loads are harmless. */

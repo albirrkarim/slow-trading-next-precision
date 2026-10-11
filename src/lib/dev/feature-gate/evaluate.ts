@@ -70,6 +70,9 @@ async function evaluate(params: {
       : params.slug === "v5"
         ? ((time, features, signal) =>
             FEATURE_GATE_REGISTRY.v5.gate(time, features, signal, enabledSubGates))
+      : params.slug === "v6"
+        ? ((time, features, signal) =>
+            FEATURE_GATE_REGISTRY.v6.gate(time, features, signal, enabledSubGates))
       : session.gate;
     const acceptedHighScoreRows: FeatureGateAcceptedHighScoreRow[] = [];
     const scored = metrics.scoreRows(gate, allRows(rows), (row, message) => {

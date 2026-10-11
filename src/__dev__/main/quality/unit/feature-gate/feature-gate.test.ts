@@ -123,6 +123,59 @@ describe("feature-gate evaluate", () => {
     expect(defaults.metrics.accepted).toBe(0);
   });
 
+  // BOTH:FEATURE_GATE_V6_SUPERTREND
+  describe("v6 supertrend subgate", () => {
+    const withSupertrends = (directions: Record<string, 1 | -1>): RuntimeFeatures => ({
+      coins: {
+        AAA: {
+          ind: {
+            supertrend: Object.fromEntries(
+              Object.entries(directions).map(([id, d]) => [id, { d, l: 100 }]),
+            ),
+          },
+          priceNormalized: { current: 0.5, history: [] },
+        },
+      },
+      defs: {
+        st15: { atrLength: 10, factor: 3, id: "st15", interval: "15m", type: "supertrend" },
+        st1h: { atrLength: 10, factor: 3, id: "st1h", interval: "1h", type: "supertrend" },
+      },
+      shared: {},
+    });
+    const top = { ...point("T_0", "T"), symbol: "AAA" };
+    const bottom = { ...point("B_0", "B"), symbol: "AAA" };
+    const gate = (features: RuntimeFeatures, signal: VolatilityPoint) =>
+      FEATURE_GATE_REGISTRY.v6.gate(1000, features, signal, ["supertrend"]);
+
+    it("passes a TOP (short) only when every Supertrend is down", () => {
+      expect(gate(withSupertrends({ st15: -1, st1h: -1 }), top)).toMatchObject({ allow: true, message: expect.stringMatching(/^v6:/) });
+      expect(gate(withSupertrends({ st15: -1, st1h: 1 }), top)).toMatchObject({
+        allow: false,
+        message: expect.stringMatching(/^v6 supertrend: st1h is up, short needs every Supertrend down \(Supertrend 1h/),
+      });
+    });
+
+    it("passes a BOTTOM (long) only when every Supertrend is up", () => {
+      expect(gate(withSupertrends({ st15: 1, st1h: 1 }), bottom).allow).toBe(true);
+      expect(gate(withSupertrends({ st15: -1, st1h: -1 }), bottom)).toMatchObject({
+        allow: false,
+        message: expect.stringContaining("st15, st1h are down, long needs every Supertrend up"),
+      });
+    });
+
+    it("fails closed without any Supertrend reading", () => {
+      expect(gate(withSupertrends({}), top)).toMatchObject({
+        allow: false,
+        message: "v6 supertrend: no Supertrend reading to confirm the short",
+      });
+    });
+
+    it("is part of the v6 defaults and skipped when not selected", () => {
+      expect(FEATURE_GATE_REGISTRY.v6.defaultSubGates).toContain("supertrend");
+      expect(FEATURE_GATE_REGISTRY.v6.gate(1000, withSupertrends({ st15: 1 }), top, []).allow).toBe(true);
+    });
+  });
+
   it("rejects invalid subgate selections before loading the dataset", async () => {
     const readRows = vi.spyOn(featureGate.dataset, "readRows");
     for (const enabledSubGates of ["vwap", ["unknown"], ["vwap", "vwap"]]) {
@@ -264,6 +317,8 @@ describe("feature-gate registry", () => {
       { label: FEATURE_GATE_REGISTRY.v4.label, slug: "v4", subGates: FEATURE_GATE_REGISTRY.v4.subGates },
       { label: FEATURE_GATE_REGISTRY.v5.label, slug: "v5", subGates: FEATURE_GATE_REGISTRY.v5.subGates,
         defaultSubGates: [...FEATURE_GATE_REGISTRY.v5.defaultSubGates] },
+      { label: FEATURE_GATE_REGISTRY.v6.label, slug: "v6", subGates: FEATURE_GATE_REGISTRY.v6.subGates,
+        defaultSubGates: [...FEATURE_GATE_REGISTRY.v6.defaultSubGates] },
     ]);
     expect(defaultStrategy.warmup).toBe(gateDefault.warmup);
     expect(defaultStrategy.dispose).toBe(gateDefault.dispose);
