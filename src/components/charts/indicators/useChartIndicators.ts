@@ -7,6 +7,7 @@ import chartIndicators, {
   type ChartIndicatorsConfig,
   type EmaChartConfig,
   type SupertrendChartConfig,
+  type VPointSourceConfig,
   type VwapIndicatorConfig,
 } from "@/lib/system/utils/ui/chart-indicators";
 
@@ -32,6 +33,8 @@ export function useChartIndicators() {
     () => ({
       setVPoints: (vPoints: boolean) =>
         update((prev) => ({ ...prev, vPoints })),
+      updateVPointSource: (patch: Partial<VPointSourceConfig>) =>
+        update((prev) => ({ ...prev, vPointSource: { ...prev.vPointSource, ...patch } })),
       addVwap: () =>
         update((prev) => ({
           ...prev,

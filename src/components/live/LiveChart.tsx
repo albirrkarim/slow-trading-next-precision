@@ -11,6 +11,9 @@ import { useChartIndicators } from "@/components/charts/indicators/useChartIndic
 import { useChartOverlays } from "@/components/charts/indicators/useChartOverlays";
 import { useFillHeight } from "@/components/charts/useFillHeight";
 import type { IntervalKlines } from "@/lib/exchange";
+import type { Kline } from "@/lib/system/types/market";
+import { convertVolatilityToMarkers } from "@/lib/system/utils/ui/chart-markers";
+import vpoints from "@/lib/system/utils/vpoints";
 
 import type { LiveMarket } from "./binanceLiveSocket";
 import { useLiveKlines, type LiveStatus } from "./useLiveKlines";
@@ -51,7 +54,27 @@ export default function LiveChart({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [closedKey],
   );
-  const vPointTimes = useMemo(() => live.markers.map((marker) => marker.time * 1000), [live.markers]);
+  // vPoints: the engine's stored points, or detected fresh over every
+  // loaded closed candle with the configured thresholds.
+  const vPointSource = indicators.config.vPointSource;
+  const freshMarkers = useMemo(() => {
+    if (vPointSource.mode !== "fresh" || closedCandles.length < 2) return [];
+    const klines = closedCandles.map(
+      (candle) =>
+        [candle.time * 1000, String(candle.open), String(candle.high), String(candle.low),
+          String(candle.close), String(candle.volume), candle.time * 1000, "0"] as unknown as Kline,
+    );
+    return convertVolatilityToMarkers(
+      vpoints.detectVPoints({
+        klines,
+        moveThreshold: vPointSource.move,
+        retracePercent: vPointSource.retrace,
+        symbol,
+      }),
+    );
+  }, [closedCandles, symbol, vPointSource]);
+  const vPointMarkers = vPointSource.mode === "fresh" ? freshMarkers : live.markers;
+  const vPointTimes = useMemo(() => vPointMarkers.map((marker) => marker.time * 1000), [vPointMarkers]);
   const overlays = useChartOverlays({
     candles: closedCandles,
     exchange: "binance",
@@ -61,8 +84,8 @@ export default function LiveChart({
     vPointTimes,
   });
   const markers = useMemo(
-    () => (indicators.config.vPoints ? live.markers : []),
-    [indicators.config.vPoints, live.markers],
+    () => (indicators.config.vPoints ? vPointMarkers : []),
+    [indicators.config.vPoints, vPointMarkers],
   );
   const chip = STATUS_CHIP[live.status];
 
@@ -70,7 +93,7 @@ export default function LiveChart({
     <Box sx={{ display: "grid", gap: 1 }}>
       <Box sx={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 1 }}>
         {controls}
-        <IndicatorsMenu hasVPoints={vPointTimes.length > 0} indicators={indicators} />
+        <IndicatorsMenu hasVPoints indicators={indicators} />
         <Chip color={chip.color} label={chip.label} size="small" variant="outlined" />
         {live.loadingOlder && (
           <Typography color="text.secondary" variant="caption">
@@ -92,9 +115,10 @@ export default function LiveChart({
         )}
         <IndicatorLegend
           hasEntryAnchor={false}
-          hasVPoints={vPointTimes.length > 0}
+          hasVPoints
           indicators={indicators}
           sourceCandles={overlays.sourceCandles}
+          vPointSource
         />
         <CurrencyChart
           data={live.candles}

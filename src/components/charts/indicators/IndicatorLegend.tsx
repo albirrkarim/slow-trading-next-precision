@@ -15,7 +15,11 @@ import type { ChartIndicatorsApi } from "./useChartIndicators";
 import EmaSettings from "./EmaSettings";
 import SupertrendSettings from "./SupertrendSettings";
 import type { SourceCandles } from "./useSourceCandles";
+import VPointSettings from "./VPointSettings";
 import VwapSettings from "./VwapSettings";
+
+/** Popover id of the V-Points row (instance ids are random 6-char strings). */
+const VPOINTS_ID = "__vpoints";
 
 const ACTION_SX = { p: 0.25, "& svg": { fontSize: 15 } } as const;
 
@@ -130,12 +134,15 @@ export default function IndicatorLegend({
   hasVPoints,
   hasEntryAnchor,
   sourceCandles,
+  vPointSource = false,
 }: {
   indicators: ChartIndicatorsApi;
   hasVPoints: boolean;
   hasEntryAnchor: boolean;
   /** Loaded runtime-faithful source candles, by interval. */
   sourceCandles: SourceCandles;
+  /** The chart can switch vPoints between stored and fresh — show the tag and settings. */
+  vPointSource?: boolean;
 }) {
   const [editing, setEditing] = useState<{
     id: string;
@@ -145,6 +152,7 @@ export default function IndicatorLegend({
   const editingVwap = config.vwaps.find((item) => item.id === editing?.id);
   const editingSupertrend = config.supertrends.find((item) => item.id === editing?.id);
   const editingEma = config.emas.find((item) => item.id === editing?.id);
+  const editingVPoints = editing?.id === VPOINTS_ID;
 
   if (
     !hasVPoints &&
@@ -173,10 +181,28 @@ export default function IndicatorLegend({
       {hasVPoints && (
         <LegendRow
           color="#ef5350"
-          label="Volatility Points"
+          label={
+            vPointSource
+              ? `Volatility Points [${chartIndicators.vPointSource.label(config.vPointSource)}]`
+              : "Volatility Points"
+          }
+          onLabelClick={
+            vPointSource ? (anchorEl) => setEditing({ id: VPOINTS_ID, anchorEl }) : undefined
+          }
           onToggle={() => indicators.setVPoints(!config.vPoints)}
           visible={config.vPoints}
-        />
+        >
+          {vPointSource && (
+            <IconButton
+              onClick={(event) => setEditing({ id: VPOINTS_ID, anchorEl: event.currentTarget })}
+              size="small"
+              sx={ACTION_SX}
+              title="Settings"
+            >
+              <SettingsIcon />
+            </IconButton>
+          )}
+        </LegendRow>
       )}
       {config.vwaps.map((item) => (
         <LegendRow
@@ -246,7 +272,7 @@ export default function IndicatorLegend({
         anchorEl={editing?.anchorEl}
         anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
         onClose={() => setEditing(null)}
-        open={Boolean(editing && (editingVwap || editingSupertrend || editingEma))}
+        open={Boolean(editing && (editingVwap || editingSupertrend || editingEma || editingVPoints))}
       >
         {editingVwap && (
           <VwapSettings
@@ -254,6 +280,12 @@ export default function IndicatorLegend({
             hasEntryAnchor={hasEntryAnchor}
             key={editingVwap.id}
             onChange={(patch) => indicators.updateVwap(editingVwap.id, patch)}
+          />
+        )}
+        {editingVPoints && (
+          <VPointSettings
+            config={config.vPointSource}
+            onChange={indicators.updateVPointSource}
           />
         )}
         {editingEma && (

@@ -64,9 +64,22 @@ export interface EmaChartConfig {
   src?: FeatureIndicatorInterval;
 }
 
+/**
+ * Where a live chart's vPoints come from: the engine's stored points, or
+ * points detected fresh on the chart's own candles with custom thresholds.
+ */
+export interface VPointSourceConfig {
+  mode: "stored" | "fresh";
+  /** Fresh mode: % move from the last pivot that activates a sequence. */
+  move: number;
+  /** Fresh mode: % retrace from the extreme that confirms a pivot. */
+  retrace: number;
+}
+
 export interface ChartIndicatorsConfig {
   /** Draw the volatility-point (V-Points) markers. */
   vPoints: boolean;
+  vPointSource: VPointSourceConfig;
   vwaps: VwapIndicatorConfig[];
   supertrends: SupertrendChartConfig[];
   emas: EmaChartConfig[];
@@ -98,8 +111,12 @@ export const VWAP_COLORS = [
   "#546e7a",
 ];
 
+/** Detector env defaults (`VOLATILITY_THRESHOLD` / `VOLATILITY_RETRACE_PERCENT`). */
+const DEFAULT_VPOINT_SOURCE: VPointSourceConfig = { mode: "stored", move: 5, retrace: 1 };
+
 const DEFAULT_CONFIG: ChartIndicatorsConfig = {
   vPoints: true,
+  vPointSource: DEFAULT_VPOINT_SOURCE,
   vwaps: [],
   supertrends: [],
   emas: [],
@@ -369,6 +386,7 @@ function migrateLegacy(): ChartIndicatorsConfig | undefined {
   const vwap = decodeVwap({ a: parsed?.a, b: parsed?.b, c: VWAP_COLORS[0] });
   return {
     vPoints: true,
+    vPointSource: DEFAULT_VPOINT_SOURCE,
     vwaps: parsed?.e === true && vwap ? [vwap] : [],
     supertrends: [],
     emas: [],
@@ -415,6 +433,26 @@ function sourceRequests(
   return requests;
 }
 
+/** Positive finite percent, else `fallback`. */
+function positivePct(value: unknown, fallback: number): number {
+  const pct = Number(value);
+  return Number.isFinite(pct) && pct > 0 && pct <= 100 ? pct : fallback;
+}
+
+/** Decodes the compact stored vPoint source; defaults on absent/malformed. */
+function decodeVPointSource(raw: any): VPointSourceConfig {
+  return {
+    mode: raw?.f === 1 ? "fresh" : "stored",
+    move: positivePct(raw?.m, DEFAULT_VPOINT_SOURCE.move),
+    retrace: positivePct(raw?.r, DEFAULT_VPOINT_SOURCE.retrace),
+  };
+}
+
+/** Legend tag, e.g. "stored" or "fresh 5% · 1%". */
+function vPointSourceLabel(source: VPointSourceConfig): string {
+  return source.mode === "fresh" ? `fresh ${source.move}% · ${source.retrace}%` : "stored";
+}
+
 /**
  * Reads the persisted indicator stack; falls back to the legacy VWAP
  * preference, then defaults, so a bad blob never breaks the chart.
@@ -427,6 +465,7 @@ function load(): ChartIndicatorsConfig {
     const parsed = JSON.parse(raw);
     return {
       vPoints: parsed?.v !== 0,
+      vPointSource: decodeVPointSource(parsed?.p),
       vwaps: Array.isArray(parsed?.w)
         ? parsed.w
             .map(decodeVwap)
@@ -456,6 +495,11 @@ function save(config: ChartIndicatorsConfig) {
       STORAGE_KEY,
       JSON.stringify({
         v: config.vPoints ? 1 : 0,
+        p: {
+          ...(config.vPointSource.mode === "fresh" ? { f: 1 } : {}),
+          m: config.vPointSource.move,
+          r: config.vPointSource.retrace,
+        },
         w: config.vwaps.map((item) => ({
           i: item.id,
           ...(item.visible ? {} : { h: 1 }),
@@ -499,6 +543,10 @@ const chartIndicators = {
   hasDef,
   load,
   sourceRequests,
+  vPointSource: {
+    DEFAULT: DEFAULT_VPOINT_SOURCE,
+    label: vPointSourceLabel,
+  },
   save,
   supertrend: {
     create: createSupertrend,
