@@ -10,6 +10,7 @@ import type { IntervalKlines } from "@/lib/exchange";
 import type { LiveMarket } from "./binanceLiveSocket";
 import CoinPicker from "./CoinPicker";
 import LiveChart from "./LiveChart";
+import { useDashboardHints } from "./useDashboardHints";
 import { LIVE_INTERVALS } from "./useLiveKlines";
 
 const STORAGE_KEY = "precision:live-chart:v1";
@@ -51,6 +52,7 @@ export default function LivePage() {
   const mounted = useMounted();
   const [chosen, setChosen] = useState<LiveSelection | null>(null);
   const selection = chosen ?? (mounted ? readSelection() : null);
+  const hints = useDashboardHints();
 
   const update = (patch: Partial<LiveSelection>) =>
     setChosen((current) => {
@@ -76,7 +78,7 @@ export default function LivePage() {
         <LiveChart
           controls={
             <>
-              <CoinPicker onChange={(symbol) => update({ symbol })} value={selection.symbol} />
+              <CoinPicker onChange={(symbol) => update({ symbol })} options={hints.coins} value={selection.symbol} />
               <Select
                 onChange={(event) => update({ market: event.target.value as LiveMarket })}
                 size="small"
@@ -102,6 +104,7 @@ export default function LivePage() {
               </Select>
             </>
           }
+          engineMovePct={hints.movePct}
           interval={selection.interval}
           key={`${selection.symbol}:${selection.interval}:${selection.market}`}
           market={selection.market}

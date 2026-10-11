@@ -7,7 +7,7 @@ import type { CandlePoint } from "@/components/charts/CurrencyChart/types";
 import { endpoints } from "@/components/endpoints";
 import type { IntervalKlines } from "@/lib/exchange";
 import { systemLog } from "@/lib/system/logging";
-import type { Marker } from "@/lib/system/utils/ui/chart-markers";
+import type { VolatilityPoint } from "@/lib/system/types/market";
 
 import binanceLiveSocket, { type LiveMarket } from "./binanceLiveSocket";
 
@@ -34,7 +34,8 @@ export type LiveStatus = "connecting" | "live" | "reconnecting";
 
 interface HistoryChunk {
   candles: CandlePoint[];
-  markers: Marker[];
+  /** Stored engine vPoints inside the chunk's window. */
+  points: VolatilityPoint[];
 }
 
 /** Merges candle lists by open time (later wins), sorted ascending. */
@@ -46,15 +47,15 @@ function mergeCandles(base: CandlePoint[], incoming: CandlePoint[]): CandlePoint
   return [...byTime.values()].sort((a, b) => a.time - b.time);
 }
 
-/** Merges marker lists, deduped by time + text. */
-function mergeMarkers(base: Marker[], incoming: Marker[]): Marker[] {
+/** Merges vPoint lists by id (later wins), sorted by time. */
+function mergePoints(base: VolatilityPoint[], incoming: VolatilityPoint[]): VolatilityPoint[] {
   if (incoming.length === 0) return base;
-  const byKey = new Map<string, Marker>();
-  for (const marker of [...base, ...incoming]) byKey.set(`${marker.time}:${marker.text}`, marker);
-  return [...byKey.values()].sort((a, b) => a.time - b.time);
+  const byId = new Map<string, VolatilityPoint>();
+  for (const point of [...base, ...incoming]) byId.set(point.id, point);
+  return [...byId.values()].sort((a, b) => a.t - b.t);
 }
 
-/** Fetches closed candles (+ stored vPoint markers) for `[startMs, endMs]`. */
+/** Fetches closed candles (+ stored vPoints) for `[startMs, endMs]`. */
 async function fetchHistory(params: {
   symbol: string;
   interval: IntervalKlines;
@@ -63,7 +64,7 @@ async function fetchHistory(params: {
   endMs: number;
   signal?: AbortSignal;
 }): Promise<HistoryChunk> {
-  const res = await axios.get<{ klines: any[]; markers?: Marker[] }>(endpoints.market.klines, {
+  const res = await axios.get<{ klines: any[]; vPoints?: VolatilityPoint[] }>(endpoints.market.klines, {
     params: {
       endTime: Math.round(params.endMs),
       exchange: "binance",
@@ -85,7 +86,7 @@ async function fetchHistory(params: {
       time: k[0] / 1000,
       volume: Number(k[5]),
     })),
-    markers: (res.data.markers ?? []).filter((marker) => marker.kind === "vpoint"),
+    points: res.data.vPoints ?? [],
   };
 }
 
@@ -105,7 +106,7 @@ export function useLiveKlines({
   market: LiveMarket;
 }) {
   const [candles, setCandles] = useState<CandlePoint[]>([]);
-  const [markers, setMarkers] = useState<Marker[]>([]);
+  const [points, setPoints] = useState<VolatilityPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -141,7 +142,7 @@ export function useLiveKlines({
     loadRecent(CHUNK_BARS)
       .then((chunk) => {
         setCandles((current) => mergeCandles(chunk.candles, current));
-        setMarkers(chunk.markers);
+        setPoints(chunk.points);
         if (chunk.candles.length === 0) setReachedStart(true);
       })
       .catch((requestError) => {
@@ -155,7 +156,7 @@ export function useLiveKlines({
       loadRecent(100)
         .then((chunk) => {
           setCandles((current) => (current.length ? mergeCandles(current, chunk.candles) : current));
-          setMarkers((current) => mergeMarkers(current, chunk.markers));
+          setPoints((current) => mergePoints(current, chunk.points));
         })
         .catch((requestError) => {
           if (!axios.isCancel(requestError)) systemLog.error("Live chart refresh failed", requestError);
@@ -215,7 +216,7 @@ export function useLiveKlines({
           return;
         }
         setCandles((current) => mergeCandles(current, chunk.candles));
-        setMarkers((current) => mergeMarkers(current, chunk.markers));
+        setPoints((current) => mergePoints(current, chunk.points));
       })
       .catch((requestError) => systemLog.error("Failed to load older candles", requestError))
       .finally(() => {
@@ -224,7 +225,7 @@ export function useLiveKlines({
       });
   }, [interval, intervalMs, market, reachedStart, symbol]);
 
-  return { candles, error, loadOlder, loading, loadingOlder, markers, reachedStart, status };
+  return { candles, error, intervalMs, loadOlder, loading, loadingOlder, points, reachedStart, status };
 }
 
 export const LIVE_INTERVALS = Object.keys(INTERVAL_MS) as IntervalKlines[];

@@ -12,7 +12,7 @@ import { useChartOverlays } from "@/components/charts/indicators/useChartOverlay
 import { useFillHeight } from "@/components/charts/useFillHeight";
 import type { IntervalKlines } from "@/lib/exchange";
 import type { Kline } from "@/lib/system/types/market";
-import { convertVolatilityToMarkers } from "@/lib/system/utils/ui/chart-markers";
+import vpointExcursions from "@/lib/system/utils/ui/vpoint-excursions";
 import vpoints from "@/lib/system/utils/vpoints";
 
 import type { LiveMarket } from "./binanceLiveSocket";
@@ -34,12 +34,15 @@ export default function LiveChart({
   interval,
   market,
   controls,
+  engineMovePct,
 }: {
   symbol: string;
   interval: IntervalKlines;
   market: LiveMarket;
   /** Coin/market/interval pickers rendered at the toolbar's start. */
   controls: ReactNode;
+  /** Engine's vPoint move threshold — the stored points' entry-guard reference. */
+  engineMovePct: number;
 }) {
   const live = useLiveKlines({ interval, market, symbol });
   const indicators = useChartIndicators();
@@ -57,24 +60,34 @@ export default function LiveChart({
   // vPoints: the engine's stored points, or detected fresh over every
   // loaded closed candle with the configured thresholds.
   const vPointSource = indicators.config.vPointSource;
-  const freshMarkers = useMemo(() => {
+  const freshPoints = useMemo(() => {
     if (vPointSource.mode !== "fresh" || closedCandles.length < 2) return [];
     const klines = closedCandles.map(
       (candle) =>
         [candle.time * 1000, String(candle.open), String(candle.high), String(candle.low),
           String(candle.close), String(candle.volume), candle.time * 1000, "0"] as unknown as Kline,
     );
-    return convertVolatilityToMarkers(
-      vpoints.detectVPoints({
-        klines,
-        moveThreshold: vPointSource.move,
-        retracePercent: vPointSource.retrace,
-        symbol,
-      }),
-    );
+    return vpoints.detectVPoints({
+      klines,
+      moveThreshold: vPointSource.move,
+      retracePercent: vPointSource.retrace,
+      symbol,
+    });
   }, [closedCandles, symbol, vPointSource]);
-  const vPointMarkers = vPointSource.mode === "fresh" ? freshMarkers : live.markers;
-  const vPointTimes = useMemo(() => vPointMarkers.map((marker) => marker.time * 1000), [vPointMarkers]);
+  const points = vPointSource.mode === "fresh" ? freshPoints : live.points;
+  const vPointTimes = useMemo(() => points.map((point) => point.t), [points]);
+  // Markers carry max excursions; the newest point's run to the live mark,
+  // so this follows every tick (a single sweep over the candles).
+  const vPointMarkers = useMemo(
+    () =>
+      vpointExcursions.markers({
+        candles: live.candles,
+        intervalMs: live.intervalMs,
+        moveThresholdPct: vPointSource.mode === "fresh" ? vPointSource.move : engineMovePct,
+        points,
+      }),
+    [engineMovePct, live.candles, live.intervalMs, points, vPointSource],
+  );
   const overlays = useChartOverlays({
     candles: closedCandles,
     exchange: "binance",

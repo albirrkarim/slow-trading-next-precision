@@ -32,6 +32,8 @@ export interface GetKlinesReturn {
   endKlines: string;
   klines: Kline[];
   markers: Marker[];
+  /** Raw vPoints in the window when `volatility` was requested. */
+  vPoints?: VolatilityPoint[];
   vPointsSeries: MultiLinePair;
 }
 
@@ -186,6 +188,7 @@ export async function getKlines(req: NextApiRequest, res: NextApiResponse) {
     markers.push(...vMarkers);
 
     data.markers = markers;
+    data.vPoints = volatilityPoints;
 
     const vPointsSeries: MultiLinePair = {
       series: [],
