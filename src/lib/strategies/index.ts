@@ -15,6 +15,7 @@ const loaders: Record<
   custom_gpt6_astra_bounded_cover_v1: () =>
     import("./custom_gpt6_astra_bounded_cover_v1"),
   default_with_features_gate: () => import("./default_with_features_gate"),
+  human_v1: () => import("./human_v1"),
   streak: () => import("./streak"),
   streak_with_feature_gate: () => import("./streak_with_feature_gate"),
 };

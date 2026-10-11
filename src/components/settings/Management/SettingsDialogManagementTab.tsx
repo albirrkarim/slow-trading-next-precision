@@ -39,6 +39,10 @@ const STRATEGY_OPTIONS = [
     label: "Default + Features Gate",
     value: "default_with_features_gate",
   },
+  {
+    label: "Human v1 (Supertrend + EMA cross)",
+    value: "human_v1",
+  },
 ] satisfies { label: string; value: "default" | StrategySlug }[];
 
 function parseNumber(value: string) {

@@ -266,6 +266,8 @@ export type PositionCloseReason =
   | "MANUAL"
   | "FORCED"
   | "BLACK_SWAN_EXIT"
+  /** A strategy-owned exit rule (e.g. human_v1's EMA cross-back). */
+  | "STRATEGY_EXIT"
   | "UNKNOWN";
 
 export interface PositionCloseEvent {
@@ -282,6 +284,12 @@ export interface PositionCloseEvent {
 export interface PositionControl {
   forceExit?: {
     reason: string;
+    /**
+     * Close reason recorded for this forced exit; absent → `FORCED`
+     * (`BLACK_SWAN_EXIT` for `BLACK_SWAN:` reasons). Lets a strategy exit
+     * reuse the forced-sell path with its own label.
+     */
+    closeReason?: PositionCloseReason;
   };
 }
 

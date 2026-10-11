@@ -682,9 +682,11 @@ function evaluateExit(params: {
 
     const lastPosition = sellClone({
       exitMessage: reason,
-      closeReason: position.control.forceExit.reason.startsWith("BLACK_SWAN:")
-        ? "BLACK_SWAN_EXIT"
-        : "FORCED",
+      closeReason:
+        position.control.forceExit.closeReason ??
+        (position.control.forceExit.reason.startsWith("BLACK_SWAN:")
+          ? "BLACK_SWAN_EXIT"
+          : "FORCED"),
     });
 
     delete lastPosition.control!.forceExit;

@@ -100,6 +100,13 @@ Read through `indicators.read`, never the raw path:
   a TOP signal (`l: "T"`, short) needs every `d === -1`, a BOTTOM (long)
   every `d === 1`. Fails closed when the coin has no Supertrend reading.
 
+- Strategy **human_v1** (`src/lib/strategies/human_v1`, README there) trades
+  the indicators directly, without vPoints: a fresh cross of the first
+  enabled EMA arms that direction; enter once price is ≥ 1% beyond the EMA
+  with every Supertrend agreeing (`BOTH:HUMAN_V1_ENTRY`),
+  exit on any shared rule or the EMA cross-back (`BOTH:HUMAN_V1_EMA_EXIT`,
+  close reason `STRATEGY_EXIT`), never average (`BOTH:HUMAN_V1_NO_AVERAGING`).
+
 ## Surfaces
 
 - Trade feature preview lists every captured Supertrend, EMA, and extra VWAP.

@@ -58,7 +58,8 @@ export type StrategySlug =
   | "streak"
   | "streak_with_feature_gate"
   | "default_with_features_gate"
-  | "custom_gpt6_astra_bounded_cover_v1";
+  | "custom_gpt6_astra_bounded_cover_v1"
+  | "human_v1";
 
 /**
  * Candidate producers — one per decision family, mirroring the
