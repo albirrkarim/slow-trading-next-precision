@@ -7,6 +7,7 @@ import type {
   EntryRecommendation,
   Position,
   PositionDirection,
+  PositionPlan,
   TradeDecision,
 } from "@/lib/system/trading";
 import type {
@@ -307,6 +308,11 @@ export interface RuntimeEntryDecision {
    * knowing its shape.
    */
   strategy?: unknown;
+  /**
+   * Strategy-defined exit levels (TP price, SL price, timeout) copied onto
+   * `position.strategy.plan` at commit; invalid levels are dropped there.
+   */
+  plan?: PositionPlan;
   /**
    * Strategy-owned usage markers written onto the source vPoint after the
    * entry fills. Defaults to `[accountSlug]`; pair strategies emit

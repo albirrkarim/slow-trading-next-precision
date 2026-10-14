@@ -973,3 +973,39 @@ shows the trigger description so operators can identify which strategy may
 cause an exit.
 
 TC: `BOTH:SL_PLUS`
+
+### B.4.10 Strategy plan exit (TP price, SL price, timeout)
+
+A strategy may attach absolute exit levels to an entry decision
+(`RuntimeEntryDecision.plan`). The shared entry commit copies them onto
+`position.strategy.plan` once, at entry; they never change afterwards:
+
+```ts
+plan?: {
+  tp?: number;  // take-profit price
+  sl?: number;  // stop-loss price
+  exp?: number; // timeout, ms
+}
+```
+
+Every field is optional. Values that are not finite and positive are dropped
+at commit, and an empty plan is not stored. Positions without a plan are
+unaffected.
+
+The shared exit evaluation checks the plan right after forced exits and
+before the account's own exit rules, so it runs identically in backtest,
+sandbox, and live against the same mark price (the latest close). The first
+level reached closes the whole position at market (the mark), checked in this
+order:
+
+- `sl`: LONG mark `<= sl`, SHORT mark `>= sl` → `closed.reason = "PLAN_SL"`
+- `tp`: LONG mark `>= tp`, SHORT mark `<= tp` → `closed.reason = "PLAN_TP"`
+- `exp`: current time `>= exp` → `closed.reason = "PLAN_TIMEOUT"`
+
+The levels are checked on each monitoring pass, so a close happens on the
+first pass at or past a level and fills at that pass's mark, not exactly at
+the level. The account's exit rules (`takeProfitPercent`, `stopLossPercent`,
+`stopLossUSDT`, SL Plus, …) still apply; whichever rule triggers first closes
+the position. Averaging does not move plan prices.
+
+TC: `BOTH:STRATEGY_PLAN_EXIT`

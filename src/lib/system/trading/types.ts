@@ -188,6 +188,25 @@ export interface PositionStrategyState<TFeature = unknown> {
    * never interprets the shape — same neutrality as `state.strategy`.
    */
   logic?: unknown;
+  /**
+   * Strategy-defined exit levels set once at entry from
+   * `RuntimeEntryDecision.plan`. Enforced by the shared exit path in
+   * backtest, sandbox, and live alongside the account's exit rules.
+   */
+  plan?: PositionPlan;
+}
+
+/**
+ * Absolute exit levels a strategy sets on entry. Each field is optional and
+ * independent; the whole position closes at market on the first one reached.
+ */
+export interface PositionPlan {
+  /** Take-profit price: LONG closes at mark ≥ tp, SHORT at mark ≤ tp. */
+  tp?: number;
+  /** Stop-loss price: LONG closes at mark ≤ sl, SHORT at mark ≥ sl. */
+  sl?: number;
+  /** Timeout, ms: closes on the first monitoring pass at or after it. */
+  exp?: number;
 }
 
 export interface PositionPnlPoint {
@@ -268,6 +287,12 @@ export type PositionCloseReason =
   | "BLACK_SWAN_EXIT"
   /** A strategy-owned exit rule (e.g. human_v1's EMA cross-back). */
   | "STRATEGY_EXIT"
+  /** `strategy.plan.tp` reached. */
+  | "PLAN_TP"
+  /** `strategy.plan.sl` reached. */
+  | "PLAN_SL"
+  /** `strategy.plan.exp` passed. */
+  | "PLAN_TIMEOUT"
   | "UNKNOWN";
 
 export interface PositionCloseEvent {

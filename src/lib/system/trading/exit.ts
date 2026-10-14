@@ -10,6 +10,7 @@ import type {
 } from "../runtime";
 import { systemLog } from "../logging";
 import format from "../utils/format";
+import planExit from "./plan-exit";
 import pnl from "./pnl";
 import type {
   LevelBasedPctDriftStopLossCondition,
@@ -703,6 +704,44 @@ function evaluateExit(params: {
       profit: netGain,
       position: lastPosition,
       emailNotif: `[SELL] FINAL SELL`,
+    };
+  }
+
+  // B.3 Strategy plan levels (absolute TP/SL price, timeout) win over the
+  // account's percentage rules when both trigger on the same pass.
+  // BOTH:STRATEGY_PLAN_EXIT
+  const planHit = planExit.evaluate({
+    direction: position.direction,
+    plan: position.strategy.plan,
+    price,
+    t: timeMs,
+  });
+  if (planHit) {
+    const avgEntry = position.exposure.averageEntryPrice;
+    const grossGain =
+      position.direction === "SHORT"
+        ? (avgEntry - price) / avgEntry
+        : (price - avgEntry) / avgEntry;
+    const netGain = grossGain - roundTripFeeRatio;
+    const category =
+      planHit.reason === "PLAN_TP" ? TRADE_MESSAGE.sell.TP : TRADE_MESSAGE.sell.SL;
+    const target =
+      planHit.reason === "PLAN_TIMEOUT"
+        ? `timeout ${timeMsToReadable(planHit.level)}`
+        : `${planHit.reason === "PLAN_TP" ? "TP" : "SL"} ${planHit.level}`;
+    const reason = `[SELL] ${readableTime} ${category} BOTH:STRATEGY_PLAN_EXIT plan ${target} reached at mark ${price} | Net PnL ${(
+      netGain * 100
+    ).toFixed(2)}%`;
+
+    return {
+      action: "SELL",
+      price,
+      amount: position.exposure.quantity ?? 0,
+      category,
+      reason,
+      profit: netGain,
+      position: sellClone({ exitMessage: reason, closeReason: planHit.reason }),
+      emailNotif: `${netGain >= 0 ? "" : "😞 "}[SELL] Strategy plan ${target}`,
     };
   }
 

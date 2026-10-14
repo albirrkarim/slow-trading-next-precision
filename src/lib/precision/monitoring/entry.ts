@@ -1,6 +1,7 @@
 import features from "@/lib/features";
 import type { Position } from "@/lib/system/trading";
 import { systemLog } from "@/lib/system/logging";
+import planExit from "@/lib/system/trading/plan-exit";
 
 import positions from "../utils/positions";
 
@@ -144,7 +145,9 @@ async function executeDecision(
     const feature =
       leg.feature ??
       features.prune.forPosition(context.state.features, leg.symbol);
-    if (logic !== undefined || feature !== undefined) {
+    // BOTH:STRATEGY_PLAN_EXIT — the strategy's exit levels ride along.
+    const plan = planExit.normalize(leg.plan);
+    if (logic !== undefined || feature !== undefined || plan !== undefined) {
       position.strategy = {
         ...position.strategy,
         entry: {
@@ -152,6 +155,7 @@ async function executeDecision(
           ...(feature !== undefined ? { feature } : {}),
         },
         ...(logic !== undefined ? { logic } : {}),
+        ...(plan !== undefined ? { plan } : {}),
       };
     }
     context.state.openPositions.push(position);

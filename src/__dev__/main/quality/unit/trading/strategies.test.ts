@@ -471,6 +471,19 @@ describe("entryMonitoring.executeDecision — pair dispatch", () => {
     expect(state.balance.acc.locked).toBe(20);
   });
 
+  // BOTH:STRATEGY_PLAN_EXIT — the decision's exit levels land on the position.
+  it("copies a single entry's plan onto position.strategy.plan", async () => {
+    const state = makeState();
+    const context = makeContext(state, { onAction: vi.fn(async () => leg()) });
+    const committed = await entryMonitoring.executeDecision(
+      context,
+      entryDecision({ plan: { exp: NOW + 3_600_000, sl: 0.95, tp: Number.NaN } }),
+    );
+    expect(committed).toHaveLength(1);
+    // Unusable levels are dropped at commit.
+    expect(state.openPositions[0].strategy.plan).toEqual({ exp: NOW + 3_600_000, sl: 0.95 });
+  });
+
   it("rejects a pair when the adapter has no onPairAction", async () => {
     const state = makeState();
     const context = makeContext(state, {
