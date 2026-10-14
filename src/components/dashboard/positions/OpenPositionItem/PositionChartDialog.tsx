@@ -3,6 +3,7 @@
 import ShowChartIcon from "@mui/icons-material/ShowChart";
 import { Box, Button, Typography } from "@mui/material";
 import ButtonDialog from "@/components/ui/ButtonDialog";
+import DirectionChip from "@/components/charts/DirectionChip";
 import TradeChartBase from "@/components/charts/TradeChartBase";
 import type { RuntimeFeatures } from "@/lib/features/types";
 import type { RuntimeHistoryPosition } from "@/lib/system/trading";
@@ -54,6 +55,7 @@ export default function PositionChartDialog({
             volatilitySource="storage"
             header={
               <>
+                <DirectionChip direction={position.direction} />
                 <Typography variant="body2">
                   <strong>Entry:</strong>{" "}
                   {position.exposure.averageEntryPrice?.toFixed(6)} @{" "}

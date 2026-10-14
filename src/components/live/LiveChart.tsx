@@ -117,6 +117,8 @@ export default function LiveChart({
   const [placing, setPlacing] = useState<TradePlanSide | null>(null);
   const placePlan = (point: TradePlanPoint, stepMs: number) => {
     if (!placing) return;
+    // A new drawing is always shown, even while plans are hidden.
+    indicators.setPlan(true);
     plans.add(tradePlan.create({ price: point.price, side: placing, stepMs, t: point.t }));
     setPlacing(null);
   };
@@ -148,12 +150,13 @@ export default function LiveChart({
         )}
         <IndicatorLegend
           hasEntryAnchor={false}
+          hasPlan={plans.plans.length > 0}
           hasVPoints
           indicators={indicators}
           sourceCandles={overlays.sourceCandles}
           vPointSource
         />
-        {plans.selected && (
+        {indicators.config.plan && plans.selected && (
           <TradePlanPanel
             decimals={priceDecimals}
             onChange={plans.replace}
@@ -177,7 +180,7 @@ export default function LiveChart({
           overlayLines={overlays.overlayLines}
           placingTradePlan={Boolean(placing)}
           selectedTradePlanId={plans.selectedId}
-          tradePlans={plans.plans}
+          tradePlans={indicators.config.plan ? plans.plans : undefined}
         />
       </Box>
     </Box>

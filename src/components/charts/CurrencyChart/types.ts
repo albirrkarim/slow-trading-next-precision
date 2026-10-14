@@ -141,7 +141,7 @@ export interface ChartProps {
     followLatest?: boolean;
     /**
      * Visual-only trade plans (entry, TP ladder, SL, entry time → timeout).
-     * Drawn and draggable only together with `onTradePlansChange`.
+     * Drawn read-only; draggable once `onTradePlansChange` is given.
      */
     tradePlans?: TradePlan[];
     selectedTradePlanId?: string | null;

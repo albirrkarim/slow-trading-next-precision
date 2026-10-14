@@ -33,6 +33,7 @@ export function useChartIndicators() {
     () => ({
       setVPoints: (vPoints: boolean) =>
         update((prev) => ({ ...prev, vPoints })),
+      setPlan: (plan: boolean) => update((prev) => ({ ...prev, plan })),
       updateVPointSource: (patch: Partial<VPointSourceConfig>) =>
         update((prev) => ({ ...prev, vPointSource: { ...prev.vPointSource, ...patch } })),
       addVwap: () =>

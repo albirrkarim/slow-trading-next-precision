@@ -3,6 +3,7 @@
 import ShowChartIcon from "@mui/icons-material/ShowChart";
 import { Box, IconButton, Typography } from "@mui/material";
 import ButtonDialog from "@/components/ui/ButtonDialog";
+import DirectionChip from "@/components/charts/DirectionChip";
 import TradeChartBase from "@/components/charts/TradeChartBase";
 import type { RuntimeFeatures } from "@/lib/features/types";
 import format from "@/lib/system/utils/format";
@@ -82,6 +83,7 @@ export default function TradeChartDialog({
             customVolatilityPoints={getVolatilityPoints?.(row.symbol)}
             header={
               <>
+                <DirectionChip direction={row.direction} />
                 <Typography variant="body2">
                   <strong>Account:</strong> {row.account}
                 </Typography>

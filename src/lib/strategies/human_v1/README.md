@@ -16,9 +16,15 @@ the monthly VWAP price and σ, and every Supertrend from
    `HUMAN_V1_FLIP_WINDOW_MS` (1 day) apart, so the flips line up vertically
    on the chart.
 2. **The alignment is fresh**: the newest flip is at most that same window
-   old. Each alignment (keyed by its newest flip time) is traded at most once
-   (`state.strategy.used`).
-3. **Price is above the EMA.**
+   old.
+3. **The lines collide at the flip**: the highest and lowest Supertrend line
+   are at most `HUMAN_V1_MAX_LINE_SPREAD_PCT` (3%) of the mark apart on the
+   first pass that sees the alignment. If they are further apart, that
+   alignment is skipped for good, even if the lines converge later.
+4. **Price is above the EMA.**
+
+Each alignment (keyed by its newest flip time) is judged once and traded at
+most once (`state.strategy.used`).
 
 Then, by the Supertrend direction:
 

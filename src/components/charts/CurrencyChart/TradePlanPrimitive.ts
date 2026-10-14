@@ -74,6 +74,8 @@ export class TradePlanPrimitive implements ISeriesPrimitive<Time> {
   private stepSec = 60;
   /** In-flight drag result, drawn in place of the stored plan with its id. */
   private draft: TradePlan | null = null;
+  /** Draggable: shows the time handles and drag cursors. */
+  private editable = true;
   private axisViews: ISeriesPrimitiveAxisView[] = [];
   private readonly views: IPrimitivePaneView[] = [
     { renderer: () => this.renderer, zOrder: () => "top" },
@@ -99,8 +101,10 @@ export class TradePlanPrimitive implements ISeriesPrimitive<Time> {
     selectedId?: string | null;
     times?: number[];
     draft?: TradePlan | null;
+    editable?: boolean;
   }): void {
     if (state.plans) this.plans = state.plans;
+    if (state.editable !== undefined) this.editable = state.editable;
     if (state.selectedId !== undefined) this.selectedId = state.selectedId;
     if (state.draft !== undefined) this.draft = state.draft;
     if (state.times) {
@@ -128,7 +132,7 @@ export class TradePlanPrimitive implements ISeriesPrimitive<Time> {
   }
 
   hitTest(x: number, y: number): PrimitiveHoveredItem | null {
-    const hit = this.pick(x, y);
+    const hit = this.editable ? this.pick(x, y) : null;
     if (!hit) return null;
     return { cursorStyle: CURSOR[hit.handle.kind], externalId: hit.plan.id, zOrder: "top" };
   }
@@ -290,7 +294,7 @@ export class TradePlanPrimitive implements ISeriesPrimitive<Time> {
       this.label(ctx, `TP${i + 1} ${this.format(price)} ${pctText(price)}${rrText}`, g.left, g.yTp[i], TP_COLOR);
     });
 
-    if (selected) {
+    if (selected && this.editable) {
       this.handle(ctx, g.left, g.yEntry, ENTRY_COLOR);
       this.handle(ctx, g.right, g.yEntry, ENTRY_COLOR);
     }

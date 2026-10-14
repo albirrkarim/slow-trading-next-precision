@@ -103,7 +103,8 @@ Read through `indicators.read`, never the raw path:
 - Strategy **human_v1** (`src/lib/strategies/human_v1`, README there) trades
   the indicators directly, without vPoints: enter when every Supertrend
   flipped the same way within 1 day of each other (newest flip at most 1 day
-  old) while price is above the first enabled EMA (`BOTH:HUMAN_V1_ENTRY`).
+  old) with their lines at most 3% of price apart at the flip, while price
+  is above the first enabled EMA (`BOTH:HUMAN_V1_ENTRY`).
   LONG: SL at the EMA, TP at monthly VWAP + 1.5σ. SHORT: SL at VWAP + 1σ,
   TP at VWAP − 1.5σ, which must be below the EMA. TP/SL ride on the position
   plan (`BOTH:STRATEGY_PLAN_EXIT`) next to every shared exit rule; never

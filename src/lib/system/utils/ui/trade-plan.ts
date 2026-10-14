@@ -4,6 +4,7 @@
  * ladder, the stop loss, and a timeout. Nothing here places orders or feeds
  * the engine. Pure; no I/O.
  */
+import type { Position } from "@/lib/system/trading/types";
 
 export type TradePlanSide = "LONG" | "SHORT";
 
@@ -164,6 +165,30 @@ function formatSpan(ms: number): string {
   return `${rest}m`;
 }
 
+/**
+ * Read-only chart plan for a position's `strategy.plan`: entry at the fill,
+ * box from the open to the timeout, else the close, else `now`. Undefined
+ * unless the plan has both a TP and an SL price.
+ */
+function fromPosition(
+  position: Pick<Position, "opened" | "strategy"> & Partial<Pick<Position, "direction" | "closed">>,
+  now: number,
+): TradePlan | undefined {
+  const plan = position.strategy?.plan;
+  const entry = position.opened.price;
+  if (plan?.tp === undefined || plan.sl === undefined || !(entry > 0)) return undefined;
+  const side = position.direction ?? (plan.tp >= entry ? "LONG" : "SHORT");
+  return {
+    end: plan.exp ?? position.closed?.t ?? now,
+    entry,
+    id: `position:${position.opened.t}`,
+    side,
+    sl: plan.sl,
+    t: position.opened.t,
+    tp: [plan.tp],
+  };
+}
+
 /** Plans parsed from untrusted storage; malformed entries are dropped. */
 function sanitize(raw: unknown): TradePlan[] {
   if (!Array.isArray(raw)) return [];
@@ -190,6 +215,7 @@ const tradePlan = {
   drag,
   flip,
   formatSpan,
+  fromPosition,
   pct,
   removeTp,
   rr,

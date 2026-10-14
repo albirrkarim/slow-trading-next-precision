@@ -28,7 +28,8 @@ interface DragState {
  * drag previews inside the primitive and commits once on release; a press
  * on a plan never reaches the chart's own pan handling. While `placing`,
  * a click on empty chart reports the bar-snapped point to `onPlace`
- * instead of clearing the selection.
+ * instead of clearing the selection. Without `onChange` the plans are
+ * drawn read-only.
  */
 export function useTradePlans({
   chartRef,
@@ -53,7 +54,8 @@ export function useTradePlans({
   placing: boolean;
   onPlace: ((point: TradePlanPoint, stepMs: number) => void) | undefined;
 }) {
-  const enabled = Boolean(plans && onChange);
+  const enabled = Boolean(plans);
+  const editable = enabled && Boolean(onChange);
   const primitiveRef = useRef<TradePlanPrimitive | null>(null);
   const latest = useRef({ onChange, onPlace, onSelect, placing, plans });
   useEffect(() => {
@@ -69,11 +71,11 @@ export function useTradePlans({
     // eslint-disable-next-line consistent-return
     return () => {
       primitiveRef.current = null;
-      try {
-        series.detachPrimitive(primitive);
-      } catch {
-        // The chart was already removed with its series.
-      }
+      // On unmount the chart is removed first (its cleanup clears
+      // `seriesRef`); detaching then would schedule a redraw on a disposed
+      // chart.
+      if (seriesRef.current !== series) return;
+      series.detachPrimitive(primitive);
     };
   }, [enabled, seriesRef]);
 
@@ -86,12 +88,12 @@ export function useTradePlans({
   );
 
   useEffect(() => {
-    primitiveRef.current?.update({ plans: plans ?? [], selectedId: selectedId ?? null, times });
-  }, [enabled, plans, selectedId, times]);
+    primitiveRef.current?.update({ editable, plans: plans ?? [], selectedId: selectedId ?? null, times });
+  }, [editable, enabled, plans, selectedId, times]);
 
   useEffect(() => {
     const container = containerRef.current;
-    if (!enabled || !container) return;
+    if (!editable || !container) return;
     let drag: DragState | null = null;
     let press: { x: number; y: number } | null = null;
 
@@ -184,5 +186,5 @@ export function useTradePlans({
       container.removeEventListener("touchstart", shield, true);
       container.removeEventListener("pointerup", click);
     };
-  }, [chartRef, containerRef, enabled]);
+  }, [chartRef, containerRef, editable]);
 }

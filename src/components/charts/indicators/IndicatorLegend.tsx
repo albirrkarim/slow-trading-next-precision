@@ -132,12 +132,15 @@ function withLoading(label: string, source: string | undefined, sourceCandles: S
 export default function IndicatorLegend({
   indicators,
   hasVPoints,
+  hasPlan = false,
   hasEntryAnchor,
   sourceCandles,
   vPointSource = false,
 }: {
   indicators: ChartIndicatorsApi;
   hasVPoints: boolean;
+  /** The chart has a trade plan to show or hide. */
+  hasPlan?: boolean;
   hasEntryAnchor: boolean;
   /** Loaded runtime-faithful source candles, by interval. */
   sourceCandles: SourceCandles;
@@ -156,6 +159,7 @@ export default function IndicatorLegend({
 
   if (
     !hasVPoints &&
+    !hasPlan &&
     config.vwaps.length === 0 &&
     config.supertrends.length === 0 &&
     config.emas.length === 0
@@ -203,6 +207,14 @@ export default function IndicatorLegend({
             </IconButton>
           )}
         </LegendRow>
+      )}
+      {hasPlan && (
+        <LegendRow
+          color="linear-gradient(180deg, #26a69a 50%, #ef5350 50%)"
+          label="Trade Plan"
+          onToggle={() => indicators.setPlan(!config.plan)}
+          visible={config.plan}
+        />
       )}
       {config.vwaps.map((item) => (
         <LegendRow

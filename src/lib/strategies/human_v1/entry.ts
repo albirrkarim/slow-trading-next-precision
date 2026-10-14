@@ -26,7 +26,8 @@ interface HumanSignal extends HumanSetup {
 /**
  * Scans every configured coin once per capture pass and returns its fresh
  * setup. An alignment (identified by its newest Supertrend flip) is
- * consumed when it produces a signal, so it never enters twice.
+ * consumed when it produces a signal or its lines are apart at the flip,
+ * so it is judged once and never enters twice.
  */
 function scanSignals(context: RuntimeContext): Map<string, HumanSignal> {
   const state = humanState.read(context);
@@ -40,7 +41,13 @@ function scanSignals(context: RuntimeContext): Map<string, HumanSignal> {
       context.state.markPriceMap[symbol]?.price,
     );
     const result = humanSetup.evaluate(reading, context.state.currentTime);
-    if (!("setup" in result) || state.used[symbol] === result.setup.flipT) continue;
+    if (!("setup" in result)) {
+      // A final miss (lines apart at the flip) settles the alignment, so
+      // it never enters once the lines converge later.
+      if (result.spent !== undefined) state.used[symbol] = result.spent;
+      continue;
+    }
+    if (state.used[symbol] === result.setup.flipT) continue;
     state.used[symbol] = result.setup.flipT;
     signals.set(symbol, {
       ...result.setup,

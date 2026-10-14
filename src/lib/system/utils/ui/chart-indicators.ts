@@ -79,6 +79,8 @@ export interface VPointSourceConfig {
 export interface ChartIndicatorsConfig {
   /** Draw the volatility-point (V-Points) markers. */
   vPoints: boolean;
+  /** Draw trade plans (a position's TP/SL plan, live-chart drawings). */
+  plan: boolean;
   vPointSource: VPointSourceConfig;
   vwaps: VwapIndicatorConfig[];
   supertrends: SupertrendChartConfig[];
@@ -116,6 +118,7 @@ const DEFAULT_VPOINT_SOURCE: VPointSourceConfig = { mode: "stored", move: 5, ret
 
 const DEFAULT_CONFIG: ChartIndicatorsConfig = {
   vPoints: true,
+  plan: true,
   vPointSource: DEFAULT_VPOINT_SOURCE,
   vwaps: [],
   supertrends: [],
@@ -386,6 +389,7 @@ function migrateLegacy(): ChartIndicatorsConfig | undefined {
   const vwap = decodeVwap({ a: parsed?.a, b: parsed?.b, c: VWAP_COLORS[0] });
   return {
     vPoints: true,
+    plan: true,
     vPointSource: DEFAULT_VPOINT_SOURCE,
     vwaps: parsed?.e === true && vwap ? [vwap] : [],
     supertrends: [],
@@ -465,6 +469,7 @@ function load(): ChartIndicatorsConfig {
     const parsed = JSON.parse(raw);
     return {
       vPoints: parsed?.v !== 0,
+      plan: parsed?.pl !== 0,
       vPointSource: decodeVPointSource(parsed?.p),
       vwaps: Array.isArray(parsed?.w)
         ? parsed.w
@@ -495,6 +500,7 @@ function save(config: ChartIndicatorsConfig) {
       STORAGE_KEY,
       JSON.stringify({
         v: config.vPoints ? 1 : 0,
+        ...(config.plan ? {} : { pl: 0 }),
         p: {
           ...(config.vPointSource.mode === "fresh" ? { f: 1 } : {}),
           m: config.vPointSource.move,

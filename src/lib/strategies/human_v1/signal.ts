@@ -29,6 +29,8 @@ export interface SupertrendAlignment {
   flipT?: number;
   /** Time between the oldest and newest flip, ms. */
   spreadMs?: number;
+  /** Every Supertrend's line price. */
+  lines: number[];
 }
 
 /**
@@ -38,13 +40,14 @@ export interface SupertrendAlignment {
 function supertrendAlignment(features: RuntimeFeatures | undefined, symbol: string): SupertrendAlignment {
   const readings = Object.entries(features?.coins[symbol]?.ind?.supertrend ?? {});
   const ids = readings.map(([id]) => id);
-  if (readings.length === 0) return { ids };
+  const lines = readings.map(([, reading]) => reading.l);
+  if (readings.length === 0) return { ids, lines };
   const first = readings[0][1].d;
-  if (!readings.every(([, reading]) => reading.d === first)) return { ids };
+  if (!readings.every(([, reading]) => reading.d === first)) return { ids, lines };
   const flips = readings.map(([, reading]) => reading.fT ?? 0);
-  if (flips.some((t) => !(t > 0))) return { direction: first, ids };
+  if (flips.some((t) => !(t > 0))) return { direction: first, ids, lines };
   const flipT = Math.max(...flips);
-  return { direction: first, flipT, ids, spreadMs: flipT - Math.min(...flips) };
+  return { direction: first, flipT, ids, lines, spreadMs: flipT - Math.min(...flips) };
 }
 
 /** One coin's current human_v1 reading. */

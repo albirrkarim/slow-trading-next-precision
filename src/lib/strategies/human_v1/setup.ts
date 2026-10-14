@@ -2,9 +2,10 @@
  * human_v1 setups — pure rules over one coin's reading. No I/O, no state.
  *
  * Both setups need every Supertrend to have flipped the same way within
- * `HUMAN_V1_FLIP_WINDOW_MS` of each other (the flips line up vertically on
- * the chart), the newest flip no older than that window, and the mark
- * above the EMA:
+ * `HUMAN_V1_FLIP_WINDOW_MS` of each other, the newest flip no older than
+ * that window, the lines bunched within `HUMAN_V1_MAX_LINE_SPREAD_PCT` of
+ * price when the alignment is first seen (they "collide" on the chart), and
+ * the mark above the EMA:
  * - LONG (all up): SL at the EMA, TP at monthly VWAP + 1.5σ.
  * - SHORT (all down, still above the EMA): SL at VWAP + 1σ, TP at
  *   VWAP − 1.5σ, which must sit below the EMA.
@@ -15,6 +16,8 @@ import type { HumanReading } from "./signal";
 
 /** Max time between the first and last Supertrend flip, and max age of the last flip. */
 export const HUMAN_V1_FLIP_WINDOW_MS = 24 * 60 * 60_000;
+/** Max distance between the highest and lowest Supertrend line, % of the mark. */
+export const HUMAN_V1_MAX_LINE_SPREAD_PCT = 3;
 /** TP distance from the monthly VWAP, in σ. */
 export const HUMAN_V1_TP_SIGMA = 1.5;
 /** SHORT SL distance above the monthly VWAP, in σ. */
@@ -30,7 +33,12 @@ export interface HumanSetup {
   emaValue: number;
 }
 
-export type HumanSetupResult = { setup: HumanSetup } | { reason: string };
+/**
+ * A setup, or why the coin has none. `spent` carries the alignment's flip
+ * time when the miss is final for that alignment (lines apart at the
+ * flip), so it is never re-evaluated as the lines converge later.
+ */
+export type HumanSetupResult = { setup: HumanSetup } | { reason: string; spent?: number };
 
 /** "6h", "1d 2h" — span for diagnostics. */
 function hours(ms: number): string {
@@ -58,6 +66,14 @@ function evaluate(reading: HumanReading, now: number): HumanSetupResult {
   const age = now - supertrend.flipT;
   if (age > HUMAN_V1_FLIP_WINDOW_MS) {
     return { reason: `alignment is ${hours(age)} old, max ${hours(HUMAN_V1_FLIP_WINDOW_MS)}` };
+  }
+  // BOTH:HUMAN_V1_ENTRY — the lines must already collide at the flip.
+  const spreadPct = ((Math.max(...supertrend.lines) - Math.min(...supertrend.lines)) / markPrice) * 100;
+  if (!(spreadPct <= HUMAN_V1_MAX_LINE_SPREAD_PCT)) {
+    return {
+      reason: `Supertrend lines ${spreadPct.toFixed(2)}% apart at the flip, max ${HUMAN_V1_MAX_LINE_SPREAD_PCT}%`,
+      spent: supertrend.flipT,
+    };
   }
   if (reading.side !== 1) return { reason: `price is not above ${reading.emaId}` };
 

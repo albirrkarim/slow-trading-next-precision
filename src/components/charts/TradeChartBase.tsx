@@ -31,6 +31,7 @@ import { useChartOverlays } from "./indicators/useChartOverlays";
 import { useFillHeight } from "./useFillHeight";
 import type { VolatilityPoint } from "@/lib/system/types";
 import type { FeatureIndicatorDefs } from "@/lib/features/indicators";
+import tradePlan from "@/lib/system/utils/ui/trade-plan";
 
 type TrajectoryPoint = {
   price: number;
@@ -41,7 +42,8 @@ type TrajectoryPoint = {
 type TradeChartPosition = Pick<
   Position<any>,
   "exposure" | "opened" | "strategy"
->;
+> &
+  Partial<Pick<Position<any>, "direction" | "closed">>;
 
 type KlinesResponse = {
   klines: any[];
@@ -312,6 +314,13 @@ export default function TradeChartBase({
     entryAnchorMs: hasEntryAnchor ? entryAnchorMs : undefined,
   });
   const hasVPoints = vPointTimes.length > 0;
+  // The strategy's TP/SL plan, drawn read-only; an open position's box
+  // runs to the newest loaded candle.
+  const lastCandleMs = (klines.at(-1)?.time ?? 0) * 1000;
+  const positionPlans = useMemo(() => {
+    const plan = activePosition && tradePlan.fromPosition(activePosition, lastCandleMs);
+    return plan ? [plan] : undefined;
+  }, [activePosition, lastCandleMs]);
 
   if (loading) {
     return (
@@ -380,6 +389,7 @@ export default function TradeChartBase({
         <IndicatorLegend
           sourceCandles={overlays.sourceCandles}
           hasEntryAnchor={hasEntryAnchor}
+          hasPlan={Boolean(positionPlans)}
           hasVPoints={hasVPoints}
           indicators={indicators}
         />
@@ -396,6 +406,8 @@ export default function TradeChartBase({
           trajectoryDirection={trajectoryDirection}
           overlayLines={overlays.overlayLines}
           overlayBands={overlays.overlayBands}
+          selectedTradePlanId={positionPlans?.[0].id}
+          tradePlans={indicators.config.plan ? positionPlans : undefined}
         />
       </Box>
 
