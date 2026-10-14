@@ -28,11 +28,12 @@ import { useBetterCloseLine } from "./useBetterCloseLine";
 import { useEntryOrderLines, usePriceLines } from "./usePriceLines";
 import { useTrajectorySeries } from "./useTrajectorySeries";
 import { useOverlayLines } from "./useOverlayLines";
+import { useTradePlans } from "./useTradePlans";
 
 /** Right margin in live mode — wide enough for an indicator name badge. */
 const LIVE_RIGHT_MARGIN_PX = 120;
 
-export default function CurrencyChart({ data, markers, activePosition, aimPosition, dashedEntryPriceLine = false, tpPrice, slPrice, betterToCloseAt, entryOrders, height = 400, trajectory, trajectoryAnchor, trajectoryDirection, initialVisibleRange, overlayLines, overlayBands, onNearLeftEdge, followLatest = false }: ChartProps) {
+export default function CurrencyChart({ data, markers, activePosition, aimPosition, dashedEntryPriceLine = false, tpPrice, slPrice, betterToCloseAt, entryOrders, height = 400, trajectory, trajectoryAnchor, trajectoryDirection, initialVisibleRange, overlayLines, overlayBands, onNearLeftEdge, followLatest = false, tradePlans, selectedTradePlanId, onTradePlansChange, onSelectTradePlan, placingTradePlan = false, onPlaceTradePlan }: ChartProps) {
     const theme = useTheme();
     const chartTextColor = theme.palette.text.secondary;
     const chartGridColor = theme.palette.divider;
@@ -351,6 +352,19 @@ export default function CurrencyChart({ data, markers, activePosition, aimPositi
         overlayLines,
         bandSeriesRef,
         overlaySeriesRef,
+    });
+
+    useTradePlans({
+        chartRef,
+        seriesRef,
+        containerRef: chartContainerRef,
+        data,
+        plans: tradePlans,
+        selectedId: selectedTradePlanId,
+        onChange: onTradePlansChange,
+        onSelect: onSelectTradePlan,
+        placing: placingTradePlan,
+        onPlace: onPlaceTradePlan,
     });
 
     const betterCloseLabel =

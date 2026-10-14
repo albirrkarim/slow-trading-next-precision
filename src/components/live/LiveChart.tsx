@@ -2,9 +2,10 @@
 
 import { Alert, Box, Chip, CircularProgress, Typography } from "@mui/material";
 import type { ReactNode } from "react";
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import CurrencyChart from "@/components/charts/CurrencyChart";
+import { computePricePrecision } from "@/components/charts/CurrencyChart/precision";
 import IndicatorLegend from "@/components/charts/indicators/IndicatorLegend";
 import IndicatorsMenu from "@/components/charts/indicators/IndicatorsMenu";
 import { useChartIndicators } from "@/components/charts/indicators/useChartIndicators";
@@ -12,11 +13,15 @@ import { useChartOverlays } from "@/components/charts/indicators/useChartOverlay
 import { useFillHeight } from "@/components/charts/useFillHeight";
 import type { IntervalKlines } from "@/lib/exchange";
 import type { Kline } from "@/lib/system/types/market";
+import tradePlan, { type TradePlanPoint, type TradePlanSide } from "@/lib/system/utils/ui/trade-plan";
 import vpointExcursions from "@/lib/system/utils/ui/vpoint-excursions";
 import vpoints from "@/lib/system/utils/vpoints";
 
 import type { LiveMarket } from "./binanceLiveSocket";
+import TradePlanButtons from "./TradePlanButtons";
+import TradePlanPanel from "./TradePlanPanel";
 import { useLiveKlines, type LiveStatus } from "./useLiveKlines";
+import { useTradePlanStore } from "./useTradePlanStore";
 
 const STATUS_CHIP: Record<LiveStatus, { label: string; color: "success" | "warning" | "default" }> = {
   connecting: { color: "default", label: "Connecting…" },
@@ -101,12 +106,27 @@ export default function LiveChart({
     [indicators.config.vPoints, vPointMarkers],
   );
   const chip = STATUS_CHIP[live.status];
+  const plans = useTradePlanStore(symbol);
+  const lastCandle = live.candles.at(-1);
+  const priceDecimals = useMemo(
+    () => computePricePrecision({ data: live.candles }),
+    // Decimals only depend on the newest candles' tick size.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [closedKey],
+  );
+  const [placing, setPlacing] = useState<TradePlanSide | null>(null);
+  const placePlan = (point: TradePlanPoint, stepMs: number) => {
+    if (!placing) return;
+    plans.add(tradePlan.create({ price: point.price, side: placing, stepMs, t: point.t }));
+    setPlacing(null);
+  };
 
   return (
     <Box sx={{ display: "grid", gap: 1 }}>
       <Box sx={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 1 }}>
         {controls}
         <IndicatorsMenu hasVPoints indicators={indicators} />
+        <TradePlanButtons disabled={!lastCandle} onPlacingChange={setPlacing} placing={placing} />
         <Chip color={chip.color} label={chip.label} size="small" variant="outlined" />
         {live.loadingOlder && (
           <Typography color="text.secondary" variant="caption">
@@ -133,6 +153,16 @@ export default function LiveChart({
           sourceCandles={overlays.sourceCandles}
           vPointSource
         />
+        {plans.selected && (
+          <TradePlanPanel
+            decimals={priceDecimals}
+            onChange={plans.replace}
+            onClose={() => plans.select(null)}
+            onRemove={() => plans.remove(plans.selected!.id)}
+            plan={plans.selected}
+            symbol={symbol}
+          />
+        )}
         <CurrencyChart
           data={live.candles}
           entryOrders={[]}
@@ -140,8 +170,14 @@ export default function LiveChart({
           height={height}
           markers={markers}
           onNearLeftEdge={live.loadOlder}
+          onPlaceTradePlan={placePlan}
+          onSelectTradePlan={plans.select}
+          onTradePlansChange={plans.setAll}
           overlayBands={overlays.overlayBands}
           overlayLines={overlays.overlayLines}
+          placingTradePlan={Boolean(placing)}
+          selectedTradePlanId={plans.selectedId}
+          tradePlans={plans.plans}
         />
       </Box>
     </Box>

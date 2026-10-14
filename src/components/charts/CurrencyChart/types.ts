@@ -1,5 +1,6 @@
 import type { Marker } from "@/lib/system/utils/ui/chart-markers";
 import type { Position } from "@/lib/system/trading";
+import type { TradePlan, TradePlanPoint } from "@/lib/system/utils/ui/trade-plan";
 
 export type TrajectoryPoint = {
     message?: string;
@@ -138,4 +139,18 @@ export interface ChartProps {
     onNearLeftEdge?: () => void;
     /** Live mode: a viewport parked on the newest bar scrolls with new bars. */
     followLatest?: boolean;
+    /**
+     * Visual-only trade plans (entry, TP ladder, SL, entry time → timeout).
+     * Drawn and draggable only together with `onTradePlansChange`.
+     */
+    tradePlans?: TradePlan[];
+    selectedTradePlanId?: string | null;
+    /** Receives the whole plan list once a drag is released. */
+    onTradePlansChange?: (plans: TradePlan[]) => void;
+    /** Plan pressed on the chart, or null for a click on empty chart. */
+    onSelectTradePlan?: (id: string | null) => void;
+    /** Placement mode: the next click on empty chart goes to `onPlaceTradePlan`. */
+    placingTradePlan?: boolean;
+    /** Bar-snapped click point (ms, price) and the bar spacing, ms. */
+    onPlaceTradePlan?: (point: TradePlanPoint, stepMs: number) => void;
 }
