@@ -285,7 +285,7 @@ export type PositionCloseReason =
   | "MANUAL"
   | "FORCED"
   | "BLACK_SWAN_EXIT"
-  /** A strategy-owned exit rule (e.g. human_v1's EMA cross-back). */
+  /** A strategy-owned exit rule (e.g. a forced exit through `closeReason`). */
   | "STRATEGY_EXIT"
   /** `strategy.plan.tp` reached. */
   | "PLAN_TP"

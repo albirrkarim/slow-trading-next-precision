@@ -1,14 +1,15 @@
 import type { StrategyAPI } from "../types";
-import humanEntry, { HUMAN_V1_MIN_EMA_DISTANCE_PCT } from "./entry";
-import humanExit from "./exit";
+import humanEntry from "./entry";
+import humanSetup from "./setup";
 import humanSignal from "./signal";
 import humanState from "./state";
 
 /**
- * human_v1 — trend following on configured indicators, no vPoints:
- * enter when price crosses the first enabled EMA, then clears it by
- * `HUMAN_V1_MIN_EMA_DISTANCE_PCT` in the direction every Supertrend agrees on; exit on any shared
- * exit rule or when price crosses that EMA back. Never averages.
+ * human_v1 — Supertrend alignment on configured indicators, no vPoints:
+ * enter when every Supertrend flipped the same way at nearly the same time
+ * while price is above the first enabled EMA. Exits come from the entry's
+ * plan (TP/SL at EMA and monthly VWAP σ bands) plus every shared exit
+ * rule, through the default exit producer. Never averages.
  */
 const humanV1: StrategyAPI = {
   name: "human_v1",
@@ -16,7 +17,6 @@ const humanV1: StrategyAPI = {
     entry: { find: humanEntry.find },
     // BOTH:HUMAN_V1_NO_AVERAGING
     averaging: { find: async () => null },
-    exit: { find: humanExit.find },
   },
   diagnostics: {
     explain: ({ context, symbol }) => {
@@ -26,35 +26,19 @@ const humanV1: StrategyAPI = {
         coin,
         context.state.markPriceMap[coin]?.price,
       );
-      const blocked = (reason: string) => ({ code: "HUMAN_V1", reason, status: "blocked" as const });
-      if (reading.missing) return blocked(`human_v1: ${reading.missing}`);
-      if (reading.consensus === undefined) {
-        return blocked(`human_v1: Supertrends disagree (${reading.supertrendIds.join(", ")})`);
+      const result = humanSetup.evaluate(reading, context.state.currentTime);
+      if (!("setup" in result)) {
+        return { code: "HUMAN_V1", reason: `human_v1: ${result.reason}`, status: "blocked" };
       }
-      const trend = reading.consensus === 1 ? "up" : "down";
-      if (reading.side !== reading.consensus) {
-        return blocked(`human_v1: Supertrends ${trend}, price on the other side of ${reading.emaId}`);
+      const { setup } = result;
+      if (humanState.peek(context).used[coin] === setup.flipT) {
+        return { code: "HUMAN_V1", reason: "human_v1: this Supertrend alignment was already traded", status: "blocked" };
       }
-      const state = humanState.peek(context);
-      const previous = state.side[coin];
-      // A side flip arms on the next pass even before it is recorded.
-      const armed =
-        state.armed[coin] === reading.side ||
-        (previous !== undefined && previous !== reading.side);
-      if (!armed) {
-        return blocked(`human_v1: Supertrends ${trend} and price beyond ${reading.emaId}; waiting for a fresh cross`);
-      }
-      const distance = (reading.side as number) * (reading.distancePct as number);
-      return distance >= HUMAN_V1_MIN_EMA_DISTANCE_PCT
-        ? {
-            code: "HUMAN_V1",
-            reason: `human_v1: ${reading.emaId} cross with Supertrends ${trend}, ${distance.toFixed(2)}% beyond`,
-            status: "ready",
-          }
-        : blocked(
-            `human_v1: ${reading.emaId} cross armed with Supertrends ${trend}; ` +
-              `price ${distance.toFixed(2)}% beyond, needs ${HUMAN_V1_MIN_EMA_DISTANCE_PCT}%`,
-          );
+      return {
+        code: "HUMAN_V1",
+        reason: `human_v1: ${setup.direction === 1 ? "LONG" : "SHORT"} setup, TP ${setup.plan.tp} · SL ${setup.plan.sl}`,
+        status: "ready",
+      };
     },
   },
 };

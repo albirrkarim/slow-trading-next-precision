@@ -1,40 +1,54 @@
 # human_v1
 
-Trend following on the configured indicator features (`management.indicators`,
-Settings → Features). No volatility points, no averaging.
+Supertrend-alignment trading on the configured indicator features
+(`management.indicators`, Settings → Features). No volatility points, no
+averaging. Needs at least one EMA (the first enabled one is used, e.g.
+EMA 200 · 4h), one or more Supertrends, and the monthly VWAP (`vwap`).
 
 ## Entry — `BOTH:HUMAN_V1_ENTRY`
 
-Per configured coin (BTC excluded), each capture pass:
+Per configured coin (BTC excluded), each capture pass reads the first EMA,
+the monthly VWAP price and σ, and every Supertrend from
+`state.features.coins[coin].ind`. A coin has a setup when:
 
-1. Read the **first enabled EMA** instance and every **Supertrend** instance from
-   `state.features.coins[coin].ind`.
-2. Compare the mark price with the EMA value → side (+1 above, −1 below).
-3. A **fresh cross** — the side differs from the side recorded at the previous
-   pass (`state.strategy.side`) — **arms** that direction
-   (`state.strategy.armed`). The first observation only seeds the memory, so a
-   boot never enters mid-trend. A cross back re-arms the other direction.
-4. An armed direction enters once the mark is **at least
-   `HUMAN_V1_MIN_EMA_DISTANCE_PCT` (currently 2%) beyond the EMA** that way **and every Supertrend** points
-   the same way (all `d === 1` for a LONG, all `d === −1` for a SHORT). The arm
-   is consumed by the entry.
+1. **Every Supertrend points the same way and flipped together**: the
+   oldest and newest flip times (`fT`) are at most
+   `HUMAN_V1_FLIP_WINDOW_MS` (1 day) apart, so the flips line up vertically
+   on the chart.
+2. **The alignment is fresh**: the newest flip is at most that same window
+   old. Each alignment (keyed by its newest flip time) is traded at most once
+   (`state.strategy.used`).
+3. **Price is above the EMA.**
 
-No EMA, no Supertrend, or still warming up → no entry. Size: fixed
-`amountProbab` 0.5. Shared protections still apply: enabled account with
-balance, max open positions, configured coin, no shorts in spot, auto-remove
-minimum price, one active position per coin.
+Then, by the Supertrend direction:
+
+| Setup | SL | TP | Extra check |
+|---|---|---|---|
+| LONG (all up) | EMA value | VWAP + 1.5σ | TP above the mark |
+| SHORT (all down) | VWAP + 1σ | VWAP − 1.5σ | TP below the EMA, SL above the mark |
+
+The SHORT is the "stretched above EMA 200" setup: the Supertrends turn down
+while price still sits above the EMA, targeting a move back through it.
+No entry when price is below the EMA.
+
+The TP and SL go onto the entry decision as `plan` and are stored on the
+position as `strategy.plan` (`BOTH:STRATEGY_PLAN_EXIT`). No timeout is set.
+
+Size: fixed `amountProbab` 0.5. Shared protections still apply: enabled
+account with balance, max open positions, configured coin, no shorts in
+spot, auto-remove minimum price, one active position per coin.
 
 The entry signal is a synthetic vPoint-shaped object (`id: H_<COIN>_<t>`) so
 the shared execution path sizes and records it; it never marks a real vPoint
 used. The position stores `strategy.logic = { v: "human_v1", emaId }`.
 
-## Exit — `BOTH:HUMAN_V1_EMA_EXIT`
+## Exit
 
-1. Every shared exit rule runs first (TP, SL, max hold, …). Rules built on
-   vPoint data (level-based drift stop, exit on vPoint level, volatility-target
-   TP/SL) are meaningless here — disable them in the account's trading config.
-2. Otherwise a human_v1 position closes when the mark crosses back over its
-   EMA (LONG below, SHORT above), recorded as `STRATEGY_EXIT`.
+The default exit producer: the position's plan (`PLAN_TP` / `PLAN_SL`) plus
+every shared exit rule (TP %, SL %, SL USDT, SL Plus, …). Rules built on
+vPoint data (level-based drift stop, exit on vPoint level, volatility-target
+TP/SL) are meaningless here, so disable them in the account's trading config,
+and widen `takeProfitPercent` / `stopLossPercent` if the plan should decide.
 
 ## Averaging — `BOTH:HUMAN_V1_NO_AVERAGING`
 

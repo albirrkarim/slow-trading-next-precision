@@ -40,7 +40,7 @@ const STRATEGY_OPTIONS = [
     value: "default_with_features_gate",
   },
   {
-    label: "Human v1 (Supertrend + EMA cross)",
+    label: "Human v1 (Supertrend alignment + EMA/VWAP plan)",
     value: "human_v1",
   },
 ] satisfies { label: string; value: "default" | StrategySlug }[];

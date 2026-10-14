@@ -3,46 +3,30 @@ import type { RuntimeContext, RuntimeEntryDecision } from "@/lib/precision/types
 import autoRemove from "@/lib/system/trading/auto-remove";
 import type { EntryRecommendation } from "@/lib/system/trading/types";
 
+import humanSetup, { HUMAN_V1_SHORT_SL_SIGMA, HUMAN_V1_TP_SIGMA, type HumanSetup } from "./setup";
 import humanSignal from "./signal";
 import humanState from "./state";
 
 /** Fixed sizing weight — the default strategy's level-1 allocation. */
 export const HUMAN_V1_AMOUNT_PROBAB = 0.5;
-
-/**
- * Minimum mark distance from the EMA, pct, in the cross (and Supertrend)
- * direction before an armed cross enters — filters whipsaw crosses that
- * barely clear the EMA.
- */
-export const HUMAN_V1_MIN_EMA_DISTANCE_PCT = 2
 const MAX_LEVERAGE = 3;
 
 /** Strategy payload copied onto `position.strategy.logic` at commit. */
 export interface HumanV1Logic {
   v: "human_v1";
-  /** EMA instance the position's cross-back exit watches. */
+  /** EMA instance the setup was measured against. */
   emaId: string;
 }
 
-/** A confirmed entry signal for one coin. */
-interface HumanSignal {
-  direction: 1 | -1;
+interface HumanSignal extends HumanSetup {
   emaId: string;
-  emaValue: number;
-  markPrice: number;
-  distancePct: number;
   supertrendIds: string[];
 }
 
 /**
- * Scans every configured coin once per capture pass:
- * 1. records its EMA side; a flip since the previous pass arms that
- *    direction (the first observation only seeds — no mid-trend entry on
- *    boot);
- * 2. an armed direction becomes a signal once the mark is at least
- *    `HUMAN_V1_MIN_EMA_DISTANCE_PCT` beyond the EMA that way and every
- *    Supertrend agrees — the arm is then consumed.
- * A cross back re-arms the other direction, dropping the stale one.
+ * Scans every configured coin once per capture pass and returns its fresh
+ * setup. An alignment (identified by its newest Supertrend flip) is
+ * consumed when it produces a signal, so it never enters twice.
  */
 function scanSignals(context: RuntimeContext): Map<string, HumanSignal> {
   const state = humanState.read(context);
@@ -55,34 +39,32 @@ function scanSignals(context: RuntimeContext): Map<string, HumanSignal> {
       symbol,
       context.state.markPriceMap[symbol]?.price,
     );
-    if (reading.missing || !reading.side) continue;
-    const previous = state.side[symbol];
-    state.side[symbol] = reading.side;
-    if (previous !== undefined && previous !== reading.side) {
-      state.armed[symbol] = reading.side;
-    }
-    // BOTH:HUMAN_V1_ENTRY — armed EMA cross, ≥ min distance beyond the
-    // EMA, confirmed by every Supertrend.
-    if (state.armed[symbol] !== reading.side) continue;
-    if (reading.consensus !== reading.side) continue;
-    const distancePct = reading.distancePct as number;
-    if (reading.side * distancePct < HUMAN_V1_MIN_EMA_DISTANCE_PCT) continue;
-    delete state.armed[symbol];
+    const result = humanSetup.evaluate(reading, context.state.currentTime);
+    if (!("setup" in result) || state.used[symbol] === result.setup.flipT) continue;
+    state.used[symbol] = result.setup.flipT;
     signals.set(symbol, {
-      direction: reading.side,
-      distancePct,
+      ...result.setup,
       emaId: reading.emaId as string,
-      emaValue: reading.emaValue as number,
-      markPrice: reading.markPrice as number,
-      supertrendIds: reading.supertrendIds,
+      supertrendIds: reading.supertrend.ids,
     });
   }
   return signals;
 }
 
+/** "LONG: st1, st2 flipped up together; mark 105 above ema1 97 | TP 123 (VWAP +1.5σ) · SL 97 (EMA)" */
+function describe(signal: HumanSignal): string {
+  const long = signal.direction === 1;
+  const tpLabel = `VWAP ${long ? "+" : "−"}${HUMAN_V1_TP_SIGMA}σ`;
+  const slLabel = long ? signal.emaId : `VWAP +${HUMAN_V1_SHORT_SL_SIGMA}σ`;
+  return (
+    `human_v1 ${long ? "LONG" : "SHORT"}: ${signal.supertrendIds.join(", ")} flipped ${long ? "up" : "down"} together; ` +
+    `mark ${signal.markPrice} above ${signal.emaId} ${signal.emaValue} | ` +
+    `TP ${signal.plan.tp} (${tpLabel}) · SL ${signal.plan.sl} (${slLabel})`
+  );
+}
+
 /** Synthetic vPoint-shaped signal the shared execution path sizes and records. */
 function recommendation(context: RuntimeContext, symbol: string, signal: HumanSignal): EntryRecommendation {
-  const label = signal.direction === 1 ? "LONG" : "SHORT";
   const t = context.state.currentTime;
   return {
     amountProbab: HUMAN_V1_AMOUNT_PROBAB,
@@ -91,10 +73,7 @@ function recommendation(context: RuntimeContext, symbol: string, signal: HumanSi
     l: signal.direction === 1 ? "B" : "T",
     lvl: signal.direction,
     maxLeverage: MAX_LEVERAGE,
-    message:
-      `human_v1 ${label}: ${signal.supertrendIds.join(", ")} all ${signal.direction === 1 ? "up" : "down"}; ` +
-      `mark ${signal.markPrice} crossed ${signal.direction === 1 ? "above" : "below"} ${signal.emaId} ${signal.emaValue} ` +
-      `(${signal.distancePct > 0 ? "+" : ""}${signal.distancePct.toFixed(2)}%)`,
+    message: describe(signal),
     p: signal.markPrice,
     pct: 0,
     symbol,
@@ -105,10 +84,11 @@ function recommendation(context: RuntimeContext, symbol: string, signal: HumanSi
 }
 
 /**
- * Entry producer: one candidate per account and fresh signal, behind the
- * same protections as the default producer — enabled account with
- * balance, max open positions, configured coin, no shorts in spot, the
- * auto-remove minimum price, and one active position per coin.
+ * Entry producer: one candidate per account and fresh setup, carrying the
+ * setup's TP/SL as the position plan, behind the same protections as the
+ * default producer — enabled account with balance, max open positions,
+ * configured coin, no shorts in spot, the auto-remove minimum price, and
+ * one active position per coin.
  */
 async function find(context: RuntimeContext): Promise<RuntimeEntryDecision[]> {
   const signals = scanSignals(context);
@@ -137,6 +117,7 @@ async function find(context: RuntimeContext): Promise<RuntimeEntryDecision[]> {
         direction: signal.direction === 1 ? "LONG" : "SHORT",
         entrySignal,
         message: entrySignal.message,
+        plan: { ...signal.plan },
         strategy: logic,
         symbol,
         type: "entry",
