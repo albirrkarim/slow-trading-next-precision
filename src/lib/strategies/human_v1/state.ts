@@ -6,11 +6,11 @@ import strategyState from "../shared/state";
  * `human_v1`-owned records inside `state.strategy`, persisted with the
  * runtime state so a restart resumes them:
  * - `used`: per coin, the newest Supertrend flip time of the alignment
- *   already traded or skipped, so one alignment is judged once.
+ *   already traded, so one alignment never enters twice.
  */
 export interface HumanStrategyState {
   v: "human_v1";
-  /** Base symbol → `flipT` of the last alignment that entered or was skipped. */
+  /** Base symbol → `flipT` of the last alignment that produced an entry. */
   used: Record<string, number>;
 }
 

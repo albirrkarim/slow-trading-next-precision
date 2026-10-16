@@ -56,15 +56,12 @@ export interface HumanReading {
   emaValue?: number;
   markPrice?: number;
   side?: EmaSide;
-  /** Monthly VWAP price and its σ. */
-  vwap?: number;
-  sigma?: number;
   supertrend: SupertrendAlignment;
-  /** Why the coin cannot be evaluated yet (no EMA / VWAP / mark / Supertrend). */
+  /** Why the coin cannot be evaluated yet (no EMA / mark / Supertrend). */
   missing?: string;
 }
 
-/** Reads the EMA side, monthly VWAP bands, and Supertrend alignment for one coin. */
+/** Reads the EMA side and Supertrend alignment for one coin. */
 function read(
   features: RuntimeFeatures | undefined,
   symbol: string,
@@ -77,17 +74,13 @@ function read(
   if (!id) return { ...reading, missing: "no EMA indicator configured" };
   const emaValue = indicators.read.ema(coin, id)?.v;
   if (emaValue === undefined) return { ...reading, missing: `${id} has no reading yet` };
-  const vwapReading = indicators.read.vwap(coin);
-  const vwap = vwapReading?.price;
-  const sigma = vwapReading?.stdev;
-  if (!vwap || !sigma) return { ...reading, emaValue, missing: "no monthly VWAP reading" };
   if (markPrice === undefined || !Number.isFinite(markPrice)) {
-    return { ...reading, emaValue, missing: "no mark price", sigma, vwap };
+    return { ...reading, emaValue, missing: "no mark price" };
   }
   if (supertrend.ids.length === 0) {
-    return { ...reading, emaValue, missing: "no Supertrend reading", sigma, vwap };
+    return { ...reading, emaValue, missing: "no Supertrend reading" };
   }
-  return { ...reading, emaValue, side: emaSide(markPrice, emaValue), sigma, vwap };
+  return { ...reading, emaValue, side: emaSide(markPrice, emaValue) };
 }
 
 const humanSignal = { emaId, emaSide, read, supertrendAlignment } as const;

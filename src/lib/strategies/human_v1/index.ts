@@ -32,7 +32,7 @@ const humanV1: StrategyAPI = {
       }
       const { setup } = result;
       if (humanState.peek(context).used[coin] === setup.flipT) {
-        return { code: "HUMAN_V1", reason: "human_v1: this Supertrend alignment was already traded or skipped", status: "blocked" };
+        return { code: "HUMAN_V1", reason: "human_v1: this Supertrend alignment was already traded", status: "blocked" };
       }
       return {
         code: "HUMAN_V1",

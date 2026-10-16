@@ -3,7 +3,7 @@ import type { RuntimeContext, RuntimeEntryDecision } from "@/lib/precision/types
 import autoRemove from "@/lib/system/trading/auto-remove";
 import type { EntryRecommendation } from "@/lib/system/trading/types";
 
-import humanSetup, { HUMAN_V1_SHORT_SL_SIGMA, HUMAN_V1_TP_SIGMA, type HumanSetup } from "./setup";
+import humanSetup, { HUMAN_V1_TP_R, type HumanSetup } from "./setup";
 import humanSignal from "./signal";
 import humanState from "./state";
 
@@ -26,8 +26,7 @@ interface HumanSignal extends HumanSetup {
 /**
  * Scans every configured coin once per capture pass and returns its fresh
  * setup. An alignment (identified by its newest Supertrend flip) is
- * consumed when it produces a signal or its lines are apart at the flip,
- * so it is judged once and never enters twice.
+ * consumed when it produces a signal, so it never enters twice.
  */
 function scanSignals(context: RuntimeContext): Map<string, HumanSignal> {
   const state = humanState.read(context);
@@ -41,13 +40,7 @@ function scanSignals(context: RuntimeContext): Map<string, HumanSignal> {
       context.state.markPriceMap[symbol]?.price,
     );
     const result = humanSetup.evaluate(reading, context.state.currentTime);
-    if (!("setup" in result)) {
-      // A final miss (lines apart at the flip) settles the alignment, so
-      // it never enters once the lines converge later.
-      if (result.spent !== undefined) state.used[symbol] = result.spent;
-      continue;
-    }
-    if (state.used[symbol] === result.setup.flipT) continue;
+    if (!("setup" in result) || state.used[symbol] === result.setup.flipT) continue;
     state.used[symbol] = result.setup.flipT;
     signals.set(symbol, {
       ...result.setup,
@@ -58,15 +51,13 @@ function scanSignals(context: RuntimeContext): Map<string, HumanSignal> {
   return signals;
 }
 
-/** "LONG: st1, st2 flipped up together; mark 105 above ema1 97 | TP 123 (VWAP +1.5σ) · SL 97 (EMA)" */
+/** "LONG: st1, st2, st3 flipped up together, lines collide; mark 105 above ema200 97 | TP 123 (2R) · SL 96 (slowest line)" */
 function describe(signal: HumanSignal): string {
   const long = signal.direction === 1;
-  const tpLabel = `VWAP ${long ? "+" : "−"}${HUMAN_V1_TP_SIGMA}σ`;
-  const slLabel = long ? signal.emaId : `VWAP +${HUMAN_V1_SHORT_SL_SIGMA}σ`;
   return (
-    `human_v1 ${long ? "LONG" : "SHORT"}: ${signal.supertrendIds.join(", ")} flipped ${long ? "up" : "down"} together; ` +
+    `human_v1 ${long ? "LONG" : "SHORT"}: ${signal.supertrendIds.join(", ")} flipped ${long ? "up" : "down"} together, lines collide; ` +
     `mark ${signal.markPrice} above ${signal.emaId} ${signal.emaValue} | ` +
-    `TP ${signal.plan.tp} (${tpLabel}) · SL ${signal.plan.sl} (${slLabel})`
+    `TP ${signal.plan.tp} (${HUMAN_V1_TP_R}R) · SL ${signal.plan.sl} (slowest Supertrend line)`
   );
 }
 

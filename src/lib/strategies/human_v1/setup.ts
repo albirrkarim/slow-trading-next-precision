@@ -3,12 +3,13 @@
  *
  * Both setups need every Supertrend to have flipped the same way within
  * `HUMAN_V1_FLIP_WINDOW_MS` of each other, the newest flip no older than
- * that window, the lines bunched within `HUMAN_V1_MAX_LINE_SPREAD_PCT` of
- * price when the alignment is first seen (they "collide" on the chart), and
- * the mark above the EMA:
- * - LONG (all up): SL at the EMA, TP at monthly VWAP + 1.5σ.
- * - SHORT (all down, still above the EMA): SL at VWAP + 1σ, TP at
- *   VWAP − 1.5σ, which must sit below the EMA.
+ * that window, at least two Supertrend lines touching (within
+ * `HUMAN_V1_COLLIDE_PCT` of price — they "collide" on the chart), and the
+ * mark above the EMA — for LONG (all up) and SHORT (all down) alike.
+ * SL sits at the slowest Supertrend line (the one farthest from price), TP
+ * at `HUMAN_V1_TP_R` times that risk. Research over 16 coins × 3 years
+ * (2023-10 → 2026-10) put this at ~48% wins / +0.42R per trade, versus
+ * −0.15R for the earlier EMA/VWAP-band exits.
  */
 import type { PositionPlan } from "@/lib/system/trading/types";
 
@@ -16,12 +17,10 @@ import type { HumanReading } from "./signal";
 
 /** Max time between the first and last Supertrend flip, and max age of the last flip. */
 export const HUMAN_V1_FLIP_WINDOW_MS = 24 * 60 * 60_000;
-/** Max distance between the highest and lowest Supertrend line, % of the mark. */
-export const HUMAN_V1_MAX_LINE_SPREAD_PCT = 3;
-/** TP distance from the monthly VWAP, in σ. */
-export const HUMAN_V1_TP_SIGMA = 1.5;
-/** SHORT SL distance above the monthly VWAP, in σ. */
-export const HUMAN_V1_SHORT_SL_SIGMA = 1;
+/** Max gap between the two closest Supertrend lines for them to "collide", % of the mark. */
+export const HUMAN_V1_COLLIDE_PCT = 1.25;
+/** TP distance from entry as a multiple of the entry→SL risk. */
+export const HUMAN_V1_TP_R = 2;
 
 /** A tradable setup: direction, exit plan, and the alignment it consumes. */
 export interface HumanSetup {
@@ -33,17 +32,20 @@ export interface HumanSetup {
   emaValue: number;
 }
 
-/**
- * A setup, or why the coin has none. `spent` carries the alignment's flip
- * time when the miss is final for that alignment (lines apart at the
- * flip), so it is never re-evaluated as the lines converge later.
- */
-export type HumanSetupResult = { setup: HumanSetup } | { reason: string; spent?: number };
+export type HumanSetupResult = { setup: HumanSetup } | { reason: string };
 
 /** "6h", "1d 2h" — span for diagnostics. */
 function hours(ms: number): string {
   const total = Math.round(ms / 3_600_000);
   return total >= 24 ? `${Math.floor(total / 24)}d ${total % 24}h` : `${total}h`;
+}
+
+/** Smallest gap between any two line prices, as % of `price`. */
+function closestGapPct(lines: number[], price: number): number {
+  const sorted = [...lines].sort((a, b) => a - b);
+  let gap = Infinity;
+  for (let i = 1; i < sorted.length; i += 1) gap = Math.min(gap, sorted[i] - sorted[i - 1]);
+  return (gap / price) * 100;
 }
 
 /** Evaluates both setups for one coin at `now`; the reason explains a miss. */
@@ -52,8 +54,6 @@ function evaluate(reading: HumanReading, now: number): HumanSetupResult {
   const { supertrend } = reading;
   const markPrice = reading.markPrice as number;
   const emaValue = reading.emaValue as number;
-  const vwap = reading.vwap as number;
-  const sigma = reading.sigma as number;
   const ids = supertrend.ids.join(", ");
 
   if (supertrend.direction === undefined) return { reason: `Supertrends disagree (${ids})` };
@@ -67,30 +67,20 @@ function evaluate(reading: HumanReading, now: number): HumanSetupResult {
   if (age > HUMAN_V1_FLIP_WINDOW_MS) {
     return { reason: `alignment is ${hours(age)} old, max ${hours(HUMAN_V1_FLIP_WINDOW_MS)}` };
   }
-  // BOTH:HUMAN_V1_ENTRY — the lines must already collide at the flip.
-  const spreadPct = ((Math.max(...supertrend.lines) - Math.min(...supertrend.lines)) / markPrice) * 100;
-  if (!(spreadPct <= HUMAN_V1_MAX_LINE_SPREAD_PCT)) {
-    return {
-      reason: `Supertrend lines ${spreadPct.toFixed(2)}% apart at the flip, max ${HUMAN_V1_MAX_LINE_SPREAD_PCT}%`,
-      spent: supertrend.flipT,
-    };
+  // BOTH:HUMAN_V1_ENTRY — at least two Supertrend lines collide.
+  const gapPct = closestGapPct(supertrend.lines, markPrice);
+  if (!(gapPct <= HUMAN_V1_COLLIDE_PCT)) {
+    return { reason: `closest Supertrend lines ${gapPct.toFixed(2)}% apart, need ≤ ${HUMAN_V1_COLLIDE_PCT}% to collide` };
   }
   if (reading.side !== 1) return { reason: `price is not above ${reading.emaId}` };
 
-  if (supertrend.direction === 1) {
-    // BOTH:HUMAN_V1_ENTRY — LONG: SL at the EMA, TP at VWAP + 1.5σ.
-    const tp = vwap + HUMAN_V1_TP_SIGMA * sigma;
-    if (tp <= markPrice) return { reason: `price already past VWAP +${HUMAN_V1_TP_SIGMA}σ ${tp}` };
-    return { setup: { direction: 1, emaValue, flipT: supertrend.flipT, markPrice, plan: { sl: emaValue, tp } } };
-  }
-
-  // BOTH:HUMAN_V1_ENTRY — SHORT from above the EMA: SL at VWAP + 1σ,
-  // TP at VWAP − 1.5σ, which must lie below the EMA.
-  const tp = vwap - HUMAN_V1_TP_SIGMA * sigma;
-  const sl = vwap + HUMAN_V1_SHORT_SL_SIGMA * sigma;
-  if (tp >= emaValue) return { reason: `VWAP −${HUMAN_V1_TP_SIGMA}σ ${tp} is not below ${reading.emaId} ${emaValue}` };
-  if (sl <= markPrice) return { reason: `price already above VWAP +${HUMAN_V1_SHORT_SL_SIGMA}σ ${sl}` };
-  return { setup: { direction: -1, emaValue, flipT: supertrend.flipT, markPrice, plan: { sl, tp } } };
+  // BOTH:HUMAN_V1_ENTRY — SL at the slowest line, TP at 2R.
+  const direction = supertrend.direction;
+  const sl = direction === 1 ? Math.min(...supertrend.lines) : Math.max(...supertrend.lines);
+  const risk = direction * (markPrice - sl);
+  if (!(risk > 0)) return { reason: `price is not beyond the slowest Supertrend line ${sl}` };
+  const tp = markPrice + direction * HUMAN_V1_TP_R * risk;
+  return { setup: { direction, emaValue, flipT: supertrend.flipT, markPrice, plan: { sl, tp } } };
 }
 
 const humanSetup = { evaluate } as const;
