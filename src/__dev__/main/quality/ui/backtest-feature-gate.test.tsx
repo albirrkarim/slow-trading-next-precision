@@ -59,7 +59,8 @@ class MockWorker {
 }
 
 beforeEach(() => {
-  window.localStorage.removeItem(filterStorage.key);
+  // The tab also remembers the selected gate and run; start every test clean.
+  window.localStorage.clear();
   vi.stubGlobal("Worker", MockWorker);
   http.get.mockReset();
   http.get.mockImplementation(async (url: string, config?: { params?: { hash?: string } }) => {

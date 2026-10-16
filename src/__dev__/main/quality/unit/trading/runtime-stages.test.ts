@@ -72,8 +72,7 @@ import runtimeSelfTest from "@/lib/precision/utils/on-start-test";
 import productionStages from "@/lib/production/stages";
 import productionFactory from "@/lib/production/factory";
 import { ProductionRuntime } from "@/lib/production/runtime";
-import v3 from "@/lib/strategies/default_with_features_gate/features/v3";
-import strategyGate from "@/lib/strategies/default_with_features_gate/features";
+import featureStrategy from "@/lib/strategies/default_with_features_gate";
 import systemLog from "@/lib/system/logging";
 import { DEFAULT_BLACK_SWAN_CONFIG } from "@/lib/system/trading/black-swan";
 
@@ -439,43 +438,43 @@ describe("RuntimeEngine strategy lifecycle", () => {
 
   // PROD:MANUAL_STRATEGY_LIFECYCLE — cold and disabled-runner diagnostic engines also own prepared weights.
   it.each(["sandbox", "live"] as const)(
-    "warms and releases v3 for one-shot manual tasks, including task errors (%s)",
+    "warms and releases the strategy for one-shot manual tasks, including task errors (%s)",
     async (mode) => {
+      // Spy on the strategy itself so this holds whichever feature-gate version it uses.
+      const warmup = vi.spyOn(featureStrategy, "warmup");
+      const dispose = vi.spyOn(featureStrategy, "dispose");
       for (const retained of [false, true]) {
+        warmup.mockClear();
+        dispose.mockClear();
         const state = createState({ mode });
         state.config.management.strategy = "default_with_features_gate";
         state.config.runtime.runnerEnabled = false;
         const adapter = createAdapter(state);
         const factory = { createState: () => state, createAdapter: () => adapter };
         vi.spyOn(productionFactory, "create").mockReturnValue(factory);
-        const session = { gate: vi.fn(() => ({ allow: true, message: "v3 allowed" })), dispose: vi.fn() };
-        const load = vi.spyOn(v3, "load").mockResolvedValue(session);
-        load.mockClear();
         const runtime = new ProductionRuntime();
         const contexts: RuntimeContext[] = [];
         try {
           if (retained) await runtime.start(factory);
-          expect(load).not.toHaveBeenCalled();
-          const signal = { id: "A", symbol: "SUI", t: 1, p: 1, lvl: 0, l: "B" as const, pct: 5, vb: 0, vq: 0 };
+          expect(warmup).not.toHaveBeenCalled();
           const result = await runtime.runManual(async (context) => {
             contexts.push(context);
-            expect(strategyGate.gate(context, signal)).toMatchObject({ allow: true });
-            expect(session.dispose).not.toHaveBeenCalled();
+            expect(warmup).toHaveBeenCalledTimes(1);
+            expect(dispose).not.toHaveBeenCalled();
             return 42;
           });
           expect(result).toBe(42);
-          expect(load).toHaveBeenCalledTimes(1);
-          expect(session.dispose).toHaveBeenCalledTimes(1);
-          expect(strategyGate.gate(contexts[0], signal)).toMatchObject({ allow: false, message: expect.stringMatching(/not warmed up/) });
+          expect(warmup.mock.calls[0][0].helper).toBe(contexts[0].helper);
+          expect(dispose).toHaveBeenCalledTimes(1);
+          expect(dispose.mock.calls[0][0].helper).toBe(contexts[0].helper);
 
           const error = new Error("operator failed");
           await expect(runtime.runManual(async (context) => {
             contexts.push(context);
-            expect(strategyGate.gate(context, signal)).toMatchObject({ allow: true });
+            expect(warmup).toHaveBeenCalledTimes(2);
             throw error;
           })).rejects.toBe(error);
-          expect(load).toHaveBeenCalledTimes(2);
-          expect(session.dispose).toHaveBeenCalledTimes(2);
+          expect(dispose).toHaveBeenCalledTimes(2);
           expect(contexts[0].helper).not.toBe(contexts[1].helper);
         } finally { runtime.stop(); }
       }

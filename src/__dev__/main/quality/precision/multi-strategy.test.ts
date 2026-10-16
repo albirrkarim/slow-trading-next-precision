@@ -25,7 +25,7 @@ import tradingExit from "@/lib/system/trading/exit";
 import systemPositions from "@/lib/precision/utils/positions";
 import systemVpoints from "@/lib/system/utils/vpoints";
 import featureStrategy from "@/lib/strategies/default_with_features_gate";
-import v3 from "@/lib/strategies/default_with_features_gate/features/v3";
+import featureGate from "@/lib/strategies/default_with_features_gate/features";
 import entryDiagnostics from "@/lib/system/trading/entry-diagnostics";
 import jsonFile from "@/lib/system/storage/json-file";
 
@@ -284,7 +284,8 @@ describe("feature strategy entry explanations", () => {
       context.state.mode = mode;
       context.strategy = featureStrategy;
       const message = "v3 NN: risk 0.0002 < cutoff 0.0012085630401764136 (allowed)";
-      vi.spyOn(v3, "load").mockResolvedValue({ gate: () => ({ allow: true, message }), dispose: vi.fn() });
+      // Stub whichever gate version is active; this checks the message contract, not the model.
+      vi.spyOn(featureGate, "gate").mockReturnValue({ allow: true, message });
       const dir = await fs.mkdtemp(path.join(os.tmpdir(), "gate-entry-message-"));
       try {
         await featureStrategy.warmup!(context);
@@ -321,7 +322,7 @@ describe("feature strategy entry explanations", () => {
       markPriceMap: { SUI: { price: 100, lastUpdated: 200 } },
     });
     context.strategy = featureStrategy;
-    vi.spyOn(v3, "load").mockResolvedValue({ gate: () => ({ allow: true, message: "v3 allowed" }), dispose: vi.fn() });
+    vi.spyOn(featureGate, "gate").mockReturnValue({ allow: true, message: "gate allowed" });
     try {
       await featureStrategy.warmup!(context);
       const [decision] = await featureStrategy.decisions!.entry!.find(context);
