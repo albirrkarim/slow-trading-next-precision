@@ -143,7 +143,12 @@ export function useLiveDashboardNavbar({
       });
 
       await axios.put(endpoints.system.state, {
-        config: configDraft.management,
+        // "" selects the default pipeline; `undefined` would be dropped by JSON
+        // and the server would keep the previous strategy.
+        config: {
+          ...configDraft.management,
+          strategy: configDraft.management.strategy ?? "",
+        },
         ...runtime,
         account: selectedAccountSlug,
         safeHavenUSDT: Math.max(0, Number(safeHavenUSDT) || 0),

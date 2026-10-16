@@ -453,6 +453,12 @@ async function update(
     const merged = {
       ...effective,
       ...input.config,
+      // JSON drops `undefined`, so the dashboard sends "" to select the
+      // built-in default pipeline; an absent key keeps the saved strategy.
+      strategy:
+        input.config.strategy === undefined
+          ? effective.strategy
+          : input.config.strategy.trim() || undefined,
       maxOpenPositions: runtimeNormalize.values.maxOpenPositions(
         input.config.maxOpenPositions ?? effective.maxOpenPositions,
       ),
