@@ -8,10 +8,9 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import {
   Box,
-  Button,
-  CircularProgress,
   Collapse,
   IconButton,
+  InputAdornment,
   Stack,
   Switch,
   TextField,
@@ -43,12 +42,11 @@ function accessLabel(token: McpTokenRecord): string {
   return preset?.label ?? `${token.permissions.length} of ${MCP_PERMISSIONS.length} permissions`;
 }
 
-/** One token as a compact row; expand it to rename or change permissions. */
+/** One token as a compact row; expand it to see its secret, rename it or change permissions. */
 export function TokenCard({
   defaultExpanded = false,
   onDelete,
   onReveal,
-  onHideSecret,
   onUpdate,
   saving,
   token,
@@ -58,7 +56,6 @@ export function TokenCard({
   defaultExpanded?: boolean;
   onDelete: (token: McpTokenRecord) => void;
   onReveal: (token: McpTokenRecord) => void;
-  onHideSecret: (tokenId: string) => void;
   onUpdate: (
     token: McpTokenRecord,
     patch: Partial<Pick<McpTokenRecord, "enabled" | "name" | "permissions">>,
@@ -70,6 +67,12 @@ export function TokenCard({
 }) {
   const { enqueueSnackbar } = useSnackbar();
   const [expanded, setExpanded] = useState(defaultExpanded);
+  const [masked, setMasked] = useState(false);
+  const toggleExpanded = () => {
+    // Opening the form loads the stored secret so the token can be copied again.
+    if (!expanded && !visibleSecret && token.secretAvailable) onReveal(token);
+    setExpanded((value) => !value);
+  };
   const toolCount = tools.filter((tool) => token.permissions.includes(tool.permission)).length;
 
   return (
@@ -84,7 +87,7 @@ export function TokenCard({
       <Stack alignItems="center" direction="row" spacing={1} sx={{ px: 1.5, py: 1 }}>
         <KeyIcon color={token.enabled ? "success" : "disabled"} fontSize="small" />
         <Box
-          onClick={() => setExpanded((value) => !value)}
+          onClick={toggleExpanded}
           sx={{ cursor: "pointer", flexGrow: 1, minWidth: 0 }}
         >
           <Typography fontWeight={700} noWrap variant="body2">
@@ -105,30 +108,11 @@ export function TokenCard({
           />
         </Tooltip>
 
-        <Button
-          disabled={saving || (!visibleSecret && !token.secretAvailable)}
-          onClick={() => (visibleSecret ? onHideSecret(token.id) : onReveal(token))}
-          size="small"
-          startIcon={
-            saving ? (
-              <CircularProgress size={14} />
-            ) : visibleSecret ? (
-              <VisibilityOffIcon />
-            ) : (
-              <VisibilityIcon />
-            )
-          }
-          title={token.secretAvailable ? undefined : "This token's secret was not stored and cannot be shown again."}
-          variant="text"
-        >
-          {visibleSecret ? "Hide" : "Show"}
-        </Button>
-
-        <Tooltip title={expanded ? "Close" : "Edit name and permissions"}>
+        <Tooltip title={expanded ? "Close" : "Show token and edit"}>
           <IconButton
             aria-expanded={expanded}
             aria-label="Edit token"
-            onClick={() => setExpanded((value) => !value)}
+            onClick={toggleExpanded}
             size="small"
           >
             <ExpandMoreIcon
@@ -153,42 +137,49 @@ export function TokenCard({
         </Tooltip>
       </Stack>
 
-      {visibleSecret && (
-        <Stack
-          alignItems="center"
-          direction="row"
-          spacing={1}
-          sx={(theme) => ({
-            backgroundColor: theme.palette.action.hover,
-            borderTop: `1px solid ${theme.palette.divider}`,
-            px: 1.5,
-            py: 1,
-          })}
-        >
-          <Typography
-            sx={{ flexGrow: 1, fontFamily: "monospace", fontSize: "0.8rem", minWidth: 0, wordBreak: "break-all" }}
-          >
-            {visibleSecret}
-          </Typography>
-          <Button
-            onClick={() => {
-              void navigator.clipboard.writeText(visibleSecret);
-              enqueueSnackbar("Copied MCP token", { variant: "success" });
-            }}
-            size="small"
-            startIcon={<ContentCopyIcon />}
-            variant="contained"
-          >
-            Copy
-          </Button>
-        </Stack>
-      )}
-
       <Collapse in={expanded} unmountOnExit>
         <Stack
           spacing={1.5}
           sx={(theme) => ({ borderTop: `1px solid ${theme.palette.divider}`, p: 1.5 })}
         >
+          <TextField
+            helperText={
+              token.secretAvailable
+                ? "Use this as the bearer token in your MCP client. Treat it like a password."
+                : "This token's secret was not stored. Create a new token to get one you can copy."
+            }
+            label="Token"
+            size="small"
+            slotProps={{
+              input: {
+                endAdornment: visibleSecret ? (
+                  <InputAdornment position="end">
+                    <Tooltip title={masked ? "Show token" : "Hide token"}>
+                      <IconButton aria-label={masked ? "Show token" : "Hide token"} onClick={() => setMasked((value) => !value)} size="small">
+                        {masked ? <VisibilityIcon fontSize="small" /> : <VisibilityOffIcon fontSize="small" />}
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Copy token">
+                      <IconButton
+                        aria-label="Copy token"
+                        onClick={() => {
+                          void navigator.clipboard.writeText(visibleSecret);
+                          enqueueSnackbar("Copied MCP token", { variant: "success" });
+                        }}
+                        size="small"
+                      >
+                        <ContentCopyIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </InputAdornment>
+                ) : undefined,
+                readOnly: true,
+                sx: { fontFamily: "monospace", fontSize: "0.85rem" },
+              },
+            }}
+            type={masked ? "password" : "text"}
+            value={visibleSecret ?? (token.secretAvailable ? (saving ? "Loading..." : "Could not load the token. Close and open again to retry.") : "Not stored")}
+          />
           <TextField
             defaultValue={token.name}
             label="Token name"

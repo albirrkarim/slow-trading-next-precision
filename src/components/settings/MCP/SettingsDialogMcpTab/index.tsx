@@ -216,14 +216,6 @@ export default function SettingsDialogMcpTab() {
     }
   };
 
-  const hideSecret = (tokenId: string) => {
-    setVisibleTokens((current) => {
-      const next = { ...current };
-      delete next[tokenId];
-      return next;
-    });
-  };
-
   return (
     <SettingsDialogSection
       title="MCP"
@@ -334,7 +326,7 @@ export default function SettingsDialogMcpTab() {
 
             {createdId && visibleTokens[createdId] && (
               <Alert onClose={() => setCreatedId(null)} severity="success">
-                Token created. Copy it below and paste it into your client; you can show it again later from this tab.
+                Token created. Copy it from the form below and paste it into your client; open the token again any time to copy it.
               </Alert>
             )}
 
@@ -356,9 +348,9 @@ export default function SettingsDialogMcpTab() {
             ) : (
               tokens.map((token) => (
                 <TokenCard
+                  defaultExpanded={token.id === createdId}
                   key={token.id}
                   onDelete={(target) => void deleteToken(target)}
-                  onHideSecret={hideSecret}
                   onReveal={(target) => void revealToken(target)}
                   onUpdate={(target, patch) => void updateToken(target, patch)}
                   saving={savingId === token.id}
