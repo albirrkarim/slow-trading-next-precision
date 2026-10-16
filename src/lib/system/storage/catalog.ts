@@ -204,6 +204,7 @@ async function load(): Promise<RuntimeStorageCatalog> {
       const migrated = runtimeAccounts.futuresPositionMode.migrate(account);
       return {
         ...migrated,
+        accountingEnabled: runtimeAccounts.accounting.resolve(migrated),
         ...(migrated.credentials !== undefined
           ? {
               credentials: runtimeCredentials.decryptRecord(

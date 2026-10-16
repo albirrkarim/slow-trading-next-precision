@@ -72,6 +72,7 @@ function buildRuntimeConfig({
         description: "",
         credentials: { apiKey: "", apiSecret: "" },
         enabled: true,
+        accountingEnabled: true,
         trading: runtimeAccountConfig.trading.fromEffective(flatConfig),
         sandbox: { initialBalanceUSDT: startAmount },
         createdAt: 0,

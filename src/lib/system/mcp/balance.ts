@@ -22,6 +22,7 @@ async function read(
   });
 
   const dashboardState = await runtimeDashboard.state.buildCombined({
+    accountSlugs: scope.accounts.map((account) => account.slug),
     mode: scope.mode,
   });
 

@@ -156,7 +156,7 @@ const toolDefinitions: RuntimeMcpToolDefinition[] = [
   {
     name: "balance_read",
     description:
-      "Read the canonical PRECISION USDT balance across all enabled exchange accounts, with an account breakdown. Returns available exchange-free balance, spendable capital, virtual reserve, Safe Haven, locked active-position margin, total asset, formulas, and a plain-language meaning for every field. totalAsset is available plus locked and is not floating equity or unrealized P&L.",
+      "Read the canonical PRECISION USDT balance across the exchange accounts included in accounting, with an account breakdown. Returns available exchange-free balance, spendable capital, virtual reserve, Safe Haven, locked active-position margin, total asset, formulas, and a plain-language meaning for every field. totalAsset is available plus locked and is not floating equity or unrealized P&L.",
     permission: "balance.read",
     readOnlyHint: true,
     inputSchema: jsonSchema({
@@ -195,7 +195,7 @@ const toolDefinitions: RuntimeMcpToolDefinition[] = [
   {
     name: "finance_summary",
     description:
-      "Summarize realized net USDT P&L across every enabled exchange account from closed PRECISION trades inside one bounded UTC date range. Disabled accounts, balance changes, and open-position unrealized P&L are excluded.",
+      "Summarize realized net USDT P&L across the exchange accounts included in accounting from closed PRECISION trades inside one bounded UTC date range. Accounts excluded from accounting, balance changes, and open-position unrealized P&L are excluded.",
     permission: "trade_history.read",
     readOnlyHint: true,
     inputSchema: jsonSchema(
@@ -220,7 +220,7 @@ const toolDefinitions: RuntimeMcpToolDefinition[] = [
   {
     name: "trade_history_read",
     description:
-      "Read combined PRECISION trade history and open positions across every enabled exchange account. Each position retains its account slug and disabled accounts are excluded.",
+      "Read combined PRECISION trade history and open positions across the exchange accounts included in accounting. Each position retains its account slug and accounts excluded from accounting are left out.",
     permission: "trade_history.read",
     readOnlyHint: true,
     inputSchema: jsonSchema({

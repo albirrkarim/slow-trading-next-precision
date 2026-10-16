@@ -178,6 +178,7 @@ export default function ExchangeAccountManagerDialog({
       description: "",
       credentials: { apiKey: "", apiSecret: "" },
       enabled: true,
+      accountingEnabled: true,
       futuresPositionMode: "ONE_WAY",
       trading: structuredClone(template.trading),
       sandbox: {
@@ -277,8 +278,8 @@ export default function ExchangeAccountManagerDialog({
                 Saved Accounts
               </Typography>
               <Typography color="text.secondary" variant="caption">
-                Choose a profile here only to edit its name, credentials,
-                position mode, and entry status. Edits update the settings
+                Choose a profile to edit its name, credentials, position
+                mode, new entries and accounting. Edits update the settings
                 draft — on the dashboard they persist when you press Save.
               </Typography>
             </Box>

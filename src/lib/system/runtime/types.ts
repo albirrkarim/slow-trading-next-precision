@@ -214,7 +214,13 @@ export interface RuntimeAccountConfig {
   type: ExchangeType;
   description: string;
   credentials: RuntimeAccountCredentials;
+  /** Whether the account may open new entries. */
   enabled: boolean;
+  /**
+   * Whether the account counts toward accounting: MCP balance, trade
+   * history and finance summary reads. Independent of `enabled`.
+   */
+  accountingEnabled: boolean;
   /**
    * The exchange account's configured futures position mode. Pair
    * strategies require `"HEDGE"`: the runtime verifies the configured

@@ -35,6 +35,7 @@ function makeContext(vPointsMap: Record<string, VolatilityPoint[]>) {
           description: "",
           credentials: { apiKey: "", apiSecret: "" },
           enabled: true,
+          accountingEnabled: true,
           trading: runtimeDefaults.trading.create(),
           sandbox: { initialBalanceUSDT: 1_000 },
           createdAt: 0,

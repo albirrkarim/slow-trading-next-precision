@@ -122,4 +122,6 @@ export interface RuntimeDashboardRealtimeOptions {
   mode?: RuntimeMode;
   /** Set false when a caller must use the persisted balance. */
   refreshLiveBalance?: boolean;
+  /** Limits a combined read to these account slugs; all accounts when omitted. */
+  accountSlugs?: string[];
 }

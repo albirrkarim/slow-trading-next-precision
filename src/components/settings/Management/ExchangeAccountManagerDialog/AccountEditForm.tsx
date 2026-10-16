@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  FormControlLabel,
+  Box,
   Grid,
   MenuItem,
   Switch,
@@ -15,7 +15,62 @@ import { CredentialSettingsField } from "./CredentialSettingsField";
 import {
   FUTURES_POSITION_MODE_OPTIONS,
   getExchangeAccountTypeLabel,
+  isInAccounting,
 } from "./utils";
+
+/** A titled on/off setting with a one-line explanation; the whole card toggles it. */
+function StatusSwitchCard({
+  checked,
+  description,
+  onChange,
+  title,
+}: {
+  checked: boolean;
+  description: string;
+  onChange: (checked: boolean) => void;
+  title: string;
+}) {
+  return (
+    <Box
+      component="label"
+      sx={(theme) => ({
+        alignItems: "flex-start",
+        border: `1px solid ${checked ? theme.palette.success.main : theme.palette.divider}`,
+        borderRadius: 1.5,
+        cursor: "pointer",
+        display: "flex",
+        gap: 1,
+        height: "100%",
+        px: 1.5,
+        py: 1,
+        transition: "border-color 120ms",
+      })}
+    >
+      <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+        <Typography fontWeight={700} variant="body2">
+          {title}
+          <Typography
+            color={checked ? "success.main" : "text.secondary"}
+            component="span"
+            sx={{ fontWeight: 600, ml: 1 }}
+            variant="caption"
+          >
+            {checked ? "On" : "Off"}
+          </Typography>
+        </Typography>
+        <Typography color="text.secondary" display="block" variant="caption">
+          {description}
+        </Typography>
+      </Box>
+      <Switch
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        size="small"
+        sx={{ mt: 0.25 }}
+      />
+    </Box>
+  );
+}
 
 export interface RevealedCredentials {
   accountId: string;
@@ -47,7 +102,7 @@ export function AccountEditForm({
 }) {
   return (
     <Grid container spacing={1.25}>
-      <Grid size={{ xs: 12, md: 6 }}>
+      <Grid size={{ xs: 12, md: 4 }}>
         <SettingsInfoField
           label="Account Name"
           size="small"
@@ -67,7 +122,7 @@ export function AccountEditForm({
         />
       </Grid>
 
-      <Grid size={{ xs: 12, md: 6 }}>
+      <Grid size={{ xs: 12, md: 4 }}>
         <SettingsInfoField
           label="Account Type"
           size="small"
@@ -78,7 +133,7 @@ export function AccountEditForm({
         />
       </Grid>
 
-      <Grid size={{ xs: 12, md: 6 }}>
+      <Grid size={{ xs: 12, md: 4 }}>
         <SettingsInfoField
           label="Futures Position Mode"
           select
@@ -115,24 +170,33 @@ export function AccountEditForm({
         </SettingsInfoField>
       </Grid>
 
-      <Grid size={{ xs: 12 }}>
-        <FormControlLabel
-          control={
-            <Switch
-              checked={account.enabled}
-              onChange={(event) => {
-                updateExchangeAccount(
-                  account.slug,
-                  (current) => ({
-                    ...current,
-                    enabled: event.target.checked,
-                    updatedAt: Date.now(),
-                  }),
-                );
-              }}
-            />
+      <Grid size={{ xs: 12, sm: 6 }}>
+        <StatusSwitchCard
+          checked={account.enabled}
+          description="Open new positions. Open positions are still managed when off."
+          onChange={(checked) =>
+            updateExchangeAccount(account.slug, (current) => ({
+              ...current,
+              enabled: checked,
+              updatedAt: Date.now(),
+            }))
           }
-          label="Enable new entries for this account"
+          title="New entries"
+        />
+      </Grid>
+
+      <Grid size={{ xs: 12, sm: 6 }}>
+        <StatusSwitchCard
+          checked={isInAccounting(account)}
+          description="Count balance, trades and P&L in treasury and finance. Trading is unaffected."
+          onChange={(checked) =>
+            updateExchangeAccount(account.slug, (current) => ({
+              ...current,
+              accountingEnabled: checked,
+              updatedAt: Date.now(),
+            }))
+          }
+          title="Accounting"
         />
       </Grid>
 

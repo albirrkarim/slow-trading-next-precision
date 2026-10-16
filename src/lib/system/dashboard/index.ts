@@ -649,7 +649,15 @@ async function buildCombined(
   const mode = options?.mode ?? catalog.mode;
   const status = await runtimeStorage.status.load(mode);
   const states: RuntimeDashboardState[] = [];
-  for (const account of catalog.config.accounts) {
+  const accounts = options?.accountSlugs
+    ? catalog.config.accounts.filter((account) =>
+        options.accountSlugs?.includes(account.slug),
+      )
+    : catalog.config.accounts;
+  if (accounts.length === 0) {
+    throw new Error("Cannot build a combined dashboard without accounts.");
+  }
+  for (const account of accounts) {
     const source = await loadAccountSource({
       account,
       mode,

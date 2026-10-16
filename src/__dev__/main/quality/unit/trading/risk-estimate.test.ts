@@ -34,6 +34,7 @@ function makeAccount(
         credentials: { apiKey: "", apiSecret: "" },
         description: "",
         enabled: overrides.enabled ?? true,
+        accountingEnabled: true,
         name: slug,
         sandbox: { initialBalanceUSDT: overrides.initialBalanceUSDT ?? 1000 },
         slug,

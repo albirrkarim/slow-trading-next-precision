@@ -34,3 +34,12 @@ export function slugFromName(name: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "") || "account";
 }
+
+/** Accounts saved before the accounting switch follow their entries switch, as on the server. */
+export function isInAccounting(
+  account: Pick<RuntimeAccountConfig, "accountingEnabled" | "enabled">,
+): boolean {
+  return typeof account.accountingEnabled === "boolean"
+    ? account.accountingEnabled
+    : account.enabled;
+}

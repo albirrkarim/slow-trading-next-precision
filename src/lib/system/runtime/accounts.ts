@@ -107,8 +107,23 @@ function migrateFuturesPositionMode(
   return next;
 }
 
+/**
+ * Whether an account counts toward accounting. Accounts saved before the
+ * switch existed keep their old MCP behaviour: only entry-enabled accounts
+ * counted.
+ */
+function resolveAccountingEnabled(record: {
+  accountingEnabled?: unknown;
+  enabled?: unknown;
+}): boolean {
+  return typeof record.accountingEnabled === "boolean"
+    ? record.accountingEnabled
+    : record.enabled !== false;
+}
+
 /** Normalizes one account profile into the canonical persisted shape. */
 function createAccount(params: {
+  accountingEnabled?: unknown;
   credentials?: unknown;
   createdAt?: number;
   description?: unknown;
@@ -147,6 +162,7 @@ function createAccount(params: {
     description: getString(params.description),
     credentials: normalizeCredentials(params.credentials),
     enabled: params.enabled !== false,
+    accountingEnabled: resolveAccountingEnabled(params),
     ...(futuresPositionMode ? { futuresPositionMode } : {}),
     trading: { ...trading, notes: tradingNotes },
     sandbox: {
@@ -230,6 +246,7 @@ function normalizeAccounts(params: {
         description: record.description,
         credentials: record.credentials,
         enabled: record.enabled,
+        accountingEnabled: record.accountingEnabled,
         futuresPositionMode: record.futuresPositionMode,
         trading: record.trading,
         sandbox: record.sandbox,
@@ -244,6 +261,7 @@ function normalizeAccounts(params: {
 
 /** Grouped account profile helpers shared by storage and the settings API. */
 const runtimeAccounts = {
+  accounting: { resolve: resolveAccountingEnabled },
   create: createAccount,
   createDefault: createDefaultAccounts,
   normalize: normalizeAccounts,

@@ -3,13 +3,46 @@
 import {
   Box,
   Button,
-  Chip,
   Stack,
   Typography,
 } from "@mui/material";
 import type { RuntimeAccountConfig } from "@/lib/system/runtime";
 
-import { getExchangeAccountTypeLabel } from "./utils";
+import { getExchangeAccountTypeLabel, isInAccounting } from "./utils";
+
+/** A small coloured dot with a label: green when on, grey when off. */
+function StatusDot({
+  label,
+  on,
+  selected,
+}: {
+  label: string;
+  on: boolean;
+  selected: boolean;
+}) {
+  return (
+    <Stack alignItems="center" direction="row" spacing={0.5}>
+      <Box
+        sx={{
+          bgcolor: on ? "success.main" : selected ? "primary.contrastText" : "text.disabled",
+          borderRadius: "50%",
+          flexShrink: 0,
+          height: 8,
+          opacity: !on && selected ? 0.5 : 1,
+          width: 8,
+        }}
+      />
+      <Typography
+        component="span"
+        noWrap
+        sx={{ color: selected ? "primary.contrastText" : on ? "text.primary" : "text.secondary" }}
+        variant="caption"
+      >
+        {label}
+      </Typography>
+    </Stack>
+  );
+}
 
 export function AccountList({
   accounts,
@@ -31,9 +64,10 @@ export function AccountList({
             color={selected ? "primary" : "inherit"}
             onClick={() => onSelect(account.slug)}
             sx={{
-              justifyContent: "space-between",
+              justifyContent: "flex-start",
               minHeight: 44,
               textAlign: "left",
+              textTransform: "none",
             }}
           >
             <Box sx={{ minWidth: 0 }}>
@@ -60,6 +94,18 @@ export function AccountList({
                 {getExchangeAccountTypeLabel(account.type)}
                 {` · ${account.futuresPositionMode === "HEDGE" ? "Hedge" : "One-way"}`}
               </Typography>
+              <Stack direction="row" spacing={1.5} sx={{ mt: 0.5 }}>
+                <StatusDot
+                  label={account.enabled ? "Entries on" : "Entries off"}
+                  on={account.enabled}
+                  selected={selected}
+                />
+                <StatusDot
+                  label={isInAccounting(account) ? "In accounting" : "Not in accounting"}
+                  on={isInAccounting(account)}
+                  selected={selected}
+                />
+              </Stack>
               {account.description && (
                 <Typography
                   component="span"
@@ -69,6 +115,7 @@ export function AccountList({
                     color: selected
                       ? "primary.contrastText"
                       : "text.secondary",
+                    mt: 0.25,
                     opacity: selected ? 0.82 : 1,
                   }}
                   variant="caption"
@@ -77,12 +124,6 @@ export function AccountList({
                 </Typography>
               )}
             </Box>
-            <Chip
-              color={account.enabled ? "success" : "default"}
-              label={account.enabled ? "Entries on" : "Entries off"}
-              size="small"
-              variant={selected ? "filled" : "outlined"}
-            />
           </Button>
         );
       })}

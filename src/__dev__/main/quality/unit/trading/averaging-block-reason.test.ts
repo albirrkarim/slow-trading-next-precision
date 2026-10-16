@@ -47,6 +47,7 @@ function makeContext(
           description: "",
           credentials: { apiKey: "", apiSecret: "" },
           enabled: true,
+          accountingEnabled: true,
           trading: {
             ...runtimeDefaults.trading.create(),
             averagingRescueProjectionGuardEnabled: false,

@@ -16,7 +16,7 @@ export interface RuntimeMcpAccountState {
   modeState: RuntimeAccountModeState;
 }
 
-/** Resolves the enabled accounts and concrete mode included in an MCP read. */
+/** Resolves the accounts included in accounting and the concrete mode of an MCP read. */
 async function resolve(params: {
   defaultMode: "active" | RuntimeMode;
   requestedMode: unknown;
@@ -29,12 +29,12 @@ async function resolve(params: {
       ? requestedMode
       : activeMode;
   const accounts = catalog.config.accounts.filter(
-    (account) => account.enabled,
+    (account) => account.accountingEnabled,
   );
 
   if (accounts.length === 0) {
     throw new Error(
-      "PRECISION has no enabled exchange accounts to include in MCP data.",
+      "PRECISION has no exchange accounts included in accounting.",
     );
   }
 
