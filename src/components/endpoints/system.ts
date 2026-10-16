@@ -16,6 +16,9 @@ export const systemEndpoints = {
     refresh: `${SYSTEM_API}/balance/refresh`,
     snapshots: `${SYSTEM_API}/balance/snapshots`,
   },
+  positions: {
+    staleLive: `${SYSTEM_API}/positions/stale-live`,
+  },
   manual: {
     entry: `${SYSTEM_API}/manual/entry`,
     exit: `${SYSTEM_API}/manual/exit`,

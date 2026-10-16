@@ -19,6 +19,7 @@ import {
 
 import SettingsInfoField from "../Components/SettingsInfoField";
 import SettingsDialogSection from "../Components/SettingsDialogSection";
+import LiveStalePositionsSection from "./LiveStalePositionsSection";
 import RuntimeMonitoringSettings from "./RuntimeMonitoringSettings";
 import type { ConfigDraft, ConfigDraftSetter } from "../settings-types";
 
@@ -280,6 +281,8 @@ export default function SettingsDialogRuntimeTab({
             })}
           </Stack>
         </SettingsDialogSection>
+
+        <LiveStalePositionsSection accounts={configDraft.accounts} />
 
         {onReinitialize && (
           <SettingsDialogSection
