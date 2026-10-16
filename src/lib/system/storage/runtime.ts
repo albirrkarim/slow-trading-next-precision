@@ -36,6 +36,8 @@ export interface RuntimeBalanceMemory extends Record<string, unknown> {
   safeHavenRequest?: number;
   /** Timestamp of the latest queued Safe Haven request. */
   lastSafeHavenRequest?: number;
+  /** Live only: when quoteAsset was last read successfully from the exchange. */
+  liveCheckedAt?: number;
 }
 
 /** Account-owned positions + balance for one mode. */

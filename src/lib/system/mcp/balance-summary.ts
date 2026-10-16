@@ -16,8 +16,20 @@ export interface RuntimeMcpBalance {
   totalAsset: number;
 }
 
+/** Live only: whether this account's available balance was read from the exchange just now. */
+export interface RuntimeMcpLiveBalanceFreshness {
+  /** ISO time the exchange balance was last read successfully; null when never. */
+  lastCheckedAt: string | null;
+  /** Why this call's exchange read failed, when it failed. */
+  error?: string;
+  /** True when available was read from the exchange during this call. */
+  refreshed: boolean;
+}
+
 export interface RuntimeMcpAccountBalanceSummary {
   balance: RuntimeMcpBalance;
+  /** Present in live mode only. */
+  liveBalance?: RuntimeMcpLiveBalanceFreshness;
   mode: RuntimeMode;
   name: string;
   slug: RuntimeDashboardAccountSummary["slug"];
@@ -38,6 +50,23 @@ export interface RuntimeMcpBalanceSummary {
   mode: RuntimeMode;
   source: "live_exchange_with_persisted_fallback" | "sandbox_simulation";
   sourceMeaning: string;
+  /** Live mode: slugs of accounts whose balance is the stored fallback, not refreshed this call. */
+  staleAccounts: string[];
+}
+
+function toFreshness(
+  liveBalance: RuntimeDashboardAccountSummary["liveBalance"],
+): RuntimeMcpLiveBalanceFreshness | undefined {
+  if (!liveBalance) return undefined;
+
+  return {
+    ...(liveBalance.error ? { error: liveBalance.error } : {}),
+    lastCheckedAt:
+      liveBalance.checkedAt === null
+        ? null
+        : new Date(liveBalance.checkedAt).toISOString(),
+    refreshed: liveBalance.refreshed,
+  };
 }
 
 function roundUsdt(value: number): number {
@@ -70,10 +99,12 @@ function createBalanceSummary(params: {
   mode: RuntimeMode;
 }): RuntimeMcpBalanceSummary {
   const balances = params.dashboardState.balances;
+  const summaries = params.dashboardState.accountSummaries ?? [];
 
   return {
-    accounts: (params.dashboardState.accountSummaries ?? []).map((account) => ({
+    accounts: summaries.map((account) => ({
       balance: createBalance(account.balances),
+      liveBalance: toFreshness(account.liveBalance),
       mode: account.activeMode,
       name: account.name,
       slug: account.slug,
@@ -109,8 +140,11 @@ function createBalanceSummary(params: {
         : "sandbox_simulation",
     sourceMeaning:
       params.mode === "live"
-        ? "Each call attempts to refresh available from the live exchange; if that read fails, PRECISION retains the latest persisted balance while logging the exchange error. Reserved, Safe Haven, and locked values come from PRECISION state."
+        ? "Each call attempts to refresh available from the live exchange; if that read fails, PRECISION retains the latest persisted balance while logging the exchange error. Each account's liveBalance says whether this call refreshed it (refreshed), when the exchange was last read successfully (lastCheckedAt) and why this read failed (error); staleAccounts lists accounts showing the stored fallback. Reserved, Safe Haven, and locked values come from PRECISION state."
         : "All fields come from the selected sandbox simulation state; no exchange balance is queried.",
+    staleAccounts: summaries
+      .filter((account) => account.liveBalance && !account.liveBalance.refreshed)
+      .map((account) => account.slug),
   };
 }
 

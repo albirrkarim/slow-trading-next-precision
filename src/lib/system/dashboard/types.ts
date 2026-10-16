@@ -29,6 +29,16 @@ export interface RuntimeDashboardBalances {
   startingBalanceUSDT: number;
 }
 
+/** Whether a live balance was just read from the exchange or is the stored fallback. */
+export interface RuntimeDashboardLiveBalanceFreshness {
+  /** When the exchange balance was last read successfully; null when never. */
+  checkedAt: number | null;
+  /** Why this request's exchange read failed, when it was attempted and failed. */
+  error?: string;
+  /** True when this response's available balance was read from the exchange just now. */
+  refreshed: boolean;
+}
+
 /** Account identity, execution mode, and balances shown in combined UI chrome. */
 export interface RuntimeDashboardAccountSummary {
   slug: string;
@@ -36,6 +46,8 @@ export interface RuntimeDashboardAccountSummary {
   enabled: boolean;
   activeMode: RuntimeMode;
   balances: RuntimeDashboardBalances;
+  /** Live mode only. */
+  liveBalance?: RuntimeDashboardLiveBalanceFreshness;
 }
 
 /** Dashboard response shape for the active runtime mode. */

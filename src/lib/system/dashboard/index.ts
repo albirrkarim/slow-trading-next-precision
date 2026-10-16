@@ -143,22 +143,25 @@ async function getLatestPriceMap(params: {
   );
 }
 
-/** Gets the live quote balance through the account's exchange credentials. */
+/** Gets the live quote balance through the account's exchange credentials, or why it could not. */
 async function getLiveQuoteBalance(params: {
   account: RuntimeAccountConfig;
   config: RuntimeConfig;
-}): Promise<number | null> {
+}): Promise<{ quoteAsset: number } | { error: string }> {
   const effective = runtimeAccountConfig.effective(
     params.config.management,
     params.account,
   );
+  const cooldown = {
+    error: "Binance is cooling down after a rate limit; the stored balance is shown.",
+  };
 
   if (
     effective.exchangeType === "binance" &&
     binanceRequestCoordinator.cooldown.get()
   ) {
     // PROD:BINANCE_GLOBAL_COOLDOWN
-    return null;
+    return cooldown;
   }
 
   return runWithExchangeAccount(
@@ -171,14 +174,14 @@ async function getLiveQuoteBalance(params: {
       try {
         const balance = await exchange.getBalance("USDT_USDT");
         if (!balance || !Number.isFinite(balance.quoteAsset)) {
-          return null;
+          return { error: "The exchange returned no USDT balance." };
         }
 
-        return balance.quoteAsset;
+        return { quoteAsset: balance.quoteAsset };
       } catch (error) {
         if (error instanceof BinanceCooldownError && !error.activated) {
           // PROD:BINANCE_GLOBAL_COOLDOWN
-          return null;
+          return cooldown;
         }
 
         // PROD:ERROR_LOG
@@ -202,8 +205,28 @@ async function getLiveQuoteBalance(params: {
           "[dashboard] failed to refresh live quote balance",
           error,
         );
-        return null;
+        return {
+          error: error instanceof Error ? error.message : String(error),
+        };
       }
+    },
+  );
+}
+
+/** Persists an exchange-read live quote balance and stamps when it was checked. */
+async function persistLiveQuoteAsset(
+  accountSlug: string,
+  quoteAsset: number,
+): Promise<void> {
+  await jsonFile.update.atomic(
+    storageFiles.prod.account(accountSlug, "live").balance,
+    (raw) => {
+      const memory =
+        raw && typeof raw === "object" && !Array.isArray(raw)
+          ? { ...(raw as Record<string, unknown>) }
+          : {};
+      runtimeAccountState.applyLiveQuoteAsset(memory, quoteAsset);
+      return memory;
     },
   );
 }
@@ -278,6 +301,7 @@ function toDashboardBalances(
 function toAccountSummary(params: {
   account: RuntimeAccountConfig;
   balances: RuntimeDashboardBalances;
+  liveCheckedAt?: number;
   mode: RuntimeMode;
 }): RuntimeDashboardAccountSummary {
   return {
@@ -286,6 +310,14 @@ function toAccountSummary(params: {
     enabled: params.account.enabled,
     activeMode: params.mode,
     balances: params.balances,
+    // Stored balance until applyRealtime reads the exchange.
+    liveBalance:
+      params.mode === "live"
+        ? {
+            checkedAt: Number(params.liveCheckedAt) || null,
+            refreshed: false,
+          }
+        : undefined,
   };
 }
 
@@ -321,7 +353,12 @@ function buildState(params: {
     accountFilter: account.slug,
     accounts: clone(config.accounts),
     accountSummaries: [
-      toAccountSummary({ account, balances, mode }),
+      toAccountSummary({
+        account,
+        balances,
+        liveCheckedAt: source.modeState.balance.liveCheckedAt,
+        mode,
+      }),
     ],
     activeMode: mode,
     globalConfig: {
@@ -389,8 +426,27 @@ async function applyRealtime(params: {
   let snapshot = params.state;
 
   if (snapshot.activeMode === "live" && options?.refreshLiveBalance !== false) {
-    const liveQuoteBalance = await getLiveQuoteBalance({ account, config });
-    if (liveQuoteBalance != null) {
+    const live = await getLiveQuoteBalance({ account, config });
+    if ("error" in live) {
+      snapshot = {
+        ...snapshot,
+        accountSummaries: snapshot.accountSummaries.map((summary) =>
+          summary.slug === account.slug && summary.liveBalance
+            ? {
+                ...summary,
+                liveBalance: { ...summary.liveBalance, error: live.error },
+              }
+            : summary,
+        ),
+      };
+    } else {
+      const liveQuoteBalance = live.quoteAsset;
+      const checkedAt = Date.now();
+      // A successful read becomes the stored fallback for later failed reads.
+      await persistLiveQuoteAsset(account.slug, liveQuoteBalance).catch(
+        (error) =>
+          systemLog.error("[dashboard] failed to persist live balance", error),
+      );
       const safeHaven = snapshot.balances.safeHaven;
       const reservedQuoteAsset = snapshot.balances.reservedQuoteAsset;
       const spendableQuoteAsset = Math.max(
@@ -408,6 +464,7 @@ async function applyRealtime(params: {
                   availableQuoteAsset: liveQuoteBalance,
                   spendableQuoteAsset,
                 },
+                liveBalance: { checkedAt, refreshed: true },
               }
             : summary,
         ),
@@ -669,20 +726,7 @@ async function refreshAccount(
     );
   }
 
-  await jsonFile.update.atomic(
-    storageFiles.prod.account(account.slug, "live").balance,
-    (raw) => {
-      const memory =
-        raw && typeof raw === "object" && !Array.isArray(raw)
-          ? { ...(raw as Record<string, unknown>) }
-          : {};
-      runtimeAccountState.applyLiveQuoteAsset(
-        memory,
-        balance.quoteAsset,
-      );
-      return memory;
-    },
-  );
+  await persistLiveQuoteAsset(account.slug, balance.quoteAsset);
 
   return {
     account: account.slug,

@@ -62,6 +62,7 @@ function applyLiveQuoteAsset(
   const safeHaven = finite(memory.safeHaven);
   const available = quoteAsset - safeHaven;
   memory.quoteAsset = available;
+  memory.liveCheckedAt = Date.now();
   if (!finite(memory.startingBalanceUSDT)) {
     memory.startingBalanceUSDT = available;
   }
